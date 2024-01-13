@@ -172,7 +172,7 @@ def main(*args):
         logging.info(f"target path: {target_path}")
         logging.info(f"{main_folder_name}{sub_folder}{target_data_name_to_find}_result.csv")
         if (validation_table_created == False):
-            gold_target_csv = (target_path)
+            gold_target_csv = read_csv_target(target_path)
             gold_target_csv_pd = pd.read_csv(target_path)
             gold_target_csv_df = pd.DataFrame(gold_target_csv_pd)
             logging.info(f"gold_target_csv_df {gold_target_csv_df}")
