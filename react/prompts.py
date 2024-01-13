@@ -60,13 +60,17 @@ Action 4: Conditional[source_schema, target_schema]
 Observation 4: Extract the date from datetime to populate DT_STRATA and the hour to determine which PCT_HOURLY_XXXX gets the zone_16 value. Compute the day of the week from datetime to set the DOW field. Use the hour from datetime to map zone_16 to the appropriate PCT_HOURLY_XXXX. 
 
 Thought 5: Prepare the final transformation SQL code, including the creation of tables, data import, and exporting the results to a CSV file.
-Action 5: Finish[CREATE TABLE source_table (datetime TEXT, zone_16 NUMERIC);
+Action 5: Finish[DROP TABLE IF EXISTS source_table;
+         CREATE TABLE source_table (datetime TEXT, zone_16 NUMERIC);
          COPY source_table FROM 'source_data.csv' WITH (FORMAT csv, HEADER true, NULL '');
+         DROP TABLE IF EXISTS source_table;
          CREATE TABLE target_table (DT_STRATA DATE, DOW INTEGER, PCT_HOURLY_0100 NUMERIC, ..., PCT_HOURLY_2400 NUMERIC);
          INSERT INTO target_table (DT_STRATA, DOW, PCT_HOURLY_0100, ..., PCT_HOURLY_2400) SELECT DATE(datetime) AS DT_STRATA, CAST(strftime('%w', datetime) AS INTEGER) AS DOW, SUM(CASE WHEN strftime('%H', datetime) = '01' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_0100, ..., SUM(CASE WHEN strftime('%H', datetime) = '00' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_2400 FROM source_table GROUP BY DT_STRATA, DOW;
          COPY (SELECT * FROM target_table) TO '/path/to/your/sub_folder/target_name_result.csv' WITH CSV HEADER;]
-Observation 5: CREATE TABLE source_table (datetime TEXT, zone_16 NUMERIC);
+Observation 5: DROP TABLE IF EXISTS source_table;
+         CREATE TABLE source_table (datetime TEXT, zone_16 NUMERIC);
          COPY source_table FROM 'source_data.csv' WITH (FORMAT csv, HEADER true, NULL '');
+         DROP TABLE IF EXISTS source_table;
          CREATE TABLE target_table (DT_STRATA DATE, DOW INTEGER, PCT_HOURLY_0100 NUMERIC, ..., PCT_HOURLY_2400 NUMERIC);
          INSERT INTO target_table (DT_STRATA, DOW, PCT_HOURLY_0100, ..., PCT_HOURLY_2400) SELECT DATE(datetime) AS DT_STRATA, CAST(strftime('%w', datetime) AS INTEGER) AS DOW, SUM(CASE WHEN strftime('%H', datetime) = '01' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_0100, ..., SUM(CASE WHEN strftime('%H', datetime) = '00' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_2400 FROM source_table GROUP BY DT_STRATA, DOW;
          COPY (SELECT * FROM target_table) TO '/path/to/your/sub_folder/target_name_result.csv' WITH CSV HEADER;
@@ -220,7 +224,61 @@ In the Finish action, follow and only use the following steps to generate the 't
 5. COPY the SQL result into a CSV file "{result_path}{target_name}_result.csv".
 """
 
+baseline_examples = """
+Example 1:
+Source Schema: {datetime, zone_16}
+Source Examples: {1/1/2018 0:00 67.9}
+Target Schema: {DT_STRATA, DOW, PCT_HOURLY_0100, PCT_HOURLY_0200, PCT_HOURLY_0300, PCT_HOURLY_0400, PCT_HOURLY_0500, PCT_HOURLY_0600, PCT_HOURLY_0700, PCT_HOURLY_0800, PCT_HOURLY_0900, PCT_HOURLY_1000, PCT_HOURLY_1100, PCT_HOURLY_1200, PCT_HOURLY_1300, PCT_HOURLY_1400, PCT_HOURLY_1500, PCT_HOURLY_1600, PCT_HOURLY_1700, PCT_HOURLY_1800, PCT_HOURLY_1900, PCT_HOURLY_2000, PCT_HOURLY_2100, PCT_HOURLY_2200, PCT_HOURLY_2300, PCT_HOURLY_2400}
+Target Examples: {10/30/2023 1 1.020 0.960 0.960 0.940 1.000 1.100 1.210 1.230 1.150 1.120 1.160 1.080 1.030 1.030 1.050 1.050 1.080 1.170 1.220 1.370 1.410 1.350 1.220 1.030}
 
+The predicted types for the target columns in the target_schema are as follows: DT_STRATA: DATE, DOW: INTEGER, PCT_HOURLY_0100 to PCT_HOURLY_2400: NUMERIC.
+
+Mappings between the source and target schemas are as follows: datetime -> DT_STRATA. zone_16 -> PCT_HOURLY_0100 to PCT_HOURLY_2400.
+
+The target columns PCT_HOURLY_0100 through PCT_HOURLY_2400 seem to be aggregates of the zone_16 values from the source schema, based on hourly intervals derived from the datetime column. The source schema is in minutes; thus, the aggregation function should be sum.
+
+Extract the date from datetime to populate DT_STRATA and the hour to determine which PCT_HOURLY_XXXX gets the zone_16 value. Compute the day of the week from datetime to set the DOW field. Use the hour from datetime to map zone_16 to the appropriate PCT_HOURLY_XXXX. 
+
+The final transformation SQL code is
+
+```sql
+CREATE TABLE source_table (datetime TEXT, zone_16 NUMERIC);
+COPY source_table FROM 'source_data.csv' WITH (FORMAT csv, HEADER true, NULL '');
+CREATE TABLE target_table (DT_STRATA DATE, DOW INTEGER, PCT_HOURLY_0100 NUMERIC, ..., PCT_HOURLY_2400 NUMERIC);
+INSERT INTO target_table (DT_STRATA, DOW, PCT_HOURLY_0100, ..., PCT_HOURLY_2400) SELECT DATE(datetime) AS DT_STRATA, CAST(strftime('%w', datetime) AS INTEGER) AS DOW, SUM(CASE WHEN strftime('%H', datetime) = '01' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_0100, ..., SUM(CASE WHEN strftime('%H', datetime) = '00' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_2400 FROM source_table GROUP BY DT_STRATA, DOW;
+COPY (SELECT * FROM target_table) TO '/path/to/your/sub_folder/target_name_result_baseline.csv' WITH CSV HEADER;
+```
+"""
+
+baseline_template = """
+You are a SQL developer. Please generate a Postgres sql script to convert the source table to be consistent with the format of the target table.
+
+Your Task Details:
+1. Source Schema: {source_schema}
+2. Source Table Name: {source_name}
+3. Target Schema: {target_schema}
+4. Target Table Name: {target_name}
+5. Source Examples: {source_examples}
+6. Target Examples: {target_examples}
+7. Data File Path: {test_0_path}.
+
+Do the following analytical steps:
+- TypePredict (Robust Decision-Making): Predicts the datatype for columns, bearing in mind the subset nature of the provided source data. Given the potential for unseen decimal values in the complete dataset, default to 'DECIMAL' for numerical columns unless there is absolute certainty that the data is strictly integers. For date columns, carefully consider whether to use 'DATE' or 'TEXT' based on the format and usage requirements. [Parameters: source_column_examples, target_column_examples].
+- Mapping: Establishes correspondences between source and target schema columns. Ensure to use double quotes for any reserved keywords used as column names, such as "user". Include strategies for handling date formats in this process. [Parameters: source_schema, target_schema].
+- Aggregation (Contextual Analysis): Determines if target columns are aggregates of source columns and infers the types of aggregation appropriate for the data context. Pay special attention to date fields and how their format might impact aggregation. [Parameters: source_schema, target_schema].
+- Conditional: Identifies conditions or filters for the transformation, including any related to date formats. [Parameters: source_schema, target_schema, condition].
+
+Generate SQL code for the transformation. Ensure this code accounts for the handling of date formats, whether preserving them as 'TEXT' or converting them to 'DATE', and addresses any syntax issues. [Parameters: transformation_sql_code].
+1. Analyze using all tools for a comprehensive understanding and accurate data transformation.
+2. Create Source Table: Define and create the source table '{source_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and carefully handle date formats as per the analysis.
+3. Data Import: Load data from CSV at '{test_0_path}', treating empty values as NULL and correctly handling date formats.
+4. Create Target Table: Define and create the target table '{target_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and ensure date formats are correctly handled.
+5. COPY the SQL result into a CSV file "{result_path}{target_name}_result_baseline.csv".
+
+Ensure the generated sql code incorporates insights from the analytical steps, especially the enhanced aggregation analysis, tailored to the specific requirements of the given schemas and data paths.
+
+Please quote the returned SQL script between "```sql\n" and "\n```"
+"""
 
 
 ultimate_task = 'Output the SQL code for the transformation.'

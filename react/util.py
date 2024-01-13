@@ -1,8 +1,6 @@
 import os
 import logging
-import pandas as pd
-import re
-import csv
+
 
 def convert_target_names(target_names_str):
     target_names = target_names_str.split(',')
@@ -20,6 +18,7 @@ def convert_target_names(target_names_str):
     converted_names_str = ', '.join(converted_names)
     return converted_names_str
 
+
 def access_auto_pipeline_dataset(sub_folder_name):
     main_folder_name = "github-pipelines"
     main_folder_name = os.path.abspath(main_folder_name)
@@ -27,16 +26,17 @@ def access_auto_pipeline_dataset(sub_folder_name):
     test_0 = f"{sub_folder}test_0.csv"
     test_1 = f"{sub_folder}test_1.csv"
     target = f"{sub_folder}target.csv"
-    return main_folder_name,sub_folder, test_0, test_1, target
+    return main_folder_name, sub_folder, test_0, test_1, target
+
 
 def read_csv_target(target):
     gold_target = []
     logging.info(f"Final target path{target}")
-    with open(target, 'r',encoding="utf-8") as file:
-            reader = csv.reader(file)
-            header = next(reader)
-            for row in reader:
-                gold_target.append(tuple(row))
+    with open(target, 'r', encoding="utf-8") as file:
+        reader = csv.reader(file)
+        header = next(reader)
+        for row in reader:
+            gold_target.append(tuple(row))
     return gold_target
 
 
@@ -115,9 +115,10 @@ def execute_sql(conn, query):
 #         return f"Error: {e.pgerror}"
 
 
-def print_experiment_settings(len_id, max_len_id, target_id, max_target_id, clarify_on):
+def print_experiment_settings(len_id, max_len_id, target_id, max_target_id, method, clarify_on):
     with open('log/all_similarity_scores.log', 'a+') as file:
-        file.write(f"{'[Clarify On]' if clarify_on else '[Clarify Off]'}\n")
+        file.write(f"{'[Clarify On]' if clarify_on else '[Clarify Off]'}"
+                   f"{' using react' if method == 'baseline' else ' using baseline'}\n")
         file.write("Scope: length ")
         if len_id == max_len_id:
             file.write(f"is {len_id}")
@@ -132,7 +133,7 @@ def print_experiment_settings(len_id, max_len_id, target_id, max_target_id, clar
 
 
 def log_experiment_failed(target_data_name, source_data_name_to_find, iteration_count, all_similarity_scores,
-                          accuracy_list):
+                          accuracy_list, validation_error_list):
     print("[FAILED] Maximum iterations reached without correct result.")
     with open('log/all_similarity_scores.log', 'a+') as file:
         file.write(f"{target_data_name} <- {source_data_name_to_find}")
@@ -140,7 +141,7 @@ def log_experiment_failed(target_data_name, source_data_name_to_find, iteration_
         for count, iteration_scores in enumerate(all_similarity_scores):
             file.write(f"\t\t iter-{count + 1}: ")
             if iteration_scores[0] == "mismatch":
-                file.write("mis-match: # of rows in result and ground truth\n")
+                file.write(f"mis-match: {validation_error_list[count]}\n")
             else:
                 file.write(", ".join(map(str, iteration_scores)) + "\n")
         print(accuracy_list)
@@ -162,17 +163,111 @@ def numerical_similarity(value1, value2, threshold=1e-10):
     return 1.0 if abs(float(value1) - float(value2)) <= threshold else 0.0
 
 
-def calculate_similarity(column_a, column_b, similarity_type="numerical", threshold=1e-10):
+def calculate_similarity(pred_column, gold_column, similarity_type="numerical", threshold=1e-10):
     """ Calculate similarity between two columns based on specified similarity type. """
     if similarity_type == "numerical":
-        scores = [numerical_similarity(val1, val2, threshold) for val1, val2 in zip(column_a, column_b)]
+        scores = [numerical_similarity(val1, val2, threshold) for val1, val2 in zip(pred_column, gold_column)]
         return sum(scores) / len(scores)
     elif similarity_type == "jaccard":
-        intersection = len(set(column_a) & set(column_b))
-        union = len(set(column_a) | set(column_b))
+        intersection = len(set(pred_column) & set(gold_column))
+        union = len(set(pred_column) | set(gold_column))
         return intersection / union if union else 0
     else:  # Not used in the current version
-        vectorizer = CountVectorizer().fit_transform(column_a + column_b)
-        return cosine_similarity(vectorizer[:len(column_a)], vectorizer[len(column_a):])[0, 0]
+        vectorizer = CountVectorizer().fit_transform(pred_column + gold_column)
+        return cosine_similarity(vectorizer[:len(pred_column)], vectorizer[len(pred_column):])[0, 0]
 
 
+def convert_if_number(s):
+    if s is None:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return s
+
+
+def are_elements_equal(elem1, elem2, tolerance=1e-8):
+    elem1 = '' if elem1 is None else elem1
+    elem2 = '' if elem2 is None else elem2
+    elem1, elem2 = convert_if_number(elem1), convert_if_number(elem2)
+    if isinstance(elem1, float) and isinstance(elem2, float):
+        return abs(elem1 - elem2) < tolerance
+    elif isinstance(elem1, str) and isinstance(elem2, str):
+        return elem1.strip().lower() == elem2.strip().lower()
+    else:
+        return elem1 == elem2
+
+
+def numerical_similarity(num1, num2, threshold=1e-8):
+    return abs(num1 - num2) < threshold
+
+
+def is_column_numerically_dominant(column):
+    numeric_count = 0
+    for val in column:
+        try:
+            float(val)
+            numeric_count += 1
+        except (ValueError, TypeError):
+            if val == '':
+                numeric_count += 1  # treating empty string as valid for numeric
+    return numeric_count / len(column) > 0.5  # Majority of values are numeric
+
+
+def compare_columns(pred_column, gold_column, threshold=1e-8):
+    # Determine if columns are numerically dominant
+    is_numerical_a = is_column_numerically_dominant(pred_column)
+    is_numerical_b = is_column_numerically_dominant(gold_column)
+
+    if is_numerical_a and is_numerical_b:
+        # Both columns are numerically dominant
+        scores = [numerical_similarity(float(val1 or 0), float(val2 or 0), threshold)
+                  for val1, val2 in zip(pred_column, gold_column)]
+        return sum(scores) / len(scores)
+    else:
+        # For string comparison, convert strings to lower case for case-insensitive comparison
+        pred_column_lower = [str(val).lower() for val in pred_column]
+        gold_column_lower = [str(val).lower() for val in gold_column]
+
+        intersection = len(set(pred_column_lower) & set(gold_column_lower))
+        union = len(set(pred_column_lower) | set(gold_column_lower))
+        return intersection / union if union else 0
+
+
+# Main Comparison Function
+def compare_lists_matching(generated_sql_df, ground_truth_df):
+    generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
+    ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
+
+    if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
+        return 0, False, ['mismatch'], ["Mismatch - No columns in one or both DataFrames"]
+
+    if len(generated_sql_df) != len(ground_truth_df):
+        return 0, False, ['mismatch'], [
+            f"Mismatch - DataFrames lengths differ (pred:{len(generated_sql_df)} v.s. gold:{len(ground_truth_df)})"]
+
+    similarities = []
+    all_mismatches = []
+
+    for col in generated_sql_df.columns:
+        pred_column = generated_sql_df[col].tolist()
+        gold_column = ground_truth_df[col].tolist()
+
+        # Use the updated function to determine if the column is numerically dominant
+        is_numerical = is_column_numerically_dominant(generated_sql_df[col])
+
+        # Use the updated compare_columns function
+        column_similarity = compare_columns(pred_column, gold_column)
+        similarities.append(column_similarity)
+
+        if column_similarity < 1:
+            mismatches = [
+                {'<col, row>': '<' + str(col) + ', ' + str(i) + '>', 'pred': pred_column[i], 'gold': gold_column[i]}
+                for i in range(len(pred_column))
+                if not are_elements_equal(pred_column[i], gold_column[i])]
+            all_mismatches.append((col, mismatches))
+
+    average_similarity = sum(similarities) / len(generated_sql_df.columns)
+    res = average_similarity == 1
+
+    return average_similarity, res, similarities, all_mismatches

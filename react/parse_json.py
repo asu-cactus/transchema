@@ -74,6 +74,21 @@ def get_test_cases_ids(json_file_path, len_id, max_len_id, target_id, max_target
     print('Number of test cases that have been tested at least once:', len(past_at_least_once))
     #print('Number of bad test cases:', len(bad_ids))
     #filtered_ids = [id for id in filtered_ids if id not in bad_ids]
-    filtered_ids = [id for id in filtered_ids if id not in past_at_least_once]
+    #filtered_ids = [id for id in filtered_ids if id not in past_at_least_once]
     print('Number of Test cases after filtering:', len(filtered_ids))
-    return ['Target1_6']
+    baseline_5_iters = [
+    "Target1_6", "Target1_9", "Target1_13", "Target1_16", "Target1_18", "Target1_22",
+    "Target1_23", "Target1_24", "Target1_27", "Target1_34", "Target1_35", "Target1_38",
+    "Target1_40", "Target1_41", "Target1_43", "Target1_44", "Target1_46", "Target1_52",
+    "Target1_54", "Target1_55", "Target1_57", "Target1_68", "Target1_72", "Target1_75",
+    "Target1_78", "Target1_80", "Target1_81", "Target1_84", "Target1_86", "Target1_87",
+    "Target1_88", "Target1_89", "Target1_90", "Target1_91", "Target1_93", "Target1_95",
+    "Target1_97", "Target1_99"
+    ]
+    baseline_5_iters_2nd = [
+        'Target1_6', 'Target1_35', 'Target1_40', 'Target1_57', 'Target1_72', 'Target1_84',
+        'Target1_88', 'Target1_91', 'Target1_93']
+    baseline_5_iters_3rd = [
+        'Target1_72', 'Target1_84', 'Target1_91', 'Target1_93']
+    baseline_5_iters_4th = ['Target1_55', 'Target1_72', 'Target1_88']
+    return ['Target1_71']

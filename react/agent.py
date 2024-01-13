@@ -1,7 +1,7 @@
 # agent.py
 from schema_transform_tools import SchemaTransformTools
 from llm_models import *
-from prompts import init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify
+from prompts import init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, baseline_template
 from langchain.prompts import PromptTemplate
 from action import ActionGraph
 import random
@@ -11,10 +11,17 @@ from copy import deepcopy
 from mcts import mcts
 from functools import reduce
 import operator
+def get_input_variables(method):
+    if method == 'baseline':
+        return ["source_examples", "target_examples", "source_schema", "target_schema",
+         "source_name", "target_name", "test_0_path", "result_path"]
+    else:
+        return ["examples", "source_examples", "target_examples", "source_schema", "target_schema",
+         "source_name", "target_name", "test_0_path", "result_path"]
 
 
 class Agent:
-    def __init__(self, source_name, target_name, test_0_path, source_schema, target_schema, source_examples, target_examples, result_path, clarify_on=False, max_step=10):
+    def __init__(self, source_name, target_name, test_0_path, source_schema, target_schema, source_examples, target_examples, result_path, clarify_on=False, method='react', max_step=10):
         self.source_name = source_name
         self.target_name = target_name
         self.test_0_path = test_0_path
@@ -25,25 +32,38 @@ class Agent:
         self.result_path = result_path
         self.clarify_on = clarify_on
         self.max_step = max_step
+        self.method = method
         self.state = None
         self.action_graph = ActionGraph()
         self.performed_actions = set()
         self.mcts = mcts(timeLimit=1000)
 
-        template = PromptTemplate(
-            input_variables=["examples", "source_examples", "target_examples", "source_schema", "target_schema", "source_name", "target_name", "test_0_path", "result_path"],
-            template=init_template if clarify_on else init_template_no_clarify)
-        self.prompt = template.format(
-            examples=examples if clarify_on else examples_no_clarify,
-            source_schema=source_schema,
-            target_schema=target_schema,
-            source_examples=source_examples,
-            target_examples=target_examples,
-            source_name=source_name,
-            target_name=target_name,
-            test_0_path=test_0_path,
-            result_path=result_path
-        )
+        if method == 'baseline':
+            template = PromptTemplate(input_variables=get_input_variables(method), template=baseline_template)
+            self.prompt = template.format(
+                source_schema=source_schema,
+                target_schema=target_schema,
+                source_examples=source_examples,
+                target_examples=target_examples,
+                source_name=source_name,
+                target_name=target_name,
+                test_0_path=test_0_path,
+                result_path=result_path
+            )
+        elif method == 'react':
+            template = PromptTemplate(input_variables=get_input_variables(method),
+                template=init_template if clarify_on else init_template_no_clarify)
+            self.prompt = template.format(
+                examples=examples if clarify_on else examples_no_clarify,
+                source_schema=source_schema,
+                target_schema=target_schema,
+                source_examples=source_examples,
+                target_examples=target_examples,
+                source_name=source_name,
+                target_name=target_name,
+                test_0_path=test_0_path,
+                result_path=result_path
+            )
         self.ultimate_task = ultimate_task
         self.transformer = SchemaTransformTools(source_schema, target_schema, source_examples, target_examples)
 
@@ -85,19 +105,22 @@ class Agent:
             observation = "Invalid action: {}".format(action)
 
         return observation, finish
+    def run_baseline(self, to_print=True):
+        return gpt4(self.prompt).split("```sql")[1].split("```")[0].strip()
 
     def run(self, to_print=True, mcts=False):
         self.state = self.prompt + self.ultimate_task + "\n"
 
         n_calls, n_badcalls = 0, 0
-        picker = [-1] *20
-        #picker[2] = 1
+        picker = [-1] * 20
+        # picker[2] = 1
         for i in range(1, self.max_step + 1):
             n_calls += 1
 
-            if picker[i] == 1 and mcts:#random.random() < 0.1:
+            if picker[i] == 1 and mcts:  # random.random() < 0.1:
                 # Use MCTS for action selection
-                self.react_state = ReactState(self.performed_actions, self.state, self.action_graph, self.transformer, i)
+                self.react_state = ReactState(self.performed_actions, self.state, self.action_graph,
+                                              self.transformer, i)
                 bestChild = self.mcts.search(
                     self.react_state,
                     needDetails=False
@@ -108,7 +131,7 @@ class Agent:
                 finish = bestChild.state.is_terminal
 
                 # Craft a detailed prompt for generating thought
-                #observation, finish = self.execute_action(action, transformer=self.transformer)
+                # observation, finish = self.execute_action(action, transformer=self.transformer)
                 step_str = f"Thought {i}: MCTS - {action}\nAction {i}: {action}\nObservation {i}: {observation}\n"
             else:
                 thought_action = gpt4(self.state + f"Thought {i}:", stop=[f"\nObservation {i}:"])
@@ -119,7 +142,8 @@ class Agent:
                     n_badcalls += 1
                     n_calls += 1
                     thought = thought_action.strip().split('\n')[0]
-                    action = gpt4(self.state + f"Thought {i}: {thought}\nAction {i}:", stop=[f"\nObservation {i}:"]).strip()
+                    action = gpt4(self.state + f"Thought {i}: {thought}\nAction {i}:",
+                                  stop=[f"\nObservation {i}:"]).strip()
 
                 observation, finish = self.execute_action(action, transformer=self.transformer)
                 step_str = f"Thought {i}: {thought}\nAction {i}: {action}\nObservation {i}: {observation}\n"
