@@ -1,27 +1,29 @@
 # agent.py
-from schema_transform_tools import SchemaTransformTools
-from llm_models import *
-from prompts import init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, baseline_template
+from schema_trans_tools import SchemaTransformTools
+from react.llm.llm_models import LLMClient
+from prompts import init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, \
+    baseline_template
 from langchain.prompts import PromptTemplate
 from action import ActionGraph
 import random
-from mcts import mcts
 
 from copy import deepcopy
-from mcts import mcts
-from functools import reduce
-import operator
+from mcts_bk import mcts
+from react.search_algo.mcts import MCTSSearch
+
 def get_input_variables(method):
-    if method == 'baseline':
+    if method == 'monolithic':
         return ["source_examples", "target_examples", "source_schema", "target_schema",
-         "source_name", "target_name", "test_0_path", "result_path"]
+                "source_name", "target_name", "test_0_path", "result_path"]
     else:
         return ["examples", "source_examples", "target_examples", "source_schema", "target_schema",
-         "source_name", "target_name", "test_0_path", "result_path"]
+                "source_name", "target_name", "test_0_path", "result_path"]
 
 
 class Agent:
-    def __init__(self, source_name, target_name, test_0_path, source_schema, target_schema, source_examples, target_examples, result_path, clarify_on=False, method='react', max_step=10):
+    def __init__(self, source_name, target_name, test_0_path, source_schema, target_schema, source_examples,
+                 target_examples, result_path, token_tracker, logger,
+                 backend, clarify_on=False, method='react', max_steps=20):
         self.source_name = source_name
         self.target_name = target_name
         self.test_0_path = test_0_path
@@ -31,14 +33,17 @@ class Agent:
         self.target_examples = target_examples
         self.result_path = result_path
         self.clarify_on = clarify_on
-        self.max_step = max_step
+        self.max_steps = max_steps
         self.method = method
+        self.token_tracker = token_tracker
+        self.logger = logger
+        self.backend = backend
+        self.llm_client = LLMClient(model=self.backend, tracker=self.token_tracker, logger=self.logger)
         self.state = None
         self.action_graph = ActionGraph()
         self.performed_actions = set()
-        self.mcts = mcts(timeLimit=1000)
 
-        if method == 'baseline':
+        if method == 'monolithic':
             template = PromptTemplate(input_variables=get_input_variables(method), template=baseline_template)
             self.prompt = template.format(
                 source_schema=source_schema,
@@ -50,9 +55,9 @@ class Agent:
                 test_0_path=test_0_path,
                 result_path=result_path
             )
-        elif method == 'react':
+        elif method == 'mcts':
             template = PromptTemplate(input_variables=get_input_variables(method),
-                template=init_template if clarify_on else init_template_no_clarify)
+                                      template=init_template if clarify_on else init_template_no_clarify)
             self.prompt = template.format(
                 examples=examples if clarify_on else examples_no_clarify,
                 source_schema=source_schema,
@@ -66,6 +71,8 @@ class Agent:
             )
         self.ultimate_task = ultimate_task
         self.transformer = SchemaTransformTools(source_schema, target_schema, source_examples, target_examples)
+        self.mcts = MCTSSearch(self.backend, self.prompt, self.logger, self.llm_client, self.token_tracker,
+                               self.source_schema, self.target_schema, self.source_examples, self.target_examples)
 
     def get_state(self):
         return self.state
@@ -96,8 +103,8 @@ class Agent:
             self.performed_actions.add("Conditional")
         elif action.strip().startswith("Finish"):
             # print("Finish")
-            #response = action[len("Finish["):-1]#action.strip()
-            #print('finish response', response)
+            # response = action[len("Finish["):-1]#action.strip()
+            # print('finish response', response)
             observation = transformer.finish(self.state)
             finish = True
             self.performed_actions.add("Finish")
@@ -105,36 +112,39 @@ class Agent:
             observation = "Invalid action: {}".format(action)
 
         return observation, finish
-    def run_baseline(self, to_print=True):
-        return gpt4(self.prompt).split("```sql")[1].split("```")[0].strip()
 
-    def run(self, to_print=True, mcts=False):
-        self.state = self.prompt + self.ultimate_task + "\n"
+    def run_baseline(self, verbose=True):
+        return self.llm_client.gpt(self.prompt)[0].split("```sql")[1].split("```")[0].strip()
 
+    def run_mcts(self, verbose=True):
+        # Use MCTS for action selection
+        """
+        i=0
+        self.react_state = ReactState(self.performed_actions, self.state, self.action_graph,
+                                      self.transformer, i)
+        bestChild = self.mcts.search(
+            self.react_state,
+            needDetails=False
+        )
+        action = bestChild.state.current_action
+        self.performed_actions.add(action)
+        observation = bestChild.state.current_observation
+        finish = bestChild.state.is_terminal
+
+        # Craft a detailed prompt for generating thought
+        # observation, finish = self.execute_action(action, transformer=self.transformer)
+        step_str = f"Thought {i}: MCTS - {action}\nAction {i}: {action}\nObservation {i}: {observation}\n"
+        return True
+        """
+        self.mcts.mcts_search()
+        return True
+
+    def run_pure_react(self, verbose=True):
         n_calls, n_badcalls = 0, 0
-        picker = [-1] * 20
-        # picker[2] = 1
-        for i in range(1, self.max_step + 1):
+        for i in range(1, self.max_steps + 1):
             n_calls += 1
-
-            if picker[i] == 1 and mcts:  # random.random() < 0.1:
-                # Use MCTS for action selection
-                self.react_state = ReactState(self.performed_actions, self.state, self.action_graph,
-                                              self.transformer, i)
-                bestChild = self.mcts.search(
-                    self.react_state,
-                    needDetails=False
-                )
-                action = bestChild.state.current_action
-                self.performed_actions.add(action)
-                observation = bestChild.state.current_observation
-                finish = bestChild.state.is_terminal
-
-                # Craft a detailed prompt for generating thought
-                # observation, finish = self.execute_action(action, transformer=self.transformer)
-                step_str = f"Thought {i}: MCTS - {action}\nAction {i}: {action}\nObservation {i}: {observation}\n"
-            else:
-                thought_action = gpt4(self.state + f"Thought {i}:", stop=[f"\nObservation {i}:"])
+            if mcts:
+                thought_action = self.llm_client.gpt(self.state + f"Thougt{i}:", stop=[f"\nObservation {i}:"])[0]
                 try:
                     thought, action = thought_action.strip().split(f"\nAction {i}:")
                 except:
@@ -142,18 +152,20 @@ class Agent:
                     n_badcalls += 1
                     n_calls += 1
                     thought = thought_action.strip().split('\n')[0]
-                    action = gpt4(self.state + f"Thought {i}: {thought}\nAction {i}:",
-                                  stop=[f"\nObservation {i}:"]).strip()
-
+                    action = self.llm_client.gpt(self.state + f"Thought {i}: {thought}\nAction {i}:",
+                                                 stop=[f"\nObservation {i}:"])[0].strip()
                 observation, finish = self.execute_action(action, transformer=self.transformer)
                 step_str = f"Thought {i}: {thought}\nAction {i}: {action}\nObservation {i}: {observation}\n"
             self.state += step_str
-            if to_print:
+            if verbose:
                 print(step_str)
             if finish:
                 break
-
         return observation, n_calls, n_badcalls
+
+    def run(self, verbose=True, mcts=True):
+        self.state = self.prompt + self.ultimate_task + "\n"
+        return self.run_mcts(verbose) if mcts else self.run_pure_react(verbose)
 
 
 class ReactState():
@@ -202,7 +214,7 @@ class ReactState():
             """
             question_response = gpt3(prompt_q_mcts)
             question = self.transformer.result_extractor(question_response)
-            #question = action.strip()[len("Clarify"):-1]
+            # question = action.strip()[len("Clarify"):-1]
             observation = self.transformer.clarify(question)
             self.performed_actions.add("Clarify")
             newState.state_in_mcts = self.state_in_mcts + f"Thought {self.i}: Use MCTS\nAction {self.i}: {action}+'['+{question}+']'+\nObservation {self.i}: {observation}\n"
