@@ -110,6 +110,48 @@ Provide a direct and concise summary of your predictions about the aggregations.
 
 Enclose your final aggregation predictions within [START] and [END] markers for clarity."""
 
+agg_func_detect_template = """
+Given the previous analysis on schema transformation {agg_analysis}, please review the provided details to determine the presence and type of any SQL aggregation function suggested. The analysis aimed to identify if target columns are aggregates of source columns, using functions like SUM, COUNT, AVERAGE, MAX, MIN, or other SQL aggregate functions based on the patterns observed in the source and target data examples.
+
+Perform the following steps in your response:
+
+1. Identify whether an SQL aggregation function was suggested in the analysis. If a specific function (e.g., SUM, COUNT, AVERAGE) was mentioned or implied, please name the function in uppercase letters.
+
+2. If the analysis implies or suggests an aggregation operation without specifying a function, describe the operation briefly (e.g., "total sales suggesting SUM").
+
+3. If no aggregation function or operation was suggested, and it seems no aggregation is necessary for the transformation, simply state "NO AGGREGATION".
+
+Format your response succinctly for easy extraction, using the following template:
+
+[START] 
+- Aggregation Function Identified: [Function Name/Operation Description/NO AGGREGATION]
+[END]
+
+Ensure your response directly addresses the analysis outcome, focusing on the aggregation function or the lack thereof.
+"""
+
+gen_new_agg_func_template = """
+Given the detailed context of a schema transformation task, including the source and target schemas, as well as examples of the source and target data, we are seeking an alternative SQL aggregation function that differs from those previously identified. The details are as follows:
+
+- Source Schema: '{source_schema}'
+- Target Schema: '{target_schema}'
+- Source Data Examples: '{source_examples}'
+- Target Data Examples: '{target_examples}'
+
+Previously identified aggregation functions include: {list_of_prev_agg_funcs}.
+
+With this context in mind, your task is to suggest a logical alternative SQL aggregation function that is different from the previously listed ones. This alternative should also be applicable for achieving the transformation from the source schema to the target schema, considering the data patterns and relationships between the source and target schemas.
+
+Please provide:
+1. The name of an alternative SQL aggregation function (e.g., "MAX", "MIN", if not already listed).
+2. A brief explanation of why this function is a viable alternative, given the provided schemas and data examples.
+
+Make sure your suggestion is distinct from the previously identified functions.
+
+[START] Your alternative aggregation function suggestion here. [END]
+"""
+
+
 conditional_template = """
 You are a Postgres SQL developer. Given source_schema: {source_schema}, target_schema: {target_schema}, identify any conditions or filters that need to be applied. Execute your analysis step by step. Once complete, provide a concise summary of the conditional dependencies. Wrap the final concise answer between [START] and [END]
 """

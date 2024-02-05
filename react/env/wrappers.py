@@ -5,7 +5,7 @@ import numpy as np
 import re
 import string
 from collections import Counter
-from react.quality import *
+#from react.quality import *
 
 DATA_DIR = "../data"
 
@@ -27,45 +27,6 @@ class HistoryWrapper(gym.ObservationWrapper):
                 observation += f"Action {i}: {a}\nObservation {i}: {o}\n\n"
             return self.prompt + observation
 
-
-def normalize_answer(s):
-    def remove_articles(text):
-        return re.sub(r"\b(a|an|the)\b", " ", text)
-
-    def white_space_fix(text):
-        return " ".join(text.split())
-
-    def remove_punc(text):
-        exclude = set(string.punctuation)
-        return "".join(ch for ch in text if ch not in exclude)
-
-    def lower(text):
-        return text.lower()
-
-    return white_space_fix(remove_articles(remove_punc(lower(s))))
-
-
-def f1_score(prediction, ground_truth):
-    normalized_prediction = normalize_answer(prediction)
-    normalized_ground_truth = normalize_answer(ground_truth)
-
-    ZERO_METRIC = (0, 0, 0)
-
-    if normalized_prediction in ['yes', 'no', 'noanswer'] and normalized_prediction != normalized_ground_truth:
-        return ZERO_METRIC
-    if normalized_ground_truth in ['yes', 'no', 'noanswer'] and normalized_prediction != normalized_ground_truth:
-        return ZERO_METRIC
-
-    prediction_tokens = normalized_prediction.split()
-    ground_truth_tokens = normalized_ground_truth.split()
-    common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
-    num_same = sum(common.values())
-    if num_same == 0:
-        return ZERO_METRIC
-    precision = 1.0 * num_same / len(prediction_tokens)
-    recall = 1.0 * num_same / len(ground_truth_tokens)
-    f1 = (2 * precision * recall) / (precision + recall)
-    return f1, precision, recall
 
 
 class TransWrapper(gym.Wrapper):
@@ -102,18 +63,10 @@ class TransWrapper(gym.Wrapper):
         #    return int(score)
         return 0
 
-    def get_metrics(self, info):
-        if info['answer'] is not None:
-            pred = normalize_answer(self.data[self.data_idx][1])
-            gt = normalize_answer(info['answer'])
-            em = (pred == gt)
-            f1 = f1_score(pred, gt)[0]
-            return {'reward': em, 'em': em, 'f1': f1}
-        return {'reward': 0, 'em': 0, 'f1': 0}
 
-    def step(self, action):
+    def step(self, action, num_generate_sample):
         # TODO: first step obs does not have question.
-        obs, _, done, info = self.env.step(action)
+        obs, _, done, info = self.env.step(action, num_generate_sample)
         reward = self.get_reward(info)
         if done:
             obs = f"Episode finished, reward = {reward}\n"
@@ -144,8 +97,8 @@ class LoggingWrapper(gym.Wrapper):
         self.traj = {"observations": [observation], "actions": []}
         return output
 
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
+    def step(self, action, num_generate_sample):
+        obs, reward, done, info = self.env.step(action, num_generate_sample)
         self.traj["observations"].append(obs)
         self.traj["actions"].append(action)
         if done:

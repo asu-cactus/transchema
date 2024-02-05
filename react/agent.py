@@ -72,8 +72,9 @@ class Agent:
         self.ultimate_task = ultimate_task
         self.transformer = SchemaTransformTools(source_schema, target_schema, source_examples, target_examples)
         self.mcts = MCTSSearch(self.backend, self.prompt, self.logger, self.llm_client, self.token_tracker,
-                               self.source_schema, self.target_schema, self.source_examples, self.target_examples)
-
+                               self.source_schema, self.target_schema, self.source_examples, self.target_examples,
+                               self.transformer)
+        self.mcts.fill_agent_attrs(self.get_all_agent_attrs())
     def get_state(self):
         return self.state
 
@@ -136,7 +137,7 @@ class Agent:
         step_str = f"Thought {i}: MCTS - {action}\nAction {i}: {action}\nObservation {i}: {observation}\n"
         return True
         """
-        self.mcts.mcts_search()
+        best_node_state, best_node_value, all_nodes, best_node_reward, gpt_output, sql_result = self.mcts.mcts_search()
         return True
 
     def run_pure_react(self, verbose=True):
@@ -167,6 +168,31 @@ class Agent:
         self.state = self.prompt + self.ultimate_task + "\n"
         return self.run_mcts(verbose) if mcts else self.run_pure_react(verbose)
 
+    def get_all_agent_attrs(self):
+        return {
+            "source_name": self.source_name,
+            "target_name": self.target_name,
+            "test_0_path": self.test_0_path,
+            "source_schema": self.source_schema,
+            "target_schema": self.target_schema,
+            "source_examples": self.source_examples,
+            "target_examples": self.target_examples,
+            "result_path": self.result_path,
+            "clarify_on": self.clarify_on,
+            "max_steps": self.max_steps,
+            "method": self.method,
+            "token_tracker": self.token_tracker,
+            "logger": self.logger,
+            "backend": self.backend,
+            "llm_client": self.llm_client,
+            "state": self.state,
+            "action_graph": self.action_graph,
+            "performed_actions": self.performed_actions,
+            "prompt": self.prompt,
+            "ultimate_task": self.ultimate_task,
+            "transformer": self.transformer,
+            "mcts": self.mcts
+        }
 
 class ReactState():
     def __init__(self, performed_actions, state, action_graph, transformer, i):

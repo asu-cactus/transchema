@@ -16,7 +16,7 @@ def parse_args():
 
     # Agent
     args.add_argument('--clarity_on', type=bool, default=False)
-    args.add_argument('--method', type=str, choices=['monolithic', 'mcts'], default='monolithic')
+    args.add_argument('--method', type=str, choices=['monolithic', 'mcts'], default='mcts')
     # Search
     # MCTS
 

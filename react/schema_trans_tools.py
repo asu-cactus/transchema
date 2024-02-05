@@ -69,3 +69,17 @@ class SchemaTransformTools:
         if '```sql' in result:
             result = result.split('```sql')[1].split('```')[0]
         return result
+
+    def agg_func_detect(self, first_obs) -> str:
+        additional_vars = {
+            "agg_alias": first_obs
+        }
+        return self.call_llm('gpt4', agg_func_detect_template, [],
+                             additional_vars=additional_vars)
+
+    def gen_new_agg_func(self, agg_funcs) -> str:
+        additional_vars = {
+            "agg_funcs": agg_funcs
+        }
+        return self.call_llm('gpt4', gen_new_agg_func_template, [],
+                             additional_vars=additional_vars)

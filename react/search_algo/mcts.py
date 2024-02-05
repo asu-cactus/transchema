@@ -2,6 +2,12 @@ import numpy as np
 import react.env.tool_env as tool_env
 import react.env.wrappers as wrappers
 import requests
+import os
+from react.util import (create_connection, execute_sql, log_experiment_success, log_experiment_failed,
+                        compare_lists_matching, get_test_info, get_test_cases_ids)
+from react.quality import schema_quality, calculate_data_quality_score, reverse_quality, fd_quality
+import csv
+import pandas as pd
 
 
 class Node:
@@ -17,7 +23,6 @@ class Node:
         self.is_terminal = False
         self.reward = 0
         self.exhausted = False  # If all children are terminal
-        self.em = 0  # Exact match, evaluation metric
 
     def uct(self):
         if self.num_visits == 0:
@@ -38,7 +43,6 @@ class Node:
             'depth': self.depth,
             'is_terminal': self.is_terminal,
             'reward': self.reward,
-            'em': self.em,
         }
 
 
@@ -62,18 +66,18 @@ class Environment:
     def reset(self):
         return self.env.reset()
 
-    def step(self, action):
+    def step(self, action, num_generate_sample):
         attempts = 0
         while attempts < 10:
             try:
-                return self.env.step(action)
+                return self.env.step(action, num_generate_sample)
             except requests.exceptions.Timeout:
                 attempts += 1
 
 
 class MCTSSearch:
     def __init__(self, backend, prompt, logger, llm_client, token_tracker, source_schema, target_schema,
-                 source_examples, target_examples):
+                 source_examples, target_examples, transformer):
         self.env = Environment(llm_client, source_schema, target_schema, source_examples, target_examples)
         self.failed_trajectories = []
         self.reflection_map = []
@@ -86,9 +90,12 @@ class MCTSSearch:
         self.num_generate_sample = 1  # TODO: to be passed in
         self.n_evaluate_sample = 1  # TODO: to be passed in
         self.init_prompt = prompt
+        self.agent_attrs = None
+        self.transformer = transformer
 
     def _extract_val(self, prompt_to_evaluate: str):
         prompt_to_evaluate = prompt_to_evaluate[0]
+
         return np.random.uniform(0, 1)  # for testing
 
     def _construct_val_eval_promt(self, current_prompt: str, child_prompt: str, unique_trajectories: list = [],
@@ -113,7 +120,20 @@ class MCTSSearch:
 
         return val_eval_prompt
 
-    def _get_value(self, current_prompt, child_prompt, n_evaluate_sample, cache_val=True):
+    def _get_value(self, current_prompt, child_prompt, n_evaluate_sample, cache_val=True) -> float:
+        """
+        Given a current prompt and a child prompt, evaluate the value of the child prompt.
+
+        Args:
+            current_prompt (str): The current prompt
+            child_prompt (str): The child prompt
+            n_evaluate_sample (int): The number of samples to evaluate
+            cache_val (bool): Whether to cache the value of the child prompt
+
+        Returns:
+            float: The value of the child prompt
+
+        """
         unique_trajectories = self._get_unique_trajectories()
         val_eval_prompt = self._construct_val_eval_promt(current_prompt, child_prompt, unique_trajectories,
                                                          self.reflection_map)
@@ -192,71 +212,51 @@ class MCTSSearch:
             node = node.parent
         return init_prompt + '\n'.join(reversed(trajectory))
 
-    def mcts_search(self, iterations=30, to_print=True):
+    def mcts_search(self, iterations=30, to_print=True, threshold=0.65):
         root = Node(state=None, init_prompt=self.init_prompt)
+
         all_nodes = []
         self.failed_trajectories = []
-        terminal_nodes = []
+        #terminal_nodes = []
         self.reflection_map = []
 
         for i in range(iterations):
             self.logger.info(f"Iteration {i + 1}...")
             node = self._select_node(root)
 
-            while node is None or (node.is_terminal and node.reward != 1):
-                self.logger.info(
-                    f"Need to backtrack or terminal node with reward 0 found at iteration {i + 1}, reselecting...")
-                node = self._select_node(root)
-
             if node is None:
                 self.logger.info("All paths lead to terminal nodes with reward 0. Ending search.")
                 break
 
-            if node.is_terminal and node.reward == 1:
-                self.logger.info(f"Terminal node with reward 1 found at iteration {i + 1}")
-                return node.state, node.value, self._collect_all_nodes(root), node.reward, node.em
-
             self._expand_node(node)
-
-            while node.is_terminal or not node.children:
-                self.logger.info(f"Depth limit node found at iteration {i + 1}, reselecting...")
-                node = self._select_node(root)
-                self._expand_node(node)
-
             value = self._evalutate_node(node)
-            reward, terminal_node = self.rollout(max(node.children, key=lambda child: child.value), max_depth=4)
+            reward, rollout_node, gpt_output, sql_result = self.rollout(max(node.children, key=lambda child: child.value), max_depth=4)
 
-            terminal_nodes.append(terminal_node)
+            #terminal_nodes.append(terminal_node)
 
-            if terminal_node.reward == 1:
+            if reward >= threshold:
                 self.logger.info("SUCCESSFUL TRAJECTORY FOUND DURING SIMULATION")
-                return terminal_node.state, terminal_node.value, [], terminal_node.reward, terminal_node.em
+                return rollout_node.state, rollout_node.value, [], rollout_node.reward, gpt_output, sql_result
 
-            self.backpropagate(terminal_node, reward)
+            self.backpropagate(rollout_node, reward)
+
             all_nodes = [(node, node.value) for node in self._collect_all_nodes(root)]
-
-            terminal_nodes_with_reward_1 = [node for node in self._collect_all_nodes(root) if
-                                            node.is_terminal and node.reward == 1]
-            if terminal_nodes_with_reward_1:
-                self.logger.info(f"Terminal node with reward 1 found at iteration {i + 1}")
-                best_node = max(terminal_nodes_with_reward_1, key=lambda current_prompt: current_prompt.value)
-                return best_node.state, best_node.value, all_nodes, best_node.reward, best_node.em
 
             for j, (node, value) in enumerate(all_nodes):
                 self.logger.info(f"Node {j + 1}: {str(node)}")
 
         all_nodes_list = self._collect_all_nodes(root)
-        all_nodes_list.extend(terminal_nodes)
-        best_child = max(all_nodes_list, key=lambda current_prompt: current_prompt.reward)
-        if best_child.reward == 1:
+        all_nodes_list.extend(rollout_node)
+        best_child = max(all_nodes_list, key=lambda x: x.reward)
+        if best_child.reward >= threshold:
             self.logger.info("Successful trajectory found")
         else:
             self.logger.info("Unsuccessful trajectory found")
         if best_child is None:
             best_child = root
-        return best_child.state, best_child.value, all_nodes, best_child.reward, best_child.em
+        return best_child.state, best_child.value, all_nodes, best_child.reward, None, None
 
-    def _select_node(self, node):
+    def _select_node(self, node, threshold=0.65):
         while node and node.children:
             self.logger.info(f"Selecting from {len(node.children)} children at depth {node.depth}.")
 
@@ -268,10 +268,11 @@ class MCTSSearch:
                 node = node.parent
                 continue
 
-            node_with_reward_1 = next((child for child in terminal_children if child.reward == 1), None)
-            if node_with_reward_1:
+            node_with_reward_gt_threshold = next((child for child in terminal_children if child.reward >= threshold),
+                                                 None)
+            if node_with_reward_gt_threshold:
                 self.logger.info(f"Found terminal node with reward 1 at depth {node.depth}.")
-                return node_with_reward_1
+                return node_with_reward_gt_threshold
 
             node = max((child for child in node.children if not child.is_terminal), key=lambda child: child.uct(),
                        default=None)
@@ -287,56 +288,55 @@ class MCTSSearch:
     def _generate_new_states(self, node, num_generate_sample, sample_method):
         # this layer should be getting the general type of action
         prompt = self._get_prompt_at_node(node)
-        # this layer should be getting the specific action
-        # self.gpt(prompt, n=1, stop="Observation")
         sampled_actions = self._sample_next_actions(prompt, f"Thought {node.depth + 1}: ",
-                                                    num_generate_sample, sample_method, "Observation")
-
+                                                    sample_method, "Observation")
         sampled_actions_log = "\n".join(
             [f"Sampled Action {index + 1}:\n{action}" for index, action in enumerate(sampled_actions)])
         self.logger.info(f"SAMPLED ACTIONS:\n{sampled_actions_log}")
 
         unique_states = {}
+
+        # interact with the environment, get rewards
         for action in sampled_actions:
-            new_state = node.state.copy()
             thought_line = next((line.split(":")[1].strip() for line in action.split("\n") if
                                  line.startswith(f"Thought {node.depth + 1}")), '')
             action_line = next((line.split(":")[1].strip() for line in action.split("\n") if
                                 line.startswith("Action") and ":" in line), None)
 
-            unique_key = f"{thought_line}::{action_line}"
-            if unique_key in unique_states:
-                continue
-
             if action_line:
                 action_type = action_line.split('[')[0] if '[' in action_line else action_line
                 action_param = action_line.split('[')[1].split(']')[0] if '[' in action_line else ""
+                # this layer should be getting the specific action
+                obs, r, done, info = self.env.step(f"{action_type}[{action_param}]", num_generate_sample)
 
-                # interact with the environment, get rewards
-                obs, r, done, info = self.env.step(f"{action_type}[{action_param}]")
+                for i in range(len(obs)):
+                    unique_key = f"{thought_line}::{action_line}::{i}"
 
-                new_state['thought'] = thought_line
-                new_state['action'] = action_line
-                new_state['observation'] = obs
+                    new_state = node.state.copy()
+                    new_state['thought'] = thought_line
+                    new_state['action'] = action_line
+                    new_state['observation'] = obs
 
-                new_node = Node(state=new_state, init_prompt=node.init_prompt, parent=node)
-                new_node.is_terminal = r == 1 or done
-                new_node.reward = r
-                new_node.depth = node.depth + 1
-                if r == 1:
-                    new_node.em = info.get('em')
-                unique_states[unique_key] = new_node
-                self.logger.info(f"NEW NODE: {new_node}")
-                self.logger.info(f"Feedback: {info}")
+                    new_node = Node(state=new_state, init_prompt=node.init_prompt, parent=node)
+                    new_node.current_prompt = self._get_prompt_at_node(new_node)
 
-                if new_node.is_terminal and r == 0:
-                    trajectory = self._collect_trajectory(new_node)
-                    self.failed_trajectories.append(
-                        {'trajectory': trajectory, 'final_answer': f"{action_type.lower()}[{action_param}]"})
+                    new_node.is_terminal = r == 1 or done
+                    new_node.reward = r
+                    new_node.depth = node.depth + 1
+                    if r == 1:
+                        new_node.em = info.get('em')
+                    unique_states[unique_key] = new_node
+                    self.logger.info(f"NEW NODE: {new_node}")
+                    self.logger.info(f"Feedback: {info}")
+
+                    if new_node.is_terminal and r == 0:
+                        trajectory = self._collect_trajectory(new_node)
+                        self.failed_trajectories.append(
+                            {'trajectory': trajectory, 'final_answer': f"{action_type.lower()}[{action_param}]"})
 
         return list(unique_states.values())
 
-    def _sample_next_actions(self, current_prompt, thought_sequence_intro, num_generate_sample, sample_method, stop):
+    def _sample_next_actions(self, current_prompt, thought_sequence_intro, sample_method, stop, num_generate_sample=1):
         unique_trajectories = self._get_unique_trajectories()
         if len(unique_trajectories) > len(self.reflection_map) and len(unique_trajectories) < 4:
             print("generating reflections")
@@ -412,45 +412,59 @@ class MCTSSearch:
         max_depth = node.depth + num_lookahead
 
         if num_lookahead == 0:
-            ## force to colude the sql generation
-            ## logic here
-            ## 1. need to get the current prompt node.state and node.init_prompt
-            current_prompt = self._get_prompt_at_node(node)
-            response = self.gpt(current_prompt, n=1, stop=None)[0]
-            # extrsct the sql from the response
-            # execute the quality control, get the quality score
+            # force to conclude the sql generation
+            response = self.gpt(node.current_prompt, n=1, stop=None)[0]
+            gpt_output = self.transformer.finish(response)
+            #gpt_output = response.split("Finish[")[1].split("]")[0].strip() #this is not stable
+            print("SQL Script Extracted from GPT Response:")
+            print(gpt_output)
 
-        while not node.is_terminal and depth < max_depth:
-            new_states = self._generate_new_states(node, self.num_generate_sample, self.sample_method)
-            for state in new_states:
-                if state.is_terminal:
-                    return state.reward, state
+            conn = create_connection()
 
-            child_prompts = [self._get_prompt_at_node(child) for child in new_states if
-                             not child.is_terminal and child is not None]
-            values = self._get_values(node.init_prompt, child_prompts, self.n_evaluate_sample)
-            max_value_index = values.index(max(values))
-            rewards.append(max(values))
-            node = new_states[max_value_index]
-            depth += 1
-            if depth == max_depth:
-                rewards = [-1]
+            # Execute the SQL script on the specified table
+            sql_result = execute_sql(conn, gpt_output)
+            if not sql_result:
+                self.logger.warning("The SQL result is empty. Skipping to the next iteration.")
+
+            if "Error:" in sql_result:
+                return 0, node
+            # not using sql_result directly, as numeric vs string values will occur while validation
+            our_result = []
+            if os.path.exists(self.agent_attrs['result_path']):
+                with open(self.agent_attrs['result_path'], 'r', encoding="utf-8") as file:
+                    reader = csv.reader(file)
+                    header = next(reader)  # Assuming you want to skip the header
+                    for row in reader:
+                        our_result.append(tuple(row))
+                sql_result_df = pd.DataFrame(our_result)
+            else:
+                print(f"File not found: {self.agent_attrs['result_path']}.")
+
+            data_quality_score = calculate_data_quality_score(sql_result)
+
+            schema_score, schema_feedback, column_mappings, target_handle = schema_quality(gpt_output, **self.agent_attrs)
+            fd_score, fd_comparison = fd_quality(gpt_output, column_mappings, **self.agent_attrs)
+            reverse_score = reverse_quality(conn, **self.agent_attrs)
+
+            final_score = (schema_score + data_quality_score + fd_score) / 3 if reverse_score < 0.5 else (
+                                                                                                       reverse_score + schema_score + data_quality_score + fd_score) / 4
 
         self.logger.info("ROLLOUT FINISHED")
-        return sum(rewards) / len(rewards), node
+        return final_score, node, gpt_output, sql_result
+
 
     def backpropagate(self, node, value):
         while node:
-            node.visits += 1
+            node.num_visits += 1
             if node.is_terminal:
                 if node.reward == 0:
                     self.logger.info(f"Backpropagating  with reward 0 at depth {node.depth}. New value: {node.value}.")
-                    node.value = (node.value * (node.visits - 1) + (-1)) / node.visits
+                    node.value = (node.value * (node.num_visits - 1) + (-1)) / node.num_visits
                 else:
-                    node.value = (node.value * (node.visits - 1) + value) / node.visits
+                    node.value = (node.value * (node.num_visits - 1) + value) / node.num_visits
                     self.logger.info(f"Backpropagating with reward 1 at depth {node.depth}. New value: {node.value}.")
             else:
-                node.value = (node.value * (node.visits - 1) + value) / node.visits
+                node.value = (node.value * (node.num_visits - 1) + value) / node.num_visits
                 self.logger.info(f"Backpropagating at depth {node.depth}. New value: {node.value}.")
 
             node = node.parent
@@ -461,9 +475,18 @@ class MCTSSearch:
             nodes.extend(self._collect_all_nodes(child))
         return nodes
 
+
     def _collect_trajectory(self, node):
         trajectory = []
         while node:
             trajectory.append(str(node))
             node = node.parent
         return '\n'.join(reversed(trajectory))
+
+    def fill_agent_attrs(self, attrs):
+        self.agent_attrs = attrs
+
+
+
+
+
