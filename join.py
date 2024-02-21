@@ -1,10 +1,11 @@
 import pandas as pd
 import json
 from datetime import datetime
-from util import (create_connection, execute_sql, print_experiment_settings,
-                   log_experiment_success, log_experiment_failed,
-                   calculate_similarity)
+from util.utils import (create_connection, execute_sql, print_experiment_settings,
+                        log_experiment_success, log_experiment_failed,
+                        calculate_similarity)
 from gpt import generate_prompt, chat_with_gpt
+
 
 def convert_datetime(obj):
     if isinstance(obj, (pd.Timestamp, datetime)):
@@ -101,6 +102,7 @@ def validation(sql_result, ground_truth, tolerance=1e-10):
     # Returning both the result of strict validation, the similarity scores, and the global accuracy
     return case_accuracy, res, similarity_scores, validation_error
 
+
 def gpt(json_file_path, source_data_name_to_find):
     # Read the JSON file
     with open(json_file_path, 'r') as file:
@@ -123,7 +125,7 @@ def gpt(json_file_path, source_data_name_to_find):
     source_data_description = data["Source Data Description"]
     gpt_response = data["ChatGPT Response"]
     ground_truth = data["Ground Truth SQL"]
-    return gpt_response, ground_truth,target_data_name
+    return gpt_response, ground_truth, target_data_name
 
 
 def main(*args):
@@ -132,10 +134,10 @@ def main(*args):
 
     while target_id <= max_target_id:
         # Source Data Name to find
-        target_data_name_to_find = "TargetJ" + "_" +str(target_id)
+        target_data_name_to_find = "TargetJ" + "_" + str(target_id)
         print(target_data_name_to_find)
         # Generate the prompt for the chatGPT model
-        gpt_response,ground_truth_query,target_name = gpt(json_file_path, template_option,target_data_name_to_find)
+        gpt_response, ground_truth_query, target_name = gpt(json_file_path, template_option, target_data_name_to_find)
 
         # Create a list to store similarity scores of each iteration
         all_similarity_scores = []
@@ -165,7 +167,7 @@ def main(*args):
 
         # Validate the ChatGPT generated SQL script
         case_accuracy, is_correct, similarity_scores, validation_error = validation(sql_result,
-                                                                                            ground_truth_sql_result)
+                                                                                    ground_truth_sql_result)
         accuracy_list.append(case_accuracy)
         all_similarity_scores.append(similarity_scores)
         print(is_correct)
@@ -192,6 +194,6 @@ if __name__ == "__main__":
     convert_excel_to_json(excel_file_path, json_file_path)
     json_file_path = 'chatgpt.json'
     template_option = 1
-    target_id, max_target_id =21 , 22
+    target_id, max_target_id = 21, 22
     print_experiment_settings(template_option, target_id, max_target_id)
     main(json_file_path, template_option, target_id, max_target_id)

@@ -4,11 +4,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sqlparse
+import numpy as np
+
 
 # Load JSON data from a given filepath
 def load_data_from_json(file_path: str) -> dict:
     with open(file_path, 'r') as file:
         return json.load(file)
+
 
 # Count the number of cases per group based on the Source Data Name pattern
 def count_cases_in_groups(data: dict) -> list:
@@ -19,6 +22,7 @@ def count_cases_in_groups(data: dict) -> list:
     }
     return [group_case_count.get(i, 0) for i in range(1, max(group_case_count) + 1)]
 
+
 # Extract correctness scores from the data
 def extract_correctness(data: dict, correctness_name: str) -> list:
     def extract_score(entry):
@@ -27,7 +31,9 @@ def extract_correctness(data: dict, correctness_name: str) -> list:
         except ValueError:
             print(f"Problematic entry: {entry.get(correctness_name)}")
             return 0.0
+
     return [extract_score(entry) for entry in data]
+
 
 # Extract SQL keywords from a query while filtering out unwanted patterns
 def extract_keywords(query: str) -> list:
@@ -58,6 +64,7 @@ def extract_keywords(query: str) -> list:
     unwanted_patterns = ["SOURCE", "TARGET"]
     return [kw for kw in set(keywords) if not any(pattern in kw for pattern in unwanted_patterns)]
 
+
 # Analyze the complexity of a SQL query based on keyword count, nesting, and length
 def analyze_sql_complexity_separate(query: str) -> tuple:
     found_keywords = extract_keywords(query)
@@ -66,6 +73,7 @@ def analyze_sql_complexity_separate(query: str) -> tuple:
         query.upper().count('( SELECT'),
         len(query)
     )
+
 
 # Plot complexity scores using a filled area chart
 def plot_complexity_scores_filled_area(queries_arg, complexity_function, group_counts_arg, correctness_scores):
@@ -106,9 +114,12 @@ def plot_complexity_scores_filled_area(queries_arg, complexity_function, group_c
             ax.axvline(x=boundary, color='gray', linestyle='--', linewidth=0.8)
 
     # Add color bars for legends
-    fig.colorbar(plt.cm.ScalarMappable(cmap="RdYlBu_r", norm=norm_keyword_count), ax=ax1, orientation="vertical").set_label('Keyword Count')
-    fig.colorbar(plt.cm.ScalarMappable(cmap="RdYlBu_r", norm=norm_length), ax=ax2, orientation="vertical").set_label('Normalized Length')
-    fig.colorbar(plt.cm.ScalarMappable(cmap=sns.diverging_palette(10, 133, as_cmap=True), norm=plt.Normalize(0, 100)), ax=ax3, orientation="vertical").set_label('Correctness (%)')
+    fig.colorbar(plt.cm.ScalarMappable(cmap="RdYlBu_r", norm=norm_keyword_count), ax=ax1,
+                 orientation="vertical").set_label('Keyword Count')
+    fig.colorbar(plt.cm.ScalarMappable(cmap="RdYlBu_r", norm=norm_length), ax=ax2, orientation="vertical").set_label(
+        'Normalized Length')
+    fig.colorbar(plt.cm.ScalarMappable(cmap=sns.diverging_palette(10, 133, as_cmap=True), norm=plt.Normalize(0, 100)),
+                 ax=ax3, orientation="vertical").set_label('Correctness (%)')
 
     # Set labels and title
     ax1.set_ylabel('Keyword Count')
@@ -123,7 +134,6 @@ def plot_complexity_scores_filled_area(queries_arg, complexity_function, group_c
     fig.tight_layout(rect=[0, 0, 0.92, 0.96])
     plt.savefig("complexity_correctness.pdf", format="pdf")
     plt.show()
-
 
 
 # Entry point of the script
