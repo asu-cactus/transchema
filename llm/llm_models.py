@@ -59,7 +59,7 @@ class LLMClient:
 
     def __init__(self, model, tracker, logger):
         """Initializes the client with a specified model and a usage tracker."""
-        self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        self.client = openai.OpenAI(api_key=openai.api_key)
         self.model = model
         self.encoding = tiktoken.encoding_for_model(model)
         self.tracker = tracker

@@ -5,9 +5,10 @@ import pandas as pd
 import logging
 from datetime import datetime
 from llm.llm_models import TokenUsageTracker
-from util.utils import (create_connection, execute_sql, log_experiment_success, log_experiment_failed,
-                        compare_lists_matching, get_test_info, get_test_cases_ids)
-
+from util.utils import (create_connection, execute_sql, log_experiment_settings,
+                        log_experiment_success, log_experiment_failed,
+                        compare_lists_matching, get_test_info)
+from test_scope import get_test_cases_ids
 
 class Experiment:
     def __init__(self, method, max_pipeline_len_idx, pipeline_len_start_idx, max_target_idx, target_start_idx, backend,
@@ -59,15 +60,19 @@ class Experiment:
         # main_folder_name = os.path.abspath("/tmp/github-pipelines")  # Changed to point to /tmp for mac
         target_path = os.path.join(main_folder_name, sub_folder_name, f"target.csv")
         test_0_path = os.path.join(main_folder_name, sub_folder_name, f"test_0.csv")
-        result_path = os.path.join(main_folder_name, sub_folder_name, f"Target{len_idx_target_idx}_result.csv")
-        if method == 'monolithic':
-            result_path = os.path.join(main_folder_name, sub_folder_name,
-                                       f"Target{len_idx_target_idx}_result_baseline.csv")
+        result_path = os.path.join(main_folder_name, sub_folder_name, f"Target{len_idx_target_idx}_result_{method}.csv")
+        # if method == 'monolithic':
+        #     result_path = os.path.join(main_folder_name, sub_folder_name,
+        #                                f"Target{len_idx_target_idx}_result_baseline.csv")
+
+
         source_name = f"Source{len_idx_target_idx}_{source_start_idx}"
         target_name = f"Target{len_idx_target_idx}"
         return source_name, target_name, test_0_path, result_path, target_path
 
     def run(self):
+        log_experiment_settings(self.pipeline_len_start_idx, self.max_pipeline_len_idx,
+                                self.target_start_idx, self.max_target_idx, self.method, self.clarify_on)
         conn = create_connection()
 
         for test_case in self.task_list:
@@ -110,7 +115,8 @@ class Experiment:
                 agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
                     if (sql_errors[-1] != '') else agent.prompt
 
-                gpt_output = agent.run_baseline() if self.method == 'monolithic' else agent.run()[0]
+                gpt_output = agent.run(method=self.method)
+                self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
                 print("SQL Script Extracted from GPT Response:")
                 print(gpt_output)
 
@@ -118,6 +124,7 @@ class Experiment:
                 sql_result = execute_sql(conn, gpt_output)
                 # print(f"SQL Result: {sql_result}")
                 if "Error:" in sql_result:
+                    self.logger.error(f"iter{iteration_count} Error in the previous response {sql_result}")
                     print(f"\n iter{iteration_count} Error in the previous response: {sql_result}")
                     with open('log/all_similarity_scores.log', 'a+') as file:
                         file.write(f"{target_data_name} <- {source_data_name_list}")
@@ -126,14 +133,21 @@ class Experiment:
                     # break
                     sql_errors.append(sql_result)
                     continue
+
                 # not using sql_result directly, as numeric vs string values will occur while validation
                 our_result = []
-                with open(result_path, 'r', encoding="utf-8") as file:
-                    reader = csv.reader(file)
-                    header = next(reader)
-                    for row in reader:
-                        our_result.append(tuple(row))
-                sql_result_df = pd.DataFrame(our_result)
+                try:
+                    with open(result_path, 'r', encoding="utf-8") as file:
+                        reader = csv.reader(file)
+                        header = next(reader)
+                        for row in reader:
+                            our_result.append(tuple(row))
+                    sql_result_df = pd.DataFrame(our_result)
+                except Exception as e:
+                    self.logger.error(f"Error while reading the result file: {e}")
+                    print(f"Error while reading the result file: {e}")
+                    continue
+
 
                 # SQL script returned by ChatGPT is executed correctly
                 if (validation_table_created == False):
@@ -160,6 +174,9 @@ class Experiment:
                     all_similarity_scores = []
                     break
                 else:
+                    # if not is_correct:
+                    self.logger.error(f"The returned SQL script can run, but the execution result of the SQL is wrong: "
+                          f"{validation_error}. Please try again.")
                     print(f"The returned SQL script can run, but the execution result of the SQL is wrong: "
                           f"{validation_error}. Please try again.")
         print("All similarity scores saved to all_similarity_scores.log.")

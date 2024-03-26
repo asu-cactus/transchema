@@ -2,7 +2,7 @@
 from util.schema_trans_tools import SchemaTransformTools
 from llm.llm_models import LLMClient
 from prompts import init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, \
-    baseline_template
+    monolithic_template, cot_template
 from langchain.prompts import PromptTemplate
 from action import ActionGraph
 import random
@@ -16,6 +16,9 @@ def get_input_variables(method):
     if method == 'monolithic':
         return ["source_examples", "target_examples", "source_schema", "target_schema",
                 "source_name", "target_name", "test_0_path", "result_path"]
+    elif method == 'cot':
+        return ["source_schema", "target_schema", "source_examples", "target_examples",
+                "source_name", "target_name"]
     else:
         return ["examples", "source_examples", "target_examples", "source_schema", "target_schema",
                 "source_name", "target_name", "test_0_path", "result_path"]
@@ -44,8 +47,9 @@ class Agent:
         self.action_graph = ActionGraph()
         self.performed_actions = set()
 
-        if method == 'monolithic':
-            template = PromptTemplate(input_variables=get_input_variables(method), template=baseline_template)
+        if method == 'monolithic' or method == 'cot':
+            template = PromptTemplate(input_variables=get_input_variables(method),
+                                      template=monolithic_template if method == 'monolithic' else cot_template)
             self.prompt = template.format(
                 source_schema=source_schema,
                 target_schema=target_schema,
@@ -70,6 +74,7 @@ class Agent:
                 test_0_path=test_0_path,
                 result_path=result_path
             )
+
         self.ultimate_task = ultimate_task
         self.transformer = SchemaTransformTools(source_schema, target_schema, source_examples, target_examples)
         self.mcts = MCTS(self.backend, self.prompt, self.logger, self.llm_client, self.token_tracker,
@@ -166,9 +171,22 @@ class Agent:
                 break
         return observation, n_calls, n_badcalls
 
-    def run(self, verbose=True, mcts=True):
+    def run(self, verbose=True, method='mcts'):
+        '''
+        Run the agent to generate a SQL script
+        :param verbose: whether to print the intermediate steps
+        :param method: the method to use for generating the SQL script
+        :return: the generated SQL script
+        '''
         self.state = self.prompt + self.ultimate_task + "\n"
-        return self.run_mcts(verbose) if mcts else self.run_pure_react(verbose)
+        if method == 'mcts':
+            return self.run_mcts(verbose)
+        elif method == 'monolithic':
+            return self.run_baseline(verbose)
+        elif method == 'react':
+            return self.run_pure_react(verbose)
+        elif method == 'cot':
+            return self.run_baseline(verbose)
 
     def get_all_agent_attrs(self):
         return {

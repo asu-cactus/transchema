@@ -94,7 +94,7 @@ def execute_sql(conn, query):
                 cursor.execute(f"SELECT * FROM {target_table};")
                 result = cursor.fetchall()
             else:
-                result = "Table name not identified from last INSERT INTO query."
+                result = "Error:　Table name not identified from last INSERT INTO query."
         else:
             result = cursor.fetchall()
 
@@ -117,10 +117,14 @@ def execute_sql(conn, query):
 #         return f"Error: {e.pgerror}"
 
 
-def print_experiment_settings(len_id, max_len_id, target_id, max_target_id, method, clarify_on):
-    with open('../log/all_similarity_scores.log', 'a+') as file:
+def log_experiment_settings(len_id, max_len_id, target_id, max_target_id, method, clarify_on):
+    log_directory = os.path.join('.', 'log')
+    os.makedirs(log_directory, exist_ok=True)
+    log_file_path = os.path.join(log_directory, 'all_similarity_scores.log')
+
+    with open(log_file_path, 'a+') as file:
         file.write(f"{'[Clarify On]' if clarify_on else '[Clarify Off]'}"
-                   f"{' using react' if method == 'baseline' else ' using baseline'}\n")
+                   f"{f' using {method}'}\n")
         file.write("Scope: length ")
         if len_id == max_len_id:
             file.write(f"is {len_id}")
@@ -137,7 +141,11 @@ def print_experiment_settings(len_id, max_len_id, target_id, max_target_id, meth
 def log_experiment_failed(target_data_name, source_data_name_to_find, iteration_count, all_similarity_scores,
                           accuracy_list, validation_error_list):
     print("[FAILED] Maximum iterations reached without correct result.")
-    with open('../log/all_similarity_scores.log', 'a+') as file:
+    log_directory = os.path.join('.', 'log')
+    os.makedirs(log_directory, exist_ok=True)
+
+    log_file_path = os.path.join(log_directory, 'all_similarity_scores.log')
+    with open(log_file_path, 'a+') as file:
         file.write(f"{target_data_name} <- {source_data_name_to_find}")
         file.write("\t\t\t\t[Failed]\n\tPlease check the similarity scores:\n")
         for count, iteration_scores in enumerate(all_similarity_scores):
@@ -152,8 +160,18 @@ def log_experiment_failed(target_data_name, source_data_name_to_find, iteration_
 
 def log_experiment_success(target_data_name, source_data_name_to_find, iteration_count):
     print("[Success] Successful SQL execution with correct result.")
-    with open('../log/all_similarity_scores.log', 'a+') as file:
-        file.write(f"{target_data_name} <- {source_data_name_to_find} with iter-{iteration_count}\t\t[Success]\n")
+    log_directory = os.path.join('.', 'log')
+    os.makedirs(log_directory, exist_ok=True)  # Create the directory if it doesn't exist, ignore error if it does
+
+    log_file_path = os.path.join(log_directory, 'all_similarity_scores.log')
+    try:
+        with open(log_file_path, 'a+') as file:
+            file.write(f"{target_data_name} <- {source_data_name_to_find} with iter-{iteration_count}\t\t[Success]\n")
+    except Exception as e:
+        print(f"Error writing to log file: {e}")
+
+    # with open(log_file_path, 'a+') as file:
+    #     file.write(f"{target_data_name} <- {source_data_name_to_find} with iter-{iteration_count}\t\t[Success]\n")
         # Append the global accuracy to the end
         # file.write(f", Global accuracy: {case_accuracy:.2f}\n")
 
@@ -314,55 +332,3 @@ def get_test_info(json_file_path, len_id_target_id):
     return target_data_name, target_data_schema, target_samples, file_count, source_data_name_list, source_data_schema_list, source_samples_list
 
 
-def get_test_cases_ids(json_file_path, len_id, max_len_id, target_id, max_target_id):
-    # Read the JSON file
-    with open(json_file_path, 'r') as file:
-        data_list = json.load(file)
-
-    # Find the item with the specified Source Data Name
-    ids = [item["Target Data Name"] for item in data_list]
-
-    # Adjust the filter criteria
-    filtered_ids = []
-    for id in ids:
-        parts = id[6:].split('_')
-        if len(parts) >= 2:
-            len_part = int(parts[0])
-            target_part = int(parts[1])
-            if len_id <= len_part <= max_len_id and target_id <= target_part <= max_target_id:
-                filtered_ids.append(id)
-
-    # bad_ids = ['Target1_16']
-    past_at_least_once = ['Target1_0', 'Target1_3', 'Target1_4', 'Target1_6', 'Target1_11', 'Target1_20',
-                          'Target1_21', 'Target1_29', 'Target1_34', 'Target1_35', 'Target1_38',
-                          'Target1_55', 'Target1_60', 'Target1_65', 'Target1_67', 'Target1_71',
-                          'Target1_72', 'Target1_80', 'Target1_84']
-    finish_issue = ['Target1_27', 'Target1_46', 'Target1_97']  # 27, 46, 97
-    further_finish_issue = ['Target1_97']
-    with_dirty_rows = ['Target1_40', 'Target1_59']
-    with_similarity_issue = ['Target1_10']  # , 'Target1_23', 'Target1_62', 'Target1_86', 'Target1_97']
-    with_syntax_issue = ['Target1_44', 'Target1_78', 'Target1_88', 'Target1_89', 'Target1_90', 'Target1_91',
-                         'Target1_92', 'Target1_93']
-
-    print('Total number of test cases:', len(filtered_ids))
-    print('Number of test cases that have been tested at least once:', len(past_at_least_once))
-    # print('Number of bad test cases:', len(bad_ids))
-    # filtered_ids = [id for id in filtered_ids if id not in bad_ids]
-    # filtered_ids = [id for id in filtered_ids if id not in past_at_least_once]
-    print('Number of Test cases after filtering:', len(filtered_ids))
-    baseline_5_iters = [
-        "Target1_6", "Target1_9", "Target1_13", "Target1_16", "Target1_18", "Target1_22",
-        "Target1_23", "Target1_24", "Target1_27", "Target1_34", "Target1_35", "Target1_38",
-        "Target1_40", "Target1_41", "Target1_43", "Target1_44", "Target1_46", "Target1_52",
-        "Target1_54", "Target1_55", "Target1_57", "Target1_68", "Target1_72", "Target1_75",
-        "Target1_78", "Target1_80", "Target1_81", "Target1_84", "Target1_86", "Target1_87",
-        "Target1_88", "Target1_89", "Target1_90", "Target1_91", "Target1_93", "Target1_95",
-        "Target1_97", "Target1_99"
-    ]
-    baseline_5_iters_2nd = [
-        'Target1_6', 'Target1_35', 'Target1_40', 'Target1_57', 'Target1_72', 'Target1_84',
-        'Target1_88', 'Target1_91', 'Target1_93']
-    baseline_5_iters_3rd = [
-        'Target1_72', 'Target1_84', 'Target1_91', 'Target1_93']
-    baseline_5_iters_4th = ['Target1_55', 'Target1_72', 'Target1_88']
-    return ['Target1_71']

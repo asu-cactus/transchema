@@ -17,7 +17,7 @@ def parse_args():
 
     # Agent
     args.add_argument('--clarity_on', type=bool, default=False)
-    args.add_argument('--method', type=str, choices=['monolithic', 'mcts'], default='mcts')
+    args.add_argument('--method', type=str, choices=['monolithic', 'mcts', 'cot'], default='monolithic')
     # Search
     # MCTS
 
@@ -44,9 +44,15 @@ def main(args):
     experiment.setup()
     # experiment.get_llm_friendly_representation()
     logging.info(f"STARTING experiment: \n{experiment}")
-    experiment.run()
-    # experiment.teardown()
-    logging.info(f"COST of this experiment: \n{experiment.token_tracker.cost_summary()}")
+    try:
+        experiment.run()
+    except Exception as e:
+        logging.error(f"Error during experiment run: {e}")
+    finally:
+        # Always log the cost, even if an error occurred
+        logging.info(f"COST of this experiment: \n{experiment.token_tracker.cost_summary()}")
+        # experiment.teardown()
+
 
 
 if __name__ == "__main__":

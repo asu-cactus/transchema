@@ -287,11 +287,11 @@ CREATE TABLE source_table (datetime TEXT, zone_16 NUMERIC);
 COPY source_table FROM 'source_data.csv' WITH (FORMAT csv, HEADER true, NULL '');
 CREATE TABLE target_table (DT_STRATA DATE, DOW INTEGER, PCT_HOURLY_0100 NUMERIC, ..., PCT_HOURLY_2400 NUMERIC);
 INSERT INTO target_table (DT_STRATA, DOW, PCT_HOURLY_0100, ..., PCT_HOURLY_2400) SELECT DATE(datetime) AS DT_STRATA, CAST(strftime('%w', datetime) AS INTEGER) AS DOW, SUM(CASE WHEN strftime('%H', datetime) = '01' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_0100, ..., SUM(CASE WHEN strftime('%H', datetime) = '00' THEN zone_16 ELSE 0 END) AS PCT_HOURLY_2400 FROM source_table GROUP BY DT_STRATA, DOW;
-COPY (SELECT * FROM target_table) TO '/path/to/your/sub_folder/target_name_result_baseline.csv' WITH CSV HEADER;
+COPY (SELECT * FROM target_table) TO '/path/to/your/sub_folder/target_name_result_monolithic.csv' WITH CSV HEADER;
 ```
 """
 
-baseline_template = """
+monolithic_template = """
 You are a SQL developer. Please generate a Postgres sql script to convert the source table to be consistent with the format of the target table.
 
 Your Task Details:
@@ -314,12 +314,43 @@ Generate SQL code for the transformation. Ensure this code accounts for the hand
 2. Create Source Table: Define and create the source table '{source_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and carefully handle date formats as per the analysis.
 3. Data Import: Load data from CSV at '{test_0_path}', treating empty values as NULL and correctly handling date formats.
 4. Create Target Table: Define and create the target table '{target_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and ensure date formats are correctly handled.
-5. COPY the SQL result into a CSV file "{result_path}{target_name}_result_baseline.csv".
+5. COPY the SQL result into a CSV file "{result_path}{target_name}_result_monolithic.csv".
 
 Ensure the generated sql code incorporates insights from the analytical steps, especially the enhanced aggregation analysis, tailored to the specific requirements of the given schemas and data paths.
 
-Please quote the returned SQL script between "```sql\n" and "\n```"
+Ensure the 'COPY' command is used for both data import and export steps. Do not comment them out. Please quote the returned SQL script between "```sql\n" and "\n```"
 """
+
+# You are a data administrator. You are very good at performing data schema transformation tasks.
+# You are given source schemas and a target schema and some example data. You are asked to transform the source schema to the target schema.
+# In addition to answering the question, you are also expected to provide a step-by-step explanation of the answer.
+# In your reponse, try to use SQL or Python code to demonstrate the transformation steps.
+
+cot_template = """
+You are a SQL developer tasked with transforming data from a source table to match the format of a target table in a Postgres database. Please generate the steps and the corresponding SQL script for this transformation. 
+
+Task Details:
+1. Source Schema: {source_schema}
+2. Source Table Name: {source_name}
+3. Target Schema: {target_schema}
+4. Target Table Name: {target_name}
+5. Source Examples: {source_examples}
+6. Target Examples: {target_examples}
+7. Data File Path: {test_0_path}.
+
+Note: The row examples provided are not necessarily corresponding rows. They are simply examples of rows in the source and target schemas.
+
+Steps for Transformation:
+1. Analyze the source and target table schemas and examples to identify differences in column names, data types, and formats, particularly focusing on how date formats are handled.
+2. Create the source table '{source_name}' using the '{source_schema}' schema, ensuring to drop it first if it exists. Use double quotes for any reserved keywords used as column names. Pay special attention to handling date formats as per the analysis in step 1.
+3. Import data from the CSV file located at '{test_0_path}' into the source table, treating empty values as NULL and correctly handling date formats.
+4. Create the target table '{target_name}' using the '{target_schema}' schema, ensuring to drop it first if it exists. Use double quotes for any reserved keywords used as column names. Ensure that the data types and formats, especially for dates, match the target schema.
+5. Transform and insert data from the source table into the target table. Detail the steps involved in this process.
+6. Export the transformed data from the target table into a CSV file named "{result_path}{target_name}_result_cot.csv" using the 'COPY' command.
+
+Please generate the SQL script that implements these steps. Ensure the 'COPY' command is used for both data import and export steps. The SQL script should be quoted between "```sql\n" and "\n```".
+"""
+
 
 ultimate_task = 'Output the SQL code for the transformation.'
 
