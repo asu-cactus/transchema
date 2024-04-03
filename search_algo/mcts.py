@@ -4,7 +4,7 @@ import env.wrappers as wrappers
 import requests
 import os
 from util.utils import (create_connection, execute_sql)
-from quality.quality import schema_quality, calculate_data_quality_score, reverse_quality, fd_quality
+from quality.quality import schema_quality, reverse_quality, fd_quality, data_quality
 import csv
 import pandas as pd
 
@@ -439,7 +439,7 @@ class MCTS:
             else:
                 print(f"File not found: {self.agent_attrs['result_path']}.")
 
-            data_quality_score = calculate_data_quality_score(sql_result)
+            data_quality_score, low_diversity_columns = data_quality(sql_result, self.agent_attrs['target_schema'])
 
             schema_score, schema_feedback, column_mappings, target_handle = schema_quality(gpt_output, **self.agent_attrs)
             fd_score, fd_comparison = fd_quality(gpt_output, column_mappings, **self.agent_attrs)

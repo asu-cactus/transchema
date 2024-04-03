@@ -1,8 +1,9 @@
 import argparse
 import logging
-
+import os
 from experiment import Experiment
-
+os.environ["http_proxy"] = "http://localhost:7890"
+os.environ["https_proxy"] = "http://localhost:7890"
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -33,7 +34,7 @@ def parse_args():
     args.add_argument('--iterations', type=int, default=30)
     # Others
     args.add_argument('--log_dir', type=str, default='logs/')
-
+    args.add_argument('--control_method', type=str, choices=['mono','quality','summary','both'],default='both')
     args = args.parse_args()
     args = vars(args)
     return args
@@ -44,14 +45,10 @@ def main(args):
     experiment.setup()
     # experiment.get_llm_friendly_representation()
     logging.info(f"STARTING experiment: \n{experiment}")
-    try:
-        experiment.run()
-    except Exception as e:
-        logging.error(f"Error during experiment run: {e}")
-    finally:
-        # Always log the cost, even if an error occurred
-        logging.info(f"COST of this experiment: \n{experiment.token_tracker.cost_summary()}")
-        # experiment.teardown()
+    experiment.run()
+    # Always log the cost, even if an error occurred
+    logging.info(f"COST of this experiment: \n{experiment.token_tracker.cost_summary()}")
+
 
 
 

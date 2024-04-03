@@ -51,7 +51,7 @@ def schema_quality(sql_query, **kwargs):
     mismatch_2 = [col for col in source_columns_clean if col not in source_data_schema_list]
 
     if not mismatch_1 and not mismatch_2:
-        mismatch_feedback = "Schema matches correctly."
+        mismatch_feedback = ""
     else:
         mismatch_feedback = ""
         if mismatch_1:
@@ -67,7 +67,7 @@ def schema_quality(sql_query, **kwargs):
     column_mappings, target_handle = perform_column_mapping_analysis(sql_query, target_columns_clean,
                                                                      source_columns_clean)
     missing_target_attributes = [col for col in target_data_schema if col not in target_handle]
-    mismatch_feedback += "\n Missing handle target attributes: " + str(missing_target_attributes)
+   # mismatch_feedback += "\n Missing handle target attributes: " + str(missing_target_attributes)
     # Penalize the quality score based on missing attributes
     missing_attribute_penalty = len(missing_target_attributes) / len(target_data_schema) if kwargs[
         'target_schema'] else 0
@@ -168,40 +168,9 @@ def extract_table_schemas(sql_query, source_data_name_to_find, target_data_name)
     return source_schema, target_schema
 
 
-def data_quality(sql_result, conn, agent, gpt_output):
-    score_1 = calculate_data_quality_score(sql_result)
-    if score_1 < 0.6:
-        print("Data quality low")
-        agg_prompt = "Some hints for the schema changes from the first table to the second table:Consider using aggregation functions."
-        ini_prompt = agent.prompt
-        agent.prompt = agent.prompt + agg_prompt
-        # Second Iteration: Execute modified prompt
-        gpt_output_modified = agent.run_baseline()
-        sql_result_modified = execute_sql(conn, gpt_output_modified)
-        dq_score_modified = calculate_data_quality_score(sql_result_modified)
-        agent.prompt = ini_prompt
-        print(f"New SQL Query: {gpt_output_modified}")
-        print(f"New Table: {sql_result_modified}")
-        print(f"Modified Data Quality Score: {dq_score_modified}")
-
-        # Compare the scores
-        if dq_score_modified > score_1:
-            print("Data quality improved with aggregation.")
-            sql_result = sql_result_modified
-            gpt_output = gpt_output_modified
-            dq_score = dq_score_modified
-            return dq_score, gpt_output, sql_result
-        else:
-            print("No significant improvement in data quality.")
-            return score_1, gpt_output, sql_result
-    else:
-        return score_1, gpt_output, sql_result
-
-
-def calculate_data_quality_score(sql_result):
+def data_quality(sql_result, target_handle):
     if not sql_result or not sql_result[0]:
-        return 0  # No data to evaluate
-
+        return 0,0  # No data to evaluate
     num_cols = len(sql_result[0])
     num_rows = len(sql_result)
 
@@ -210,26 +179,56 @@ def calculate_data_quality_score(sql_result):
     value_counts = [{} for _ in range(num_cols)]
     max_values = [float('-inf')] * num_cols
     min_values = [float('inf')] * num_cols
+    column_info = {col: {'none_score': 0, 'diversity_score': 0, 'most_common_value': None, 'most_common_count': 0} for
+                   col in target_handle}
 
     for row in sql_result:
-        for idx, col in enumerate(row):
-            # Count None values
-            if col is None or col == 0 or col == 0.0:
+        for idx, value in enumerate(row):
+            col_name = target_handle[idx]
+            # Treat '0' or '0.0' as None for the purpose of this analysis
+            if value is None or value == 0 or value == 0.0:
                 none_counts[idx] += 1
-            # Count value occurrences for diversity check
-            value_counts[idx][col] = value_counts[idx].get(col, 0) + 1
+            else:
+                # Count value occurrences for diversity check
+                if value in value_counts[idx]:
+                    value_counts[idx][value] += 1
+                else:
+                    value_counts[idx][value] = 1
+
+                # Update most common value if this value surpasses the current count
+                if value_counts[idx][value] > column_info[col_name]['most_common_count']:
+                    column_info[col_name]['most_common_value'] = value
+                    column_info[col_name]['most_common_count'] = value_counts[idx][value]
+
     # Calculate scores for each aspect
-    none_score = 1 - sum(none_counts) / (num_rows * num_cols)
-    print("none_score:", none_score)
-    diversity_score = sum(len(values.keys()) / num_rows for values in value_counts) / num_cols
-    print("diversity_score:", diversity_score)
-    # Combine scores (you might want to adjust weights)
-    combined_score = (none_score + diversity_score) / 2
-    return combined_score
+    for idx, col_name in enumerate(target_handle):
+        none_score = 1 - none_counts[idx] / num_rows
+        diversity_score = len(value_counts[idx].keys()) / num_rows
+        column_info[col_name]['none_score'] = none_score
+        column_info[col_name]['diversity_score'] = diversity_score
+
+    # Combine scores
+    combined_none_score = sum([info['none_score'] for info in column_info.values()]) / num_cols
+    combined_diversity_score = sum([info['diversity_score'] for info in column_info.values()]) / num_cols
+    combined_score = (combined_none_score + combined_diversity_score) / 2
+
+    # Identify columns with low diversity, defined as most common value occupies more than a threshold of the rows
+    threshold = 0.5
+    low_diversity_columns = {col: info for col, info in column_info.items() if
+                             info['diversity_score'] < threshold}
+    if low_diversity_columns:
+        lowest_diversity_column = min(low_diversity_columns.items(), key=lambda x: x[1]['diversity_score'])
+
+        # lowest_diversity_column now holds the column name and its info dictionary
+        column_name, column_info = lowest_diversity_column
+        print("data_score:", combined_score)
+        print("low diversity column:", column_name)
+    else:
+        column_name = None
+    return combined_score, column_name
 
 
-# TODO
-def fd_quality(sql_query, column_mappings, **kwargs):
+def fd_quality(sql_query, column_mappings, new_key,**kwargs):
     data_1 = []
     data_2 = []
     select_columns, target_columns = extract_table_schemas(sql_query, kwargs['source_name'], kwargs['target_name'])
@@ -254,44 +253,48 @@ def fd_quality(sql_query, column_mappings, **kwargs):
         df_1 = data_1_df[relevant_source_columns]
         df_2 = pd.DataFrame(data_2, columns=column_names_2)
         # Use FDTool
-        functional_dependencies_1 = analyze_functional_dependencies(df_1)
+        functional_dependencies_1, keys_1 = analyze_functional_dependencies(df_1)
         # Map source FDs to target FDs
         mapped_fds = map_source_fds_to_target_fds(functional_dependencies_1, column_mappings)
         print("mapped_fds", mapped_fds)
-        functional_dependencies_2 = analyze_functional_dependencies(df_2)
+        functional_dependencies_2, keys_2 = analyze_functional_dependencies(df_2)
         # Compare mapped FDs with target FDs
         fd_comparison, fd_score = compare_fds(mapped_fds, functional_dependencies_2)
-        print("fd_score:", fd_score)
-        print("fd_comparison:", fd_comparison)
-        return fd_score, fd_comparison
+        # Compare keys_1 and keys_2 for new key detection
+        new_keys_expected = set(keys_2) - set(keys_1)  # Keys that are in keys_2 but not in keys_1
+        if not new_keys_expected:
+            fd_feedback = f"New key {new_key} expected to be generated in the target table was not detected. Please recheck and ensure its correct generation."
+            # print(fd_feedback)
+        else:
+            fd_feedback = ""
+            # print("New keys detected:", new_keys_expected)
+        # print("fd_score:", fd_score)
+        # print("fd_comparison:", fd_comparison)
+        return fd_score, fd_feedback
     else:
-        return 0, None
+        return 1, ""
 
 
 def analyze_functional_dependencies(df):
     # Initial setup based on FDTool logic
     U = list(df.head(0))
-    print("U:", U)
     C = [[[item] for item in U]]
-    print("C:", C)
     Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in Apriori_Gen.powerset(U)}
-    print("Closure:", Closure)
     Cardinality = {element: None for element in Closure}
-    print("Cardinality:", Cardinality)
     # Get functional dependencies
     Closure, F, Cardinality = GetFDs.f(C[0], df, Closure, U, Cardinality)
-
-    print("F:", F)
     # Filter functional dependencies
     filtered_F = []
+    all_keys = set()
     for fd in F:
         key, value = fd
+        all_keys.update(key)
         # Check if key columns are of float type
         if not isinstance(df[key[0]].iloc[0], Decimal):
             filtered_F.append(fd)
-
-    print("filtered_F:", filtered_F)
-    return filtered_F
+    all_keys_sorted = sorted(list(all_keys))
+    #print("filtered_F:", filtered_F)
+    return filtered_F,all_keys_sorted
 
 
 def map_source_fds_to_target_fds(source_fds, column_mappings):
@@ -402,3 +405,209 @@ def reverse_format_for_agent(source_examples, source_schema, target_examples, ta
     target_schema_list = ast.literal_eval(target_schema)
 
     return source_examples_str, source_schema_str, target_examples_list, target_schema_list
+
+def get_df(**kwargs):
+    data_1 = []
+    data_2 = []
+    data_3 = []
+
+    with open(kwargs['test_0_path'], 'r', encoding="utf-8") as file:
+        reader = csv.reader(file)
+        header = next(reader)
+        for row in reader:
+            data_1.append(tuple(row))
+
+    source_df = pd.DataFrame(data_1, columns=header)
+
+    result_df = pd.DataFrame(data_2,columns=header)
+    with open(kwargs['target_path'], 'r', encoding="utf-8") as file:
+        reader = csv.reader(file)
+        header = next(reader)
+        for row in reader:
+            data_3.append(tuple(row))
+    # Filter df_1 to include only the relevant columns
+    target_df = pd.DataFrame(data_3,columns=header)
+    return source_df,target_df
+
+# Single-column:
+# data type:each column’s data type(Pandas)
+# value length:information about the length of values in terms of characters
+# constancy:the ratio of the frequency of the most frequent value
+# uniqueness:the number of unique values divided by the number of rows
+# value range:min value~max value
+# Multi-column:
+# Length pattern:information about sort of value length
+# Value pattern:information about the sort of value
+# Numerical pattern:The sort of different columns of data, including equal, greater than, and less than(according to value range)
+def data_profiling(df,whether_source=False):
+    single_analysis = {}
+    for column in df.columns:
+        column_summary = {
+            'uniqueness': df[column].nunique() / len(df),
+            'constancy': df[column].value_counts(normalize=True).iloc[0],
+            'data_type': df[column].dtype,
+        }
+        if df[column].dtype in ['int64', 'float64']:
+            column_summary['min'] = df[column].min()
+            column_summary['max'] = df[column].max()
+            column_summary['mean'] = df[column].mean()
+            column_summary['std'] = df[column].std()
+        elif df[column].dtype == 'object':
+            column_summary['shortest_value'] = df[column].astype(str).map(len).min()
+            column_summary['longest_value'] = df[column].astype(str).map(len).max()
+            column_summary['avg_length'] = df[column].astype(str).map(len).mean()
+        single_analysis[column] = column_summary
+    # print("single_analysis:",single_analysis)
+
+    multi_analysis = {
+        'value_relationships': {},
+        'length_relationships': {}
+    }
+
+    # Attempt to convert all columns to numeric, to facilitate comparison
+    df_numeric = df.apply(pd.to_numeric, errors='coerce')
+
+    # Value Relationships for all columns
+    for col_a in df.columns:
+        multi_analysis['value_relationships'][col_a] = {'greater_than': [], 'equal_to': [], 'less_than': []}
+        for col_b in df.columns:
+            if col_a != col_b:
+                min_a, max_a = df_numeric[col_a].min(), df_numeric[col_a].max()
+                min_b, max_b = df_numeric[col_b].min(), df_numeric[col_b].max()
+                if min_a > max_b:
+                    multi_analysis['value_relationships'][col_a]['greater_than'].append(col_b)
+                elif max_a < min_b:
+                    multi_analysis['value_relationships'][col_a]['less_than'].append(col_b)
+                elif min_a == min_b and max_a == max_b:
+                    multi_analysis['value_relationships'][col_a]['equal_to'].append(col_b)
+
+    # print("\nLength Relationships (Non-Numerical Data):")
+    # for col, relationships in multi_analysis['length_relationships'].items():
+    #     print(
+    #         f"{col}: Longer Than: {relationships['longer_than']}, Shorter Than: {relationships['shorter_than']}, Equal Length To: {relationships['equal_length_to']}")
+    if whether_source:
+        return single_analysis, multi_analysis
+    functional_dependencies, keys = analyze_functional_dependencies(df)
+    dependencies = {
+        'dependencies': functional_dependencies,
+        'keys': keys
+    }
+    return single_analysis, multi_analysis, dependencies
+
+
+def data_summary(single_analysis,multi_analysis,dependencies,whether_source=False):
+    columns_high = []
+    columns_low = []
+    # Value pattern and schema change hints based on single_analysis
+    for column, stats in single_analysis.items():
+        if 'uniqueness' in stats and 'constancy' in stats:
+            # Define thresholds for extreme cases
+            high_uniqueness_threshold = 0.9
+            low_uniqueness_threshold = 0.1
+            high_constancy_threshold = 0.9
+
+            # Check for columns with high uniqueness or high constancy but low uniqueness
+            if stats['uniqueness'] > high_uniqueness_threshold:
+                columns_high.append(column)
+            elif stats['uniqueness'] < low_uniqueness_threshold and stats['constancy'] > high_constancy_threshold:
+                columns_low.append(column)
+    # Generate a single hint for using aggregation functions and group by, if there are any columns for grouping
+    if columns_high and columns_low:
+        grouped_columns_high = ', '.join([f'"{col}"' for col in columns_high])
+        grouped_columns_low = ', '.join([f'"{col}"' for col in columns_low])
+        schema_change_hints = f"{grouped_columns_high}has high uniqueness. {grouped_columns_low} has low uniqueness and high constancy."
+    elif columns_high and not columns_low:
+        grouped_columns_high = ', '.join([f'"{col}"' for col in columns_high])
+        schema_change_hints = f"{grouped_columns_high}has high uniqueness."
+    elif not columns_high and columns_low:
+        grouped_columns_low = ', '.join([f'"{col}"' for col in columns_low])
+        schema_change_hints = f"{grouped_columns_low}has low uniqueness and high constancy."
+    else:
+        schema_change_hints = ""
+
+    # Constructing value pattern based on multi_analysis
+    value_relations_summary = []
+    for col, relationships in multi_analysis['value_relationships'].items():
+        greater_than_cols = ', '.join(relationships['greater_than'])
+        equal_to_cols = ', '.join(relationships['equal_to'])
+        if greater_than_cols:
+            value_relations_summary.append(f"{col} is greater than {greater_than_cols}")
+        if equal_to_cols:
+            value_relations_summary.append(f"{col} is equal to {equal_to_cols}")
+    value_pattern_msg = "Value pattern in table: " + '; '.join(value_relations_summary)+'.' if value_relations_summary else ""
+
+    if whether_source:
+        if schema_change_hints:
+            summary_msg = f"{value_pattern_msg}\n" + schema_change_hints
+            return summary_msg
+        else:
+            return value_pattern_msg
+
+    # Hints for schema changes from functional dependencies
+    fd_hints = []
+    for fd in dependencies.get('dependencies', []):
+        key, value = fd[0], fd[1]
+        keys = ', '.join(key) if isinstance(key, (list, tuple)) else key
+        fd_hints.append(f"{keys} -> {value}")
+    fd_hints_msg = "Functional dependency detected: " + '; '.join(fd_hints)
+    if schema_change_hints or fd_hints:
+        # Combining all messages
+        summary_msg = f"{value_pattern_msg}\n" + schema_change_hints + "\n" + fd_hints_msg
+    else :
+        summary_msg = None
+    return summary_msg
+
+
+##For data morphing,it should compare target summary with result summary,return hints about whether to group by or aggregate,
+## the columns to group by or aggregate,which column should be same or different,which column should be greater or less than
+def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma, result_dependencies):
+    transformation_hints = []
+    fd_mismatch_hints = []
+    value_pattern_mismatch_hints = []
+
+    # Compare single analysis for suggesting group by based on uniqueness and constancy
+    for column, target_stats in target_sa.items():
+        result_stats = result_sa.get(column, {})
+        if 'uniqueness' in target_stats and 'uniqueness' in result_stats:
+            if target_stats['uniqueness'] > 0.9 and result_stats['uniqueness'] < 0.9:
+                transformation_hints.append(f"\nConsider using 'GROUP BY {column}' due to high uniqueness in target.")
+        if 'constancy' in target_stats and 'constancy' in result_stats:
+            if target_stats['constancy'] > 0.9 and result_stats['constancy'] < 0.9:
+                transformation_hints.append(
+                    f"\nAvoid grouping by '{column}' due to its high constancy in target being lost in result.")
+
+    # Functional dependencies comparison
+    target_fds = set([tuple(fd) for fd in target_dependencies['dependencies']])
+    result_fds = set([tuple(fd) for fd in result_dependencies['dependencies']])
+    missing_fds = target_fds - result_fds
+
+    missing_fd_strings = []
+    for fd in missing_fds:
+        left_hand_side = ", ".join(
+            fd[0])  # This assumes fd[0] is a list or tuple of column names on the left side of FD
+        right_hand_side = fd[1]  # This assumes fd[1] is a single column name on the right side of FD
+        missing_fd_strings.append(f"{left_hand_side} -> {right_hand_side}")
+
+    if missing_fd_strings:
+        fd_mismatch_hints.append(
+            "\nMissing functional dependencies in result: " + "; ".join(missing_fd_strings))
+    # Value pattern comparison for columns with changed relationships
+    for column, target_rel in target_ma['value_relationships'].items():
+        if column in result_ma['value_relationships']:
+            result_rel = result_ma['value_relationships'][column]
+            if target_rel != result_rel:
+                target_patterns = f"{column} is greater than: " + ", ".join(target_rel['greater_than']) if target_rel[
+                    'greater_than'] else ""
+                target_patterns += f";{column} is Equal to: " + ", ".join(target_rel['equal_to']) if target_rel['equal_to'] else ""
+                if target_patterns:
+                    value_pattern_mismatch_hints.append(
+                        f"\nValue pattern is wrong for column '{column}' in result. Target pattern was {target_patterns}.")
+        else:
+            # Handling missing column in result multi-analysis
+            value_pattern_mismatch_hints.append(
+                f"Column '{column}' present in target is missing in result's value relationship analysis.")
+
+    # Constructing the final hints message
+    hints = transformation_hints + fd_mismatch_hints + value_pattern_mismatch_hints
+    return "\n".join(hints) if hints else ""
+

@@ -25,11 +25,12 @@ def get_input_variables(method):
 
 
 class Agent:
-    def __init__(self, source_name, target_name, test_0_path, source_schema, target_schema, source_examples,
-                 target_examples, result_path, token_tracker, logger,
+    def __init__(self, source_name, target_name, target_path, test_0_path, source_schema, target_schema, source_examples,
+                 target_examples, result_path, control_method, token_tracker, logger,
                  backend, clarify_on=False, method='react', max_steps=20):
         self.source_name = source_name
         self.target_name = target_name
+        self.target_path = target_path
         self.test_0_path = test_0_path
         self.source_schema = source_schema
         self.target_schema = target_schema
@@ -46,7 +47,8 @@ class Agent:
         self.state = None
         self.action_graph = ActionGraph()
         self.performed_actions = set()
-
+        self.control_method = control_method
+        self.agent_attrs = None
         if method == 'monolithic' or method == 'cot':
             template = PromptTemplate(input_variables=get_input_variables(method),
                                       template=monolithic_template if method == 'monolithic' else cot_template)
@@ -60,6 +62,7 @@ class Agent:
                 test_0_path=test_0_path,
                 result_path=result_path
             )
+            self.agent_attrs = self.get_all_agent_attrs_mono()
         elif method == 'mcts':
             template = PromptTemplate(input_variables=get_input_variables(method),
                                       template=init_template if clarify_on else init_template_no_clarify)
@@ -80,7 +83,7 @@ class Agent:
         self.mcts = MCTS(self.backend, self.prompt, self.logger, self.llm_client, self.token_tracker,
                          self.source_schema, self.target_schema, self.source_examples, self.target_examples,
                          self.transformer)
-        self.mcts.fill_agent_attrs(self.get_all_agent_attrs())
+        self.mcts.fill_agent_attrs(self.get_all_agent_attrs_mcts())
 
     def get_state(self):
         return self.state
@@ -188,7 +191,7 @@ class Agent:
         elif method == 'cot':
             return self.run_baseline(verbose)
 
-    def get_all_agent_attrs(self):
+    def get_all_agent_attrs_mcts(self):
         return {
             "source_name": self.source_name,
             "target_name": self.target_name,
@@ -212,6 +215,31 @@ class Agent:
             "ultimate_task": self.ultimate_task,
             "transformer": self.transformer,
             "mcts": self.mcts
+        }
+    def get_all_agent_attrs_mono(self):
+        return {
+            "source_name": self.source_name,
+            "target_name": self.target_name,
+            "test_0_path": self.test_0_path,
+            "target_path": self.target_path,
+            "source_schema": self.source_schema,
+            "target_schema": self.target_schema,
+            "source_examples": self.source_examples,
+            "target_examples": self.target_examples,
+            "result_path": self.result_path,
+            "clarify_on": self.clarify_on,
+            "max_steps": self.max_steps,
+            "method": self.method,
+            "token_tracker": self.token_tracker,
+            "logger": self.logger,
+            "backend": self.backend,
+            "llm_client": self.llm_client,
+            "state": self.state,
+            "action_graph": self.action_graph,
+            "performed_actions": self.performed_actions,
+            "prompt": self.prompt,
+            "control_method": self.control_method
+
         }
 
 

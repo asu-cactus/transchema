@@ -176,6 +176,17 @@ def log_experiment_success(target_data_name, source_data_name_to_find, iteration
         # file.write(f", Global accuracy: {case_accuracy:.2f}\n")
 
 
+def log_experiment(target_data_name, source_data_name_to_find,execution_time_1,execution_time_2, execution_time_3,execution_time, cost, success, method):
+    file_path = f'log/{method}.log'
+    with open(file_path, 'a+') as file:
+        if success:
+            file.write(
+                f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n")
+        else:
+            file.write(
+                f"{target_data_name} <- {source_data_name_to_find} Failed with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3})  and cost:{cost}\n")
+
+
 def numerical_similarity(value1, value2, threshold=1e-10):
     """ Calculate numerical similarity between two values. """
     if value1 in (0.0, None) and value2 in (0.0, None):
