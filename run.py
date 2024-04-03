@@ -2,8 +2,7 @@ import argparse
 import logging
 import os
 from experiment import Experiment
-os.environ["http_proxy"] = "http://localhost:7890"
-os.environ["https_proxy"] = "http://localhost:7890"
+
 
 def parse_args():
     args = argparse.ArgumentParser()
