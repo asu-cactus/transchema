@@ -99,7 +99,7 @@ class Experiment:
             fd_feedback = ""
             dq_feedback = ""
             schema_feedback = ""
-            hints_3 = ""
+            hints = ""
             iteration_count = 0
             while True:
                 iteration_count += 1
@@ -124,7 +124,7 @@ class Experiment:
                               backend=self.backend,
                               clarify_on=self.clarify_on, method=self.method)
                 ##Monolithic prompt only
-                if self.control_method == 'mono':
+                if self.control_method == 'none':
                     # Run the experiment
                     agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
                         if (sql_errors[-1] != '') else agent.prompt
@@ -424,7 +424,7 @@ class Experiment:
                     ###############################################
                     agent.prompt = agent.prompt + "Here is data summary for source table:\n" + hints_source if hints_source else agent.prompt
                     agent.prompt = agent.prompt + "\nHere is data summary for target table:" + hints_target if hints_target else agent.prompt
-                    agent.prompt = agent.prompt + schema_feedback + hints_3
+                    agent.prompt = agent.prompt + schema_feedback + hints
                     # Run the experiment
                     agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
                         if (sql_errors[-1] != '') else agent.prompt
@@ -473,7 +473,7 @@ class Experiment:
                         continue
                     result_sa, result_ma, result_d = data_profiling(sql_result_df)
 
-                    hints_3 = data_morpher(target_sa, target_ma, target_d, result_sa, result_ma, result_d)
+                    hints = data_morpher(target_sa, target_ma, target_d, result_sa, result_ma, result_d)
 
                     # SQL script returned by ChatGPT is executed correctly
                     if (validation_table_created == False):
@@ -504,7 +504,7 @@ class Experiment:
                                        self.token_tracker.cost_summary(), 1, self.control_method)
                         break
                     else:
-                        if hints_3:
+                        if hints:
                             self.logger.error(
                             f"The returned SQL script can run, but the execution result of the SQL is wrong: "
                             f"{validation_error}. Please try again.")
