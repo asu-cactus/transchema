@@ -2,7 +2,7 @@
 from util.schema_trans_tools import SchemaTransformTools
 from llm.llm_models import LLMClient
 from prompts import init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, \
-    monolithic_template, cot_template
+    monolithic_template, cot_template, monolithic_template_join
 from langchain.prompts import PromptTemplate
 from action import ActionGraph
 import random
@@ -52,6 +52,20 @@ class Agent:
         if method == 'monolithic' or method == 'cot':
             template = PromptTemplate(input_variables=get_input_variables(method),
                                       template=monolithic_template if method == 'monolithic' else cot_template)
+            self.prompt = template.format(
+                source_schema=source_schema,
+                target_schema=target_schema,
+                source_examples=source_examples,
+                target_examples=target_examples,
+                source_name=source_name,
+                target_name=target_name,
+                test_0_path=test_0_path,
+                result_path=result_path
+            )
+            self.agent_attrs = self.get_all_agent_attrs_mono()
+        if method == 'multi_source' :
+            template = PromptTemplate(input_variables=get_input_variables(method),
+                                      template=monolithic_template_join )
             self.prompt = template.format(
                 source_schema=source_schema,
                 target_schema=target_schema,
@@ -189,6 +203,8 @@ class Agent:
         elif method == 'react':
             return self.run_pure_react(verbose)
         elif method == 'cot':
+            return self.run_baseline(verbose)
+        elif method == 'multi_source':
             return self.run_baseline(verbose)
 
     def get_all_agent_attrs_mcts(self):

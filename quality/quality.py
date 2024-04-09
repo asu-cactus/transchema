@@ -410,14 +410,29 @@ def get_df(**kwargs):
     data_1 = []
     data_2 = []
     data_3 = []
+    source_df = []
+    #if dtype(kwargs['test_0_path']) is List:
 
-    with open(kwargs['test_0_path'], 'r', encoding="utf-8") as file:
-        reader = csv.reader(file)
-        header = next(reader)
-        for row in reader:
-            data_1.append(tuple(row))
+    # Check if test_paths is a list of paths
+    if isinstance(kwargs['test_0_path'], list):
+        # Iterate over the list of paths and create a dataframe for each
+        for path in kwargs['test_0_path']:
+            with open(path, 'r', encoding="utf-8") as file:
+                reader = csv.reader(file)
+                header = next(reader)
+                data = [tuple(row) for row in reader]
+            df = pd.DataFrame(data, columns=header)
+            source_df.append(df)
+    else:
+        # Process a single path
+        with open(kwargs['test_0_path'], 'r', encoding="utf-8") as file:
+            reader = csv.reader(file)
+            header = next(reader)
+            data = [tuple(row) for row in reader]
+        df = pd.DataFrame(data, columns=header)
+        source_df.append(df)
 
-    source_df = pd.DataFrame(data_1, columns=header)
+
 
     result_df = pd.DataFrame(data_2,columns=header)
     with open(kwargs['target_path'], 'r', encoding="utf-8") as file:
@@ -427,7 +442,7 @@ def get_df(**kwargs):
             data_3.append(tuple(row))
     # Filter df_1 to include only the relevant columns
     target_df = pd.DataFrame(data_3,columns=header)
-    return source_df,target_df
+    return source_df[0] if len(source_df) == 1 else source_df,target_df
 
 # Single-column:
 # data type:each column’s data type(Pandas)
@@ -531,9 +546,9 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
         greater_than_cols = ', '.join(relationships['greater_than'])
         equal_to_cols = ', '.join(relationships['equal_to'])
         if greater_than_cols:
-            value_relations_summary.append(f"{col} is greater than {greater_than_cols}")
+            value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
         if equal_to_cols:
-            value_relations_summary.append(f"{col} is equal to {equal_to_cols}")
+            value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
     value_pattern_msg = "Value pattern in table: " + '; '.join(value_relations_summary)+'.' if value_relations_summary else ""
 
     if whether_source:
@@ -610,4 +625,22 @@ def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma
     # Constructing the final hints message
     hints = transformation_hints + fd_mismatch_hints + value_pattern_mismatch_hints
     return "\n".join(hints) if hints else ""
+
+
+import os
+from valentine import valentine_match
+from valentine.algorithms import Coma,Cupid
+
+# Load data using pandas
+d1_path = 'D:/transchema\github-pipelines\length1_8/test_0.csv'
+d2_path = 'D:/transchema\github-pipelines\length1_8/test_1.csv'
+df1 = pd.read_csv(d1_path)
+df2 = pd.read_csv(d2_path)
+
+# Instantiate matcher and run
+#matcher = Coma(use_instances=True)
+matcher = Cupid()
+matches = valentine_match(df1, df2, matcher)
+
+print(matches)
 

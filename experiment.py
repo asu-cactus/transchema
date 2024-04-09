@@ -1,4 +1,5 @@
 import ast
+import glob
 import os
 import time
 
@@ -81,7 +82,7 @@ class Experiment:
         conn = create_connection()
 
         for test_case in self.task_list:
-            start_time = time.time()
+            temp = self.token_tracker.cost_summary()
             len_idx_target_idx = test_case[6:]
             # Get the information of the target and source data
 
@@ -102,6 +103,7 @@ class Experiment:
             hints = ""
             iteration_count = 0
             while True:
+                start_time = time.time()
                 iteration_count += 1
                 # check if reached to max number of iterations
                 if iteration_count > self.max_attempts:
@@ -109,17 +111,28 @@ class Experiment:
                     #                       all_similarity_scores, accuracy_list, validation_error_list)
                     end_time = time.time()
                     execution_time = end_time - start_time
-                    log_experiment(target_data_name, source_data_name_list, execution_time,
+                    log_experiment(target_data_name, source_data_name_list, 0,0, 0,execution_time,
                                    self.token_tracker.cost_summary(), 0, self.control_method)
                     all_similarity_scores = []
                     break
 
                 print(f"*** itr {iteration_count} ***")
-
+                cost = self.token_tracker.cost_summary()
                 source_name, target_name, test_0_path, result_path, target_path = (
                     self._get_agent_args(len_idx_target_idx, self.source_start_idx, self.method))
+                ##test_path should be paths for multiple test cases,finding all path in the father folder of test_0_path
+                # Get the directory containing test_0_path
+                test_dir = os.path.dirname(test_0_path)
 
-                agent = Agent(source_name, target_name, target_path,test_0_path, source_data_schema_list, target_data_schema,
+                # Generate the pattern to match all test_*.csv files in the directory
+                pattern = os.path.join(test_dir, 'test_*.csv')
+
+                # Use glob to find all matching files
+                test_paths = glob.glob(pattern)
+
+                # Optionally, sort the paths if you need them in a specific order
+                test_paths.sort()
+                agent = Agent(source_data_name_list, target_data_name, target_path,test_paths, source_data_schema_list, target_data_schema,
                               source_samples_list, target_samples, result_path, self.control_method,self.token_tracker, self.logger,
                               backend=self.backend,
                               clarify_on=self.clarify_on, method=self.method)
@@ -129,16 +142,18 @@ class Experiment:
                     agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
                         if (sql_errors[-1] != '') else agent.prompt
                     print(f"Prompt: {agent.prompt}")
+                    end_time_1 = time.time()
+                    execution_time_1 = end_time_1 - start_time
                     gpt_output = agent.run(method=self.method)
                     self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
                     print("SQL Script Extracted from GPT Response:")
                     print(gpt_output)
-                    end_time_1 = time.time()
-                    execution_time_1 = end_time_1 - start_time
-                    # Execute the SQL script on the specified table
-                    sql_result = execute_sql(conn, gpt_output)
                     end_time_2 = time.time()
                     execution_time_2 = end_time_2 - end_time_1
+                    # Execute the SQL script on the specified table
+                    sql_result = execute_sql(conn, gpt_output)
+                    end_time = time.time()
+                    execution_time_3 = end_time - end_time_2
                     # print(f"SQL Result: {sql_result}")
                     if "Error:" in sql_result:
                         self.logger.error(f"iter{iteration_count} Error in the previous response {sql_result}")
@@ -163,11 +178,7 @@ class Experiment:
                     except Exception as e:
                         self.logger.error(f"Error while reading the result file: {e}")
                         print(f"Error while reading the result file: {e}")
-                        end_time = time.time()
-                        execution_time = end_time - start_time
-                        log_experiment(target_data_name, source_data_name_list, execution_time,
-                                       self.token_tracker.cost_summary(), 0, self.control_method)
-                        break
+                        continue
                     # SQL script returned by ChatGPT is executed correctly
                     if (validation_table_created == False):
                         with open(target_path, 'r', encoding="utf-8") as file:
@@ -179,9 +190,17 @@ class Experiment:
                     ground_truth_table_df = pd.DataFrame(ground_truth_table,columns=header)
                     # Validate the ChatGPT generated SQL script
                     # quality score if score > threshold else continue
-
-                    case_accuracy, is_correct, similarity_scores, validation_error = (
-                        compare_lists_matching(sql_result_df, ground_truth_table_df))
+                    try:
+                        case_accuracy, is_correct, similarity_scores, validation_error = (
+                            compare_lists_matching(sql_result_df, ground_truth_table_df))
+                    except Exception as e:
+                        self.logger.error(f"Error while comparing the results: {e}")
+                        print(f"Error while comparing the results: {e}")
+                        end_time = time.time()
+                        execution_time = end_time - start_time
+                        log_experiment(target_data_name, source_data_name_list, execution_time_1,execution_time_2, execution_time_3,0,
+                                       self.token_tracker.cost_summary(), 0, self.control_method)
+                        break
 
                     accuracy_list.append(case_accuracy)
                     validation_error_list.append(validation_error)
@@ -189,7 +208,6 @@ class Experiment:
                     print(is_correct)
                     end_time = time.time()
                     execution_time = end_time - start_time
-                    execution_time_3 = end_time - end_time_2
                     if is_correct:
                         log_experiment_success(target_data_name, source_data_name_list, iteration_count)
                         print("Execution time: ", execution_time)
@@ -207,31 +225,43 @@ class Experiment:
                         break
                 ##Monolithic prompt with data summary
                 if self.control_method == 'summary':
-                    source_df, target_df = get_df(**agent.agent_attrs)
+                    source_dfs, target_df = get_df(**agent.agent_attrs)
+                    # Data profiling for the target table
                     target_sa, target_ma, target_d = data_profiling(target_df)
-                    source_sa, source_ma = data_profiling(source_df, True)
                     hints_target = data_summary(target_sa, target_ma, target_d)
-                    hints_source = data_summary(source_sa, source_ma, 0, True)
 
-                    ###############################################
-                    agent.prompt = agent.prompt + "Here is data summary for source table:\n" + hints_source if hints_source else agent.prompt
-                    agent.prompt = agent.prompt + "\nHere is data summary for target table:" + hints_target if hints_target else agent.prompt
+                    # Initialize a string to hold all source summaries
+                    all_source_summaries = ""
+
+                    # Loop through each source dataframe, profile it and get the summary
+                    for i, source_df in enumerate(source_dfs):
+                        source_sa, source_ma, source_d = data_profiling(source_df)
+                        hints_source = data_summary(source_sa, source_ma, source_d, True)
+
+                        # Append each source summary to the string
+                        all_source_summaries += f"\nHere is data summary for source table {i + 1}:\n{hints_source}" if hints_source else ""
+
+                    # Add the summaries to the agent's prompt
+                    agent.prompt += all_source_summaries
+                    agent.prompt += f"\nHere is data summary for target table:\n{hints_target}" if hints_target else ""
 
                     # Run the experiment
                     agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
                         if (sql_errors[-1] != '') else agent.prompt
                     print(f"Prompt: {agent.prompt}")
-                    gpt_output = agent.run(method=self.method)
                     end_time_1 = time.time()
                     execution_time_1 = end_time_1 - start_time
+                    gpt_output = agent.run(method=self.method)
+
                     self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
                     print("SQL Script Extracted from GPT Response:")
                     print(gpt_output)
-
-                    # Execute the SQL script on the specified table
-                    sql_result = execute_sql(conn, gpt_output)
                     end_time_2 = time.time()
                     execution_time_2 = end_time_2 - end_time_1
+                    # Execute the SQL script on the specified table
+                    sql_result = execute_sql(conn, gpt_output)
+                    end_time = time.time()
+                    execution_time_3 = end_time - end_time_2
                     # print(f"SQL Result: {sql_result}")
                     if "Error:" in sql_result:
                         self.logger.error(f"iter{iteration_count} Error in the previous response {sql_result}")
@@ -257,8 +287,6 @@ class Experiment:
                         print(f"Error while reading the result file: {e}")
                         end_time = time.time()
                         execution_time = end_time - start_time
-                        log_experiment(target_data_name, source_data_name_list, execution_time,
-                                       self.token_tracker.cost_summary(), 0, self.control_method)
                         continue
 
                     # SQL script returned by ChatGPT is executed correctly
@@ -281,7 +309,6 @@ class Experiment:
                     all_similarity_scores.append(similarity_scores)
                     print(is_correct)
                     end_time = time.time()
-                    execution_time_3 = end_time - end_time_2
                     execution_time = end_time - start_time
                     if is_correct:
                         log_experiment_success(target_data_name, source_data_name_list, iteration_count)
@@ -306,19 +333,24 @@ class Experiment:
                     agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
                         if (sql_errors[-1] != '') else agent.prompt
                     print(f"Prompt: {agent.prompt}")
+                    end_time_1 = time.time()
+                    execution_time_1 = end_time_1 - start_time
                     gpt_output = agent.run(method=self.method)
                     self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
                     print("SQL Script Extracted from GPT Response:")
                     print(gpt_output)
-                    end_time_1 = time.time()
-                    execution_time_1 = end_time_1 - start_time
-                    schema_score, schema_feedback, column_mappings, target_handle = schema_quality(gpt_output,
+                    end_time_2 = time.time()
+                    execution_time_2 = end_time_2 - end_time_1
+                    if self.method != 'multi_source':
+                        schema_score, schema_feedback, column_mappings, target_handle = schema_quality(gpt_output,
                                                                                                    **agent.agent_attrs)
+                    else:
+                        schema_score, schema_feedback = 0, ''
 
                     # Execute the SQL script on the specified table
                     sql_result = execute_sql(conn, gpt_output)
-                    end_time_2 = time.time()
-                    execution_time_2 = end_time_2 - end_time_1
+                    end_time = time.time()
+                    execution_time_3 = end_time - end_time_2
                     # print(f"SQL Result: {sql_result}")
                     if not sql_result:
                         print("The SQL result is empty. Skipping to the next iteration.")
@@ -356,7 +388,10 @@ class Experiment:
                         dq_feedback = f"Some hints for the schema changes from the first table to the second table:Consider using aggregation functions and group by {low_diversity_columns}." if low_diversity_columns else ""
                     else:
                         dq_feedback = ""
-                    fd_score, fd_feedback = fd_quality(gpt_output, column_mappings,low_diversity_columns, **agent.agent_attrs)
+                    if self.method != 'multi_source':
+                        fd_score, fd_feedback = fd_quality(gpt_output, column_mappings,low_diversity_columns, **agent.agent_attrs)
+                    else:
+                        fd_score, fd_feedback = 0, ''
                     final_score = (schema_score + dq_score + fd_score) / 3
                     # SQL script returned by ChatGPT is executed correctly
                     if (validation_table_created == False):
@@ -383,7 +418,7 @@ class Experiment:
                         end_time = time.time()
                         execution_time = end_time - start_time
                         print("Execution time: ", execution_time)
-                        log_experiment(target_data_name, source_data_name_list, execution_time,
+                        log_experiment(target_data_name, source_data_name_list, execution_time_1,execution_time_2, execution_time_3,execution_time,
                                        self.token_tracker.cost_summary(), 1, self.control_method)
                         break
                     else:
@@ -395,7 +430,6 @@ class Experiment:
                               f"{validation_error}. Please try again.")
                         if iteration_count >= self.max_attempts:
                             end_time = time.time()
-                            execution_time_3 = end_time - end_time_2
                             execution_time = end_time - start_time
                             print("Execution time: ", execution_time)
                             log_experiment(target_data_name, source_data_name_list, execution_time_1,execution_time_2, execution_time_3,execution_time,
@@ -414,34 +448,48 @@ class Experiment:
                                 break
                 ##Monolithic prompt with data quality and data summary
                 if self.control_method == 'both':
-                    source_df, target_df = get_df(**agent.agent_attrs)
+                    source_dfs, target_df = get_df(**agent.agent_attrs)
+                    # Data profiling for the target table
                     target_sa, target_ma, target_d = data_profiling(target_df)
-                    source_sa, source_ma = data_profiling(source_df, True)
                     hints_target = data_summary(target_sa, target_ma, target_d)
-                    hints_source = data_summary(source_sa, source_ma, 0, True)
-                    end_time_1 = time.time()
-                    execution_time_1 = end_time_1 - start_time
-                    ###############################################
-                    agent.prompt = agent.prompt + "Here is data summary for source table:\n" + hints_source if hints_source else agent.prompt
-                    agent.prompt = agent.prompt + "\nHere is data summary for target table:" + hints_target if hints_target else agent.prompt
+
+                    # Initialize a string to hold all source summaries
+                    all_source_summaries = ""
+
+                    # Loop through each source dataframe, profile it and get the summary
+                    for i, source_df in enumerate(source_dfs):
+                        source_sa, source_ma, source_d = data_profiling(source_df)
+                        hints_source = data_summary(source_sa, source_ma, source_d, True)
+
+                        # Append each source summary to the string
+                        all_source_summaries += f"\nHere is data summary for source table {i + 1}:\n{hints_source}" if hints_source else ""
+
+                    # Add the summaries to the agent's prompt
+                    agent.prompt += all_source_summaries
+                    agent.prompt += f"\nHere is data summary for target table:\n{hints_target}" if hints_target else ""
                     agent.prompt = agent.prompt + schema_feedback + hints
                     # Run the experiment
                     agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
                         if (sql_errors[-1] != '') else agent.prompt
                     print(f"Prompt: {agent.prompt}")
-                    gpt_output = agent.run(method=self.method)
                     end_time_1 = time.time()
                     execution_time_1 = end_time_1 - start_time
+                    gpt_output = agent.run(method=self.method)
+                    end_time_2 = time.time()
+                    execution_time_2 = end_time_2 - end_time_1
                     self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
                     print("SQL Script Extracted from GPT Response:")
                     print(gpt_output)
-                    schema_score, schema_feedback, column_mappings, target_handle = schema_quality(gpt_output,
+                    if self.method != 'multi_source':
+                        schema_score, schema_feedback, column_mappings, target_handle = schema_quality(gpt_output,
                                                                                                    **agent.agent_attrs)
+                    else:
+                        schema_score, schema_feedback = 0, ''
 
                     # Execute the SQL script on the specified table
                     sql_result = execute_sql(conn, gpt_output)
-                    end_time_2 = time.time()
-                    execution_time_2 = end_time_2 - end_time_1
+                    end_time_3 = time.time()
+                    execution_time_3 = end_time_3 - end_time_2
                     if not sql_result:
                         print("The SQL result is empty. Skipping to the next iteration.")
                         # Skip the rest of the code in this iteration and continue with the next one
@@ -497,7 +545,6 @@ class Experiment:
 
                     if is_correct:
                         end_time = time.time()
-                        execution_time_3 = end_time - end_time_2
                         execution_time = end_time - start_time
                         log_experiment_success(target_data_name, source_data_name_list, iteration_count)
                         log_experiment(target_data_name, source_data_name_list, execution_time_1,execution_time_2, execution_time_3,execution_time,
@@ -513,7 +560,6 @@ class Experiment:
                             continue
                         else:
                             end_time = time.time()
-                            execution_time_3 = end_time - end_time_2
                             execution_time = end_time - start_time
                             print("Execution time: ", execution_time)
                             log_experiment(target_data_name, source_data_name_list, execution_time_1,execution_time_2, execution_time_3,execution_time,

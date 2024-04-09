@@ -318,7 +318,42 @@ Generate SQL code for the transformation. Ensure this code accounts for the hand
 
 Ensure the generated sql code incorporates insights from the analytical steps, especially the enhanced aggregation analysis, tailored to the specific requirements of the given schemas and data paths.
 
-Ensure the 'COPY' command is used for both data import and export steps. Do not comment them out. Please quote the returned SQL script between "```sql\n" and "\n```"
+Ensure the 'COPY' command is used for both data import and export steps. Do not comment them out as PostgreSQL support direct file writes from queries. Please quote the returned SQL script between "```sql\n" and "\n```"
+"""
+
+monolithic_template_join = """
+You are a SQL developer. Please generate a Postgres sql script to convert multi source table to be consistent with the format of the target table(Join or Union).
+
+Your Task Details:
+1. Multi Source Schema: {source_schema}
+2. Multi Source Table Name: {source_name}
+3. Target Schema: {target_schema}
+4. Target Table Name: {target_name}
+5. Multi Source Examples: {source_examples}
+6. Target Examples: {target_examples}
+7. Multi Source Data File Path: {test_0_path}.
+
+Do the following analytical steps:
+- TypePredict (Robust Decision-Making): Predicts the datatype for columns, bearing in mind the subset nature of the provided source data. Given the potential for unseen decimal values in the complete dataset, default to 'DECIMAL' for numerical columns unless there is absolute certainty that the data is strictly integers. For date columns, carefully consider whether to use 'DATE' or 'TEXT' based on the format and usage requirements. [Parameters: source_column_examples, target_column_examples].
+- Mapping: Establishes correspondences between source and target schema columns. Ensure to use double quotes for any reserved keywords used as column names, such as "user". Include strategies for handling date formats in this process. [Parameters: source_schema, target_schema].
+- Aggregation (Contextual Analysis): Determines if target columns are aggregates of source columns and infers the types of aggregation appropriate for the data context. Pay special attention to date fields and how their format might impact aggregation. [Parameters: source_schema, target_schema].
+- Conditional: Identifies conditions or filters for the transformation, including any related to date formats. [Parameters: source_schema, target_schema, condition].
+- Join or Union: Determine the appropriate method for combining the multiple source tables, ensuring that the resulting data is consistent with the target schema. [Parameters: source_schema, target_schema].
+
+Generate SQL code for the transformation. Ensure this code accounts for the handling of date formats, whether preserving them as 'TEXT' or converting them to 'DATE', and addresses any syntax issues. [Parameters: transformation_sql_code].
+1. Analyze using all tools for a comprehensive understanding and accurate data transformation.
+2. Create Source Table: Define and create the source table '{source_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and carefully handle date formats as per the analysis.
+3. Data Import: Load data from CSV at '{test_0_path}', treating empty values as NULL and correctly handling date formats.
+4. Create Target Table: Define and create the target table '{target_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and ensure date formats are correctly handled.
+5. COPY the SQL result into a CSV file "{result_path}{target_name}_result_monolithic.csv".
+
+Ensure the generated sql code incorporates insights from the analytical steps, especially the enhanced aggregation analysis, tailored to the specific requirements of the given schemas and data paths.
+
+Please join on track_id.
+
+Ensure the 'COPY' command is used for both data import and export steps. Do not comment them out as PostgreSQL support direct file writes from queries. Please quote the returned SQL script between "```sql\n" and "\n```"
+
+
 """
 
 # You are a data administrator. You are very good at performing data schema transformation tasks.
