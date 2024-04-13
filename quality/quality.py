@@ -626,21 +626,21 @@ def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma
     hints = transformation_hints + fd_mismatch_hints + value_pattern_mismatch_hints
     return "\n".join(hints) if hints else ""
 
-
-import os
-from valentine import valentine_match
-from valentine.algorithms import Coma,Cupid
-
-# Load data using pandas
-d1_path = 'D:/transchema\github-pipelines\length1_8/test_0.csv'
-d2_path = 'D:/transchema\github-pipelines\length1_8/test_1.csv'
-df1 = pd.read_csv(d1_path)
-df2 = pd.read_csv(d2_path)
-
-# Instantiate matcher and run
-#matcher = Coma(use_instances=True)
-matcher = Cupid()
-matches = valentine_match(df1, df2, matcher)
-
-print(matches)
-
+#
+# import os
+# from valentine import valentine_match
+# from valentine.algorithms import Coma,Cupid
+#
+# # Load data using pandas
+# d1_path = 'D:/transchema\github-pipelines\length1_8/test_0.csv'
+# d2_path = 'D:/transchema\github-pipelines\length1_8/test_1.csv'
+# df1 = pd.read_csv(d1_path)
+# df2 = pd.read_csv(d2_path)
+#
+# # Instantiate matcher and run
+# #matcher = Coma(use_instances=True)
+# matcher = Cupid()
+# matches = valentine_match(df1, df2, matcher)
+#
+# print(matches)
+#

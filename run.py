@@ -16,13 +16,14 @@ def parse_args():
 
     # Agent
     args.add_argument('--clarity_on', type=bool, default=False)
+    args.add_argument('--script_language', type=str, choices=['sql', 'python'], default='sql')
     args.add_argument('--method', type=str, choices=['monolithic', 'mcts', 'cot','multi_source'], default='multi_source')
     # Search
     # MCTS
 
     args.add_argument('--backend', type=str,
-                      choices=['gpt-3.5-turbo-16k', 'gpt-4-1106-preview', 'gpt-4-0125-preview'],
-                      default='gpt-4-0125-preview')
+                      choices=['gpt-3.5-turbo-0125', 'gpt-4-turbo'],
+                      default='gpt-4-turbo')
     args.add_argument('--temperature', type=float, default=0)
 
     # 1000

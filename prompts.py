@@ -356,6 +356,74 @@ Ensure the 'COPY' command is used for both data import and export steps. Do not 
 
 """
 
+cot_multi_source_template = """
+You are a SQL developer. Please generate a Postgres sql script to convert multi source table to be consistent with the format of the target table (Consider Join or Union).
+
+Your Task Details:
+1. Target Table Name: {target_name}
+2. Target Schema: {target_schema}
+3. Target Examples: {target_examples}
+4. Multi Source Information: {source_info}
+
+Note: The row examples provided are not necessarily corresponding rows. They are simply examples of rows in the source and target schemas.
+
+Transformation Plan:
+- Provide a high-level plan for transforming the data from the source tables to match the target table format. 
+Transformation Plan:
+- Provide a detailed plan, step by step for transforming the data from the source tables to match the target table format. 
+- Each step should be a concrete data manipulation, such as a query.
+- Each step could be something similar to the following candidate steps:
+(1) union two tables that have similar schemas
+(2) join two tables that have shared columns on the shared columns
+(3) aggregation
+(4) selection or filtering
+(5) applying a projection or transformation function.
+
+SQL Script:
+Based on the transformation plan, generate the SQL script that implements the transformation. Ensure this code accounts for the handling of date formats, whether preserving them as 'TEXT' or converting them to 'DATE', and addresses any syntax issues. [Parameters: transformation_sql_code].
+The script should handle table creation, data import, transformation, and export:
+- Create Source Table: Define and create the source tables. For each source table, dropping it first if it exists. Use double quotes for any reserved keywords used as column names and carefully handle date formats as per the analysis.
+- Data Import: Load data from CSV at '{test_0_path}', treating empty values as NULL and correctly handling date formats.
+- Create Target Table: Define and create the target table '{target_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and ensure date formats are correctly handled.
+- COPY the SQL result into a CSV file "{result_path}{target_name}_result_cot_multi_source.csv".
+
+Do not omit any necessary steps (even if there are repetitions) in the transformation process. Always ensure that the SQL script is complete and accurate, reflecting the specific requirements of the given schemas and data paths.
+Never skip any step for brevity, as each step is crucial for the successful transformation of the data.
+Never skip Data import steps, as they are essential for the transformation process.
+Ensure the 'COPY' command is used for both data import and export steps. Do not comment the COPY out. 
+Please quote the returned SQL script between "```sql\n" and "\n```"
+"""
+
+cot_multi_source_python_template = """
+You are a Python developer. Please generate a Python script to convert multiple source tables to the format of the target table (Consider Join or Union).
+
+Your Task Details:
+1. Target Table Name: {target_name}
+2. Target Schema: {target_schema}
+3. Target Examples: {target_examples}
+4. Multi Source Information: {source_info}
+
+Note: The row examples provided are not necessarily corresponding rows. They are simply examples of rows in the source and target schemas.
+
+Transformation Plan:
+- Provide a high-level plan for transforming the data from the source tables to match the target table format. 
+Transformation Plan:
+- Provide a detailed plan, step by step for transforming the data from the source tables to match the target table format. 
+- Each step should be a concrete data manipulation, such as a query.
+- Each step could be something similar to the following candidate steps:
+(1) union two tables that have similar schemas
+(2) join two tables that have shared columns on the shared columns
+(3) aggregation
+(4) selection or filtering
+(5) applying a projection or transformation function.
+
+Python Script:
+- Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export.
+
+Please quote the Python script between "```Python
+" and "```"
+
+"""
 # You are a data administrator. You are very good at performing data schema transformation tasks.
 # You are given source schemas and a target schema and some example data. You are asked to transform the source schema to the target schema.
 # In addition to answering the question, you are also expected to provide a step-by-step explanation of the answer.

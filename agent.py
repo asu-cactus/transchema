@@ -1,8 +1,9 @@
 # agent.py
 from util.schema_trans_tools import SchemaTransformTools
 from llm.llm_models import LLMClient
-from prompts import init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, \
-    monolithic_template, cot_template, monolithic_template_join
+from prompts import (init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, \
+    monolithic_template, cot_template, monolithic_template_join, cot_multi_source_template,
+                     cot_multi_source_python_template)
 from langchain.prompts import PromptTemplate
 from action import ActionGraph
 import random
@@ -27,7 +28,7 @@ def get_input_variables(method):
 class Agent:
     def __init__(self, source_name, target_name, target_path, test_0_path, source_schema, target_schema, source_examples,
                  target_examples, result_path, control_method, token_tracker, logger,
-                 backend, clarify_on=False, method='react', max_steps=20):
+                 backend, script_language, clarify_on=False, method='react', max_steps=20):
         self.source_name = source_name
         self.target_name = target_name
         self.target_path = target_path
@@ -43,6 +44,7 @@ class Agent:
         self.token_tracker = token_tracker
         self.logger = logger
         self.backend = backend
+        self.script_language = script_language
         self.llm_client = LLMClient(model=self.backend, tracker=self.token_tracker, logger=self.logger)
         self.state = None
         self.action_graph = ActionGraph()
@@ -51,7 +53,7 @@ class Agent:
         self.agent_attrs = None
         if method == 'monolithic' or method == 'cot':
             template = PromptTemplate(input_variables=get_input_variables(method),
-                                      template=monolithic_template if method == 'monolithic' else cot_template)
+                                      template=monolithic_template)
             self.prompt = template.format(
                 source_schema=source_schema,
                 target_schema=target_schema,
@@ -63,16 +65,24 @@ class Agent:
                 result_path=result_path
             )
             self.agent_attrs = self.get_all_agent_attrs_mono()
-        if method == 'multi_source' :
+        elif method == 'multi_source' :
             template = PromptTemplate(input_variables=get_input_variables(method),
-                                      template=monolithic_template_join )
+                                      template=cot_multi_source_template if script_language == 'sql' else cot_multi_source_python_template)
+            # show the source information one by one
+            source_info = '\n'
+            for i in range(len(source_schema)):
+                source_info += (f"Source {i}:\n"
+                                f"\tSource {i} Name: {source_name[i]}\n"
+                                f"\tSource {i} Schema: {source_schema[i]}\n"
+                                f"\tSource {i} Examples: {source_examples[i]}\n"
+                                f"\tSource {i} Path: {test_0_path[i]}\n")
+
+
             self.prompt = template.format(
-                source_schema=source_schema,
-                target_schema=target_schema,
-                source_examples=source_examples,
-                target_examples=target_examples,
-                source_name=source_name,
                 target_name=target_name,
+                target_schema=target_schema,
+                target_examples=target_examples,
+                source_info=source_info,
                 test_0_path=test_0_path,
                 result_path=result_path
             )
@@ -139,7 +149,12 @@ class Agent:
         return observation, finish
 
     def run_baseline(self, verbose=True):
-        return self.llm_client.gpt(self.prompt)[0].split("```sql")[1].split("```")[0].strip()
+        res =  self.llm_client.gpt(self.prompt)
+        # print('Response - SQL', res)
+        if self.script_language == 'python':
+            return res[0].split("```Python")[1].split("```")[0].strip()
+        elif self.script_language == 'sql':
+            return res[0].split("```sql")[1].split("```")[0].strip()
 
     def run_mcts(self, verbose=True):
         # Use MCTS for action selection

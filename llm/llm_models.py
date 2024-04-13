@@ -26,9 +26,10 @@ class TokenUsageTracker:
     def _calculate_cost(self, model):
         """Calculates the cost based on the model and its token usage."""
         rate = {
-            "gpt-4-1106-preview": (0.06, 0.03),
-            "gpt-3.5-turbo-16k": (0.002, 0.0015),
-            "gpt-4-0125-preview": (0.06, 0.03),
+            #"gpt-4-1106-preview": (0.06, 0.03),
+            "gpt-3.5-turbo-0125": (0.0015, 0.0005), #gpt-3.5-turbo-16k
+            #"gpt-4-0125-preview": (0.06, 0.03),
+            "gpt-4-turbo": (0.03, 0.01), # This model supports at most 4096 completion tokens,
         }.get(model, (0, 0))
 
         model_usage = self.usage.get(model, {'completion_tokens': 0, 'prompt_tokens': 0})
@@ -74,7 +75,7 @@ class LLMClient:
     def calculate_token_length(self, text):
         return len(self.encoding.encode(text))
 
-    def chatgpt(self, messages, temperature=1.0, max_tokens=2000, n=1, stop=None):
+    def chatgpt(self, messages, temperature=1.0, max_tokens=4096, n=1, stop=None):
         """Sends chat requests to the model and returns the responses."""
         outputs = []
         while n > 0:

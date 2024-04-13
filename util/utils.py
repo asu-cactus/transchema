@@ -103,6 +103,13 @@ def execute_sql(conn, query):
         conn.rollback()  # Rollback the transaction on error
         return f"Error: {e.pgerror}"
 
+def execute_python(gpt_response):
+    try:
+        exec(gpt_response)
+        return "Success"
+    except Exception as e:
+        return f"Error: {e}"
+
 
 # def create_table(conn, create_statement):
 #     print(create_statement)
@@ -313,7 +320,7 @@ def get_test_info(json_file_path, len_id_target_id):
 
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
-    main_folder_name = os.path.abspath("github-pipelines")
+    main_folder_name = os.path.abspath("github-pipelines-l9")
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
 
     # Counting files starting with 'test' in this subfolder

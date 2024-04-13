@@ -10,14 +10,14 @@ import logging
 from datetime import datetime
 from llm.llm_models import TokenUsageTracker
 from quality.quality import get_df, data_summary, data_profiling, schema_quality, fd_quality, data_quality, data_morpher
-from util.utils import (create_connection, execute_sql, log_experiment_settings,
+from util.utils import (create_connection, execute_sql, execute_python, log_experiment_settings,
                         log_experiment_success, log_experiment_failed,
                         compare_lists_matching, get_test_info, log_experiment)
 from test_scope import get_test_cases_ids
 
 class Experiment:
     def __init__(self, method, max_pipeline_len_idx, pipeline_len_start_idx, max_target_idx, target_start_idx, backend,
-                 log_dir, control_method,source_start_idx=0,
+                 log_dir, control_method, script_language, source_start_idx=0,
                  max_attempts=1, data_path='./data/chatgpt.json', clarify_on=False, **kwargs):
         self.task_list = []
         self.logger = None
@@ -34,6 +34,7 @@ class Experiment:
         self.log_dir = log_dir
         self.clarify_on = clarify_on
         self.control_method = control_method
+        self.script_language = script_language
 
     def create_logger(self):
         # Get current system time
@@ -62,7 +63,7 @@ class Experiment:
 
     def _get_agent_args(self, len_idx_target_idx, source_start_idx, method):
         sub_folder_name = f"length{len_idx_target_idx}"
-        main_folder_name = os.path.abspath("github-pipelines")
+        main_folder_name = os.path.abspath("github-pipelines-l9")
         # main_folder_name = os.path.abspath("/tmp/github-pipelines")  # Changed to point to /tmp for mac
         target_path = os.path.join(main_folder_name, sub_folder_name, f"target.csv")
         test_0_path = os.path.join(main_folder_name, sub_folder_name, f"test_0.csv")
@@ -134,8 +135,9 @@ class Experiment:
                 test_paths.sort()
                 agent = Agent(source_data_name_list, target_data_name, target_path,test_paths, source_data_schema_list, target_data_schema,
                               source_samples_list, target_samples, result_path, self.control_method,self.token_tracker, self.logger,
-                              backend=self.backend,
+                              backend=self.backend, script_language=self.script_language,
                               clarify_on=self.clarify_on, method=self.method)
+
                 ##Monolithic prompt only
                 if self.control_method == 'none':
                     # Run the experiment
@@ -148,10 +150,13 @@ class Experiment:
                     self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
                     print("SQL Script Extracted from GPT Response:")
                     print(gpt_output)
+
+                    # execute some table creation and data importing
+
                     end_time_2 = time.time()
                     execution_time_2 = end_time_2 - end_time_1
                     # Execute the SQL script on the specified table
-                    sql_result = execute_sql(conn, gpt_output)
+                    sql_result = execute_sql(conn, gpt_output) if self.script_language == 'sql' else execute_python(gpt_output)
                     end_time = time.time()
                     execution_time_3 = end_time - end_time_2
                     # print(f"SQL Result: {sql_result}")
