@@ -402,23 +402,23 @@ Your Task Details:
 2. Target Schema: {target_schema}
 3. Target Examples: {target_examples}
 4. Multi Source Information: {source_info}
+5. Write the result to this path: {result_path}
 
 Note: The row examples provided are not necessarily corresponding rows. They are simply examples of rows in the source and target schemas.
 
 Transformation Plan:
-- Provide a high-level plan for transforming the data from the source tables to match the target table format. 
-Transformation Plan:
 - Provide a detailed plan, step by step for transforming the data from the source tables to match the target table format. 
 - Each step should be a concrete data manipulation, such as a query.
 - Each step could be something similar to the following candidate steps:
-(1) union two tables that have similar schemas
-(2) join two tables that have shared columns on the shared columns
+(1) union two tables that have similar schemas and non-overlapping tuples.
+(2) join two tables that have shared columns with overlapping values.
 (3) aggregation
 (4) selection or filtering
-(5) applying a projection or transformation function.
+(5) applying a projection
+(6) applying a transformation function.
 
 Python Script:
-- Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export.
+- Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
 
 Please quote the Python script between "```Python
 " and "```"

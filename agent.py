@@ -77,7 +77,7 @@ class Agent:
                                 f"\tSource {i} Examples: {source_examples[i]}\n"
                                 f"\tSource {i} Path: {test_0_path[i]}\n")
 
-
+            print("DEBUG-- RESULT PATH:"+result_path)
             self.prompt = template.format(
                 target_name=target_name,
                 target_schema=target_schema,

@@ -1,7 +1,7 @@
 import os
 import logging
 import json
-
+import pandas as pd
 
 def convert_target_names(target_names_str):
     target_names = target_names_str.split(',')
@@ -187,6 +187,7 @@ def log_experiment(target_data_name, source_data_name_to_find,execution_time_1,e
     file_path = f'log/{method}.log'
     with open(file_path, 'a+') as file:
         if success:
+            print(cost)
             file.write(
                 f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n")
         else:
@@ -287,15 +288,26 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
     similarities = []
     all_mismatches = []
 
+    num_cols = len(generated_sql_df.columns)
+
     for col in generated_sql_df.columns:
+
+
+        if (col == 'Unnamed: 0'):
+            print("skip 'Unnamed: 0'")
+            num_cols -= 1
+            continue
+
         pred_column = generated_sql_df[col].tolist()
         gold_column = ground_truth_df[col].tolist()
 
         # Use the updated function to determine if the column is numerically dominant
         is_numerical = is_column_numerically_dominant(generated_sql_df[col])
 
+
         # Use the updated compare_columns function
         column_similarity = compare_columns(pred_column, gold_column)
+
         similarities.append(column_similarity)
 
         if column_similarity < 1:
@@ -305,7 +317,7 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
                 if not are_elements_equal(pred_column[i], gold_column[i])]
             all_mismatches.append((col, mismatches))
 
-    average_similarity = sum(similarities) / len(generated_sql_df.columns)
+    average_similarity = sum(similarities) / num_cols
     res = average_similarity == 1
 
     return average_similarity, res, similarities, all_mismatches
