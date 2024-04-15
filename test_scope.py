@@ -3,6 +3,7 @@ import json
 
 def get_test_cases_ids(json_file_path, len_id, max_len_id, target_id, max_target_id):
     # Read the JSON file
+    print(json_file_path)
     with open(json_file_path, 'r') as file:
         data_list = json.load(file)
 
@@ -110,4 +111,4 @@ def get_test_cases_ids(json_file_path, len_id, max_len_id, target_id, max_target
     filtered_ids = [x for x in filtered_ids if not (x in seen or seen.add(x))]
     print(len(filtered_ids))
 
-    return ['Target9_75']
+    return ['Target9_10']

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains Python scripts designed to automate the generation of SQL queries using the GPT-3.5 model from OpenAI. It also includes utility functions for database operations, file reading, logging, and similarity calculations.
+This repository contains Python scripts designed to automate the generation of SQL/Python queries using the GPT-3.5/GPT-4.0 model from OpenAI. It also includes utility functions for database operations, file reading, logging, and similarity calculations.
 
 ---
 
@@ -24,6 +24,7 @@ This repository contains Python scripts designed to automate the generation of S
 - `matplotlib`
 - `seaborn`
 - `sqlparse`
+- `postgres`
 - `psycopg2-binary`
 - `numpy`
 - `sklearn`
@@ -34,17 +35,22 @@ This repository contains Python scripts designed to automate the generation of S
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/asu-cactus/ChatGPTwithSQLscript.git
+    git clone https://github.com/asu-cactus/transchema.git
     ```
 2. Navigate to the project directory:
     ```bash
-    cd ChatGPTwithSQLscript
+    cd transchema
     ```
 3. Install the required packages:
     ```bash
     pip install -r requirements.txt
     ```
-
+4. Install postgres and create a user postgres
+   ```bash
+   brew install postgresql
+   brew info postgresql@14
+   /opt/homebrew/opt/postgresql@14/bin/createuser -s postgres
+   ```   
 ---
 
 ## Usage

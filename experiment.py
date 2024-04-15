@@ -147,8 +147,8 @@ class Experiment:
                     end_time_1 = time.time()
                     execution_time_1 = end_time_1 - start_time
                     gpt_output = agent.run(method=self.method)
-                    self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
-                    print("SQL Script Extracted from GPT Response:")
+                    self.logger.info(f"SQL/Python Script Extracted from GPT Response:\n {gpt_output}")
+                    print("SQL/Python Script Extracted from GPT Response:")
                     print(gpt_output)
 
                     # execute some table creation and data importing
@@ -156,22 +156,22 @@ class Experiment:
                     end_time_2 = time.time()
                     execution_time_2 = end_time_2 - end_time_1
                     # Execute the SQL script on the specified table
-                    sql_result = execute_sql(conn, gpt_output) if self.script_language == 'sql' else execute_python(gpt_output)
+                    execution_result = execute_sql(conn, gpt_output) if self.script_language == 'sql' else execute_python(gpt_output)
                     end_time = time.time()
                     execution_time_3 = end_time - end_time_2
-                    # print(f"SQL Result: {sql_result}")
-                    if "Error:" in sql_result:
-                        self.logger.error(f"iter{iteration_count} Error in the previous response {sql_result}")
-                        print(f"\n iter{iteration_count} Error in the previous response: {sql_result}")
+                    # print(f"Execution Result: {execution_result}")
+                    if "Error:" in execution_result:
+                        self.logger.error(f"iter{iteration_count} Error in the previous response {execution_result}")
+                        print(f"\n iter{iteration_count} Error in the previous response: {execution_result}")
                         with open('log/all_similarity_scores.log', 'a+') as file:
                             file.write(f"{target_data_name} <- {source_data_name_list}")
-                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {sql_result}\n")
+                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {execution_result}\n")
                         accuracy_list.append(0.0)
                         # break
-                        sql_errors.append(sql_result)
+                        sql_errors.append(execution_result)
                         continue
 
-                    # not using sql_result directly, as numeric vs string values will occur while validation
+                    # not using execution_result directly, as numeric vs string values will occur while validation
                     our_result = []
                     try:
                         with open(result_path, 'r', encoding="utf-8") as file:
@@ -179,7 +179,7 @@ class Experiment:
                             header = next(reader)
                             for row in reader:
                                 our_result.append(tuple(row))
-                        sql_result_df = pd.DataFrame(our_result,columns=header)
+                        execution_result_df = pd.DataFrame(our_result,columns=header)
                     except Exception as e:
                         self.logger.error(f"Error while reading the result file: {e}")
                         print(f"Error while reading the result file: {e}")
@@ -197,7 +197,12 @@ class Experiment:
                     # quality score if score > threshold else continue
                     try:
                         case_accuracy, is_correct, similarity_scores, validation_error = (
-                            compare_lists_matching(sql_result_df, ground_truth_table_df))
+                            compare_lists_matching(execution_result_df, ground_truth_table_df))
+
+                        print(case_accuracy)
+                        print(is_correct)
+                        print(similarity_scores)
+                        print(validation_error)
                     except Exception as e:
                         self.logger.error(f"Error while comparing the results: {e}")
                         print(f"Error while comparing the results: {e}")
@@ -264,21 +269,21 @@ class Experiment:
                     end_time_2 = time.time()
                     execution_time_2 = end_time_2 - end_time_1
                     # Execute the SQL script on the specified table
-                    sql_result = execute_sql(conn, gpt_output)
+                    execution_result = execute_sql(conn, gpt_output)
                     end_time = time.time()
                     execution_time_3 = end_time - end_time_2
-                    # print(f"SQL Result: {sql_result}")
-                    if "Error:" in sql_result:
-                        self.logger.error(f"iter{iteration_count} Error in the previous response {sql_result}")
-                        print(f"\n iter{iteration_count} Error in the previous response: {sql_result}")
+                    # print(f"SQL Result: {execution_result}")
+                    if "Error:" in execution_result:
+                        self.logger.error(f"iter{iteration_count} Error in the previous response {execution_result}")
+                        print(f"\n iter{iteration_count} Error in the previous response: {execution_result}")
                         with open('log/all_similarity_scores.log', 'a+') as file:
                             file.write(f"{target_data_name} <- {source_data_name_list}")
-                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {sql_result}\n")
+                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {execution_result}\n")
                         accuracy_list.append(0.0)
                         # break
-                        sql_errors.append(sql_result)
+                        sql_errors.append(execution_result)
                         continue
-                    # not using sql_result directly, as numeric vs string values will occur while validation
+                    # not using execution_result directly, as numeric vs string values will occur while validation
                     our_result = []
                     try:
                         with open(result_path, 'r', encoding="utf-8") as file:
@@ -286,7 +291,7 @@ class Experiment:
                             header = next(reader)
                             for row in reader:
                                 our_result.append(tuple(row))
-                        sql_result_df = pd.DataFrame(our_result,columns=header)
+                        execution_result_df = pd.DataFrame(our_result,columns=header)
                     except Exception as e:
                         self.logger.error(f"Error while reading the result file: {e}")
                         print(f"Error while reading the result file: {e}")
@@ -307,7 +312,7 @@ class Experiment:
                     # quality score if score > threshold else continue
 
                     case_accuracy, is_correct, similarity_scores, validation_error = (
-                        compare_lists_matching(sql_result_df, ground_truth_table_df))
+                        compare_lists_matching(execution_result_df, ground_truth_table_df))
 
                     accuracy_list.append(case_accuracy)
                     validation_error_list.append(validation_error)
@@ -353,26 +358,26 @@ class Experiment:
                         schema_score, schema_feedback = 0, ''
 
                     # Execute the SQL script on the specified table
-                    sql_result = execute_sql(conn, gpt_output)
+                    execution_result = execute_sql(conn, gpt_output)
                     end_time = time.time()
                     execution_time_3 = end_time - end_time_2
-                    # print(f"SQL Result: {sql_result}")
-                    if not sql_result:
+                    # print(f"SQL Result: {execution_result}")
+                    if not execution_result:
                         print("The SQL result is empty. Skipping to the next iteration.")
                         # Skip the rest of the code in this iteration and continue with the next one
                         continue  # Assuming this code is within a loop
-                    if "Error:" in sql_result:
-                        self.logger.error(f"iter{iteration_count} Error in the previous response {sql_result}")
-                        print(f"\n iter{iteration_count} Error in the previous response: {sql_result}")
+                    if "Error:" in execution_result:
+                        self.logger.error(f"iter{iteration_count} Error in the previous response {execution_result}")
+                        print(f"\n iter{iteration_count} Error in the previous response: {execution_result}")
                         with open('log/all_similarity_scores.log', 'a+') as file:
                             file.write(f"{target_data_name} <- {source_data_name_list}")
-                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {sql_result}\n")
+                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {execution_result}\n")
                         accuracy_list.append(0.0)
                         # break
-                        sql_errors.append(sql_result)
+                        sql_errors.append(execution_result)
                         continue
 
-                    # not using sql_result directly, as numeric vs string values will occur while validation
+                    # not using execution_result directly, as numeric vs string values will occur while validation
                     our_result = []
                     try:
                         with open(result_path, 'r', encoding="utf-8") as file:
@@ -380,7 +385,7 @@ class Experiment:
                             header = next(reader)
                             for row in reader:
                                 our_result.append(tuple(row))
-                        sql_result_df = pd.DataFrame(our_result,columns=header)
+                        execution_result_df = pd.DataFrame(our_result,columns=header)
                     except Exception as e:
                         self.logger.error(f"Error while reading the result file: {e}")
                         print(f"Error while reading the result file: {e}")
@@ -388,7 +393,7 @@ class Experiment:
 
                     target_handle = ast.literal_eval(target_data_schema)
                     # Data Quality
-                    dq_score, low_diversity_columns = data_quality(sql_result, target_handle)
+                    dq_score, low_diversity_columns = data_quality(execution_result, target_handle)
                     if dq_score < 0.6:
                         dq_feedback = f"Some hints for the schema changes from the first table to the second table:Consider using aggregation functions and group by {low_diversity_columns}." if low_diversity_columns else ""
                     else:
@@ -411,7 +416,7 @@ class Experiment:
                     # quality score if score > threshold else continue
 
                     case_accuracy, is_correct, similarity_scores, validation_error = (
-                        compare_lists_matching(sql_result_df, ground_truth_table_df))
+                        compare_lists_matching(execution_result_df, ground_truth_table_df))
 
                     accuracy_list.append(case_accuracy)
                     validation_error_list.append(validation_error)
@@ -492,26 +497,26 @@ class Experiment:
                         schema_score, schema_feedback = 0, ''
 
                     # Execute the SQL script on the specified table
-                    sql_result = execute_sql(conn, gpt_output)
+                    execution_result = execute_sql(conn, gpt_output)
                     end_time_3 = time.time()
                     execution_time_3 = end_time_3 - end_time_2
-                    if not sql_result:
+                    if not execution_result:
                         print("The SQL result is empty. Skipping to the next iteration.")
                         # Skip the rest of the code in this iteration and continue with the next one
                         continue  # Assuming this code is within a loop
-                    # print(f"SQL Result: {sql_result}")
-                    if "Error:" in sql_result:
-                        self.logger.error(f"iter{iteration_count} Error in the previous response {sql_result}")
-                        print(f"\n iter{iteration_count} Error in the previous response: {sql_result}")
+                    # print(f"SQL Result: {execution_result}")
+                    if "Error:" in execution_result:
+                        self.logger.error(f"iter{iteration_count} Error in the previous response {execution_result}")
+                        print(f"\n iter{iteration_count} Error in the previous response: {execution_result}")
                         with open('log/all_similarity_scores.log', 'a+') as file:
                             file.write(f"{target_data_name} <- {source_data_name_list}")
-                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {sql_result}\n")
+                            file.write(f"\t\t\t\t[Failed]\n\tError in the previous response: {execution_result}\n")
                         accuracy_list.append(0.0)
                         # break
-                        sql_errors.append(sql_result)
+                        sql_errors.append(execution_result)
                         continue
 
-                    # not using sql_result directly, as numeric vs string values will occur while validation
+                    # not using execution_result directly, as numeric vs string values will occur while validation
                     our_result = []
                     try:
                         with open(result_path, 'r', encoding="utf-8") as file:
@@ -519,12 +524,12 @@ class Experiment:
                             header = next(reader)
                             for row in reader:
                                 our_result.append(tuple(row))
-                        sql_result_df = pd.DataFrame(our_result,columns=header)
+                        execution_result_df = pd.DataFrame(our_result,columns=header)
                     except Exception as e:
                         self.logger.error(f"Error while reading the result file: {e}")
                         print(f"Error while reading the result file: {e}")
                         continue
-                    result_sa, result_ma, result_d = data_profiling(sql_result_df)
+                    result_sa, result_ma, result_d = data_profiling(execution_result_df)
 
                     hints = data_morpher(target_sa, target_ma, target_d, result_sa, result_ma, result_d)
 
@@ -541,7 +546,7 @@ class Experiment:
                     # quality score if score > threshold else continue
 
                     case_accuracy, is_correct, similarity_scores, validation_error = (
-                        compare_lists_matching(sql_result_df, ground_truth_table_df))
+                        compare_lists_matching(execution_result_df, ground_truth_table_df))
 
                     accuracy_list.append(case_accuracy)
                     validation_error_list.append(validation_error)

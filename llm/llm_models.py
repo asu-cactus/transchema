@@ -5,7 +5,6 @@ from openai import OpenAI
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai.api_key)
-
 import backoff
 import tiktoken
 

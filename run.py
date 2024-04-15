@@ -30,7 +30,6 @@ def parse_args():
     args.add_argument('--prompt_sample', type=str, choices=['standard', 'cot'], default='cot')
     args.add_argument('--n_generate_sample', type=int, default=1)
     args.add_argument('--n_evaluate_sample', type=int, default=1)
-    args.add_argument('--iterations', type=int, default=30)
     # Others
     args.add_argument('--log_dir', type=str, default='logs/')
     args.add_argument('--control_method', type=str, choices=['none','quality','summary','both'],default='none')
