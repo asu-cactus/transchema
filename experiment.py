@@ -226,9 +226,9 @@ class Experiment:
                         break
                     else:
                         # if not is_correct:
-                        self.logger.error(f"The returned SQL script can run, but the execution result of the SQL is wrong: "
+                        self.logger.error(f"The returned SQL/Python script can run, but the execution result of the SQL is wrong: "
                               f"{validation_error}. Please try again.")
-                        print(f"The returned SQL script can run, but the execution result of the SQL is wrong: "
+                        print(f"The returned SQL/Python script can run, but the execution result of the SQL is wrong: "
                               f"{validation_error}. Please try again.")
                         log_experiment(target_data_name, source_data_name_list, execution_time_1,execution_time_2, execution_time_3,execution_time,
                                        self.token_tracker.cost_summary(), 0, self.control_method)

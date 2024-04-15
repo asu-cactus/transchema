@@ -243,17 +243,22 @@ def numerical_similarity(num1, num2, threshold=1e-8):
 
 def is_column_numerically_dominant(column):
     numeric_count = 0
+    total_count = len(column)
     for val in column:
         try:
             float(val)
             numeric_count += 1
         except (ValueError, TypeError):
             if val == '':
-                numeric_count += 1  # treating empty string as valid for numeric
-    return numeric_count / len(column) > 0.5  # Majority of values are numeric
+                total_count -= 1  # do not consider empty string
+    return numeric_count / total_count > 0.5  # Majority of values are numeric
 
 
 def compare_columns(pred_column, gold_column, threshold=1e-8):
+
+    pred_column.sort()
+    gold_column.sort()
+
     # Determine if columns are numerically dominant
     is_numerical_a = is_column_numerically_dominant(pred_column)
     is_numerical_b = is_column_numerically_dominant(gold_column)
@@ -275,11 +280,20 @@ def compare_columns(pred_column, gold_column, threshold=1e-8):
 
 # Main Comparison Function
 def compare_lists_matching(generated_sql_df, ground_truth_df):
+ 
+    print("Sorting")
+
+    generated_sql_df = generated_sql_df.loc[:,~generated_sql_df.columns.duplicated()].copy()
     generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
     ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
 
+
+    print("Comparing column lengths")
+
     if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
         return 0, False, ['mismatch'], ["Mismatch - No columns in one or both DataFrames"]
+
+    print("Comparing row lengths")
 
     if len(generated_sql_df) != len(ground_truth_df):
         return 0, False, ['mismatch'], [
@@ -292,9 +306,9 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     for col in generated_sql_df.columns:
 
-
-        if (col == 'Unnamed: 0'):
-            print("skip 'Unnamed: 0'")
+        print(col)
+        if (col.find("Unnamed: 0") >= 0):
+            print("skip "+col)
             num_cols -= 1
             continue
 
@@ -304,6 +318,11 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         # Use the updated function to determine if the column is numerically dominant
         is_numerical = is_column_numerically_dominant(generated_sql_df[col])
 
+        print(is_numerical)
+        
+        print(pred_column)
+
+        print(gold_column)
 
         # Use the updated compare_columns function
         column_similarity = compare_columns(pred_column, gold_column)

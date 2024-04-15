@@ -395,7 +395,8 @@ Please quote the returned SQL script between "```sql\n" and "\n```"
 """
 
 cot_multi_source_python_template = """
-You are a Python developer. Please generate a Python script to convert multiple source tables to the format of the target table (Consider Join or Union).
+You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. 
+
 
 Your Task Details:
 1. Target Table Name: {target_name}
@@ -419,9 +420,10 @@ Transformation Plan:
 
 Python Script:
 - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
-
-Please quote the Python script between "```Python
-" and "```"
+- Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
+Please quote the Python script between "```Python" and "```"
+- If source tables have simialr schema and dissimilar keys, we shall use union (concat)
+- If source tables have similar schema and similar keys, we shall use join (in most cases, inner join rather than outer join should be used)
 
 """
 # You are a data administrator. You are very good at performing data schema transformation tasks.
