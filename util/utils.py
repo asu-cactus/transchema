@@ -243,17 +243,22 @@ def numerical_similarity(num1, num2, threshold=1e-8):
 
 def is_column_numerically_dominant(column):
     numeric_count = 0
+    total_count = len(column)
     for val in column:
         try:
             float(val)
             numeric_count += 1
         except (ValueError, TypeError):
             if val == '':
-                numeric_count += 1  # treating empty string as valid for numeric
-    return numeric_count / len(column) > 0.5  # Majority of values are numeric
+                total_count -= 1  # do not consider empty string
+    return numeric_count / total_count > 0.5  # Majority of values are numeric
 
 
 def compare_columns(pred_column, gold_column, threshold=1e-8):
+
+    pred_column.sort()
+    gold_column.sort()
+
     # Determine if columns are numerically dominant
     is_numerical_a = is_column_numerically_dominant(pred_column)
     is_numerical_b = is_column_numerically_dominant(gold_column)
@@ -275,11 +280,20 @@ def compare_columns(pred_column, gold_column, threshold=1e-8):
 
 # Main Comparison Function
 def compare_lists_matching(generated_sql_df, ground_truth_df):
+ 
+    print("Sorting")
+
+    generated_sql_df = generated_sql_df.loc[:,~generated_sql_df.columns.duplicated()].copy()
     generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
     ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
 
+
+    print("Comparing column lengths")
+
     if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
         return 0, False, ['mismatch'], ["Mismatch - No columns in one or both DataFrames"]
+
+    print("Comparing row lengths")
 
     if len(generated_sql_df) != len(ground_truth_df):
         return 0, False, ['mismatch'], [
@@ -292,9 +306,9 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     for col in generated_sql_df.columns:
 
-
-        if (col == 'Unnamed: 0'):
-            print("skip 'Unnamed: 0'")
+        print(col)
+        if (col.find("Unnamed: 0") >= 0):
+            print("skip "+col)
             num_cols -= 1
             continue
 
@@ -304,6 +318,11 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         # Use the updated function to determine if the column is numerically dominant
         is_numerical = is_column_numerically_dominant(generated_sql_df[col])
 
+        print(is_numerical)
+        
+        print(pred_column)
+
+        print(gold_column)
 
         # Use the updated compare_columns function
         column_similarity = compare_columns(pred_column, gold_column)
@@ -323,20 +342,32 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
     return average_similarity, res, similarities, all_mismatches
 
 
-def get_test_info(json_file_path, len_id_target_id):
+def get_test_info(json_file_path, len_id_target_id, main_folder_path):
+
+    print(json_file_path)
+
+    print(len_id_target_id)
+
     # Read the JSON file once
     with open(json_file_path, 'r') as file:
         data_list = json.load(file)
         # Create a dictionary for faster lookups
         data_dict = {item["Source Data Name"]: item for item in data_list}
+        #print(data_dict)
 
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
-    main_folder_name = os.path.abspath("github-pipelines-l9")
+
+    print(sub_folder_name)
+
+    main_folder_name = os.path.abspath(main_folder_path)
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
 
     # Counting files starting with 'test' in this subfolder
     file_count = sum(1 for _, _, files in os.walk(sub_folder_path) for file in files if file.startswith('test'))
+
+    print(file_count)
+
 
     # Find and store the required data
     source_data_name_list = []

@@ -6,6 +6,7 @@ from experiment import Experiment
 def parse_args():
     args = argparse.ArgumentParser()
     # data
+    # metadata
     args.add_argument('--data_path', type=str, default='./data/chatgpt_github_ms.json')
     args.add_argument('--source_start_idx', type=int, default=0)
     args.add_argument('--max_pipeline_len_idx', type=int, default=2)
@@ -13,6 +14,8 @@ def parse_args():
     args.add_argument('--target_start_idx', type=int, default=0)
     args.add_argument('--max_target_idx', type=int, default=99)
     args.add_argument('--max_attempts', type=int, default=5)
+    # maindata
+    args.add_argument('--main_folder', type=str, default='github-pipelines-l1')
 
     # Agent
     args.add_argument('--clarity_on', type=bool, default=False)

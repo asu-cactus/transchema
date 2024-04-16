@@ -70,6 +70,9 @@ class Agent:
                                       template=cot_multi_source_template if script_language == 'sql' else cot_multi_source_python_template)
             # show the source information one by one
             source_info = '\n'
+
+            print(source_schema)
+
             for i in range(len(source_schema)):
                 source_info += (f"Source {i}:\n"
                                 f"\tSource {i} Name: {source_name[i]}\n"
