@@ -342,20 +342,32 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
     return average_similarity, res, similarities, all_mismatches
 
 
-def get_test_info(json_file_path, len_id_target_id):
+def get_test_info(json_file_path, len_id_target_id, main_folder_path):
+
+    print(json_file_path)
+
+    print(len_id_target_id)
+
     # Read the JSON file once
     with open(json_file_path, 'r') as file:
         data_list = json.load(file)
         # Create a dictionary for faster lookups
         data_dict = {item["Source Data Name"]: item for item in data_list}
+        #print(data_dict)
 
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
-    main_folder_name = os.path.abspath("github-pipelines-l9")
+
+    print(sub_folder_name)
+
+    main_folder_name = os.path.abspath(main_folder_path)
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
 
     # Counting files starting with 'test' in this subfolder
     file_count = sum(1 for _, _, files in os.walk(sub_folder_path) for file in files if file.startswith('test'))
+
+    print(file_count)
+
 
     # Find and store the required data
     source_data_name_list = []
