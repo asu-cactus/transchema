@@ -4,6 +4,7 @@ import os
 import pdb
 from openai import OpenAI
 
+
 MODEL = "text-embedding-3-large"
 
 
@@ -74,13 +75,13 @@ def get_fewshot_prompt(
 Task {task_id + 1}:
 {prompts[i]}
 
-Generated Python Script:
+Response:
 ```Python
 {responses[i]}
 ```\n\n"""
         )
     fewshot_prompt = "\n".join(examples)
-    fewshot_prompt = f"{fewshot_prompt}\nTask {k + 1}:\n{query}\n\nResponse:\n"
+    fewshot_prompt = f"{fewshot_prompt}\nTask {k + 1}:\n"
     return fewshot_prompt
 
 
@@ -94,7 +95,6 @@ if __name__ == "__main__":
     )
 
     query = f"""
-Prompt: 
 You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. 
 
 

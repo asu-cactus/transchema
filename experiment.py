@@ -17,7 +17,7 @@ from test_scope import get_test_cases_ids
 
 class Experiment:
     def __init__(self, method, max_pipeline_len_idx, pipeline_len_start_idx, max_target_idx, target_start_idx, backend,
-                 log_dir, control_method, script_language, source_start_idx=0,
+                 log_dir, control_method, script_language, k_shot, source_start_idx=0,
                  max_attempts=1,main_folder='github-pipelines-l1', data_path='./data/chatgpt.json', clarify_on=False, **kwargs):
         self.task_list = []
         self.logger = None
@@ -36,6 +36,7 @@ class Experiment:
         self.clarify_on = clarify_on
         self.control_method = control_method
         self.script_language = script_language
+        self.k_shot = k_shot
 
     def create_logger(self):
         # Get current system time
@@ -148,7 +149,7 @@ class Experiment:
                 agent = Agent(source_data_name_list, target_data_name, target_path,test_paths, source_data_schema_list, target_data_schema,
                               source_samples_list, target_samples, result_path, self.control_method,self.token_tracker, self.logger,
                               backend=self.backend, script_language=self.script_language,
-                              clarify_on=self.clarify_on, method=self.method)
+                              clarify_on=self.clarify_on, method=self.method, k_shot= self.k_shot)
 
                 ##Monolithic prompt only
                 if self.control_method == 'none':
