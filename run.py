@@ -15,11 +15,11 @@ def parse_args():
     args.add_argument('--max_target_idx', type=int, default=99)
     args.add_argument('--max_attempts', type=int, default=5)
     # maindata
-    args.add_argument('--main_folder', type=str, default='github-pipelines-l1')
+    args.add_argument('--main_folder', type=str, default='github-pipelines-l9')
 
     # Agent
     args.add_argument('--clarity_on', type=bool, default=False)
-    args.add_argument('--script_language', type=str, choices=['sql', 'python'], default='sql')
+    args.add_argument('--script_language', type=str, choices=['sql', 'python'], default='python')
     args.add_argument('--method', type=str, choices=['monolithic', 'mcts', 'cot','multi_source'], default='multi_source')
     # Search
     # MCTS
