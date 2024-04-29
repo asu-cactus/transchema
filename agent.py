@@ -1,9 +1,19 @@
 # agent.py
 from util.schema_trans_tools import SchemaTransformTools
+from util.semantic_search import get_prompt_embeddings, get_fewshot_prompt
 from llm.llm_models import LLMClient
-from prompts import (init_template, init_template_no_clarify, ultimate_task, examples, examples_no_clarify, \
-    monolithic_template, cot_template, monolithic_template_join, cot_multi_source_template,
-                     cot_multi_source_python_template)
+from prompts import (
+    init_template,
+    init_template_no_clarify,
+    ultimate_task,
+    examples,
+    examples_no_clarify,
+    monolithic_template,
+    cot_template,
+    monolithic_template_join,
+    cot_multi_source_template,
+    cot_multi_source_python_template,
+)
 from langchain.prompts import PromptTemplate
 from action import ActionGraph
 import random
@@ -14,21 +24,62 @@ from search_algo.mcts import MCTS
 
 
 def get_input_variables(method):
-    if method == 'monolithic':
-        return ["source_examples", "target_examples", "source_schema", "target_schema",
-                "source_name", "target_name", "test_0_path", "result_path"]
-    elif method == 'cot':
-        return ["source_schema", "target_schema", "source_examples", "target_examples",
-                "source_name", "target_name"]
+    if method == "monolithic":
+        return [
+            "source_examples",
+            "target_examples",
+            "source_schema",
+            "target_schema",
+            "source_name",
+            "target_name",
+            "test_0_path",
+            "result_path",
+        ]
+    elif method == "cot":
+        return [
+            "source_schema",
+            "target_schema",
+            "source_examples",
+            "target_examples",
+            "source_name",
+            "target_name",
+        ]
     else:
-        return ["examples", "source_examples", "target_examples", "source_schema", "target_schema",
-                "source_name", "target_name", "test_0_path", "result_path"]
+        return [
+            "examples",
+            "source_examples",
+            "target_examples",
+            "source_schema",
+            "target_schema",
+            "source_name",
+            "target_name",
+            "test_0_path",
+            "result_path",
+        ]
 
 
 class Agent:
-    def __init__(self, source_name, target_name, target_path, test_0_path, source_schema, target_schema, source_examples,
-                 target_examples, result_path, control_method, token_tracker, logger,
-                 backend, script_language, clarify_on=False, method='react', max_steps=20):
+    def __init__(
+        self,
+        source_name,
+        target_name,
+        target_path,
+        test_0_path,
+        source_schema,
+        target_schema,
+        source_examples,
+        target_examples,
+        result_path,
+        control_method,
+        token_tracker,
+        logger,
+        backend,
+        script_language,
+        clarify_on=False,
+        method="react",
+        max_steps=20,
+        k_shot=-1,
+    ):
         self.source_name = source_name
         self.target_name = target_name
         self.target_path = target_path
@@ -45,15 +96,19 @@ class Agent:
         self.logger = logger
         self.backend = backend
         self.script_language = script_language
-        self.llm_client = LLMClient(model=self.backend, tracker=self.token_tracker, logger=self.logger)
+        self.llm_client = LLMClient(
+            model=self.backend, tracker=self.token_tracker, logger=self.logger
+        )
         self.state = None
         self.action_graph = ActionGraph()
         self.performed_actions = set()
         self.control_method = control_method
         self.agent_attrs = None
-        if method == 'monolithic' or method == 'cot':
-            template = PromptTemplate(input_variables=get_input_variables(method),
-                                      template=monolithic_template)
+        if method == "monolithic" or method == "cot":
+            template = PromptTemplate(
+                input_variables=get_input_variables(method),
+                template=monolithic_template,
+            )
             self.prompt = template.format(
                 source_schema=source_schema,
                 target_schema=target_schema,
@@ -62,37 +117,53 @@ class Agent:
                 source_name=source_name,
                 target_name=target_name,
                 test_0_path=test_0_path,
-                result_path=result_path
+                result_path=result_path,
             )
             self.agent_attrs = self.get_all_agent_attrs_mono()
-        elif method == 'multi_source' :
-            template = PromptTemplate(input_variables=get_input_variables(method),
-                                      template=cot_multi_source_template if script_language == 'sql' else cot_multi_source_python_template)
+        elif method == "multi_source":
+            template = PromptTemplate(
+                input_variables=get_input_variables(method),
+                template=(
+                    cot_multi_source_template
+                    if script_language == "sql"
+                    else cot_multi_source_python_template
+                ),
+            )
             # show the source information one by one
-            source_info = '\n'
+            source_info = "\n"
 
             print(source_schema)
 
             for i in range(len(source_schema)):
-                source_info += (f"Source {i}:\n"
-                                f"\tSource {i} Name: {source_name[i]}\n"
-                                f"\tSource {i} Schema: {source_schema[i]}\n"
-                                f"\tSource {i} Examples: {source_examples[i]}\n"
-                                f"\tSource {i} Path: {test_0_path[i]}\n")
+                source_info += (
+                    f"Source {i}:\n"
+                    f"\tSource {i} Name: {source_name[i]}\n"
+                    f"\tSource {i} Schema: {source_schema[i]}\n"
+                    f"\tSource {i} Examples: {source_examples[i]}\n"
+                    f"\tSource {i} Path: {test_0_path[i]}\n"
+                )
 
-            print("DEBUG-- RESULT PATH:"+result_path)
+            print("DEBUG-- RESULT PATH:" + result_path)
             self.prompt = template.format(
                 target_name=target_name,
                 target_schema=target_schema,
                 target_examples=target_examples,
                 source_info=source_info,
                 test_0_path=test_0_path,
-                result_path=result_path
+                result_path=result_path,
             )
+
+            if k_shot > 0:
+                embeddings = get_prompt_embeddings(client=self.llm_client.client)
+                fewshot_examples = get_fewshot_prompt(self.prompt, k_shot, embeddings)
+                self.prompt = f"{fewshot_examples}{self.prompt}\nResponse:\n"
+
             self.agent_attrs = self.get_all_agent_attrs_mono()
-        elif method == 'mcts':
-            template = PromptTemplate(input_variables=get_input_variables(method),
-                                      template=init_template if clarify_on else init_template_no_clarify)
+        elif method == "mcts":
+            template = PromptTemplate(
+                input_variables=get_input_variables(method),
+                template=init_template if clarify_on else init_template_no_clarify,
+            )
             self.prompt = template.format(
                 examples=examples if clarify_on else examples_no_clarify,
                 source_schema=source_schema,
@@ -102,14 +173,25 @@ class Agent:
                 source_name=source_name,
                 target_name=target_name,
                 test_0_path=test_0_path,
-                result_path=result_path
+                result_path=result_path,
             )
 
         self.ultimate_task = ultimate_task
-        self.transformer = SchemaTransformTools(source_schema, target_schema, source_examples, target_examples)
-        self.mcts = MCTS(self.backend, self.prompt, self.logger, self.llm_client, self.token_tracker,
-                         self.source_schema, self.target_schema, self.source_examples, self.target_examples,
-                         self.transformer)
+        self.transformer = SchemaTransformTools(
+            source_schema, target_schema, source_examples, target_examples
+        )
+        self.mcts = MCTS(
+            self.backend,
+            self.prompt,
+            self.logger,
+            self.llm_client,
+            self.token_tracker,
+            self.source_schema,
+            self.target_schema,
+            self.source_examples,
+            self.target_examples,
+            self.transformer,
+        )
         self.mcts.fill_agent_attrs(self.get_all_agent_attrs_mcts())
 
     def get_state(self):
@@ -118,7 +200,7 @@ class Agent:
     def execute_action(self, action, transformer=None, reason_history=None):
         finish = False
         # print(f"Executing action: {action}")
-        if (action.strip().startswith("TypePredict")):
+        if action.strip().startswith("TypePredict"):
             # print("TypePredict")
             observation = transformer.type_predict()
             self.performed_actions.add("TypePredict")
@@ -132,7 +214,7 @@ class Agent:
             self.performed_actions.add("Aggregation")
         elif action.strip().startswith("Clarify"):
             # print("Clarify")
-            question = action.strip()[len("Clarify["):-1]
+            question = action.strip()[len("Clarify[") : -1]
             observation = transformer.clarify(question)
             self.performed_actions.add("Clarify")
         elif action.strip().startswith("Conditional"):
@@ -152,11 +234,11 @@ class Agent:
         return observation, finish
 
     def run_baseline(self, verbose=True):
-        res =  self.llm_client.gpt(self.prompt)
+        res = self.llm_client.gpt(self.prompt)
         # print('Response - SQL', res)
-        if self.script_language == 'python':
+        if self.script_language == "python":
             return res[0].split("```Python")[1].split("```")[0].strip()
-        elif self.script_language == 'sql':
+        elif self.script_language == "sql":
             return res[0].split("```sql")[1].split("```")[0].strip()
 
     def run_mcts(self, verbose=True):
@@ -179,7 +261,14 @@ class Agent:
         step_str = f"Thought {i}: MCTS - {action}\nAction {i}: {action}\nObservation {i}: {observation}\n"
         return True
         """
-        best_node_state, best_node_value, all_nodes, best_node_reward, gpt_output, sql_result = self.mcts.mcts_search()
+        (
+            best_node_state,
+            best_node_value,
+            all_nodes,
+            best_node_reward,
+            gpt_output,
+            sql_result,
+        ) = self.mcts.mcts_search()
         return True
 
     def run_pure_react(self, verbose=True):
@@ -187,17 +276,23 @@ class Agent:
         for i in range(1, self.max_steps + 1):
             n_calls += 1
             if mcts:
-                thought_action = self.llm_client.gpt(self.state + f"Thougt{i}:", stop=[f"\nObservation {i}:"])[0]
+                thought_action = self.llm_client.gpt(
+                    self.state + f"Thougt{i}:", stop=[f"\nObservation {i}:"]
+                )[0]
                 try:
                     thought, action = thought_action.strip().split(f"\nAction {i}:")
                 except:
-                    print('ohh...', thought_action)
+                    print("ohh...", thought_action)
                     n_badcalls += 1
                     n_calls += 1
-                    thought = thought_action.strip().split('\n')[0]
-                    action = self.llm_client.gpt(self.state + f"Thought {i}: {thought}\nAction {i}:",
-                                                 stop=[f"\nObservation {i}:"])[0].strip()
-                observation, finish = self.execute_action(action, transformer=self.transformer)
+                    thought = thought_action.strip().split("\n")[0]
+                    action = self.llm_client.gpt(
+                        self.state + f"Thought {i}: {thought}\nAction {i}:",
+                        stop=[f"\nObservation {i}:"],
+                    )[0].strip()
+                observation, finish = self.execute_action(
+                    action, transformer=self.transformer
+                )
                 step_str = f"Thought {i}: {thought}\nAction {i}: {action}\nObservation {i}: {observation}\n"
             self.state += step_str
             if verbose:
@@ -206,23 +301,23 @@ class Agent:
                 break
         return observation, n_calls, n_badcalls
 
-    def run(self, verbose=True, method='mcts'):
-        '''
+    def run(self, verbose=True, method="mcts"):
+        """
         Run the agent to generate a SQL script
         :param verbose: whether to print the intermediate steps
         :param method: the method to use for generating the SQL script
         :return: the generated SQL script
-        '''
+        """
         self.state = self.prompt + self.ultimate_task + "\n"
-        if method == 'mcts':
+        if method == "mcts":
             return self.run_mcts(verbose)
-        elif method == 'monolithic':
+        elif method == "monolithic":
             return self.run_baseline(verbose)
-        elif method == 'react':
+        elif method == "react":
             return self.run_pure_react(verbose)
-        elif method == 'cot':
+        elif method == "cot":
             return self.run_baseline(verbose)
-        elif method == 'multi_source':
+        elif method == "multi_source":
             return self.run_baseline(verbose)
 
     def get_all_agent_attrs_mcts(self):
@@ -248,8 +343,9 @@ class Agent:
             "prompt": self.prompt,
             "ultimate_task": self.ultimate_task,
             "transformer": self.transformer,
-            "mcts": self.mcts
+            "mcts": self.mcts,
         }
+
     def get_all_agent_attrs_mono(self):
         return {
             "source_name": self.source_name,
@@ -272,12 +368,11 @@ class Agent:
             "action_graph": self.action_graph,
             "performed_actions": self.performed_actions,
             "prompt": self.prompt,
-            "control_method": self.control_method
-
+            "control_method": self.control_method,
         }
 
 
-class ReactState():
+class ReactState:
     def __init__(self, performed_actions, state, action_graph, transformer, i):
         self.current_action = None
         self.current_observation = None
@@ -290,9 +385,11 @@ class ReactState():
         self.i = i
 
     def getPossibleActions(self):
-        print('performed actions', self.performed_actions)
-        possible_actions = self.action_graph.get_possible_actions(self.performed_actions)
-        print('possible actions', possible_actions)
+        print("performed actions", self.performed_actions)
+        possible_actions = self.action_graph.get_possible_actions(
+            self.performed_actions
+        )
+        print("possible actions", possible_actions)
         return possible_actions
 
     def takeAction(self, action):
@@ -300,11 +397,11 @@ class ReactState():
         print(f"Taking action: {action}")
         newState.performed_actions.add(action)
         newState.current_action = action  # result of the observation
-        newState.is_terminal = True if action == 'Finish' else False
+        newState.is_terminal = True if action == "Finish" else False
         # TODO: add action support
         finish = False
         # print(f"Executing action: {action}")
-        if (action.strip().startswith("TypePredict")):
+        if action.strip().startswith("TypePredict"):
             # print("TypePredict")
             observation = self.transformer.type_predict()
             self.performed_actions.add("TypePredict")
@@ -326,7 +423,10 @@ class ReactState():
             # question = action.strip()[len("Clarify"):-1]
             observation = self.transformer.clarify(question)
             self.performed_actions.add("Clarify")
-            newState.state_in_mcts = self.state_in_mcts + f"Thought {self.i}: Use MCTS\nAction {self.i}: {action}+'['+{question}+']'+\nObservation {self.i}: {observation}\n"
+            newState.state_in_mcts = (
+                self.state_in_mcts
+                + f"Thought {self.i}: Use MCTS\nAction {self.i}: {action}+'['+{question}+']'+\nObservation {self.i}: {observation}\n"
+            )
             return newState
         elif action.strip().startswith("Conditional"):
             # print("Conditional")
@@ -342,15 +442,18 @@ class ReactState():
             observation = "Invalid action: {}".format(action)
 
         newState.current_observation = observation
-        newState.state_in_mcts = self.state_in_mcts + f"Thought {self.i}: Use MCTS\nAction {self.i}: {action}\nObservation {self.i}: {observation}\n"
+        newState.state_in_mcts = (
+            self.state_in_mcts
+            + f"Thought {self.i}: Use MCTS\nAction {self.i}: {action}\nObservation {self.i}: {observation}\n"
+        )
         return newState
 
     def isTerminal(self):
-        if self.current_action == 'Finish':
+        if self.current_action == "Finish":
             return True
         else:
             return False
 
     def getReward(self):
-        print('get reward')
+        print("get reward")
         return random.random() * 100
