@@ -191,6 +191,7 @@ def log_experiment(target_data_name, source_data_name_to_find,execution_time_1,e
             file.write(
                 f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n")
         else:
+            print(cost)
             file.write(
                 f"{target_data_name} <- {source_data_name_to_find} Failed with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3})  and cost:{cost}\n")
 

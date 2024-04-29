@@ -426,6 +426,40 @@ Please quote the Python script between "```Python" and "```"
 - If source tables have similar schema and similar keys, we shall use join (in most cases, inner join rather than outer join should be used)
 
 """
+# pick this when the number of source tables are more than [a large number]
+cot_multi_source_python_template_loop = """
+You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should be immediately executable in a correct way, which means it should NOT contain any placeholder for brevity. Even if there exist hundreds of source tables, these data needs to be loaded and processed completely one by one or in a programmable way using loops or similar structures to handle large file lists dynamically.
+
+
+Your Task Details:
+1. Target Table Name: {target_name}
+2. Target Schema: {target_schema}
+3. Target Examples: {target_examples}
+4. Multi Source Information: {source_info}
+5. Write the result to this path: {result_path}
+
+Note: The row examples provided are not necessarily corresponding rows. They are simply examples of rows in the source and target schemas.
+
+Transformation Plan:
+- Provide a detailed plan, step by step for transforming the data from the source tables to match the target table format. 
+- Each step should be a concrete data manipulation, such as a query.
+- Each step could be something similar to the following candidate steps:
+(1) union two tables that have similar schemas and non-overlapping tuples.
+(2) join two tables that have shared columns with overlapping values.
+(3) aggregation
+(4) selection or filtering
+(5) applying a projection
+(6) applying a transformation function.
+
+Python Script:
+- Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export efficiently using programming constructs like loops to handle multiple files. For instance, if files follow a similar naming pattern or directory structure, utilize loops to dynamically load and process these files. The script should be complete and executable, not omiting any single statement.
+- Specifically, the script should only include CSV files starting with 'test_' and sort them by the numerical part following 'test_' in the filename.
+- Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
+Please quote the Python script between "```Python" and "```"
+- If source tables have simialr schema and dissimilar keys, we shall use union (concat)
+- If source tables have similar schema and similar keys, we shall use join (in most cases, inner join rather than outer join should be used)
+
+"""
 # You are a data administrator. You are very good at performing data schema transformation tasks.
 # You are given source schemas and a target schema and some example data. You are asked to transform the source schema to the target schema.
 # In addition to answering the question, you are also expected to provide a step-by-step explanation of the answer.

@@ -21,7 +21,7 @@ def parse_args():
     # Agent
     args.add_argument("--clarity_on", type=bool, default=False)
     args.add_argument(
-        "--script_language", type=str, choices=["sql", "python"], default="sql"
+        "--script_language", type=str, choices=["sql", "python"], default="python"
     )
     args.add_argument(
         "--method",
@@ -29,7 +29,6 @@ def parse_args():
         choices=["monolithic", "mcts", "cot", "multi_source"],
         default="multi_source",
     )
-    args.add_argument("--k_shot", type=int, default=-1)
     # Search
     # MCTS
 
