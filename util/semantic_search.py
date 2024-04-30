@@ -3,16 +3,17 @@ import numpy as np
 import os
 import pdb
 from openai import OpenAI
+import tiktoken
 
-
-MODEL = "text-embedding-3-large"
+MODEL = "text-embedding-3-small"
+SHEET_NAME = ["L2", "L3", "L4", "L5"]
 
 
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def load_excel(excel_path):
+def load_excel_ss(excel_path):
     return (
         pd.read_excel(excel_path, sheet_name=0, header=1, skiprows=0, usecols=[1, 2])
         .dropna()
@@ -20,38 +21,77 @@ def load_excel(excel_path):
     )
 
 
+def load_excel_ms(excel_path):
+    df_dict = pd.read_excel(
+        excel_path,
+        sheet_name=SHEET_NAME,
+        header=0,
+        usecols=["Prompt", "Response"],
+    )
+    df_lens = [len(df.dropna()) for df in df_dict.values()]
+    cum_lens = np.cumsum(df_lens)
+    combined_df = pd.concat(df_dict.values()).dropna().reset_index(drop=True)
+    return combined_df, cum_lens
+
+
 def get_prompt_embeddings(
     client=OpenAI(),
     excel_path="data/LLM-based data transformation results.xlsx",
-    embeddings_path="data/embeddings.npy",
+    embeddings_path="data/ms_embeddings",
+    encoder=tiktoken.encoding_for_model("gpt-4"),
 ):
     # Load embeddings if they exist
-    if os.path.exists(embeddings_path):
-        return np.load(embeddings_path)
+    if os.path.exists(f"{embeddings_path}.npz"):
+        return np.load(f"{embeddings_path}.npz")
 
     # If the embeddings are not found, generate them
-    df = load_excel(excel_path)
+    df, cum_len = load_excel_ms(excel_path)
     prompts = df["Prompt"].tolist()
-    response = client.embeddings.create(
-        input=prompts,
-        model=MODEL,
-    )
+    embeddings = []
+    for prompt in prompts:
+        # OpenAI Embedding API has a limit of 8191 tokens
+        prompt = encoder.decode(encoder.encode(prompt)[:8191])
+        response = client.embeddings.create(
+            input=prompt,
+            model=MODEL,
+        )
+        embeddings.append(response.data[0].embedding)
     # Pack embeddings to a numpy array
-    embeddings = np.array([r.embedding for r in response.data], dtype=np.float64)
     embeddings = np.array(embeddings)
     # Save embeddings to a file
-    np.save(embeddings_path, embeddings)
-    return embeddings
+    np.savez(embeddings_path, embeddings=embeddings, cum_len=cum_len)
+    return {
+        "embeddings": embeddings,
+        "cum_len": cum_len,
+    }
 
 
 def get_fewshot_prompt(
     query,
     k,
-    embeddings,
+    prompt_embeddings,
+    target_name,
     client=OpenAI(),
     excel_path="data/LLM-based data transformation results.xlsx",
+    encoder=tiktoken.encoding_for_model("gpt-4"),
 ):
 
+    # "L2" is the first set of embeddings, "L3" is the second set, etc.
+    search_len = int(target_name[6:].split("_")[0]) - 1
+
+    search_range = search_len - int(SHEET_NAME[0][1:])
+    embeddings = prompt_embeddings["embeddings"][:search_range]
+
+    # Get query embedding
+    # OpenAI Embedding API has a limit of 8191 tokens
+    token_ids = encoder.encode(query)
+    if len(token_ids) > 8191:
+        token_ids = token_ids[:8191]
+        # Append a warning to "log/long_queries.log"
+        with open("log/long_queries.log", "a+") as f:
+            f.write(f"{target_name}\n")
+
+    query = encoder.decode(token_ids)
     query_embedding = (
         client.embeddings.create(
             input=query,
@@ -61,11 +101,13 @@ def get_fewshot_prompt(
         .embedding
     )
     query_embedding = np.array(query_embedding, dtype=np.float64)
+
+    # Compute cosine similarity
     similarities = cosine_similarity(embeddings, query_embedding)
     # Get the top k indices
     top_k_indices = np.argsort(similarities)[::-1][:k]
 
-    df = load_excel(excel_path)
+    df, _ = load_excel_ms(excel_path)
     prompts = df["Prompt"]
     responses = df["Response"]
     examples = []
@@ -91,7 +133,7 @@ if __name__ == "__main__":
     embeddings = get_prompt_embeddings(
         client=client,
         excel_path=excel_path,
-        embeddings_path="../data/embeddings.npy",
+        embeddings_path="../data/ms_embeddings",
     )
 
     query = f"""
@@ -136,7 +178,8 @@ Please quote the Python script between "```Python" and "```"
 - If source tables have simialr schema and dissimilar keys, we shall use union (concat)
 - If source tables have similar schema and similar keys, we shall use join (in most cases, inner join rather than outer join should be used)
     """
+
     fewshot_prompt = get_fewshot_prompt(
-        query, 3, embeddings, client=OpenAI(), excel_path=excel_path
+        query, 2, embeddings, search_len=2, client=OpenAI(), excel_path=excel_path
     )
     pdb.set_trace()

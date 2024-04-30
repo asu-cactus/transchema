@@ -10,13 +10,13 @@ def parse_args():
     # metadata
     args.add_argument("--data_path", type=str, default="./data/chatgpt_github_ms.json")
     args.add_argument("--source_start_idx", type=int, default=0)
-    args.add_argument("--max_pipeline_len_idx", type=int, default=2)
-    args.add_argument("--pipeline_len_start_idx", type=int, default=2)
+    args.add_argument("--max_pipeline_len_idx", type=int, default=3)
+    args.add_argument("--pipeline_len_start_idx", type=int, default=3)
     args.add_argument("--target_start_idx", type=int, default=0)
-    args.add_argument("--max_target_idx", type=int, default=99)
+    args.add_argument("--max_target_idx", type=int, default=100)
     args.add_argument("--max_attempts", type=int, default=5)
     # maindata
-    args.add_argument("--main_folder", type=str, default="github-pipelines-l1")
+    args.add_argument("--main_folder", type=str, default="github-pipelines")
 
     # Agent
     args.add_argument("--clarity_on", type=bool, default=False)
@@ -29,6 +29,7 @@ def parse_args():
         choices=["monolithic", "mcts", "cot", "multi_source"],
         default="multi_source",
     )
+    args.add_argument("--k_shot", type=int, default=0)
     # Search
     # MCTS
 

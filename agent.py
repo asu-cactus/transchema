@@ -78,7 +78,8 @@ class Agent:
         clarify_on=False,
         method="react",
         max_steps=20,
-        k_shot=-1,
+        k_shot=0,
+        encoder=None,
     ):
         self.source_name = source_name
         self.target_name = target_name
@@ -104,6 +105,7 @@ class Agent:
         self.performed_actions = set()
         self.control_method = control_method
         self.agent_attrs = None
+
         if method == "monolithic" or method == "cot":
             template = PromptTemplate(
                 input_variables=get_input_variables(method),
@@ -154,8 +156,14 @@ class Agent:
             )
 
             if k_shot > 0:
-                embeddings = get_prompt_embeddings(client=self.llm_client.client)
-                fewshot_examples = get_fewshot_prompt(self.prompt, k_shot, embeddings)
+                # For example, search_len for Target3_x is 2, for Target4_x is 3, etc.
+
+                embeddings = get_prompt_embeddings(
+                    client=self.llm_client.client, encoder=encoder
+                )
+                fewshot_examples = get_fewshot_prompt(
+                    self.prompt, k_shot, embeddings, target_name, encoder=encoder
+                )
                 self.prompt = f"{fewshot_examples}{self.prompt}\nResponse:\n"
 
             self.agent_attrs = self.get_all_agent_attrs_mono()
