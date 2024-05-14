@@ -6,7 +6,7 @@ from openai import OpenAI
 import tiktoken
 
 MODEL = "text-embedding-3-small"
-SHEET_NAME = ["L2", "L3", "L4", "L5"]
+SHEET_NAME = ["L1-Zero-shot CoT", "L2", "L3", "L4", "L5"]
 
 
 def cosine_similarity(a, b):
@@ -78,8 +78,7 @@ def get_fewshot_prompt(
 
     # "L2" is the first set of embeddings, "L3" is the second set, etc.
     search_len = int(target_name[6:].split("_")[0]) - 1
-
-    search_range = search_len - int(SHEET_NAME[0][1:])
+    search_range = prompt_embeddings["cum_len"][search_len - int(SHEET_NAME[0][1])]
     embeddings = prompt_embeddings["embeddings"][:search_range]
 
     # Get query embedding
