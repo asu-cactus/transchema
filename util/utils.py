@@ -3,12 +3,13 @@ import logging
 import json
 import pandas as pd
 
+
 def convert_target_names(target_names_str):
-    target_names = target_names_str.split(',')
+    target_names = target_names_str.split(",")
     converted_names = []
 
     for target_name in target_names:
-        match = re.match(r'^Target(\d+)_(\d+)$', target_name.strip())
+        match = re.match(r"^Target(\d+)_(\d+)$", target_name.strip())
         if match:
             number1, number2 = match.groups()
             converted_name = f"length{number1}_{number2}"
@@ -16,7 +17,7 @@ def convert_target_names(target_names_str):
         else:
             converted_names.append(target_name)
 
-    converted_names_str = ', '.join(converted_names)
+    converted_names_str = ", ".join(converted_names)
     return converted_names_str
 
 
@@ -33,7 +34,7 @@ def access_auto_pipeline_dataset(sub_folder_name):
 def read_csv_target(target):
     gold_target = []
     logging.info(f"Final target path{target}")
-    with open(target, 'r', encoding="utf-8") as file:
+    with open(target, "r", encoding="utf-8") as file:
         reader = csv.reader(file)
         header = next(reader)
         for row in reader:
@@ -49,20 +50,20 @@ import re
 
 
 def read_csv_file(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         reader = csv.reader(file)
         data = list(reader)
     return data
 
 
 def create_connection():
-    """ create a database connection to the PostgreSQL database """
+    """create a database connection to the PostgreSQL database"""
     conn = psycopg2.connect(
         dbname="postgres",
         user="postgres",
-        password="021111",
+        password="postgres",
         host="localhost",  # e.g., "localhost"
-        port="5432"  # e.g., "5432"
+        port="5432",  # e.g., "5432"
     )
     print("Postgres connection established.")
     return conn
@@ -94,7 +95,9 @@ def execute_sql(conn, query):
                 cursor.execute(f"SELECT * FROM {target_table};")
                 result = cursor.fetchall()
             else:
-                result = "Error:　Table name not identified from last INSERT INTO query."
+                result = (
+                    "Error:　Table name not identified from last INSERT INTO query."
+                )
         else:
             result = cursor.fetchall()
 
@@ -102,6 +105,7 @@ def execute_sql(conn, query):
     except psycopg2.Error as e:
         conn.rollback()  # Rollback the transaction on error
         return f"Error: {e.pgerror}"
+
 
 def execute_python(gpt_response):
     try:
@@ -124,14 +128,18 @@ def execute_python(gpt_response):
 #         return f"Error: {e.pgerror}"
 
 
-def log_experiment_settings(len_id, max_len_id, target_id, max_target_id, method, clarify_on):
-    log_directory = os.path.join('.', 'log')
+def log_experiment_settings(
+    len_id, max_len_id, target_id, max_target_id, method, clarify_on
+):
+    log_directory = os.path.join(".", "log")
     os.makedirs(log_directory, exist_ok=True)
-    log_file_path = os.path.join(log_directory, 'all_similarity_scores.log')
+    log_file_path = os.path.join(log_directory, "all_similarity_scores.log")
 
-    with open(log_file_path, 'a+') as file:
-        file.write(f"{'[Clarify On]' if clarify_on else '[Clarify Off]'}"
-                   f"{f' using {method}'}\n")
+    with open(log_file_path, "a+") as file:
+        file.write(
+            f"{'[Clarify On]' if clarify_on else '[Clarify Off]'}"
+            f"{f' using {method}'}\n"
+        )
         file.write("Scope: length ")
         if len_id == max_len_id:
             file.write(f"is {len_id}")
@@ -145,14 +153,20 @@ def log_experiment_settings(len_id, max_len_id, target_id, max_target_id, method
         file.write("\n")
 
 
-def log_experiment_failed(target_data_name, source_data_name_to_find, iteration_count, all_similarity_scores,
-                          accuracy_list, validation_error_list):
+def log_experiment_failed(
+    target_data_name,
+    source_data_name_to_find,
+    iteration_count,
+    all_similarity_scores,
+    accuracy_list,
+    validation_error_list,
+):
     print("[FAILED] Maximum iterations reached without correct result.")
-    log_directory = os.path.join('.', 'log')
+    log_directory = os.path.join(".", "log")
     os.makedirs(log_directory, exist_ok=True)
 
-    log_file_path = os.path.join(log_directory, 'all_similarity_scores.log')
-    with open(log_file_path, 'a+') as file:
+    log_file_path = os.path.join(log_directory, "all_similarity_scores.log")
+    with open(log_file_path, "a+") as file:
         file.write(f"{target_data_name} <- {source_data_name_to_find}")
         file.write("\t\t\t\t[Failed]\n\tPlease check the similarity scores:\n")
         for count, iteration_scores in enumerate(all_similarity_scores):
@@ -167,45 +181,67 @@ def log_experiment_failed(target_data_name, source_data_name_to_find, iteration_
 
 def log_experiment_success(target_data_name, source_data_name_to_find, iteration_count):
     print("[Success] Successful SQL execution with correct result.")
-    log_directory = os.path.join('.', 'log')
-    os.makedirs(log_directory, exist_ok=True)  # Create the directory if it doesn't exist, ignore error if it does
+    log_directory = os.path.join(".", "log")
+    os.makedirs(
+        log_directory, exist_ok=True
+    )  # Create the directory if it doesn't exist, ignore error if it does
 
-    log_file_path = os.path.join(log_directory, 'all_similarity_scores.log')
+    log_file_path = os.path.join(log_directory, "all_similarity_scores.log")
     try:
-        with open(log_file_path, 'a+') as file:
-            file.write(f"{target_data_name} <- {source_data_name_to_find} with iter-{iteration_count}\t\t[Success]\n")
+        with open(log_file_path, "a+") as file:
+            file.write(
+                f"{target_data_name} <- {source_data_name_to_find} with iter-{iteration_count}\t\t[Success]\n"
+            )
     except Exception as e:
         print(f"Error writing to log file: {e}")
 
     # with open(log_file_path, 'a+') as file:
     #     file.write(f"{target_data_name} <- {source_data_name_to_find} with iter-{iteration_count}\t\t[Success]\n")
-        # Append the global accuracy to the end
-        # file.write(f", Global accuracy: {case_accuracy:.2f}\n")
+    # Append the global accuracy to the end
+    # file.write(f", Global accuracy: {case_accuracy:.2f}\n")
 
 
-def log_experiment(target_data_name, source_data_name_to_find,case_accuracy,execution_time_1,execution_time_2, execution_time_3,execution_time, cost, success, method):
-    file_path = f'log/{method}.log'
-    with open(file_path, 'a+') as file:
+def log_experiment(
+    target_data_name,
+    source_data_name_to_find,
+    execution_time_1,
+    execution_time_2,
+    execution_time_3,
+    execution_time,
+    cost,
+    success,
+    method,
+):
+    file_path = f"log/{method}.log"
+    with open(file_path, "a+") as file:
         if success:
             print(cost)
             file.write(
-                f"{target_data_name} <- {source_data_name_to_find} Successful with Accuracy:{case_accuracy}, Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2},SQL Execution time:{execution_time_3}) and cost:{cost}\n")
+                f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n"
+            )
         else:
+            print(cost)
             file.write(
-                f"{target_data_name} <- {source_data_name_to_find} Failed with Accuracy:{case_accuracy}, Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2},SQL Execution time:{execution_time_3})  and cost:{cost}\n")
+                f"{target_data_name} <- {source_data_name_to_find} Failed with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3})  and cost:{cost}\n"
+            )
 
 
 def numerical_similarity(value1, value2, threshold=1e-10):
-    """ Calculate numerical similarity between two values. """
+    """Calculate numerical similarity between two values."""
     if value1 in (0.0, None) and value2 in (0.0, None):
         return 1.0
     return 1.0 if abs(float(value1) - float(value2)) <= threshold else 0.0
 
 
-def calculate_similarity(pred_column, gold_column, similarity_type="numerical", threshold=1e-10):
-    """ Calculate similarity between two columns based on specified similarity type. """
+def calculate_similarity(
+    pred_column, gold_column, similarity_type="numerical", threshold=1e-10
+):
+    """Calculate similarity between two columns based on specified similarity type."""
     if similarity_type == "numerical":
-        scores = [numerical_similarity(val1, val2, threshold) for val1, val2 in zip(pred_column, gold_column)]
+        scores = [
+            numerical_similarity(val1, val2, threshold)
+            for val1, val2 in zip(pred_column, gold_column)
+        ]
         return sum(scores) / len(scores)
     elif similarity_type == "jaccard":
         intersection = len(set(pred_column) & set(gold_column))
@@ -213,7 +249,9 @@ def calculate_similarity(pred_column, gold_column, similarity_type="numerical", 
         return intersection / union if union else 0
     else:  # Not used in the current version
         vectorizer = CountVectorizer().fit_transform(pred_column + gold_column)
-        return cosine_similarity(vectorizer[:len(pred_column)], vectorizer[len(pred_column):])[0, 0]
+        return cosine_similarity(
+            vectorizer[: len(pred_column)], vectorizer[len(pred_column) :]
+        )[0, 0]
 
 
 def convert_if_number(s):
@@ -226,8 +264,8 @@ def convert_if_number(s):
 
 
 def are_elements_equal(elem1, elem2, tolerance=1e-8):
-    elem1 = '' if elem1 is None else elem1
-    elem2 = '' if elem2 is None else elem2
+    elem1 = "" if elem1 is None else elem1
+    elem2 = "" if elem2 is None else elem2
     elem1, elem2 = convert_if_number(elem1), convert_if_number(elem2)
     if isinstance(elem1, float) and isinstance(elem2, float):
         return abs(elem1 - elem2) < tolerance
@@ -249,7 +287,7 @@ def is_column_numerically_dominant(column):
             float(val)
             numeric_count += 1
         except (ValueError, TypeError):
-            if val == '':
+            if val == "":
                 total_count -= 1  # do not consider empty string
     return numeric_count / total_count > 0.5  # Majority of values are numeric
 
@@ -265,8 +303,10 @@ def compare_columns(pred_column, gold_column, threshold=1e-8):
 
     if is_numerical_a and is_numerical_b:
         # Both columns are numerically dominant
-        scores = [numerical_similarity(float(val1 or 0), float(val2 or 0), threshold)
-                  for val1, val2 in zip(pred_column, gold_column)]
+        scores = [
+            numerical_similarity(float(val1 or 0), float(val2 or 0), threshold)
+            for val1, val2 in zip(pred_column, gold_column)
+        ]
         return sum(scores) / len(scores)
     else:
         # For string comparison, convert strings to lower case for case-insensitive comparison
@@ -280,24 +320,36 @@ def compare_columns(pred_column, gold_column, threshold=1e-8):
 
 # Main Comparison Function
 def compare_lists_matching(generated_sql_df, ground_truth_df):
- 
+
     print("Sorting")
 
-    generated_sql_df = generated_sql_df.loc[:,~generated_sql_df.columns.duplicated()].copy()
+    generated_sql_df = generated_sql_df.loc[
+        :, ~generated_sql_df.columns.duplicated()
+    ].copy()
     generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
     ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
-
 
     print("Comparing column lengths")
 
     if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
-        return 0, False, ['mismatch'], ["Mismatch - No columns in one or both DataFrames"]
+        return (
+            0,
+            False,
+            ["mismatch"],
+            ["Mismatch - No columns in one or both DataFrames"],
+        )
 
     print("Comparing row lengths")
 
     if len(generated_sql_df) != len(ground_truth_df):
-        return 0, False, ['mismatch'], [
-            f"Mismatch - DataFrames lengths differ (pred:{len(generated_sql_df)} v.s. gold:{len(ground_truth_df)})"]
+        return (
+            0,
+            False,
+            ["mismatch"],
+            [
+                f"Mismatch - DataFrames lengths differ (pred:{len(generated_sql_df)} v.s. gold:{len(ground_truth_df)})"
+            ],
+        )
 
     similarities = []
     all_mismatches = []
@@ -307,8 +359,8 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
     for col in generated_sql_df.columns:
 
         print(col)
-        if (col.find("Unnamed: 0") >= 0):
-            print("skip "+col)
+        if col.find("Unnamed: 0") >= 0:
+            print("skip " + col)
             num_cols -= 1
             continue
 
@@ -319,7 +371,7 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         is_numerical = is_column_numerically_dominant(generated_sql_df[col])
 
         print(is_numerical)
-        
+
         print(pred_column)
 
         print(gold_column)
@@ -331,9 +383,14 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
         if column_similarity < 1:
             mismatches = [
-                {'<col, row>': '<' + str(col) + ', ' + str(i) + '>', 'pred': pred_column[i], 'gold': gold_column[i]}
+                {
+                    "<col, row>": "<" + str(col) + ", " + str(i) + ">",
+                    "pred": pred_column[i],
+                    "gold": gold_column[i],
+                }
                 for i in range(len(pred_column))
-                if not are_elements_equal(pred_column[i], gold_column[i])]
+                if not are_elements_equal(pred_column[i], gold_column[i])
+            ]
             all_mismatches.append((col, mismatches))
 
     average_similarity = sum(similarities) / num_cols
@@ -349,11 +406,11 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
     print(len_id_target_id)
 
     # Read the JSON file once
-    with open(json_file_path, 'r') as file:
+    with open(json_file_path, "r") as file:
         data_list = json.load(file)
         # Create a dictionary for faster lookups
         data_dict = {item["Source Data Name"]: item for item in data_list}
-        #print(data_dict)
+        # print(data_dict)
 
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
@@ -364,10 +421,14 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
 
     # Counting files starting with 'test' in this subfolder
-    file_count = sum(1 for _, _, files in os.walk(sub_folder_path) for file in files if file.startswith('test'))
+    file_count = sum(
+        1
+        for _, _, files in os.walk(sub_folder_path)
+        for file in files
+        if file.startswith("test")
+    )
 
     print(file_count)
-
 
     # Find and store the required data
     source_data_name_list = []
@@ -381,7 +442,9 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
 
         if data:
             # Extract the relevant information from the JSON data
-            if target_data_name is None:  # Assuming all target data names and schemas are the same
+            if (
+                target_data_name is None
+            ):  # Assuming all target data names and schemas are the same
                 target_data_name = data["Target Data Name"]
                 target_data_schema = data["Target Data Schema"]
                 target_samples = data["Target Data Sample"]
@@ -390,79 +453,12 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
             source_data_schema_list.append(data["Source Data Schema"])
             source_samples_list.append(data["3 Samples of Source Data"])
 
-    return target_data_name, target_data_schema, target_samples, file_count, source_data_name_list, source_data_schema_list, source_samples_list
-
-
-def calculate_cost_difference(start_summary, end_summary):
-    difference = {
-        'total_cost': end_summary['total_cost'] - start_summary['total_cost'],
-        'detailed_cost': {}
-    }
-
-    for model in end_summary['detailed_cost']:
-        if model in start_summary['detailed_cost']:
-            start_model_summary = start_summary['detailed_cost'][model]
-            end_model_summary = end_summary['detailed_cost'][model]
-
-            model_diff = {
-                'completion_tokens': end_model_summary['completion_tokens'] - start_model_summary['completion_tokens'],
-                'prompt_tokens': end_model_summary['prompt_tokens'] - start_model_summary['prompt_tokens'],
-                'cost': end_model_summary['cost'] - start_model_summary['cost']
-            }
-
-            difference['detailed_cost'][model] = model_diff
-
-    return difference
-
-def preprocess_sql_script(sql_text):
-    """
-    Process the SQL script to uncomment specific COPY commands, remove leading backslashes,
-    and handle COPY commands within explanatory comments.
-
-    Parameters:
-    - sql_text: A string containing the SQL script.
-
-    Returns:
-    - processed_text: A string of the processed SQL script.
-    """
-    processed_lines = []
-    comment_indicating_execution = False
-    for line in sql_text.splitlines():
-        # Directly handle commented-out COPY commands intended for execution
-        if line.strip().startswith('-- COPY'):
-            processed_line = line.replace('-- COPY', 'COPY', 1)
-        # Handle COPY commands that have been escaped with a backslash and possibly commented out
-        elif '\\COPY' in line or '-- \\COPY' in line:
-            processed_line = line.replace('\\COPY', 'COPY').replace('-- COPY', 'COPY', 1)
-        else:
-            processed_line = line
-
-        # Mark the presence of an explanatory comment
-        if "Copy the result" in line or "Data Import" in line or line.strip().startswith('--'):
-            comment_indicating_execution = True
-        # If the next line after an explanatory comment is a commented COPY command, uncomment it
-        elif comment_indicating_execution and '-- COPY' in line:
-            processed_line = processed_line.replace('-- COPY', 'COPY', 1)
-            comment_indicating_execution = False
-        processed_lines.append(processed_line)
-
-    processed_text = "\n".join(processed_lines)
-    return processed_text
-
-# # Example usage including the new scenario
-# sql_script_example = """
-# -- Data Import
-# -- For the sake of this example, assume CSV import commands would follow the structure below:
-# -- Please replace with an actual loading mechanism or bulk insert statements as necessary
-# -- COPY "Source3_35_0" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_0.csv' DELIMITER ',' CSV HEADER;
-# -- COPY "Source3_35_1" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_1.csv' DELIMITER ',' CSV HEADER;
-# -- COPY "Source3_35_2" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_2.csv' DELIMITER ',' CSV HEADER;
-# \\COPY "Source3_35_0" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_0.csv' WITH CSV HEADER;
-# \COPY "Source3_35_0" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_0.csv' WITH CSV HEADER;
-# -- COPY the result to a CSV file (Commented out for execution)
-# -- COPY (SELECT * FROM "Target3_89") TO 'D:\\transchema\\github-pipelines\\length3_89\\Target3_89_result_monolithic.csv' DELIMITER ',' CSV HEADER;
-# -- \COPY "Source3_35_2" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_2.csv' DELIMITER ',' CSV HEADER;
-# """
-#
-# processed_script = preprocess_sql_script(sql_script_example)
-# print(processed_script)
+    return (
+        target_data_name,
+        target_data_schema,
+        target_samples,
+        file_count,
+        source_data_name_list,
+        source_data_schema_list,
+        source_samples_list,
+    )
