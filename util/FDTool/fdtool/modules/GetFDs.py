@@ -49,9 +49,13 @@ def f(C_km1, df, Closure, U, Cardinality):
     U_c = list(df.head(0));
 
     # Identify the subsets whose cardinality of partition should be tested
-    SubsetsToCheck = [list(Subset) for Subset in set([frozenset(Candidate + [v_i]) for Candidate in C_km1 for v_i in
-                                                      list(set(U_c).difference(
-                                                          Closure[binaryRepr.toBin(Candidate, U)]))])];
+    SubsetsToCheck = [
+        list(Subset) for Subset in set(
+            frozenset(Candidate + [v_i])
+            for Candidate in C_km1
+            for v_i in list(set(U_c).difference(Closure.get(binaryRepr.toBin(Candidate, U), set())))
+        )
+    ]
 
     # Add singleton set to SubsetsToCheck if on first k-level
     if len(C_km1[0]) == 1: SubsetsToCheck += C_km1;
@@ -63,13 +67,18 @@ def f(C_km1, df, Closure, U, Cardinality):
 
     # Iterate through candidates of C_km1
     for Candidate in C_km1:
-        # Iterate though attribute subsets that are not in U - X{+}; difference b/t U and inclusive closure of candidate    
-        for v_i in list(set(U_c).difference(Closure[binaryRepr.toBin(Candidate, U)])):
-            # Check if the cardinality of the partition of {Candidate} is equal to that of {Candidate, v_i}
-            if Cardinality[binaryRepr.toBin(Candidate, U)] == Cardinality[binaryRepr.toBin(Candidate + [v_i], U)]:
+        # Iterate through attribute subsets that are not in U - X{+}; difference b/t U and inclusive closure of candidate
+        Candidate_bin = binaryRepr.toBin(Candidate, U)
+        Candidate_closure = Closure.get(Candidate_bin, set())
+        for v_i in list(set(U_c).difference(Candidate_closure)):
+            Candidate_vi_bin = binaryRepr.toBin(Candidate + [v_i], U)
+            if Cardinality.get(Candidate_bin) == Cardinality.get(Candidate_vi_bin):
                 # Add attribute v_i to closure
-                Closure[binaryRepr.toBin(Candidate, U)].add(v_i)
-                # Add list (Candidate, v_i) to F
-                F.append([tuple(Candidate), v_i]);
+                if Candidate_bin not in Closure:
+                    Closure[Candidate_bin] = set()
+                if v_i not in Candidate:  # Prevent adding the attribute to its own closure
+                    Closure[Candidate_bin].add(v_i)
+                    # Add list (Candidate, v_i) to F
+                    F.append([tuple(Candidate), v_i])
 
     return Closure, F, Cardinality;

@@ -33,6 +33,10 @@ from util.FDTool.fdtool.modules import GetFDs, Apriori_Gen, binaryRepr
 import csv
 import pandas as pd
 import os
+from valentine import valentine_match
+from valentine.algorithms import Coma,Cupid
+import time
+import timeout_decorator
 
 
 def schema_quality(sql_query, **kwargs):
@@ -168,7 +172,7 @@ def extract_table_schemas(sql_query, source_data_name_to_find, target_data_name)
     return source_schema, target_schema
 
 
-def data_quality(sql_result, target_handle):
+def data_quality(sql_result, target_handle,whether_multi=False):
     if not sql_result or not sql_result[0]:
         return 0,0  # No data to evaluate
     num_cols = len(sql_result[0])
@@ -212,20 +216,25 @@ def data_quality(sql_result, target_handle):
     combined_diversity_score = sum([info['diversity_score'] for info in column_info.values()]) / num_cols
     combined_score = (combined_none_score + combined_diversity_score) / 2
 
-    # Identify columns with low diversity, defined as most common value occupies more than a threshold of the rows
-    threshold = 0.5
-    low_diversity_columns = {col: info for col, info in column_info.items() if
-                             info['diversity_score'] < threshold}
-    if low_diversity_columns:
-        lowest_diversity_column = min(low_diversity_columns.items(), key=lambda x: x[1]['diversity_score'])
+    if whether_multi:
+        high_empty_columns = {col: info for col, info in column_info.items() if info['none_score'] != 1}
+        if high_empty_columns:
+            column_names = list(high_empty_columns.keys())
+        else:
+            column_names=None
+        return combined_none_score, column_names
 
-        # lowest_diversity_column now holds the column name and its info dictionary
-        column_name, column_info = lowest_diversity_column
-        print("data_score:", combined_score)
-        print("low diversity column:", column_name)
-    else:
-        column_name = None
-    return combined_score, column_name
+    if not whether_multi:
+        # Identify columns with low diversity, defined as most common value occupies more than a threshold of the rows
+        threshold = 0.5
+        low_diversity_columns = {col: info for col, info in column_info.items() if
+                                 info['diversity_score'] < threshold}
+        if low_diversity_columns:
+            # lowest_diversity_column now holds the column name and its info dictionary
+            column_names = list(low_diversity_columns.keys())
+        else:
+            column_names = None
+        return combined_score, column_names
 
 
 def fd_quality(sql_query, column_mappings, new_key,**kwargs):
@@ -253,11 +262,11 @@ def fd_quality(sql_query, column_mappings, new_key,**kwargs):
         df_1 = data_1_df[relevant_source_columns]
         df_2 = pd.DataFrame(data_2, columns=column_names_2)
         # Use FDTool
-        functional_dependencies_1, keys_1 = analyze_functional_dependencies(df_1)
+        functional_dependencies_1, keys_1 = analyze_functional_dependencies(df_1,[])
         # Map source FDs to target FDs
         mapped_fds = map_source_fds_to_target_fds(functional_dependencies_1, column_mappings)
         print("mapped_fds", mapped_fds)
-        functional_dependencies_2, keys_2 = analyze_functional_dependencies(df_2)
+        functional_dependencies_2, keys_2 = analyze_functional_dependencies(df_2,[])
         # Compare mapped FDs with target FDs
         fd_comparison, fd_score = compare_fds(mapped_fds, functional_dependencies_2)
         # Compare keys_1 and keys_2 for new key detection
@@ -274,15 +283,20 @@ def fd_quality(sql_query, column_mappings, new_key,**kwargs):
     else:
         return 1, ""
 
+def handler(signum, frame):
+    raise TimeoutError("Function execution has timed out.")
 
 def analyze_functional_dependencies(df):
+
     # Initial setup based on FDTool logic
     U = list(df.head(0))
     C = [[[item] for item in U]]
     Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in Apriori_Gen.powerset(U)}
     Cardinality = {element: None for element in Closure}
+
     # Get functional dependencies
     Closure, F, Cardinality = GetFDs.f(C[0], df, Closure, U, Cardinality)
+
     # Filter functional dependencies
     filtered_F = []
     all_keys = set()
@@ -293,9 +307,54 @@ def analyze_functional_dependencies(df):
         if not isinstance(df[key[0]].iloc[0], Decimal):
             filtered_F.append(fd)
     all_keys_sorted = sorted(list(all_keys))
-    #print("filtered_F:", filtered_F)
-    return filtered_F,all_keys_sorted
 
+    return filtered_F, all_keys_sorted
+
+def analyze_functional_dependencies_1(df, candidate_columns):
+    # Initial setup based on FDTool logic
+    U = list(df.columns)  # Keep all columns in U
+    C = [[[item] for item in U]]
+
+    # Modify the closure generation to consider only subsets with candidate columns
+    def candidate_powerset(columns, candidate_columns):
+        """Generate all subsets of columns that include at least one candidate column"""
+        all_subsets = []
+        for subset in Apriori_Gen.powerset(columns):
+            if any(col in candidate_columns for col in subset):
+                all_subsets.append(subset)
+        return all_subsets
+
+    # Generate closure only for subsets including candidate columns
+    Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in candidate_powerset(U, candidate_columns)}
+    Cardinality = {element: None for element in Closure}
+
+    # Get functional dependencies
+    Closure, F, Cardinality = GetFDs.f(C[0], df, Closure, U, Cardinality)
+
+    # Determine candidate keys
+    candidate_keys = []
+    for key, value in F:
+        if set(key).issubset(candidate_columns):
+            candidate_keys.append(key)
+
+    # Filter functional dependencies to determine keys
+    filtered_keys = []
+    for key in candidate_keys:
+        if not isinstance(df[key[0]].iloc[0], Decimal):
+            filtered_keys.append(key)
+
+    # Sort and return keys
+    all_keys_sorted = sorted(list(set(tuple(k) for k in filtered_keys)))
+    # Filter functional dependencies
+    filtered_F = []
+    all_keys = set()
+    for fd in F:
+        key, value = fd
+        all_keys.update(key)
+        # Check if key columns are of float type
+        if not isinstance(df[key[0]].iloc[0], Decimal):
+            filtered_F.append(fd)
+    return filtered_F,all_keys_sorted
 
 def map_source_fds_to_target_fds(source_fds, column_mappings):
     mapped_fds = []
@@ -461,6 +520,8 @@ def data_profiling(df,whether_source=False):
             'uniqueness': df[column].nunique() / len(df),
             'constancy': df[column].value_counts(normalize=True).iloc[0],
             'data_type': df[column].dtype,
+            'null_percentage': df[column].isnull().mean() * 100,
+            'num_row':len(df)
         }
         if df[column].dtype in ['int64', 'float64']:
             column_summary['min'] = df[column].min()
@@ -502,43 +563,79 @@ def data_profiling(df,whether_source=False):
     #         f"{col}: Longer Than: {relationships['longer_than']}, Shorter Than: {relationships['shorter_than']}, Equal Length To: {relationships['equal_length_to']}")
     if whether_source:
         return single_analysis, multi_analysis
-    functional_dependencies, keys = analyze_functional_dependencies(df)
+
+
+    #functional_dependencies, keys = analyze_functional_dependencies(df)
+
+    # dependencies = {
+    #     'dependencies': functional_dependencies,
+    #     'keys': keys
+    # }
     dependencies = {
-        'dependencies': functional_dependencies,
-        'keys': keys
+        'dependencies':[] ,
+        'keys': []
     }
     return single_analysis, multi_analysis, dependencies
 
 
 def data_summary(single_analysis,multi_analysis,dependencies,whether_source=False):
+    null_hints = []
     columns_high = []
     columns_low = []
+    high_null_threshold = 30.0
+    high_duplicate_threshold = 0.1  # Define a threshold for high duplicates
+    high_uniqueness_threshold = 0.9
+    high_constancy_threshold = 0.9
+    low_uniqueness_threshold = 0.1
+    value_pattern_hints = []
+
     # Value pattern and schema change hints based on single_analysis
     for column, stats in single_analysis.items():
         if 'uniqueness' in stats and 'constancy' in stats:
-            # Define thresholds for extreme cases
-            high_uniqueness_threshold = 0.9
-            low_uniqueness_threshold = 0.1
-            high_constancy_threshold = 0.9
-
             # Check for columns with high uniqueness or high constancy but low uniqueness
             if stats['uniqueness'] > high_uniqueness_threshold:
                 columns_high.append(column)
             elif stats['uniqueness'] < low_uniqueness_threshold and stats['constancy'] > high_constancy_threshold:
                 columns_low.append(column)
+
+        # Check for columns with high NULL percentage and add to hints
+        if 'null_percentage' in stats and stats['null_percentage'] > high_null_threshold:
+            null_hints.append(
+                f"\"{column}\" has a high NULL percentage ({stats['null_percentage']}%). Please remove the rows with NULL values in the target table.")
+
+    # Check for high number of duplicate values in the target table
+    uniqueness_hint = None
+    if 'duplicates_percentage' in single_analysis and single_analysis[
+        'duplicates_percentage'] > high_duplicate_threshold:
+        uniqueness_hint = "Please don't drop duplicate values in the target table."
+
+    # Check for value pattern hints based on multiple columns with high uniqueness
+    if 'value_patterns' in multi_analysis:
+        for pattern in multi_analysis['value_patterns']:
+            columns = pattern['columns']
+            if all(single_analysis[col]['uniqueness'] > high_uniqueness_threshold for col in columns):
+                grouped_columns = ', '.join(columns)
+                value_pattern_hints.append(f"Group by {grouped_columns} and aggregate EC by counting them.")
+
     # Generate a single hint for using aggregation functions and group by, if there are any columns for grouping
     if columns_high and columns_low:
         grouped_columns_high = ', '.join([f'"{col}"' for col in columns_high])
         grouped_columns_low = ', '.join([f'"{col}"' for col in columns_low])
-        schema_change_hints = f"{grouped_columns_high}has high uniqueness. {grouped_columns_low} has low uniqueness and high constancy."
+        schema_change_hints = f"{grouped_columns_high} has high uniqueness. {grouped_columns_low} has low uniqueness and high constancy."
     elif columns_high and not columns_low:
         grouped_columns_high = ', '.join([f'"{col}"' for col in columns_high])
-        schema_change_hints = f"{grouped_columns_high}has high uniqueness."
+        schema_change_hints = f"{grouped_columns_high} has high uniqueness."
     elif not columns_high and columns_low:
         grouped_columns_low = ', '.join([f'"{col}"' for col in columns_low])
-        schema_change_hints = f"{grouped_columns_low}has low uniqueness and high constancy."
+        schema_change_hints = f"{grouped_columns_low} has low uniqueness and high constancy."
     else:
         schema_change_hints = ""
+
+    if null_hints:
+        schema_change_hints += "\n" + "\n".join(null_hints)
+
+    if value_pattern_hints:
+        schema_change_hints += "\n" + "\n".join(value_pattern_hints)
 
     # Constructing value pattern based on multi_analysis
     value_relations_summary = []
@@ -549,7 +646,8 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
             value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
         if equal_to_cols:
             value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
-    value_pattern_msg = "Value pattern in table: " + '; '.join(value_relations_summary)+'.' if value_relations_summary else ""
+    value_pattern_msg = "Value pattern in table: " + '; '.join(
+        value_relations_summary) + '.' if value_relations_summary else ""
 
     if whether_source:
         if schema_change_hints:
@@ -564,7 +662,7 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
         key, value = fd[0], fd[1]
         keys = ', '.join(key) if isinstance(key, (list, tuple)) else key
         fd_hints.append(f"{keys} -> {value}")
-    fd_hints_msg = "Functional dependency detected: " + '; '.join(fd_hints)
+    fd_hints_msg = "Functional dependency detected: " + '; '.join(fd_hints) if fd_hints else ""
     if schema_change_hints or fd_hints:
         # Combining all messages
         summary_msg = f"{value_pattern_msg}\n" + schema_change_hints + "\n" + fd_hints_msg
@@ -575,11 +673,11 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
 
 ##For data morphing,it should compare target summary with result summary,return hints about whether to group by or aggregate,
 ## the columns to group by or aggregate,which column should be same or different,which column should be greater or less than
-def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma, result_dependencies):
+def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma, result_dependencies,whether_multi=False):
     transformation_hints = []
     fd_mismatch_hints = []
     value_pattern_mismatch_hints = []
-
+    null_quality_hints = []
     # Compare single analysis for suggesting group by based on uniqueness and constancy
     for column, target_stats in target_sa.items():
         result_stats = result_sa.get(column, {})
@@ -590,7 +688,13 @@ def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma
             if target_stats['constancy'] > 0.9 and result_stats['constancy'] < 0.9:
                 transformation_hints.append(
                     f"\nAvoid grouping by '{column}' due to its high constancy in target being lost in result.")
-
+         #Compare null percentage
+        if 'null_percentage' in target_stats and 'null_percentage' in result_stats:
+            if target_stats['null_percentage'] == 0 and result_stats['null_percentage'] != 0:
+                null_quality_hints.append(
+                    f"\nPlease use 'WHERE {column} IS NOT NULL' to ensure '{column}' is not NULL in the target table.")
+    # Combine all hints
+    transformation_hints = transformation_hints+null_quality_hints if whether_multi else transformation_hints
     # Functional dependencies comparison
     target_fds = set([tuple(fd) for fd in target_dependencies['dependencies']])
     result_fds = set([tuple(fd) for fd in result_dependencies['dependencies']])
@@ -626,21 +730,61 @@ def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma
     hints = transformation_hints + fd_mismatch_hints + value_pattern_mismatch_hints
     return "\n".join(hints) if hints else ""
 
-#
-# import os
-# from valentine import valentine_match
-# from valentine.algorithms import Coma,Cupid
-#
-# # Load data using pandas
-# d1_path = 'D:/transchema\github-pipelines\length1_8/test_0.csv'
-# d2_path = 'D:/transchema\github-pipelines\length1_8/test_1.csv'
-# df1 = pd.read_csv(d1_path)
-# df2 = pd.read_csv(d2_path)
-#
-# # Instantiate matcher and run
-# #matcher = Coma(use_instances=True)
-# matcher = Cupid()
-# matches = valentine_match(df1, df2, matcher)
-#
-# print(matches)
-#
+def schema_matching(source_dfs, target_df):
+    matches_results = {}
+    schema_includes_all_target = True  # Assume true initially
+    # matcher = Cupid()
+    #
+    # # Iterate over all pairs of source data frames
+    # for i, df1 in enumerate(source_dfs[:-1]):
+    #     for j, df2 in enumerate(source_dfs[i + 1:], start=i + 1):
+    #         # Perform matching
+    #         matches = valentine_match(df1, df2, matcher)
+    #         # Store the match results, here using the index, but you can use any identifier
+    #         matches_results[(i, j)] = matches
+    #
+    #         # Check if each source table includes all schemas in the target table
+    #         if not all(col in df1.columns for col in target_df.columns) or not all(col in df2.columns for col in target_df.columns):
+    #             schema_includes_all_target = False
+    #
+    hints = []
+    #
+    # # Check if union hint is applicable
+    # if schema_includes_all_target:
+    #     hints.append("Union source tables by target schemas")
+    #
+    # # Generate join hints
+    # for key, matches in matches_results.items():
+    #     table_pair = f"Table {key[0]} and Table {key[1]}"
+    #     for columns_pair, score in matches.items():
+    #         if score >= 0.99:  # Considering matches with score >= 0.99 as high confidence matches
+    #             table_1_col, table_2_col = columns_pair[0][1], columns_pair[1][1]
+    #             if table_1_col == table_2_col:
+    #                 hint = f"Please consider joining {table_pair} on '{table_1_col}' since they have a high matching relationship with a score of {score}."
+    #             else:
+    #                 hint = f"Please consider joining {table_pair} on '{table_1_col}' and '{table_2_col}' since they have a high matching relationship with a score of {score}."
+    #             hints.append(hint)
+    # Check if each source table includes all schemas in the target table
+    for df in source_dfs:
+        if not all(col in df.columns for col in target_df.columns):
+            schema_includes_all_target = False
+
+    # Check if union hint is applicable
+    if schema_includes_all_target:
+        hints.append("Union source tables by target schemas")
+
+    # Use alternative method for matching columns with the same name
+    for i, df1 in enumerate(source_dfs[:-1]):
+        for j, df2 in enumerate(source_dfs[i + 1:], start=i + 1):
+            # Find columns with the same name in both data frames
+            common_columns = set(df1.columns).intersection(set(df2.columns))
+            if common_columns:
+                for column in common_columns:
+                    hint = f"Please consider joining Table {i} and Table {j} on '{column}' since they have the same column name."
+                    hints.append(hint)
+
+    print("Schema matching hints:", hints)
+    return hints
+
+
+

@@ -10,7 +10,7 @@ def extract_numbers_from_text(s, pattern):
 
 
 def extract_numbers_from_folder(path):
-    folder_pattern = re.compile(r'length(\d+)_(\d+)')
+    folder_pattern = re.compile(r'target(\d+)_(\d+)')
     match = folder_pattern.search(str(path))
     return (int(match.group(1)), int(match.group(2))) if match else (float('inf'), float('inf'))
 
@@ -28,7 +28,7 @@ def change_target_source_name(df):
 
 
 # Define the directory where your subfolders are located
-base_directory = Path('../github-pipelines')
+base_directory = Path('D:/transchema\smart_building')
 
 # Initialize a dictionary to store data
 data = {}
@@ -40,7 +40,7 @@ for folder in sorted(base_directory.iterdir(), key=extract_numbers_from_folder):
     if folder.is_dir():
         target_csv_path = folder / 'target.csv'
         if target_csv_path.exists():
-            target_df = pd.read_csv(target_csv_path, low_memory=False, index_col=0)
+            target_df = pd.read_csv(target_csv_path, low_memory=False)
             target_sample = [[]] if target_df.empty else target_df.head(3).values.tolist()
             target_header = [] if target_df.empty else target_df.columns.tolist()
 
@@ -50,7 +50,7 @@ for folder in sorted(base_directory.iterdir(), key=extract_numbers_from_folder):
             test_csv_files = [file for file in folder.iterdir() if
                               file.name.startswith('test_') and file.name.endswith('.csv')]
             for test_csv_file in test_csv_files:
-                test_df = pd.read_csv(test_csv_file, low_memory=False, index_col=0)
+                test_df = pd.read_csv(test_csv_file, low_memory=False)
                 test_sample = [[]] if test_df.empty else test_df.head(3).values.tolist()
                 test_columns = test_df.columns.tolist()
 

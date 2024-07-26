@@ -154,10 +154,14 @@ class Agent:
     def run_baseline(self, verbose=True):
         res =  self.llm_client.gpt(self.prompt)
         # print('Response - SQL', res)
-        if self.script_language == 'python':
-            return res[0].split("```Python")[1].split("```")[0].strip()
-        elif self.script_language == 'sql':
-            return res[0].split("```sql")[1].split("```")[0].strip()
+        try:
+            if self.script_language == 'python':
+                return res[0].split("```Python")[1].split("```")[0].strip()
+            elif self.script_language == 'sql':
+                return res[0].split("```sql")[1].split("```")[0].strip()
+        except IndexError:
+            # Handle the case where the split does not work as expected
+            return "Code block not found."
 
     def run_mcts(self, verbose=True):
         # Use MCTS for action selection

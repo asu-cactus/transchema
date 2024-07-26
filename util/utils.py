@@ -60,7 +60,7 @@ def create_connection():
     conn = psycopg2.connect(
         dbname="postgres",
         user="postgres",
-        password="postgres",
+        password="021111",
         host="localhost",  # e.g., "localhost"
         port="5432"  # e.g., "5432"
     )
@@ -183,16 +183,16 @@ def log_experiment_success(target_data_name, source_data_name_to_find, iteration
         # file.write(f", Global accuracy: {case_accuracy:.2f}\n")
 
 
-def log_experiment(target_data_name, source_data_name_to_find,execution_time_1,execution_time_2, execution_time_3,execution_time, cost, success, method):
+def log_experiment(target_data_name, source_data_name_to_find,case_accuracy,execution_time_1,execution_time_2, execution_time_3,execution_time, cost, success, method):
     file_path = f'log/{method}.log'
     with open(file_path, 'a+') as file:
         if success:
             print(cost)
             file.write(
-                f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n")
+                f"{target_data_name} <- {source_data_name_to_find} Successful with Accuracy:{case_accuracy}, Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2},SQL Execution time:{execution_time_3}) and cost:{cost}\n")
         else:
             file.write(
-                f"{target_data_name} <- {source_data_name_to_find} Failed with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3})  and cost:{cost}\n")
+                f"{target_data_name} <- {source_data_name_to_find} Failed with Accuracy:{case_accuracy}, Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2},SQL Execution time:{execution_time_3})  and cost:{cost}\n")
 
 
 def numerical_similarity(value1, value2, threshold=1e-10):
@@ -393,3 +393,76 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
     return target_data_name, target_data_schema, target_samples, file_count, source_data_name_list, source_data_schema_list, source_samples_list
 
 
+def calculate_cost_difference(start_summary, end_summary):
+    difference = {
+        'total_cost': end_summary['total_cost'] - start_summary['total_cost'],
+        'detailed_cost': {}
+    }
+
+    for model in end_summary['detailed_cost']:
+        if model in start_summary['detailed_cost']:
+            start_model_summary = start_summary['detailed_cost'][model]
+            end_model_summary = end_summary['detailed_cost'][model]
+
+            model_diff = {
+                'completion_tokens': end_model_summary['completion_tokens'] - start_model_summary['completion_tokens'],
+                'prompt_tokens': end_model_summary['prompt_tokens'] - start_model_summary['prompt_tokens'],
+                'cost': end_model_summary['cost'] - start_model_summary['cost']
+            }
+
+            difference['detailed_cost'][model] = model_diff
+
+    return difference
+
+def preprocess_sql_script(sql_text):
+    """
+    Process the SQL script to uncomment specific COPY commands, remove leading backslashes,
+    and handle COPY commands within explanatory comments.
+
+    Parameters:
+    - sql_text: A string containing the SQL script.
+
+    Returns:
+    - processed_text: A string of the processed SQL script.
+    """
+    processed_lines = []
+    comment_indicating_execution = False
+    for line in sql_text.splitlines():
+        # Directly handle commented-out COPY commands intended for execution
+        if line.strip().startswith('-- COPY'):
+            processed_line = line.replace('-- COPY', 'COPY', 1)
+        # Handle COPY commands that have been escaped with a backslash and possibly commented out
+        elif '\\COPY' in line or '-- \\COPY' in line:
+            processed_line = line.replace('\\COPY', 'COPY').replace('-- COPY', 'COPY', 1)
+        else:
+            processed_line = line
+
+        # Mark the presence of an explanatory comment
+        if "Copy the result" in line or "Data Import" in line or line.strip().startswith('--'):
+            comment_indicating_execution = True
+        # If the next line after an explanatory comment is a commented COPY command, uncomment it
+        elif comment_indicating_execution and '-- COPY' in line:
+            processed_line = processed_line.replace('-- COPY', 'COPY', 1)
+            comment_indicating_execution = False
+        processed_lines.append(processed_line)
+
+    processed_text = "\n".join(processed_lines)
+    return processed_text
+
+# # Example usage including the new scenario
+# sql_script_example = """
+# -- Data Import
+# -- For the sake of this example, assume CSV import commands would follow the structure below:
+# -- Please replace with an actual loading mechanism or bulk insert statements as necessary
+# -- COPY "Source3_35_0" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_0.csv' DELIMITER ',' CSV HEADER;
+# -- COPY "Source3_35_1" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_1.csv' DELIMITER ',' CSV HEADER;
+# -- COPY "Source3_35_2" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_2.csv' DELIMITER ',' CSV HEADER;
+# \\COPY "Source3_35_0" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_0.csv' WITH CSV HEADER;
+# \COPY "Source3_35_0" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_0.csv' WITH CSV HEADER;
+# -- COPY the result to a CSV file (Commented out for execution)
+# -- COPY (SELECT * FROM "Target3_89") TO 'D:\\transchema\\github-pipelines\\length3_89\\Target3_89_result_monolithic.csv' DELIMITER ',' CSV HEADER;
+# -- \COPY "Source3_35_2" FROM 'D:\\transchema\\github-pipelines\\length3_35\\test_2.csv' DELIMITER ',' CSV HEADER;
+# """
+#
+# processed_script = preprocess_sql_script(sql_script_example)
+# print(processed_script)

@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 from experiment import Experiment
+os.environ["http_proxy"] = "http://localhost:7890"
+os.environ["https_proxy"] = "http://localhost:7890"
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -9,13 +11,13 @@ def parse_args():
     # metadata
     args.add_argument('--data_path', type=str, default='./data/chatgpt_github_ms.json')
     args.add_argument('--source_start_idx', type=int, default=0)
-    args.add_argument('--max_pipeline_len_idx', type=int, default=2)
-    args.add_argument('--pipeline_len_start_idx', type=int, default=2)
+    args.add_argument('--max_pipeline_len_idx', type=int, default=3)
+    args.add_argument('--pipeline_len_start_idx', type=int, default=1)
     args.add_argument('--target_start_idx', type=int, default=0)
     args.add_argument('--max_target_idx', type=int, default=99)
-    args.add_argument('--max_attempts', type=int, default=5)
+    args.add_argument('--max_attempts', type=int, default=3)
     # maindata
-    args.add_argument('--main_folder', type=str, default='github-pipelines-l1')
+    args.add_argument('--main_folder', type=str, default='github-pipelines')
 
     # Agent
     args.add_argument('--clarity_on', type=bool, default=False)
@@ -35,7 +37,7 @@ def parse_args():
     args.add_argument('--n_evaluate_sample', type=int, default=1)
     # Others
     args.add_argument('--log_dir', type=str, default='logs/')
-    args.add_argument('--control_method', type=str, choices=['none','quality','summary','both'],default='none')
+    args.add_argument('--control_method', type=str, choices=['none','quality','summary','both'],default='summary')
     args = args.parse_args()
     args = vars(args)
     return args
@@ -49,8 +51,6 @@ def main(args):
     experiment.run()
     # Always log the cost, even if an error occurred
     logging.info(f"COST of this experiment: \n{experiment.token_tracker.cost_summary()}")
-
-
 
 
 if __name__ == "__main__":

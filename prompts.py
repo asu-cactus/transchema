@@ -314,7 +314,7 @@ Generate SQL code for the transformation. Ensure this code accounts for the hand
 2. Create Source Table: Define and create the source table '{source_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and carefully handle date formats as per the analysis.
 3. Data Import: Load data from CSV at '{test_0_path}', treating empty values as NULL and correctly handling date formats.
 4. Create Target Table: Define and create the target table '{target_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and ensure date formats are correctly handled.
-5. COPY the SQL result into a CSV file "{result_path}{target_name}_result_monolithic.csv".
+5. COPY the SQL result into a CSV file "{result_path}".
 
 Ensure the generated sql code incorporates insights from the analytical steps, especially the enhanced aggregation analysis, tailored to the specific requirements of the given schemas and data paths.
 
@@ -345,14 +345,11 @@ Generate SQL code for the transformation. Ensure this code accounts for the hand
 2. Create Source Table: Define and create the source table '{source_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and carefully handle date formats as per the analysis.
 3. Data Import: Load data from CSV at '{test_0_path}', treating empty values as NULL and correctly handling date formats.
 4. Create Target Table: Define and create the target table '{target_name}', dropping it first if it exists. Use double quotes for any reserved keywords used as column names and ensure date formats are correctly handled.
-5. COPY the SQL result into a CSV file "{result_path}{target_name}_result_monolithic.csv".
+5. Copy the SQL result into a CSV file "{result_path}".
 
 Ensure the generated sql code incorporates insights from the analytical steps, especially the enhanced aggregation analysis, tailored to the specific requirements of the given schemas and data paths.
 
-Please join on track_id.
-
-Ensure the 'COPY' command is used for both data import and export steps. Do not comment them out as PostgreSQL support direct file writes from queries. Please quote the returned SQL script between "```sql\n" and "\n```"
-
+Ensure the 'COPY' command is used for both data import and export steps.Do not comment them out as PostgreSQL support direct file writes from queries.Please quote the returned SQL script between "```sql\n" and "\n```"
 
 """
 
@@ -367,8 +364,7 @@ Your Task Details:
 
 Note: The row examples provided are not necessarily corresponding rows. They are simply examples of rows in the source and target schemas.
 
-Transformation Plan:
-- Provide a high-level plan for transforming the data from the source tables to match the target table format. 
+
 Transformation Plan:
 - Provide a detailed plan, step by step for transforming the data from the source tables to match the target table format. 
 - Each step should be a concrete data manipulation, such as a query.
@@ -392,6 +388,7 @@ Never skip any step for brevity, as each step is crucial for the successful tran
 Never skip Data import steps, as they are essential for the transformation process.
 Ensure the 'COPY' command is used for both data import and export steps. Do not comment the COPY out. 
 Please quote the returned SQL script between "```sql\n" and "\n```"
+
 """
 
 cot_multi_source_python_template = """
@@ -430,6 +427,8 @@ Please quote the Python script between "```Python" and "```"
 # You are given source schemas and a target schema and some example data. You are asked to transform the source schema to the target schema.
 # In addition to answering the question, you are also expected to provide a step-by-step explanation of the answer.
 # In your reponse, try to use SQL or Python code to demonstrate the transformation steps.
+# Please use aggregation functions and group by 'company_permalink' due to its high uniqueness in target.
+# Please avoid grouping by 'funded_year' due to its high constancy in target being lost in result.
 
 cot_template = """
 You are a SQL developer tasked with transforming data from a source table to match the format of a target table in a Postgres database. Please generate the steps and the corresponding SQL script for this transformation. 
@@ -483,3 +482,24 @@ Instructions:
 
 ("Based on these examples, create abbreviations for the following treatment regimens (provide new examples)."
 """
+
+data_summary_template = """
+You are an AI assistant skilled in generating concise data transformation rules. Below are examples of such rules:
+
+1. Multi source table + each source table includes all schemas in target table ---> union source tables by target schemas
+
+2. Multi source table + X (each source table includes all schemas in target table) + column A in table 0 matches column B in table 1, column C in table 2 matches column D in table 1 ---> join table 0 and table 1 on ‘A’, join table 1 and table 2 on ‘C’
+
+3. Column A and column B have high uniqueness + value pattern in each row (columns have many equal values) --- EC ---> group by ‘A’, ‘B’ and aggregate EC by counting them
+
+4. Check the uniqueness between target and result ---> Please don't drop duplicate values in the target table.
+
+5. Check the Null percentage between target and result ---> Please remove the rows with NULL values in the target table.
+
+Now, please generate new data transformation rules with new conditions and corresponding actions.
+
+Each rule should follow this format:
+1. [Condition] ---> [Action]
+
+Let's generate the rules."""
+

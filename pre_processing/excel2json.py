@@ -24,7 +24,7 @@ def convert_excel_to_json(excel_file_path, json_file_path):
     ]
 
     # Read the specified columns from the first sheet
-    data_to_convert = pd.read_excel(xls, sheet_name=2, usecols=columns_to_include)
+    data_to_convert = pd.read_excel(xls, sheet_name='Non_Join', usecols=columns_to_include)
 
     # Fill missing values in the specified columns by forward filling
     columns_to_fill = ["Target Data Name", "Target Data Schema", "Target Data Sample"]
@@ -46,10 +46,10 @@ def convert_excel_to_json(excel_file_path, json_file_path):
 
 
 # Path to the Excel file
-excel_file_path = '../github-pipelines/output.xlsx'
+excel_file_path = 'D:/transchema\github-pipelines\output.xlsx'
 
 # Path to save the JSON file
-json_file_path = '../data/chatgpt.json'
+json_file_path = '../data/chatgpt_github_ss.json'
 
 # Call the function to perform the conversion
 convert_excel_to_json(excel_file_path, json_file_path)
