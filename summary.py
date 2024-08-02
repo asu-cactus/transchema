@@ -69,19 +69,22 @@ def generate_transformation_hints(tables,source_dfs, target_df, mode='light', ca
                             ((source_1, col_1), (source_2, col_2))] = match_score
         return matches_results
 
-    def check_high_uniqueness_columns(source_dfs):
+    def check_high_uniqueness_columns(source_dfs, target_df):
+        target_unique_columns = [col for col in target_df.columns if target_df[col].nunique() > len(target_df) * 0.9]
+
         for df in source_dfs:
             for col in df.columns:
-                if df[col].nunique() > len(df) * 0.9:
+                if col in target_unique_columns and df[col].nunique() <= len(df) * 0.9:
                     return True, col
+                if df[col].nunique() < len(df) * 0.03:
+                    return True, None
         return False, None
 
     def check_null_percentage(source_dfs, target_df):
         for df in source_dfs:
             if df.isnull().mean().max() > 0.5:
-                return True
-        if target_df.isnull().mean().max() > 0.5:
-            return True
+                if target_df.isnull().mean().max() < 0.5:
+                    return True
         return False
 
     def analyze_key_columns(tables, candidate_key_columns):
@@ -159,10 +162,16 @@ def generate_transformation_hints(tables,source_dfs, target_df, mode='light', ca
             FD, Key = analyze_functional_dependencies(target_df)
             hints.append(f"Target Table has functional dependencies: {FD} and key: {Key}")
 
+
+
     # Rule 4: Check for high uniqueness columns
-    high_uniqueness, unique_col = check_high_uniqueness_columns(source_dfs)
-    if high_uniqueness:
-        hints.append(f"Group by '{unique_col}' and aggregate other columns by counting them if they equal to each other. ")
+    high_uniqueness, unique_col = check_high_uniqueness_columns(source_dfs,target_df)
+    if high_uniqueness and unique_col:
+        hints.append(f"Group by '{unique_col}' and aggregate other columns. ")
+    elif high_uniqueness:
+        hints.append(f"Please use aggregation ")
+
+
 
     # Rule 5: Check the null percentage between target and result
     if check_null_percentage(source_dfs, target_df):

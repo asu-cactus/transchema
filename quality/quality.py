@@ -21,6 +21,7 @@ Type 2 quality checks are performed by the following functions:
 
 
 """
+import itertools
 import re
 import ast
 from util.utils import execute_sql, compare_lists_matching
@@ -319,11 +320,14 @@ def analyze_functional_dependencies_1(df, candidate_columns):
     def candidate_powerset(columns, candidate_columns):
         """Generate all subsets of columns that include at least one candidate column"""
         all_subsets = []
-        for subset in Apriori_Gen.powerset(columns):
-            if any(col in candidate_columns for col in subset):
-                all_subsets.append(subset)
+        for num_candidates in range(1, len(candidate_columns) + 1):
+            for candidate_subset in itertools.combinations(candidate_columns, num_candidates):
+                remaining_columns = [col for col in columns if col not in candidate_subset]
+                for num_remaining in range(len(remaining_columns) + 1):
+                    for remaining_subset in itertools.combinations(remaining_columns, num_remaining):
+                        all_subsets.append(set(candidate_subset + remaining_subset))
         return all_subsets
-
+    s = candidate_powerset(U, candidate_columns)
     # Generate closure only for subsets including candidate columns
     Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in candidate_powerset(U, candidate_columns)}
     Cardinality = {element: None for element in Closure}
@@ -490,8 +494,6 @@ def get_df(**kwargs):
             data = [tuple(row) for row in reader]
         df = pd.DataFrame(data, columns=header)
         source_df.append(df)
-
-
 
     result_df = pd.DataFrame(data_2,columns=header)
     with open(kwargs['target_path'], 'r', encoding="utf-8") as file:

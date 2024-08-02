@@ -27,8 +27,9 @@ def value_range(col):
 
 # Function to calculate ratio of distinct value count to range
 def distinct_to_range_ratio(col):
-    if pd.api.types.is_numeric_dtype(col):
-        return len(col.unique()) / value_range(col)
+    range_val = value_range(col)
+    if range_val != 0:
+        return len(col.unique()) / range_val
     return 0
 
 # Function to calculate peak frequency
