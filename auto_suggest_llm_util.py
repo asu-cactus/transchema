@@ -78,6 +78,28 @@ def get_columns(s) :
     matches = re.findall(r'\$(.*?)\$', s)
     return matches
 
+def get_columns_join(s) :
+    result = re.search(r'\$(.*?)\$', s)
+    if result:
+        extracted_content = result.group(1)
+        return extracted_content
+
+    return "No match found"
+
+def get_columns_aggr(s) :
+    elements = s.strip('[]').split(',')
+
+# Remove the quotes and dollar signs from each element
+    elements = [element.strip(' ') for element in elements]
+
+    elements = [element.strip('"') for element in elements]
+
+    elements = [element.strip('$') for element in elements]
+
+    res = [elements[:-2],elements[-2],elements[-1]]
+
+    return res
+
 
 def load_tables(directory,source_data_name_list,len_idx_target_idx):
     tables = {}
@@ -135,6 +157,51 @@ def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_sch
                 pass
 
     return hints
+
+def cost_compare(cost1, cost2, model) :
+    cost = dict()
+    cost["total_cost"] = cost2["total_cost"] - cost1["total_cost"]
+    cost["detailed_cost"] = dict()
+    if(model in cost1["detailed_cost"].keys()) : 
+        cost["detailed_cost"][model] = {'completion_tokens' : cost2["detailed_cost"][model]['completion_tokens'] - cost1["detailed_cost"][model]['completion_tokens'], 'prompt_tokens' : cost2["detailed_cost"][model]["prompt_tokens"] - cost1["detailed_cost"][model]['prompt_tokens'], 'cost' : cost2["detailed_cost"][model]["cost"] - cost1["detailed_cost"][model]["cost"]}
+    else : 
+        cost["detailed_cost"][model] = cost2["detailed_cost"][model]
+
+    # print('calculated Cost : ', cost)
+
+    return cost
+
+def increment_count(q) :
+    q['total'] += 1
+    q['in_task'] += 1
+    return 
+
+#llm_client,model,prompt, q_count, cost_summary, token_tracker, type = "Ask For Operator"
+def query_gpt(llm_model,model, prompt, q_count, logger, cost_summary, token_tracker,type) :
+    start_time = time.time()
+    logger.info("Query of Type : {type_}".format(type_ = type))
+    #run the prompt and get the result 
+    res = llm_model.gpt(prompt[0])
+    #log the prompt 
+    logger.info('Prompt to ask for operator : {prompt}'.format(prompt = prompt[0]))
+    # log the result 
+    logger.info('Result Recieved :  {res}'.format(res = res[0]))
+    end_time = time.time()
+    #calculate append incremental cost in cost_summary, the last one will be the total task cost 
+    cost_summary.append(token_tracker.cost_summary())
+
+    #calculate cost associated with this task
+    cost = cost_compare(cost_summary[-2],cost_summary[-1],model) 
+    # print('Cost : ', cost)
+    
+    #log that cost
+    logger.info('Cost of the query : {cost}'.format(cost = cost))
+    logger.info('Time taken for this prompt : {time_elapsed}'.format(time_elapsed = end_time - start_time))
+    
+    #increment task counts
+    increment_count(q_count)
+    
+    return res
     
     
     
