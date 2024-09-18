@@ -27,6 +27,137 @@ from test_scope import get_test_cases_ids
 
 from model.join.data import generate_features,is_single_column
 from model.aggregation.data import generate_features_for_column
+import auto_suggest_llm_prompts as prt
+import tiktoken
+
+# prt.get_prompt("join",                allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)
+# prt.get_prompt("group_by_aggregate",  allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)
+# prt.get_prompt("union",               allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints="")
+# prt.get_python_script("python_script",allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,ss,target_file_location)
+def get_prompt(prompt_type, allowed_operation_list,
+                operation_history,target_data_name,target_data_schema,
+                target_samples,file_count,source_data_name_list,source_data_schema_list, directory,len_idx_target_idx,
+                source_samples_list,model, error_string = "",max_tokens = False, target_perc = 10, is_perc = True, target_length = 3,target_file_location = "") : 
+    
+    # we can generate hints here itself
+    # we need these information
+    # file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx
+
+    # 2 types of tokens 
+    # static : content in the prompt without target examples
+    # dynamic : target_examples
+    max_tokens = 128000 # for gpt4turbo 
+    source_information = get_source(file_count, source_data_name_list,
+                source_data_schema_list, source_samples_list)
+    encoding = tiktoken.encoding_for_model("gpt-4-turbo")
+
+    if prompt_type == 'get_next_operator' :
+        
+        static_prompt = prt.get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information)[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length,encoding)[0]
+        prompt = prt.get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information)[0]
+        # print(static_prompt_length)
+        # print(str(len(encoding.encode(str(target_samples)))))
+        # print(str(len(encoding.encode(prompt))))
+
+    if prompt_type == 'join' :
+        hints = get_join_hints(file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx)[0]
+        static_prompt = prt.get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information,hints)[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding)[0]
+        prompt = prt.get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information,hints)[0]
+
+    if prompt_type == 'group_by_aggregate' :
+        hints = get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx)[0]
+        static_prompt = prt.get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information, hints)[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding)[0]
+        prompt = prt.get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information,hints)[0]
+
+    if prompt_type == 'union' :
+        static_prompt = prt.get_union_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information)[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding)[0]
+        prompt = prt.get_union_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information)[0]
+        
+    if prompt_type == 'python_script' :
+        source_information_with_location = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, directory, len_idx_target_idx) 
+        # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
+        static_prompt = prt.get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information_with_location, target_file_location)[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding)[0]
+        prompt = prt.get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information_with_location, target_file_location)[0]
+
+    # print(prompt)
+
+    if(len(encoding.encode(prompt)) > max_tokens) :
+        return ['-1']  
+    
+    return [prompt]
+        # Static Dynamic tokens
+        # Dynamic tokens 
+
+def get_target_string(df, rem_tokens, encoding) :
+
+    # string should be target rows in list
+    examples_l = df.values.tolist()
+    examples = str(examples_l)
+    
+    # if all passes do not check further 
+    if(len(encoding.encode(examples)) < rem_tokens) :
+        return examples    
+
+    # if not then do binary search on exact number of examples that can be in there 
+    l = 0
+    r = len(examples_l)-1
+    ans = 0
+    while(l < r) :
+
+        mid = (l+r)//2
+
+        # print(l,mid,r)
+        
+        #examples upto mid 
+        temp_l = examples_l[:mid+1]
+        #how much string is being used 
+        temp = str(temp_l)
+        encode_len = len(encoding.encode(temp))
+
+        # print(rem_tokens, encode_len)
+
+        if(encode_len <= rem_tokens) :
+            ans = mid
+            l = mid + 1
+        elif(encode_len > rem_tokens) :
+            r = mid - 1
+        
+    # print('ans :', ans)
+    temp_l = examples_l[:ans]
+    # print(len(encoding.encode(str(temp_l))))
+    return [str(temp_l)]
+
+
+
+
+
+def get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding) :
+    # print(directory,len_idx_target_idx, target_perc,is_perc, target_length, max_tokens, static_prompt_length)
+    target_csv_path = directory + '/length' + len_idx_target_idx + '/target.csv'
+    target_df = pd.read_csv(target_csv_path, low_memory=False)
+
+    # sampling 
+    if(is_perc) : 
+        target_df_sampled = target_df.sample(frac = target_perc/100, replace = False)
+    else : 
+        target_df_sampled = target_df.sample(n = target_length, replace = False)
+    # print(static_prompt_length)
+    target_samples_string = get_target_string(target_df_sampled, max_tokens - static_prompt_length - 2000 - 4096,encoding) #-1000 buffer for good measures
+
+    return [target_samples_string]
+
+
+    
 
 
 def get_source(file_count, source_data_name_list,
@@ -133,7 +264,7 @@ def get_join_hints(file_count,source_data_name_list,source_data_schema_list,dire
                     hint+='''(distinct_value_ratio of {t1}.{c1} : {f[0]}, distinct_value_ratio of {t2}.{c2} : {f[1]}),value-overlap: (Jaccard Similarity : {f[2]}, Jaccard containment : {f[3]}),value-range-overlap: {f[4]},leftness of {t1}.{c1} : {f[6]},leftness of {t2}.{c2} : {f[7]},sortedness of {t1}.{c1} : {f[8]},sortedness of {t2}.{c2} : {f[9]},ratio of row-count : {f[10]})\n'''.format(c1=col1,c2=col2,t1=table_name1,t2=table_name2,f=feature)
                     hints += hint
 
-    return hints
+    return [hints]
 
 def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx) :
     hints = ""
@@ -156,7 +287,7 @@ def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_sch
             except :
                 pass
 
-    return hints
+    return [hints]
 
 def cost_compare(cost1, cost2, model) :
     cost = dict()
