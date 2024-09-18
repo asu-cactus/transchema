@@ -3,15 +3,22 @@ from llm.llm_models import TokenUsageTracker,LLMClient
 from util.utils import get_test_info, execute_python,compare_lists_matching
 import time
 import auto_suggest_llm_prompts as prt
-from auto_suggest_llm_util import create_logger, get_source, get_operation,get_join_hints,get_columns,get_groupby_aggregate_hints,get_source_with_location, cost_compare, query_gpt, get_columns_aggr,get_columns_join
+from auto_suggest_llm_util import create_logger, get_source, get_operation,get_join_hints,get_columns,get_groupby_aggregate_hints,get_source_with_location, cost_compare, query_gpt, get_columns_aggr,get_columns_join,get_prompt
 import pandas as pd
+import re
+import sys
+from pathlib import Path
+
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm"
-len_id = 9
-max_len_id = 9
-target_id = 71
-max_target_id = 75
+log_dir = "logs-auto-suggest-llm-len-25-per"
+len_id = 5
+max_len_id = 5
+target_id = 67
+max_target_id = 100
+target_per = 25
+is_perc = False
+target_length = 3
 main_folder = "autopipeline-benchmarks/github-pipelines"
 model = 'gpt-4-turbo'
 
@@ -22,6 +29,8 @@ task_list = get_test_cases_ids(json_file_path,  len_id, max_len_id, target_id, m
 logger = create_logger(log_dir,len_id, target_id,max_target_id)
 
 q_count = {'total' : 0, 'in_task' : 0}
+
+language = 'sql' #or 'python'
 
 ################## Run for each task ##################
 
@@ -64,16 +73,37 @@ for task in task_list :
 
         while(break_flag) :
 
-                prompt = [prt.get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information)]
+                # print(operation_history)
+
+                prompt = get_prompt(prompt_type="get_next_operator", max_tokens = False,model=model,allowed_operation_list=allowed_operation_list,
+                                operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
+                                target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
+                                directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
+                                source_samples_list = source_samples_list,
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length)
+                if(prompt[0] == '-1') : 
+                        logger.info("Token Limit Exceeded")
+                        break_flag = 2
+                        break
+                # print(prompt)
+                # sys.exit()
                 res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
                 operation = operation = get_operation(res[0])
-
+                
                 match operation :
                         case 'JOIN' :
-                                # generate join hints 
-                                hints = get_join_hints(file_count,source_data_name_list,source_data_schema_list,main_folder,len_idx_target_idx)
                                 # get join prompt 
-                                prompt = [prt.get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)]
+                                prompt = get_prompt(prompt_type="join", max_tokens = False,model=model,allowed_operation_list=allowed_operation_list,
+                                operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
+                                target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
+                                directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
+                                source_samples_list = source_samples_list,
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length)
+                                
+                                if(prompt[0] == '-1') : 
+                                        logger.info("Token Limit Exceeded")
+                                        break_flag = 2
+                                        break
 
                                 res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Join")
                                 joined_columns = get_columns_join(res[0])
@@ -83,21 +113,42 @@ for task in task_list :
                                 # add it to the history
                                 pass 
                         case 'GROUP_BY/AGGREGATE' :
-                                # generate group by hints 
-                                hints = get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_schema_list,main_folder,len_idx_target_idx)
                                 # get group by prompt 
-                                prompt = [prt.get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)]
+                                prompt = get_prompt(prompt_type="group_by_aggregate", max_tokens = False,model=model,allowed_operation_list=allowed_operation_list,
+                                operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
+                                target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
+                                directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
+                                source_samples_list = source_samples_list,
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length)
+
+                                if(prompt[0] == '-1') : 
+                                        logger.info("Token Limit Exceeded")
+                                        break_flag = 2
+                                        break
+
                                 # run llm and get group by column
                                 # print(prompt) 
                                 res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Group by/Aggergate")
                                 # print(res[0])
                                 # add it to the history
-                                group_by_column = get_columns_aggr(res[0])
-                                history_elements.append(group_by_column)
-                                operation_history.append(operation + ' : [ group_by : {group_by_column[0]}, aggregate : {group_by_column[1]}, aggregation_function : {group_by_column[2]} ]'.format(group_by_column = group_by_column))
+                                group_by_column = re.sub(r'```json\n|\n|```', '', res[0])
+                                history_elements.append(res)
+                                operation_history.append(group_by_column)
+                                #operation_history.append(operation + ' : [ group_by : {group_by_column[0]}, aggregate : {group_by_column[1]}, aggregation_function : {group_by_column[2]} ]'.format(group_by_column = group_by_column))
                                 pass
                         case 'UNION' :
-                                prompt = [prt.get_union_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information)]
+                                prompt = get_prompt(prompt_type="union", max_tokens = False,model=model,allowed_operation_list=allowed_operation_list,
+                                operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
+                                target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
+                                directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
+                                source_samples_list = source_samples_list,
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length)
+
+                                if(prompt[0] == '-1') : 
+                                        logger.info("Token Limit Exceeded")
+                                        break_flag = 2
+                                        break
+
                                 res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Union")
                                 # print(res[0])
                                 tables_ = get_columns(res[0])
@@ -123,17 +174,25 @@ for task in task_list :
 
         if(break_flag == 0) :
                 # Generate Table and Compare
-                ss = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, main_folder, len_idx_target_idx) 
-                target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
+                # ss = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, main_folder, len_idx_target_idx) 
+                target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_len10.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
                 ground_truth_location = '{main_folder}/length{len_idx_target_idx}/target.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
-                
+                Path(target_file_location).touch()
                 # put this in a loop 
                 script_cnt = 0
                 error_str = ""
                 while(script_cnt < 5) :
-                        prompt = [prt.get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,ss,target_file_location)]
-                        if(script_cnt != 0)  : 
-                                prompt[0] = prompt[0] + "\nPrevious execution gave me this error : " + error_str
+                        prompt = get_prompt(prompt_type="python_script", max_tokens = False,model=model,allowed_operation_list=allowed_operation_list,
+                                operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
+                                target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
+                                directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
+                                source_samples_list = source_samples_list,
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length, error_string = error_str,target_file_location = target_file_location)
+
+                        if(prompt[0] == '-1') : 
+                                        logger.info("Token Limit Exceeded")
+                                        break_flag = 2
+                                        break
 
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker,type = "Get Python Script")
                         script = res[0].split("```Python")[1].split("```")[0].strip()
@@ -146,12 +205,11 @@ for task in task_list :
                                 break
                         script_cnt += 1
 
-                end_time = time.time()
                 if(response == 'Success') : 
-                        df_our_response = pd.read_csv(target_file_location,low_memory=False)
-                        df_ground_truth = pd.read_csv(ground_truth_location,low_memory=False)
-                        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
                         try : 
+                                df_our_response = pd.read_csv(target_file_location,low_memory=False)
+                                df_ground_truth = pd.read_csv(ground_truth_location,low_memory=False)
+                                df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
                                 case_accuracy, is_correct, similarity_scores, validation_error = (
                             compare_lists_matching(df_our_response, df_ground_truth))
                                 print(case_accuracy,is_correct,similarity_scores,validation_error)
@@ -159,6 +217,7 @@ for task in task_list :
                         except :
                                 # logger.info(validation_error)
                                 print("Error in calculating accuracy.")
+        end_time = time.time()
 
         logger.info('''
         ******Task Summary**********

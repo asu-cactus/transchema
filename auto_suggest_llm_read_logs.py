@@ -2,11 +2,12 @@ import re
 import pandas as pd
 
 infile_list = [
-"logs-auto-suggest-llm/all_similarity_scores_auto_suggest_llm_len4_target0_source100_20240903_212335.log"
+"logs-auto-suggest-llm-len-10-per/all_similarity_scores_auto_suggest_llm_len5_target0_source100_20240916_230644.log",
+"logs-auto-suggest-llm-len-10-per/all_similarity_scores_auto_suggest_llm_len5_target18_source100_20240916_232254.log",
+"logs-auto-suggest-llm-len-10-per/all_similarity_scores_auto_suggest_llm_len5_target67_source100_20240917_000517.log"
 ]
 
-outfile_list = ['temp_4_0_97_single.xlsx'
-]
+outfile_list = ['temp_5_0_16_10_per.xlsx','temp_5_18_67_10_per.xlsx','temp_5_67_100_10_per.xlsx']
 
 cnt_ = -1
 for infile in infile_list : 
