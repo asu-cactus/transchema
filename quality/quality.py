@@ -37,7 +37,7 @@ import os
 from valentine import valentine_match
 from valentine.algorithms import Coma,Cupid
 import time
-import timeout_decorator
+# import timeout_decorator
 
 
 def schema_quality(sql_query, **kwargs):
@@ -567,16 +567,16 @@ def data_profiling(df,whether_source=False):
         return single_analysis, multi_analysis
 
 
-    #functional_dependencies, keys = analyze_functional_dependencies(df)
+    functional_dependencies, keys = analyze_functional_dependencies(df)
 
-    # dependencies = {
-    #     'dependencies': functional_dependencies,
-    #     'keys': keys
-    # }
     dependencies = {
-        'dependencies':[] ,
-        'keys': []
+        'dependencies': functional_dependencies,
+        'keys': keys
     }
+    # dependencies = {
+    #     'dependencies':[] ,
+    #     'keys': []
+    # }
     return single_analysis, multi_analysis, dependencies
 
 
@@ -600,16 +600,16 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
             elif stats['uniqueness'] < low_uniqueness_threshold and stats['constancy'] > high_constancy_threshold:
                 columns_low.append(column)
 
-        # Check for columns with high NULL percentage and add to hints
-        if 'null_percentage' in stats and stats['null_percentage'] > high_null_threshold:
-            null_hints.append(
-                f"\"{column}\" has a high NULL percentage ({stats['null_percentage']}%). Please remove the rows with NULL values in the target table.")
+        # # Check for columns with high NULL percentage and add to hints
+        # if 'null_percentage' in stats and stats['null_percentage'] > high_null_threshold:
+        #     null_hints.append(
+        #         f"\"{column}\" has a high NULL percentage ({stats['null_percentage']}%). Please remove the rows with NULL values in the target table.")
 
     # Check for high number of duplicate values in the target table
-    uniqueness_hint = None
-    if 'duplicates_percentage' in single_analysis and single_analysis[
-        'duplicates_percentage'] > high_duplicate_threshold:
-        uniqueness_hint = "Please don't drop duplicate values in the target table."
+    # uniqueness_hint = None
+    # if 'duplicates_percentage' in single_analysis and single_analysis[
+    #     'duplicates_percentage'] > high_duplicate_threshold:
+    #     uniqueness_hint = "Please don't drop duplicate values in the target table."
 
     # Check for value pattern hints based on multiple columns with high uniqueness
     if 'value_patterns' in multi_analysis:
@@ -633,11 +633,11 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
     else:
         schema_change_hints = ""
 
-    if null_hints:
-        schema_change_hints += "\n" + "\n".join(null_hints)
+    # if null_hints:
+    #     schema_change_hints += "\n" + "\n".join(null_hints)
 
-    if value_pattern_hints:
-        schema_change_hints += "\n" + "\n".join(value_pattern_hints)
+    # if value_pattern_hints:
+    #     schema_change_hints += "\n" + "\n".join(value_pattern_hints)
 
     # Constructing value pattern based on multi_analysis
     value_relations_summary = []

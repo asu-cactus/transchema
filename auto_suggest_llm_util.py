@@ -84,10 +84,11 @@ def get_prompt(prompt_type, allowed_operation_list,
     if prompt_type == 'python_script' :
         source_information_with_location = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, directory, len_idx_target_idx) 
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
-        static_prompt = prt.get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information_with_location, target_file_location)[0]
+        print(error_string)
+        static_prompt = prt.get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information_with_location, target_file_location, error_string)[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding)[0]
-        prompt = prt.get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information_with_location, target_file_location)[0]
+        prompt = prt.get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information_with_location, target_file_location, error_string)[0]
 
     # print(prompt)
 

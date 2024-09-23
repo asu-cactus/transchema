@@ -97,7 +97,7 @@ Note: The row examples provided are part of the corresponding rows.
     '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information)
     return [prompt]
 
-def get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information_with_location, target_file_location) :
+def get_python_script(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information_with_location, target_file_location, error_string) :
     prompt = '''
     You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table and STRICTLY follow the sequence of the operations mentioned in 'operation_history' list . The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. 
 
@@ -123,7 +123,9 @@ def get_python_script(allowed_operation_list,operation_history,target_data_name,
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
  Please quote the Python script between one single "```Python" and "```".
 
-    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information_with_location=source_information_with_location, target_file_location = target_file_location)
+ Errors in previous Attempts : {error_string}
+
+    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information_with_location=source_information_with_location, target_file_location = target_file_location,error_string = error_string)
 
     return [prompt]
 
