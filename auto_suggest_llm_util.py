@@ -29,6 +29,9 @@ from model.join.data import generate_features,is_single_column
 from model.aggregation.data import generate_features_for_column
 import auto_suggest_llm_prompts as prt
 import tiktoken
+from quality.quality import analyze_functional_dependencies,data_profiling,data_summary
+from valentine import valentine_match
+import valentine.algorithms as algorithms
 
 # prt.get_prompt("join",                allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)
 # prt.get_prompt("group_by_aggregate",  allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)
@@ -335,5 +338,49 @@ def query_gpt(llm_model,model, prompt, q_count, logger, cost_summary, token_trac
     
     return res
     
+
+def calculate_score(gt_df, tgt_df) :
+    # Match Functional Dependencies 
+    fd_gt, key_gt = analyze_functional_dependencies(gt_df)
+    fd_tgt, key_tgt = analyze_functional_dependencies(tgt_df)
+
+    print(fd_gt)
+    print(key_gt)
+
+    total_fds = len(fd_gt)
+    total_keys = len(key_gt)
+    
+    discovered_fd = 0
+    for fd in fd_gt : 
+        if(fd in fd_tgt) : 
+            print(fd)
+            discovered_fd += 1
+
+    fd_score = discovered_fd/total_fds
+
+    discovered_keys = 0
+    for key in key_gt : 
+        if key in key_tgt : 
+            print(key)
+            discovered_keys += 1
+
+    key_score = discovered_keys / total_keys
+    
+    # df_gt_schema = {col: gt_df[col].dtype for col in gt_df.columns}
+    # df_tgt_schema = {col: tgt_df[col].dtype for col in tgt_df.columns}
+
+    matcher = algorithms.Cupid()
+
+    # Match schemas
+    matches = valentine_match(gt_df, tgt_df,matcher)
+    gt_df_columns = gt_df.columns
+
+    gt_df_columns = set(gt_df.columns)
+    matched_columns = set(match[0] for match in matches)
+    
+    column_mapping_score = len(matched_columns) / len(gt_df_columns)
+    
+
+    return [fd_score, key_score, column_mapping_score]
     
     

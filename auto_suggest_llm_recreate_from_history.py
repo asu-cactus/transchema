@@ -13,7 +13,7 @@ import time
 from llm.llm_models import TokenUsageTracker,LLMClient
 
 # Read the Excel file
-file_path_excel = '/home/local/ASUAD/jrtandel/datatransform/experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
+file_path_excel = 'experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
 excel_data = pd.read_excel(file_path_excel,engine='odf')
 
 # Display the first few rows of the DataFrame
@@ -25,9 +25,9 @@ json_file_path = "data/chatgpt_github_ms.json"
 log_dir = "logs-auto-suggest-llm-data-recovery"
 len_id = 4
 max_len_id = 4
-target_id = 1
-max_target_id = 1
-target_per = 25
+target_id = 28
+max_target_id = 28
+target_per = 10
 is_perc = False
 target_length = 3
 main_folder = "autopipeline-benchmarks/github-pipelines"
@@ -69,8 +69,9 @@ for task in task_list :
 
                     # Generate Table and Compare
                     # ss = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, main_folder, len_idx_target_idx) 
-                    target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
+                    target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_recovered.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
                     ground_truth_location = '{main_folder}/length{len_idx_target_idx}/target.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
+                    python_code_location = '{main_folder}/length{len_idx_target_idx}/python_recovered.py'.format(main_folder = main_folder,len_idx_target_idx = len_idx_target_idx)
                     Path(target_file_location).touch()
                     # put this in a loop 
                     script_cnt = 0
@@ -101,6 +102,11 @@ for task in task_list :
 
                     if(response == 'Success') : 
                             try : 
+                                    # save python code 
+                                    text_file = open(python_code_location, "w")
+                                    text_file.write(script)
+                                    text_file.close()
+
                                     df_our_response = pd.read_csv(target_file_location,low_memory=False)
                                     df_ground_truth = pd.read_csv(ground_truth_location,low_memory=False)
                                     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)

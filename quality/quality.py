@@ -641,13 +641,13 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
 
     # Constructing value pattern based on multi_analysis
     value_relations_summary = []
-    for col, relationships in multi_analysis['value_relationships'].items():
-        greater_than_cols = ', '.join(relationships['greater_than'])
-        equal_to_cols = ', '.join(relationships['equal_to'])
-        if greater_than_cols:
-            value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
-        if equal_to_cols:
-            value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
+    #for col, relationships in multi_analysis['value_relationships'].items():
+        # greater_than_cols = ', '.join(relationships['greater_than'])
+        # equal_to_cols = ', '.join(relationships['equal_to'])
+        # if greater_than_cols:
+        #     value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
+        # if equal_to_cols:
+        #     value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
     value_pattern_msg = "Value pattern in table: " + '; '.join(
         value_relations_summary) + '.' if value_relations_summary else ""
 

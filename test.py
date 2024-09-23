@@ -8,6 +8,9 @@ def calculate_score(gt_df, tgt_df) :
     fd_gt, key_gt = analyze_functional_dependencies(gt_df)
     fd_tgt, key_tgt = analyze_functional_dependencies(tgt_df)
 
+    print(fd_gt)
+    print(key_gt)
+
     total_fds = len(fd_gt)
     total_keys = len(key_gt)
     
@@ -34,20 +37,23 @@ def calculate_score(gt_df, tgt_df) :
 
     # Match schemas
     matches = valentine_match(gt_df, tgt_df,matcher)
+    gt_df_columns = gt_df.columns
 
-    for match in matches:
-        print(match)
+    gt_df_columns = set(gt_df.columns)
+    matched_columns = set(match[0] for match in matches)
+    
+    column_mapping_score = len(matched_columns) / len(gt_df_columns)
     
 
-    return [fd_score, key_score]
+    return [fd_score, key_score, column_mapping_score]
 
 
     # Match keys 
 
     # Match column mappings  
 
-gt_path = "autopipeline-benchmarks/github-pipelines/length4_10/target.csv"
-tgt_path = "autopipeline-benchmarks/github-pipelines/length4_10/target_multisource.csv"
+gt_path = "autopipeline-benchmarks/github-pipelines/length4_28/target.csv"
+tgt_path = "autopipeline-benchmarks/github-pipelines/length4_28/target_multisource_recovered.csv"
 
 gt_df = pd.read_csv(gt_path)
 tgt_df = pd.read_csv(tgt_path)
@@ -60,8 +66,8 @@ try :
     tgt_df = tgt_df.drop('Unnamed: 0', axis=1)
 except : 
     pass
-# key_gt,fd_gt = analyze_functional_dependencies(gt_df)
-# key_tgt, fd_tgt = analyze_functional_dependencies(tgt_df)
+key_gt,fd_gt = analyze_functional_dependencies(gt_df)
+key_tgt, fd_tgt = analyze_functional_dependencies(tgt_df)
 
 
 # # print(gt_df, tgt_df)
@@ -70,11 +76,11 @@ except :
 # print(" Generated table : ")
 # print(key_tgt, fd_tgt)
 
-# single_analysis, multi_analysis, dependencies = data_profiling(gt_df)
+single_analysis, multi_analysis, dependencies = data_profiling(gt_df)
 
-# y = data_summary(single_analysis, multi_analysis, dependencies)
+y = data_summary(single_analysis, multi_analysis, dependencies)
 
-# print('\n\n\nSummary : ')
-# print(y)
+print('\n\n\nSummary : ')
+print(y)
 
 print(calculate_score(gt_df,tgt_df))

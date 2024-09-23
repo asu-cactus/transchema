@@ -137,3 +137,51 @@ def get_python_script(allowed_operation_list,operation_history,target_data_name,
 #  (4) selection or filtering
 #  (5) applying a projection
 #  (6) applying a transformation function.
+
+def get_critique_prompt(allowed_operation_list,operation_history,target_data_schema,target_samples,file_count, source_information, target_file_location, error_string, summary, python_code, transformed_data_schema, transformed_samples) : 
+    prompt = '''
+    You are generating a data-pipeline to transform multiple source tables to target table. Upto this point, an LLM agent has created a Python Code based on Source Information, Target Information and Operations History. The python script generated didn't work properly. You will be given `Operations History`, Generated Code, Transformed Data Examples (The ones that the Python script generated) , Target Data Examples and more information about these two tables, such as Functional Dependency and Keys information. Can you add more operations to the history that can rectify the code?
+You can only add operation from Allowed Operations.
+
+Allowed Operations : {allowed_operation_list}
+
+Operations History : {operation_history}
+
+
+Python Code : ```
+{python_code}
+```
+
+Transformed DataTable Information : 
+Schema : {transformed_data_schema}
+Examples : {transformed_data_examples}
+
+Target Data Information : 
+Schema : {target_data_schema}
+Examples : {target_samples}
+Additional Information about Target Data Table : 
+    {summary}
+Multi Source Information :
+        {source_information}
+
+Target File Location : {target_file_location}
+
+
+Note : The examples are just three samples from the target data and Transformed Data and not the whole table. The whole table can be very large. 
+Column names can be confusing. Try to use examples, Functional dependency and unique columns to determine next operator.
+
+Transformation Plan : 
+- You have to transform source tables mentioned in the script to the target schema.
+- To avoid direct assignment operations and rely solely on generalized operations like Group By, Join, Pivot, Unpivot, Union, Join etc.
+- Functional dependencies are there to guide the transformation. 
+- Do not raise any error if those dependencies are not followed.
+- If you add aggregation, please try to find valid reason in why you chose that aggregation function and mention that reason.
+- Please keep the source file location same as the python script given.
+- In last step please write the result to this new path {target_file_location}
+
+Please quote the new Python script between one single "```Python" and "```".
+
+Can you add more operations to the history that can rectify those mistakes and provide a python code that can reflect that operation history?
+    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information, target_file_location = target_file_location,error_string = error_string, python_code = python_code, transformed_data_schema = transformed_data_schema, transformed_data_examples = transformed_samples,summary = summary)
+
+    return [prompt]
