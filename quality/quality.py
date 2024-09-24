@@ -546,18 +546,18 @@ def data_profiling(df,whether_source=False):
     df_numeric = df.apply(pd.to_numeric, errors='coerce')
 
     # Value Relationships for all columns
-    for col_a in df.columns:
-        multi_analysis['value_relationships'][col_a] = {'greater_than': [], 'equal_to': [], 'less_than': []}
-        for col_b in df.columns:
-            if col_a != col_b:
-                min_a, max_a = df_numeric[col_a].min(), df_numeric[col_a].max()
-                min_b, max_b = df_numeric[col_b].min(), df_numeric[col_b].max()
-                if min_a > max_b:
-                    multi_analysis['value_relationships'][col_a]['greater_than'].append(col_b)
-                elif max_a < min_b:
-                    multi_analysis['value_relationships'][col_a]['less_than'].append(col_b)
-                elif min_a == min_b and max_a == max_b:
-                    multi_analysis['value_relationships'][col_a]['equal_to'].append(col_b)
+    # for col_a in df.columns:
+    #     multi_analysis['value_relationships'][col_a] = {'greater_than': [], 'equal_to': [], 'less_than': []}
+    #     for col_b in df.columns:
+    #         if col_a != col_b:
+    #             min_a, max_a = df_numeric[col_a].min(), df_numeric[col_a].max()
+    #             min_b, max_b = df_numeric[col_b].min(), df_numeric[col_b].max()
+    #             if min_a > max_b:
+    #                 multi_analysis['value_relationships'][col_a]['greater_than'].append(col_b)
+    #             elif max_a < min_b:
+    #                 multi_analysis['value_relationships'][col_a]['less_than'].append(col_b)
+    #             elif min_a == min_b and max_a == max_b:
+    #                 multi_analysis['value_relationships'][col_a]['equal_to'].append(col_b)
 
     # print("\nLength Relationships (Non-Numerical Data):")
     # for col, relationships in multi_analysis['length_relationships'].items():
@@ -612,12 +612,12 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
     #     uniqueness_hint = "Please don't drop duplicate values in the target table."
 
     # Check for value pattern hints based on multiple columns with high uniqueness
-    if 'value_patterns' in multi_analysis:
-        for pattern in multi_analysis['value_patterns']:
-            columns = pattern['columns']
-            if all(single_analysis[col]['uniqueness'] > high_uniqueness_threshold for col in columns):
-                grouped_columns = ', '.join(columns)
-                value_pattern_hints.append(f"Group by {grouped_columns} and aggregate EC by counting them.")
+    # if 'value_patterns' in multi_analysis:
+    #     for pattern in multi_analysis['value_patterns']:
+    #         columns = pattern['columns']
+    #         if all(single_analysis[col]['uniqueness'] > high_uniqueness_threshold for col in columns):
+    #             grouped_columns = ', '.join(columns)
+    #             value_pattern_hints.append(f"Group by {grouped_columns} and aggregate EC by counting them.")
 
     # Generate a single hint for using aggregation functions and group by, if there are any columns for grouping
     if columns_high and columns_low:

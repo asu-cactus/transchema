@@ -11,9 +11,10 @@ from auto_suggest_llm_util import create_logger, get_source, get_operation,get_j
 from util.utils import get_test_info, execute_python,compare_lists_matching
 import time
 from llm.llm_models import TokenUsageTracker,LLMClient
+import re
 
 # Read the Excel file
-file_path_excel = 'experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
+file_path_excel = '../experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
 excel_data = pd.read_excel(file_path_excel,engine='odf')
 
 # Display the first few rows of the DataFrame
@@ -25,8 +26,8 @@ json_file_path = "data/chatgpt_github_ms.json"
 log_dir = "logs-auto-suggest-llm-data-recovery"
 len_id = 4
 max_len_id = 4
-target_id = 28
-max_target_id = 28
+target_id = 65
+max_target_id = 90
 target_per = 10
 is_perc = False
 target_length = 3
@@ -90,7 +91,9 @@ for task in task_list :
                                             break
 
                             res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker,type = "Get Python Script")
-                            script = res[0].split("```Python")[1].split("```")[0].strip()
+                            pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+                            match = pattern.search(res[0])
+                            script = match.group(1).strip()
                             # print(script)
                             response = execute_python(script)
                             print(response)

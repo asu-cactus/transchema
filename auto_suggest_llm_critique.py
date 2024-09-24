@@ -32,11 +32,12 @@ import auto_suggest_llm_prompts as prt
 from quality.quality import analyze_functional_dependencies,data_profiling,data_summary
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-critique"
+with_hint = "_with_hint"
+log_dir = "logs-auto-suggest-llm-critique" + with_hint
 len_id = 4
 max_len_id = 4
-target_id = 28
-max_target_id = 28
+target_id = 0
+max_target_id = 25
 target_per = 10
 is_perc = False
 target_length = 3
@@ -47,7 +48,7 @@ error_margin = 0.1
 
 # read excel file for operation history 
 # Read the Excel file
-file_path_excel = 'experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
+file_path_excel = '../experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
 excel_data = pd.read_excel(file_path_excel,engine='odf')
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
@@ -86,22 +87,32 @@ for task in task_list :
                 source_data_schema_list, source_samples_list)
 
     python_script_location = '{main_folder}/length{len_idx_target_idx}/python_recovered.py'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx) 
+    python_generated_code_location = '{main_folder}/length{len_idx_target_idx}/python_critique{with_hint}.py'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx,with_hint = with_hint)
     ground_truth_location = '{main_folder}/length{len_idx_target_idx}/target.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
     df_ground_truth = pd.read_csv(ground_truth_location,low_memory=False)
     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+    df_ground_truth_fd = df_ground_truth.sample(n = min(100,df_ground_truth.shape[0]), replace = False)
+    df_ground_truth_fd = df_ground_truth_fd.iloc[:, : 10]
     try : 
         target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_recovered.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
         df_our_response = pd.read_csv(target_file_location,low_memory=False)
+        df_our_response_fd = df_our_response.sample(n = min(100,df_our_response.shape[0]), replace = False)
+        df_our_response_fd = df_our_response_fd.iloc[:, : 10]
     except : 
         logger.info("Python Error Case.")
         continue
+    
+    try : 
+    
+        fd_score, key_score, mapping_score = calculate_score(df_ground_truth_fd, df_our_response_fd)
 
-    fd_score, key_score, mapping_score = calculate_score(df_ground_truth, df_our_response)
+        single_analysis, multi_analysis, dependencies = data_profiling(df_ground_truth_fd)
+        summary = data_summary(single_analysis, multi_analysis, dependencies)
+    except : 
+         continue
+         summary = ""
 
-    single_analysis, multi_analysis, dependencies = data_profiling(df_ground_truth)
-    summary = data_summary(single_analysis, multi_analysis, dependencies)
-
-    script_cnt = 5 # 5 attempts
+    script_cnt = 3 # 5 attempts
 
     # read transformed data schema and transformed data examples 
     transformed_schema = list(df_our_response.columns)
@@ -112,15 +123,20 @@ for task in task_list :
         
         # get python script 
         with open(python_script_location) as f : python_code = f.read()
-        target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_critique.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
-
-        prompt = prt.get_critique_prompt(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_schema=target_data_schema,
+        target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_critique{with_hint}.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx,with_hint = with_hint)
+        if(with_hint == "_with_hint") : 
+            prompt = prt.get_critique_prompt_with_hint(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_schema=target_data_schema,
                         target_samples=target_samples,file_count=file_count, source_information=source_information, 
                         target_file_location=target_file_location, error_string="", summary=summary, python_code = python_code,
                         transformed_data_schema = transformed_schema, transformed_samples = transformed_data_examples)
-        res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Critique Query")
+        else : 
+            prompt = prt.get_critique_prompt(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_schema=target_data_schema,
+                        target_samples=target_samples,file_count=file_count, source_information=source_information, 
+                        target_file_location=target_file_location, error_string="", summary=summary, python_code = python_code,
+                        transformed_data_schema = transformed_schema, transformed_samples = transformed_data_examples)
+        res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Critique Query : "+with_hint)
 
-        pattern = re.compile(r"```Python(.*?)```", re.DOTALL)
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
         match = pattern.search(res[0])
         script = match.group(1).strip()
 
@@ -130,18 +146,28 @@ for task in task_list :
         # error_str = error_str + response + '\n'
         # print(error_str)
         if(response == 'Success') : 
-                target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_critique.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
+                text_file = open(python_generated_code_location, "w")
+                text_file.write(script)
+                text_file.close()
+                target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_critique{with_hint}.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx,with_hint = with_hint)
                 df_our_response = pd.read_csv(target_file_location,low_memory=False)
-                fd_score, key_score, mapping_score = calculate_score(df_ground_truth, df_our_response)
-                logger.info("FD Score : " + str(1-fd_score) + " Key Score : " + str(1-key_score) + " Mapping Score : " +  str(1-mapping_score))
+                df_our_response_fd = df_our_response.sample(n = min(100,df_our_response.shape[0]), replace = False)
+                df_our_response_fd = df_our_response_fd.iloc[:, : 10]
+                try : 
+                    fd_score, key_score, mapping_score = calculate_score(df_ground_truth_fd, df_our_response_fd)
+                    logger.info("FD Score : " + str(1-fd_score) + " Key Score : " + str(1-key_score) + " Mapping Score : " +  str(1-mapping_score))
+                except : summary = ""
         script_cnt -= 1
         if(script_cnt <= 0) : break
 
     # calculate accuracy
-    case_accuracy, is_correct, similarity_scores, validation_error = (
-        compare_lists_matching(df_our_response, df_ground_truth))
-    print(case_accuracy,is_correct,similarity_scores,validation_error)
-    logger.info("Task : "+task + " Case Accuracy : "+str(case_accuracy)+ ", is_correct : " + str(is_correct) +", similarity_score : "+ str(similarity_scores))
+    try : 
+        case_accuracy, is_correct, similarity_scores, validation_error = (
+            compare_lists_matching(df_our_response, df_ground_truth))
+        print(case_accuracy,is_correct,similarity_scores,validation_error)
+        logger.info("Task : "+task + " Case Accuracy : "+str(case_accuracy)+ ", is_correct : " + str(is_correct) +", similarity_score : "+ str(similarity_scores))
+    except : 
+        logger.info("Error in calculating Accuracy.")
 
     end_time = time.time()
 

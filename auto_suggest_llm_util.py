@@ -154,7 +154,7 @@ def get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target
     if(is_perc) : 
         target_df_sampled = target_df.sample(frac = target_perc/100, replace = False)
     else : 
-        target_df_sampled = target_df.sample(n = target_length, replace = False)
+        target_df_sampled = target_df.sample(n = min(target_length,target_df.shape[0]), replace = False)
     # print(static_prompt_length)
     target_samples_string = get_target_string(target_df_sampled, max_tokens - static_prompt_length - 2000 - 4096,encoding) #-1000 buffer for good measures
 

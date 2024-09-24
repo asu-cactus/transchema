@@ -358,7 +358,7 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     for col in generated_sql_df.columns:
 
-        print(col)
+        # print(col)
         if col.find("Unnamed: 0") >= 0:
             print("skip " + col)
             num_cols -= 1
@@ -370,11 +370,11 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         # Use the updated function to determine if the column is numerically dominant
         is_numerical = is_column_numerically_dominant(generated_sql_df[col])
 
-        print(is_numerical)
+        # print(is_numerical)
 
-        print(pred_column)
+        # print(pred_column)
 
-        print(gold_column)
+        # print(gold_column)
 
         # Use the updated compare_columns function
         column_similarity = compare_columns(pred_column, gold_column)
