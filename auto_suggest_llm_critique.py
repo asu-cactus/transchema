@@ -36,8 +36,8 @@ with_hint = "_with_hint"
 log_dir = "logs-auto-suggest-llm-critique" + with_hint
 len_id = 4
 max_len_id = 4
-target_id = 0
-max_target_id = 25
+target_id = 58
+max_target_id = 58
 target_per = 10
 is_perc = False
 target_length = 3
@@ -124,7 +124,7 @@ for task in task_list :
         # get python script 
         with open(python_script_location) as f : python_code = f.read()
         target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_critique{with_hint}.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx,with_hint = with_hint)
-        if(with_hint == "_with_hint") : 
+        if(with_hint != "") : 
             prompt = prt.get_critique_prompt_with_hint(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_schema=target_data_schema,
                         target_samples=target_samples,file_count=file_count, source_information=source_information, 
                         target_file_location=target_file_location, error_string="", summary=summary, python_code = python_code,

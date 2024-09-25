@@ -22,12 +22,12 @@ print(excel_data['task_name'], excel_data['op_history'])
 
 
 
-json_file_path = "data/chatgpt_github_ms.json"
+json_file_path = "data/chatgpt_github_ss.json"
 log_dir = "logs-auto-suggest-llm-data-recovery"
 len_id = 4
 max_len_id = 4
-target_id = 65
-max_target_id = 90
+target_id = 0
+max_target_id = 100
 target_per = 10
 is_perc = False
 target_length = 3
