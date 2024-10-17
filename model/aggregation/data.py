@@ -13,7 +13,7 @@ def column_data_type(col):
 
 # Function to calculate left-ness
 def leftness(pos, total_columns):
-    return pos, pos / total_columns
+    return 1 - (pos / total_columns)
 
 # Function to calculate emptiness
 def emptiness(col):

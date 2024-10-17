@@ -36,11 +36,11 @@ with_hint = "_with_hint"
 log_dir = "logs-auto-suggest-llm-critique" + with_hint
 len_id = 4
 max_len_id = 4
-target_id = 58
-max_target_id = 58
+target_id = 39
+max_target_id = 39
 target_per = 10
 is_perc = False
-target_length = 3
+target_length = 10
 main_folder = "autopipeline-benchmarks/github-pipelines"
 model = 'gpt-4-turbo'
 q_count = {'total' : 0, 'in_task' : 0}
@@ -48,7 +48,7 @@ error_margin = 0.1
 
 # read excel file for operation history 
 # Read the Excel file
-file_path_excel = '../experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
+file_path_excel = 'experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
 excel_data = pd.read_excel(file_path_excel,engine='odf')
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']

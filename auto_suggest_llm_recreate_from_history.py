@@ -14,7 +14,7 @@ from llm.llm_models import TokenUsageTracker,LLMClient
 import re
 
 # Read the Excel file
-file_path_excel = '../experiment_results/Results_Refined/Results_Final_experiments_length4.ods'
+file_path_excel = 'experiment_results/Results_Refined/Results_Final_experiments_length5.ods'
 excel_data = pd.read_excel(file_path_excel,engine='odf')
 
 # Display the first few rows of the DataFrame
@@ -22,11 +22,11 @@ print(excel_data['task_name'], excel_data['op_history'])
 
 
 
-json_file_path = "data/chatgpt_github_ss.json"
+json_file_path = "data/chatgpt_github_ms.json"
 log_dir = "logs-auto-suggest-llm-data-recovery"
-len_id = 4
-max_len_id = 4
-target_id = 0
+len_id = 5
+max_len_id = 5
+target_id = 2
 max_target_id = 100
 target_per = 10
 is_perc = False

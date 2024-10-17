@@ -11,25 +11,29 @@ from pathlib import Path
 
 
 # decided through parameters
-len_id = 6
-max_len_id = 6
-target_id = 99
-max_target_id = 99
-target_per = 25
-is_perc = False
-target_length = 3
-source_length = 3
-join_flag = 0
-aggregate_flag = 0
-join_hints_truncate = [0.5,0.5,0.5,0.5,0.5]
-aggregate_hints_truncate = [0.5,0.5,0.5,0.5]
-fd_flag = 0
-token_limit = 120000
-model = 'gpt-4-turbo'
+len_id = int(sys.argv[1])
+max_len_id = int(sys.argv[2])
+target_id = int(sys.argv[3])
+max_target_id = int(sys.argv[4])
+target_per = int(sys.argv[5])
+is_perc = bool(int(sys.argv[6]))  # Convert string to int first, then to bool
+target_length = int(sys.argv[7])
+source_length = int(sys.argv[8])
+join_flag = int(sys.argv[9])
+aggregate_flag = int(sys.argv[10])
+
+# Convert comma-separated strings back to lists of floats
+join_hints_truncate = list(map(float, sys.argv[11].split(',')))
+aggregate_hints_truncate = list(map(float, sys.argv[12].split(',')))
+
+fd_flag = int(sys.argv[13])
+token_limit = int(sys.argv[14])
+model = sys.argv[15]
+    
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-len9-len6"
+log_dir = "logs-auto-suggest-llm-bayesian-parameter-optimization"
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
@@ -122,7 +126,7 @@ for task in task_list :
                         pass 
                 elif operation == 'GROUP_BY/AGGREGATE' :
                         # get group by prompt 
-                        prompt = get_prompt(prompt_type="group_by_aggregate", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
+                        prompt = get_prompt(prompt_type="group_by_aggregate", max_tokens = False,model=model,allowed_operation_list=allowed_operation_list,
                         operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 

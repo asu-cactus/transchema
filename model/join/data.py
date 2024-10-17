@@ -33,7 +33,7 @@ def column_type(col):
 
 # Function to calculate left-ness
 def leftness(pos, total_columns):
-    return pos, pos / total_columns
+    return 1 - (pos / total_columns)
 
 # Function to check if column is sorted
 def is_sorted(col):
@@ -70,8 +70,8 @@ def generate_features(col1, col2, table1, table2, pos1, pos2, total_columns1, to
         jaccard_containment(col1, col2),
         value_range_overlap(col1, col2),
         column_type(col1) == column_type(col2),
-        *leftness(pos1, total_columns1),
-        *leftness(pos2, total_columns2),
+        leftness(pos1, total_columns1),
+        leftness(pos2, total_columns2),
         is_sorted(col1),
         is_sorted(col2),
         is_single_col,
