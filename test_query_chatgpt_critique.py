@@ -1,5 +1,5 @@
 from llm.llm_models import TokenUsageTracker,LLMClient
-from auto_suggest_llm_util import create_logger,execute_python,get_filtered_functional_dependency
+from auto_suggest_llm_util import create_logger,execute_python,get_filtered_functional_dependency, get_fd_hints
 from util.utils import get_test_info
 import pandas as pd 
 import re
@@ -10,9 +10,9 @@ with open(file_path, mode='r') as f:
     query = f.read()
 
 log_dir = "log_dir_critique_with_fd_16_oct"
-len_id = 6
-target_id = 91
-max_target_id = 28
+len_id = 1
+target_id = 9
+max_target_id = 9
 main_folder = "autopipeline-benchmarks/github-pipelines"
 fd = 1
 
@@ -47,9 +47,12 @@ query = query.replace('$EXAMPLES$',target_samples)
 if(fd == 1) :
     df_ground_truth_fd = df_ground_truth.sample(n = min(1000,df_ground_truth.shape[0]), replace = False)
     df_ground_truth_fd = df_ground_truth_fd.iloc[:, : 15]
-    fd_hints = get_filtered_functional_dependency(df_ground_truth_fd)
+    key,fd__ = get_filtered_functional_dependency(df_ground_truth_fd)
+    # fd_hints = get_fd_hints(key,fd__)
+    fd_hints = "Keys : " + str(key) + "\n"
+    fd_hints += "Functional Dependencies : " + str(fd__)
     query = query.replace('$FD_HINT$', fd_hints)
-
+    
 # print(query)
 
 res = llm_client.gpt(query)

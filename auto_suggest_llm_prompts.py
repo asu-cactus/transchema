@@ -1,6 +1,6 @@
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY', 'AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
 
-def get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information) :
+def get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, fd_hints) :
     prompt = '''You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history" and scource, target table schema and examples.
 Allowed Operations: {allowed_operation_list}.
 Operation History: {operation_history}
@@ -9,19 +9,23 @@ Operation History: {operation_history}
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
 4. Multi Source Information: {source_information}
+{fd_hints}
 
 Note: The row examples provided are part of the corresponding rows.
 
 - Please answer what operation you should perform next based on "operation history", "source" and "target" information ("schema" as well as the "examples")  in one word.
+- Please ensure to use the internet and correspond/correlate missing data into this source table, and if needed, analyze the new table (add additional info, etc).
 - You may deduce the type of columns in 'Target Table' from the 'Target Examples'. Strictly make sure that the operations in 'Operation History' lead to 'Target Table' with those same type.
+- If the schemas in source tables are almost similar, give Union operation first priority.
 - If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
 - You should only answer from allowed operations.
+- Try to use all tables.
 - Try not to repeat operation and it's configuration from the operation history.
-- the final answer should be in $ quotes. i.e. $OPERATOR$'''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information)
+- the final answer should be in $ quotes. i.e. $OPERATOR$'''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information, fd_hints = fd_hints)
     return [prompt]
 
 
-def get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, hints) :
+def get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, hints, fd_hints) :
     prompt = '''
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be joined and at which columns?". Take this decision based on "Operation History", "Source" and "Target" (table schema as well as the examples) information.
 
@@ -37,6 +41,7 @@ Note: The row examples provided are part of the corresponding rows.
 
 -You may use the hint in your decision making process.
 Hint : {hints}
+{fd_hints}
 
 - Please answer which tables should be joined and at which columns that hasn't appeared yet in "operation history".
 - You should only answer from available columns of the source tables.
@@ -47,10 +52,10 @@ Hint : {hints}
 - The next elements should be list of two columns on which the join should be perfomed.
 - i.e. [ [table1, table2], [table1.join_column1,table2.join_column1], [table1.join_column2,table2.join_column2],...]
 - The final answer list should be within $ quotes strictly. [i.e. $ Final Answer List $]
-    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information,hints = hints[0])
+    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information,hints = hints[0], fd_hints = fd_hints)
     return [prompt]
 
-def get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, hints) :
+def get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, hints, fd_hints) :
     prompt = '''
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "1. Which columns should be used for Group By operation? 2. Which columns should be Aggregated? 3.Which Aggregation functions should be used?". Take this decision based on "Operation History", "Source" and "Target" (table schema as well as the examples) information.
 
@@ -66,13 +71,14 @@ Note: The row examples provided are part of the corresponding rows.
 
 -You may use the hint in your decision making process.
 Hint : {hints}
+{fd_hints}
 
 - Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used. 
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.
 - The final answer should be in the following format. lists where first list should be group by columns, next list should cover aggregation function and on which columns aggregations should be performed.
 - Example : "group_by" = [group_by_column1, group_by_column_2, ...], "aggregations" = [aggregation_function1(aggregation_column), aggregation_function2(aggregation_column), ...]
-    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information,hints = hints)
+    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information,hints = hints, fd_hints = fd_hints)
     return [prompt]
 
 def get_union_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information) :
@@ -111,6 +117,7 @@ def get_python_script(allowed_operation_list,operation_history,target_data_name,
     5. Write the result to this path {target_file_location}
 
     Transformation Plan:
+ - Please ensure to use the internet and correspond/correlate missing data into this source table, and if needed, analyze the new table (add additional info, etc).
  - Provide a detailed plan, step by step for transforming the data from the source tables to match the target table format.
  - You are strictly required to perform all the operations mentioned in the "Operations History" list. 
  - You may consider the "Source" and "Target" schema and examples to build correct pipeline.

@@ -8,6 +8,7 @@ import pandas as pd
 import re
 import sys
 from pathlib import Path
+import os
 
 
 # decided through parameters
@@ -33,7 +34,7 @@ model = sys.argv[15]
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-bayesian-parameter-optimization"
+log_dir = "logs-auto-suggest-llm-bayesian-parameter-optimization-12-20"
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
@@ -93,7 +94,7 @@ for task in task_list :
                                 operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                                 target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                                 directory = main_folder, len_idx_target_idx = len_idx_target_idx,
-                                target_perc = target_per, is_perc = is_perc, target_length = target_length, source_length = source_length)
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length, source_length = source_length, fd_flag = fd_flag)
                 if(prompt[0] == '-1') : 
                         logger.info("Token Limit Exceeded")
                         break_flag = 2
@@ -106,11 +107,11 @@ for task in task_list :
                 
                 if operation == 'JOIN' :
                         # get join prompt 
-                        prompt = get_prompt(prompt_type="join", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
+                        prompt = get_prompt(prompt_type="join", max_tokens = token_limit, model=model, allowed_operation_list=allowed_operation_list,
                         operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length,join_flag = join_flag, join_hints_truncate = join_hints_truncate)
+                        target_perc = target_per, is_perc = is_perc, target_length = target_length,join_flag = join_flag, join_hints_truncate = join_hints_truncate, fd_flag = fd_flag)
                         
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
@@ -126,11 +127,11 @@ for task in task_list :
                         pass 
                 elif operation == 'GROUP_BY/AGGREGATE' :
                         # get group by prompt 
-                        prompt = get_prompt(prompt_type="group_by_aggregate", max_tokens = False,model=model,allowed_operation_list=allowed_operation_list,
+                        prompt = get_prompt(prompt_type="group_by_aggregate", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
                         operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length, aggregate_flag = aggregate_flag, aggregate_hints_truncate = aggregate_hints_truncate)
+                        target_perc = target_per, is_perc = is_perc, target_length = target_length, aggregate_flag = aggregate_flag, aggregate_hints_truncate = aggregate_hints_truncate, fd_flag = fd_flag)
 
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
@@ -185,8 +186,10 @@ for task in task_list :
         if(break_flag == 0) :
                 # Generate Table and Compare
                 # ss = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, main_folder, len_idx_target_idx) 
-                target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
+                target_file_location = '{main_folder}/length{len_idx_target_idx}/target_multisource_bayesian_training.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
                 ground_truth_location = '{main_folder}/length{len_idx_target_idx}/target.csv'.format(main_folder = main_folder, len_idx_target_idx = len_idx_target_idx)
+                if os.path.isfile(target_file_location):
+                        os.remove(target_file_location)
                 Path(target_file_location).touch()
                 # put this in a loop 
                 script_cnt = 0
@@ -204,7 +207,9 @@ for task in task_list :
                                         break
 
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker,type = "Get Python Script")
-                        script = res[0].split("```Python")[1].split("```")[0].strip()
+                        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+                        match = pattern.search(res[0])
+                        script = match.group(1).strip()
                         # print(script)
                         response = execute_python(script)
                         print(response)

@@ -57,12 +57,24 @@ def get_prompt(prompt_type, allowed_operation_list,
     source_information = get_source(file_count, source_data_name_list,
                 source_data_schema_list, directory, len_idx_target_idx,source_length, encoding)
 
+    fd_hints = ""
+    if(fd_flag == 1) : 
+        #calculate filtered functional dependency hints
+        target_file_location = directory + '/length' + len_idx_target_idx + '/target.csv'
+        df = pd.read_csv(target_file_location, low_memory = False)
+        df = df.drop(df.columns[0], axis=1)
+        keys,fds = get_filtered_functional_dependency(df)
+        fd_hints = get_fd_hints(keys,fds)
+        
+
+
+
     if prompt_type == 'get_next_operator' :
         
-        static_prompt = prt.get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information)[0]
+        static_prompt = prt.get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information, fd_hints)[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length,encoding)[0]
-        prompt = prt.get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information)[0]
+        prompt = prt.get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, fd_hints)[0]
         # print(prompt,static_prompt_length)
         # print(static_prompt_length)
         # print(str(len(encoding.encode(str(target_samples)))))
@@ -70,17 +82,17 @@ def get_prompt(prompt_type, allowed_operation_list,
 
     if prompt_type == 'join' :
         hints = get_join_hints(file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, join_flag, join_hints_truncate)
-        static_prompt = prt.get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information,hints)[0]
+        static_prompt = prt.get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information,hints, fd_hints)[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding)[0]
-        prompt = prt.get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information,hints)[0]
+        prompt = prt.get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information,hints, fd_hints)[0]
 
     if prompt_type == 'group_by_aggregate' :
         hints = get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, aggregate_flag, aggregate_hints_truncate)
-        static_prompt = prt.get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information, hints)[0]
+        static_prompt = prt.get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information, hints, fd_hints)[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(directory,len_idx_target_idx,target_perc, is_perc, target_length, max_tokens, static_prompt_length, encoding)[0]
-        prompt = prt.get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information,hints)[0]
+        prompt = prt.get_group_by_aggregate_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information,hints, fd_hints)[0]
 
     if prompt_type == 'union' :
         static_prompt = prt.get_union_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,"",file_count, source_information)[0]
@@ -267,6 +279,11 @@ def get_join_hints(file_count,source_data_name_list,source_data_schema_list,dire
     tables = load_tables(directory,source_data_name_list,len_idx_target_idx)
     # print(tables)
 
+    # dictionary that stores each attribute's successful features
+    # i.e if attribute col1<->col2 satisfies the feature x it should have key="col1,col2" : value=[(feature_name,feature_value)]
+    # at the end sort the dictionary based on length of values satisfied.
+    feat_dict = {}
+
     for table_name1, table_name2 in combinations(tables.keys(), 2):
         table1 = tables[table_name1]
         table2 = tables[table_name2]
@@ -282,12 +299,73 @@ def get_join_hints(file_count,source_data_name_list,source_data_schema_list,dire
                     pos1 = columns1.get_loc(col1)
                     pos2 = columns2.get_loc(col2)
                     feature = generate_features(table1[col1], table2[col2], table1, table2, pos1, pos2, total_columns1, total_columns2, is_single_column([(col1, col2)]))
-                    if(check_feature_join(feature, join_flag, join_hints_truncate)) : 
-                        hint+=table_name1+'.'+col1+'<->'+table_name2+'.'+col2+' : '
-                        hint+='''(distinct_value_ratio of {t1}.{c1} : {f[0]}, distinct_value_ratio of {t2}.{c2} : {f[1]}),value-overlap: (Jaccard Similarity : {f[2]}, Jaccard containment : {f[3]}),value-range-overlap: {f[4]},leftness of {t1}.{c1} : {f[6]},leftness of {t2}.{c2} : {f[7]},sortedness of {t1}.{c1} : {f[8]},sortedness of {t2}.{c2} : {f[9]},ratio of row-count : {f[10]})\n'''.format(c1=col1,c2=col2,t1=table_name1,t2=table_name2,f=feature)
-                        hints += hint
+                    # generate table1.col1 <-> table2.col2 as a key
+                    fq = get_truncated_join_feature(feature,join_flag,join_hints_truncate)
+                    if(len(fq) > 2) : 
 
+                        feat_dict[f"{table_name1}.{col1} <-> {table_name2}.{col2}"] = get_truncated_join_feature(feature,join_flag,join_hints_truncate)
+                    
+                    if(join_flag == 0) : 
+                        if(check_feature_join(feature, join_flag, join_hints_truncate)) : 
+                            hint+=table_name1+'.'+col1+'<->'+table_name2+'.'+col2+' : '
+                            hint+='''(distinct_value_ratio of {t1}.{c1} : {f[0]}, distinct_value_ratio of {t2}.{c2} : {f[1]}),value-overlap: (Jaccard Similarity : {f[2]}, Jaccard containment : {f[3]}),value-range-overlap: {f[4]},leftness of {t1}.{c1} : {f[6]},leftness of {t2}.{c2} : {f[7]},sortedness of {t1}.{c1} : {f[8]},sortedness of {t2}.{c2} : {f[9]},ratio of row-count : {f[10]})\n'''.format(c1=col1,c2=col2,t1=table_name1,t2=table_name2,f=feature)
+                            hints += hint
+                    
+
+    if(join_flag) : 
+        # process the dictionary
+        # sort the dictionary keys based on length of values 
+        # print(feat_dict)
+        for k in sorted(feat_dict, key=lambda k: len(feat_dict[k]), reverse=True):
+            hint = f' - {k} : ' + " { "
+            t1,c1,t2,c2 = k.split(' <-> ')[0].split('.')[0],k.split(' <-> ')[0].split('.')[1],k.split(' <-> ')[1].split('.')[0], k.split(' <-> ')[1].split('.')[1]
+            # print(t1,c1,t2,c2)
+            # print(feat_dict[k])
+            for ky,v in feat_dict[k].items() :
+                if(ky == "dvr") :
+                    hint += f"Distinct Value Ratio of {t1}.{c1} : {round(v["1"],2)}, Distinct Value Ratio of {t2}.{c2} : {round(v["2"],2)}"
+                elif(ky == "l") : 
+                    hint += f"Leftness of {t1}.{c1} : {round(v["1"],2)}, Leftness of {t2}.{c2} : {round(v["2"],2)}"
+                elif(ky == "s") : 
+                    hint += f"Sortedness of {t1}.{c1} : {round(v["1"],2)}, Sortedness of {t2}.{c2} : {round(v["2"],2)}"
+                else : 
+                    hint += f"{ky} : {round(v,2)}"
+                hint += " , "
+                
+            hint = hint[:-3] + " }"
+            # print(hint)
+            hints += hint + "\n"
+
+    
+        # add the hint string 
+        # print(feat_dict)
+
+    print(hints)
     return [hints]
+
+def get_truncated_join_feature(f,join_flag, jht) : 
+    feature_list = {}
+    if(join_flag) : 
+        if(f[0] >= jht[0] and f[1] >= jht[0]) :
+            feature_list["dvr"] = {"1" : f[0], "2" : f[1]}
+        
+        if(f[2] >= jht[1]) : 
+            feature_list["Jaccard Similarity"] = f[2]
+        
+        if(f[3] >= jht[2]) : 
+            feature_list["Jaccard Containment"] = f[3]
+        
+        if(f[4] >= jht[3]) : 
+            feature_list["Value Range Overlap"] = f[4]
+
+        if(f[6] >= jht[4] or f[7] >= jht[4]) : 
+            feature_list["l"] = {"1" : f[0], "2" : f[1]}
+        
+        if(jht[5] > 0.5) : 
+            if(f[8] and f[9]) : 
+                feature_list["s"] = {"1" : f[0], "2" : f[1]}
+        
+    return feature_list
 
 def check_feature_join(f, join_flag, jht) :
     if(join_flag) :
@@ -325,27 +403,56 @@ def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_sch
     hints = ""
     features = []
     tables = load_tables(directory,source_data_name_list,len_idx_target_idx)
+    feat_dict = {}
+
+    all_data_types = ['int64', 'float64', 'object']  # Add more types if needed
+    label_encoder = LabelEncoder()
+    label_encoder.fit(all_data_types)
 
     for table_name, table in tables.items():
         columns = table.columns
         total_columns = len(columns)
 
         for pos, col_name in enumerate(columns):
-            try : 
-                hint = '- '
-                col = table[col_name]
-                # Generate features
-                feature = generate_features_for_column(col, col_name, pos, total_columns)
+            hint = ' - '
+            col = table[col_name]
+            # Generate features
+            feature = generate_features_for_column(col, col_name, pos, total_columns,label_encoder)
+            fq = get_truncated_aggreggation_features(feature,aggregate_flag, aggregate_hints_truncate)
+            if(len(fq) > 2) : 
+                feat_dict[f"{table_name}.{col_name}"] = get_truncated_aggreggation_features(feature,aggregate_flag, aggregate_hints_truncate)
+            if(aggregate_flag == 0) : 
                 if(check_feature_group_by(feature, aggregate_flag, aggregate_hints_truncate)) : 
                     hint += table_name+'.'+col_name+ ' : '
                     hint += '''(Distinct value count : {f[0]}, Distinct Value Ratio : {f[1]}, Column Data Type : {f[2]}, Leftness : {f[3]}, Emptiness : {f[4]}, Value_Range : {f[5]}, ratio of distinct value count to range : {f[6]}, Peak Frequency : {f[7]})\n'''.format(f = feature)
                     hints += hint
-            except :
-                pass
-
+        
+    if(aggregate_flag) : 
+        for k in sorted(feat_dict,key=lambda k: len(feat_dict[k]), reverse=True) :
+            if (len(feat_dict[k]) > 0) : 
+                hint = f" - {k} : " + " { "
+                for ky,v in feat_dict[k].items() :
+                    hint += f"{ky} : {v} , "            
+                hint = hint[:-3] + " }"
+                hints += hint + "\n"
+    # print(hints)
     return [hints]
 
-def generate_features_for_column(f,flag,aht) :
+def get_truncated_aggreggation_features(f, flag, aht) :
+    feature_list = {}
+    if(flag) : 
+        if(f[1] >= aht[0]) :
+            feature_list["Distinct Value Ratio"] = round(f[1],2)
+        if(f[3] >= aht[1]) :
+            feature_list["Leftness"] = round(f[3],2)
+        if(f[4] <= aht[2]) :
+            feature_list["Emptiness"] = round(f[4],2)
+        if(f[7] >= aht[3]) :
+            feature_list["Peak Frequency"] = round(f[7],2)
+    # print(feature_list)
+    return feature_list
+
+def check_feature_group_by(f,flag,aht) :
     if(flag) :
         # distinct_value_ratio
         if(f[1] < aht[0]) :
@@ -404,58 +511,26 @@ def query_gpt(llm_model,model, prompt, q_count, logger, cost_summary, token_trac
     increment_count(q_count)
     
     return res
-    
 
-def calculate_score(gt_df, tgt_df) :
-    # Match Functional Dependencies 
-    fd_gt, key_gt = analyze_functional_dependencies(gt_df)
-    fd_tgt, key_tgt = analyze_functional_dependencies(tgt_df)
 
-    print(fd_gt)
-    print(key_gt)
 
-    total_fds = len(fd_gt)
-    total_keys = len(key_gt)
-    
-    discovered_fd = 0
-    for fd in fd_gt : 
-        if(fd in fd_tgt) : 
-            print(fd)
-            discovered_fd += 1
-
-    fd_score = discovered_fd/total_fds
-
-    discovered_keys = 0
-    for key in key_gt : 
-        if key in key_tgt : 
-            print(key)
-            discovered_keys += 1
-
-    key_score = discovered_keys / total_keys
-    
-    # df_gt_schema = {col: gt_df[col].dtype for col in gt_df.columns}
-    # df_tgt_schema = {col: tgt_df[col].dtype for col in tgt_df.columns}
-
-    matcher = algorithms.Cupid()
-
-    # Match schemas
-    matches = valentine_match(gt_df, tgt_df,matcher)
-    gt_df_columns = gt_df.columns
-
-    gt_df_columns = set(gt_df.columns)
-    matched_columns = set(match[0] for match in matches)
-    
-    column_mapping_score = len(matched_columns) / len(gt_df_columns)
-    
-
-    return [fd_score, key_score, column_mapping_score]
-
+def extract_dependencies(fd_dict):
+    dependencies = set()  # Use a set to avoid duplicates
+    for determinant, dependents in fd_dict.items():
+        for dependent in dependents:
+            dependencies.add((determinant, dependent))
+    return dependencies
 
 def get_filtered_functional_dependency(df) :
+
+    # take only first 15 columns and 1000 rows to analyse functional dependencies 
+    df = df.sample(n = min(1000,df.shape[0]), replace = False)
+    df = df.iloc[:, : 15]
+
     filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
 
     if not filtered_F or not all_keys_sorted:
-        return "Insufficient data for dependency analysis"
+        return [],{}
 
     # Find the key with the most dependencies
     key_dependencies = {}
@@ -478,17 +553,82 @@ def get_filtered_functional_dependency(df) :
         elif( df[key].dtype == "object" ) : 
             sorted_filtered_keys.append(key)
 
-    if not sorted_filtered_keys:
-        return "No clear functional dependencies found"
+    filtered_fd = {key: key_dependencies[key] for key in sorted_filtered_keys if key in key_dependencies}
 
-    hint = "Functional Dependencies discovered : \n"
-    for key in sorted_filtered_keys : 
+    return sorted_filtered_keys, filtered_fd
+        
+def get_fd_hints(keys,fds) :
+    if not keys : 
+        return "\n\nNo Clear Functional Dependencies Found\n\n" 
+    
+    hint = "\n\nFunctional Dependencies discovered from Target Table : \n"
+    for key in keys : 
         hint += "Functional Dependencies Associated with key " + key + " : "
-        for v in key_dependencies[key] : 
+        for v in fds[key] : 
             hint += key + " -> " + v + " , "
         hint += "\n"
-    if(hint == "Functional Dependencies discovered : \n") : 
+    if(hint == "\n\nFunctional Dependencies discovered from Target Table : \n") : 
         return ""
     else :
-        return hint 
+        return hint + "\n\n"
+    # if not sorted_filtered_keys:
+    #     return "No clear functional dependencies found"
+
+    # hint = "Functional Dependencies discovered : \n"
+    # for key in sorted_filtered_keys : 
+    #     hint += "Functional Dependencies Associated with key " + key + " : "
+    #     for v in key_dependencies[key] : 
+    #         hint += key + " -> " + v + " , "
+    #     hint += "\n"
+    # if(hint == "Functional Dependencies discovered : \n") : 
+    #     return ""
+    # else :
+    #     return hint 
+
+
+def calculate_score(gt_df, tgt_df) :
+
+    #parameters 
+    w1 = 1
+    w2 = 1
+    w3 = 1
+    p  = 1
+
+    # Match Functional Dependencies 
+    key_gt, fd_gt = get_filtered_functional_dependency(gt_df)
+    key_tgt, fd_tgt = get_filtered_functional_dependency(tgt_df)
+
+    print("\n\n\nScore Calculation\n\n\n")
+
+    print(fd_gt)
+    print(key_gt)
+    print("\n\nTarget : ")
+    print(fd_tgt)
+    print(key_tgt)
+
+    dependencies_gt = extract_dependencies(fd_gt)
+    dependencies_tgt = extract_dependencies(fd_tgt)
+
+    overlapping_dependencies = dependencies_gt.intersection(dependencies_tgt)
+    overlapping_keys = set(key_gt).intersection(key_tgt)
+
+    score_fd = len(overlapping_dependencies)/len(dependencies_gt) if (len(dependencies_gt)>0) else 1
+    score_key = len(overlapping_keys) / len(key_gt) if (len(key_gt)>0) else 1
+
+    matcher = algorithms.Cupid()
+
+    # Match schemas
+    matches = valentine_match(gt_df, tgt_df,matcher)
+    gt_df_columns = gt_df.columns
+
+    gt_df_columns = set(gt_df.columns)
+    matched_columns = set(match[0] for match in matches)
+    # print("\n\n Matchings : ", matches)
+    
+    column_mapping_score = len(matched_columns) / len(gt_df_columns)
+
+    score = pow( w1*(score_fd**p) + w2*(score_key**p) + w3*(column_mapping_score)**p ,1/p)
+
+    print([score_fd, score_key, column_mapping_score])
+    return score
     

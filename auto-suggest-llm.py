@@ -1,9 +1,9 @@
 from test_scope import get_test_cases_ids
 from llm.llm_models import TokenUsageTracker,LLMClient
-from util.utils import get_test_info, execute_python,compare_lists_matching
+from util.utils import get_test_info, execute_python, compare_lists_matching
 import time
 import auto_suggest_llm_prompts as prt
-from auto_suggest_llm_util import create_logger, get_source, get_operation,get_join_hints,get_columns,get_groupby_aggregate_hints,get_source_with_location, cost_compare, query_gpt, get_columns_aggr,get_columns_join,get_prompt
+from auto_suggest_llm_util import create_logger, get_source, get_operation, get_join_hints, get_columns, get_groupby_aggregate_hints,get_source_with_location, cost_compare, query_gpt, get_columns_aggr, get_columns_join, get_prompt
 import pandas as pd
 import re
 import sys
@@ -11,25 +11,40 @@ from pathlib import Path
 
 
 # decided through parameters
-len_id = 6
-max_len_id = 6
-target_id = 99
-max_target_id = 99
+len_id = 3
+max_len_id = 3
+target_id = 18 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
+max_target_id = 18
 target_per = 25
 is_perc = False
-target_length = 3
-source_length = 3
-join_flag = 0
-aggregate_flag = 0
-join_hints_truncate = [0.5,0.5,0.5,0.5,0.5]
-aggregate_hints_truncate = [0.5,0.5,0.5,0.5]
-fd_flag = 0
+
+#2
+# target_length = int(max(3,10*0.9695545786258186))
+# source_length = int(max(3,10*0.09828012752411708))
+
+#3
+target_length = int(max(3,10*0.523248510260532))
+source_length = int(max(3,10*0.0703091135427667))
+
+join_flag = 1
+aggregate_flag = 1
+
+#2
+# join_hints_truncate = [0.9006759015810097,0.11102115895485554,0.5241539295936876,0.021526354616419163,0.9722678489028443,0.5997167278729312]
+# aggregate_hints_truncate = [0.9006759015810097,0.5797659415180153,0.46440152668695256,0.8109176073751933]
+
+#3
+join_hints_truncate = [0.23343317781289263,0.9226126102537787,0.1988923361236351,0.562380523331669,0.13204754600503232,0.08364770692748924]
+aggregate_hints_truncate = [0.23343317781289263,0.5720923868861756,0.8441365852429881,0.8026706747168921]
+
+
+fd_flag = 1
 token_limit = 120000
 model = 'gpt-4-turbo'
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-len9-len6"
+log_dir = "logs-auto-suggest-llm-proof-bayesian"
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
@@ -94,11 +109,12 @@ for task in task_list :
                         logger.info("Token Limit Exceeded")
                         break_flag = 2
                         break
-                # print(prompt)
-                # sys.exit()
+                # # print(prompt)
+                # # sys.exit()
                 res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
                 operation = get_operation(res[0])
                 # sys.exit()
+                # operation = 'GROUP_BY/AGGREGATE'
                 
                 if operation == 'JOIN' :
                         # get join prompt 
@@ -107,7 +123,7 @@ for task in task_list :
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
                         target_perc = target_per, is_perc = is_perc, target_length = target_length,join_flag = join_flag, join_hints_truncate = join_hints_truncate)
-                        
+                        # sys.exit()
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
                                 break_flag = 2
@@ -127,7 +143,7 @@ for task in task_list :
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
                         target_perc = target_per, is_perc = is_perc, target_length = target_length, aggregate_flag = aggregate_flag, aggregate_hints_truncate = aggregate_hints_truncate)
-
+                        # sys.exit()
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
                                 break_flag = 2
