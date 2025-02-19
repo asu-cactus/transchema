@@ -414,6 +414,8 @@ def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_sch
         total_columns = len(columns)
 
         for pos, col_name in enumerate(columns):
+            if(table[col_name].dtype == "bool") : 
+                continue
             hint = ' - '
             col = table[col_name]
             # Generate features

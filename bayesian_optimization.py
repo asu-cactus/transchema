@@ -73,7 +73,9 @@ def evaluate_parameters(training_len, target_samples, source_samples,
     "length6_66", "length6_67", "length6_8", "length6_89", "length6_91", 
     "length6_95", "length6_97", "length9_19", "length9_22", "length9_29", 
     "length9_35", "length9_49"
-    ]
+]
+
+
     evaluation_case = random.choice(lengths)
     len_id = int(evaluation_case[6])
     max_len_id = len_id
@@ -108,7 +110,7 @@ def evaluate_parameters(training_len, target_samples, source_samples,
     ground_truth_location = '{main_directory}/length{len_id}_{target_id}/target.csv'.format(main_directory = main_directory, len_id = str(len_id), target_id = str(target_id))
     gt = pd.read_csv(ground_truth_location, low_memory = False)
     try : 
-        gt.drop(columns=gt.columns[0], axis=1, inplace=True)
+        gt = gt.drop('Unnamed: 0', axis=1)
     except : 
         pass
     # read generated_df
@@ -119,12 +121,14 @@ def evaluate_parameters(training_len, target_samples, source_samples,
         logger.info(0)
         return 0
     try : 
-        tgt.drop(columns=tgt.columns[0], axis=1, inplace=True)
+        tgt = tgt.drop('Unnamed: 0', axis=1)
     except : 
         pass
     # calculate score 
-    score = calculate_score(gt,tgt)
-
+    try : 
+        score = calculate_score(gt,tgt)
+    except : 
+        score = 0
     logger.info(score)
     
     # return score 
@@ -163,13 +167,14 @@ def optimization(pbounds, training_len, logger) :
     utility = UtilityFunction(kind="ei", kappa=2.5, xi=0.0)
 
     optimizer.maximize(
-        init_points=5,
-        n_iter=10,
+        init_points=3,
+        n_iter=20,
         acquisition_function=utility
     )
 
     best_params = optimizer.max['params']
     print("Best Parameters:", best_params)
+    logger.log("Best Parameters : ", best_params)
 
     return optimizer
 

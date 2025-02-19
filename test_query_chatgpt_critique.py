@@ -4,15 +4,15 @@ from util.utils import get_test_info
 import pandas as pd 
 import re
 
-json_file_path = "data/chatgpt_github_ss.json"
+json_file_path = "data/chatgpt_github_ms.json"
 file_path = "query.txt"
 with open(file_path, mode='r') as f:
     query = f.read()
 
 log_dir = "log_dir_critique_with_fd_16_oct"
-len_id = 1
-target_id = 9
-max_target_id = 9
+len_id = 5
+target_id = 21
+max_target_id = 21
 main_folder = "autopipeline-benchmarks/github-pipelines"
 fd = 1
 

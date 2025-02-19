@@ -11,10 +11,10 @@ from pathlib import Path
 
 
 # decided through parameters
-len_id = 3
-max_len_id = 3
-target_id = 18 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
-max_target_id = 18
+len_id = 2
+max_len_id = 2
+target_id = 6 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
+max_target_id = 6
 target_per = 25
 is_perc = False
 
@@ -23,8 +23,8 @@ is_perc = False
 # source_length = int(max(3,10*0.09828012752411708))
 
 #3
-target_length = int(max(3,10*0.523248510260532))
-source_length = int(max(3,10*0.0703091135427667))
+target_length = int(max(3,10*0.31342417815924284))
+source_length = int(max(3,10*0.9682615757193975))
 
 join_flag = 1
 aggregate_flag = 1
@@ -34,17 +34,19 @@ aggregate_flag = 1
 # aggregate_hints_truncate = [0.9006759015810097,0.5797659415180153,0.46440152668695256,0.8109176073751933]
 
 #3
-join_hints_truncate = [0.23343317781289263,0.9226126102537787,0.1988923361236351,0.562380523331669,0.13204754600503232,0.08364770692748924]
-aggregate_hints_truncate = [0.23343317781289263,0.5720923868861756,0.8441365852429881,0.8026706747168921]
+#join_hints = [dvr, js, jc, vro, leftness, sortedness]
+# aggregate_hints = [dvr, leftness, emptiness, peak_frequency]
+join_hints_truncate = [0.027387593197926163,0.8763891522960383,0.6923226156693141,0.8946066635038473,0.14038693859523377,0.8007445686755367]
+aggregate_hints_truncate = [0.027387593197926163,0.5586898284457517,0.6704675101784022,0.1981014890848788]
 
 
-fd_flag = 1
+fd_flag = 0
 token_limit = 120000
 model = 'gpt-4-turbo'
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-proof-bayesian"
+log_dir = "logs-auto-suggest-llm-proof-bayesian-clustering/cluster-0"
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
