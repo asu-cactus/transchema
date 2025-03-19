@@ -479,6 +479,8 @@ def get_truncated_aggreggation_features(f, flag, aht, group_by_flag) :
                 feature_list["Peak Frequency"] = round(f[7],2)
             if(f[2] in [0,1] and f[6] <= aht[9]) : # small value range for group by column
                 feature_list["Value Range"] = round(f[5],2)
+            if(f[2] in [2]) : # string datatype
+                feature_list["datatype"] = "String"
 
         else : # aggregation feature
             # [dvr_ub,dvr_lb, leftness_ub,leftness_lb, emptiness_ub,emptiness_lb, peak_frequency_ub, peak_frequency_lb,value_range_ub, value_range_lb]
@@ -494,6 +496,8 @@ def get_truncated_aggreggation_features(f, flag, aht, group_by_flag) :
                 feature_list["Peak Frequency"] = round(f[7],2)
             if(f[2] in [0,1] and f[6] >= aht[8]) : # large value range for group by column
                 feature_list["Value Range"] = round(f[5],2)
+            if(f[2] in [0,1]) : 
+                feature_list["datatype"] = "Numerical"
     # print(feature_list)
     return feature_list
 
