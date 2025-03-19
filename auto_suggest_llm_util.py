@@ -295,13 +295,18 @@ def get_join_hints(file_count,source_data_name_list,source_data_schema_list,dire
         for col1 in columns1 :
             for col2 in columns2 :
                 if(table1[col1].dtype == table2[col2].dtype) :
+                    print(col1,col2)
                     hint = ' - '
                     pos1 = columns1.get_loc(col1)
                     pos2 = columns2.get_loc(col2)
                     feature = generate_features(table1[col1], table2[col2], table1, table2, pos1, pos2, total_columns1, total_columns2, is_single_column([(col1, col2)]))
                     # generate table1.col1 <-> table2.col2 as a key
                     fq = get_truncated_join_feature(feature,join_flag,join_hints_truncate)
-                    if(len(fq) > 2) : 
+                    if(col1 == col2) : 
+                        fq["priority"] = 1
+                    else : fq["priority"] = 0
+                    print(fq)
+                    if(len(fq) > 3) : 
 
                         feat_dict[f"{table_name1}.{col1} <-> {table_name2}.{col2}"] = get_truncated_join_feature(feature,join_flag,join_hints_truncate)
                     
@@ -316,7 +321,7 @@ def get_join_hints(file_count,source_data_name_list,source_data_schema_list,dire
         # process the dictionary
         # sort the dictionary keys based on length of values 
         # print(feat_dict)
-        for k in sorted(feat_dict, key=lambda k: len(feat_dict[k]), reverse=True):
+        for k in sorted(feat_dict, key=lambda k: (feat_dict[k].get('priority', 0) == 0, len(feat_dict[k])), reverse=True):
             hint = f' - {k} : ' + " { "
             t1,c1,t2,c2 = k.split(' <-> ')[0].split('.')[0],k.split(' <-> ')[0].split('.')[1],k.split(' <-> ')[1].split('.')[0], k.split(' <-> ')[1].split('.')[1]
             # print(t1,c1,t2,c2)
@@ -346,7 +351,7 @@ def get_join_hints(file_count,source_data_name_list,source_data_schema_list,dire
 def get_truncated_join_feature(f,join_flag, jht) : 
     feature_list = {}
     if(join_flag) : 
-        if(f[0] >= jht[0] and f[1] >= jht[0]) :
+        if(f[0] >= jht[0] or f[1] >= jht[0]) : # change rule for high/low => at least one of them should be high
             feature_list["dvr"] = {"1" : f[0], "2" : f[1]}
         
         if(f[2] >= jht[1]) : 
@@ -355,14 +360,14 @@ def get_truncated_join_feature(f,join_flag, jht) :
         if(f[3] >= jht[2]) : 
             feature_list["Jaccard Containment"] = f[3]
         
-        if(f[4] >= jht[3]) : 
+        if(f[4] >= jht[3]) : # check logic and change rule, we need high for the join candidacy
             feature_list["Value Range Overlap"] = f[4]
 
-        if(f[6] >= jht[4] or f[7] >= jht[4]) : 
+        if(f[6] >= jht[4] or f[7] >= jht[4]) : #leftness
             feature_list["l"] = {"1" : f[0], "2" : f[1]}
         
-        if(jht[5] > 0.5) : 
-            if(f[8] and f[9]) : 
+        if(jht[5] > 0.5) : #sortedness
+            if(f[8] or f[9]) : 
                 feature_list["s"] = {"1" : f[0], "2" : f[1]}
         
     return feature_list
@@ -403,7 +408,8 @@ def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_sch
     hints = ""
     features = []
     tables = load_tables(directory,source_data_name_list,len_idx_target_idx)
-    feat_dict = {}
+    feat_dict_gb = {}
+    feat_dict_aggregate = {}
 
     all_data_types = ['int64', 'float64', 'object']  # Add more types if needed
     label_encoder = LabelEncoder()
@@ -420,9 +426,17 @@ def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_sch
             col = table[col_name]
             # Generate features
             feature = generate_features_for_column(col, col_name, pos, total_columns,label_encoder)
-            fq = get_truncated_aggreggation_features(feature,aggregate_flag, aggregate_hints_truncate)
+            print(feature)
+            
+            #group by 
+            fq = get_truncated_aggreggation_features(feature,aggregate_flag, aggregate_hints_truncate,1)
             if(len(fq) > 2) : 
-                feat_dict[f"{table_name}.{col_name}"] = get_truncated_aggreggation_features(feature,aggregate_flag, aggregate_hints_truncate)
+                feat_dict_gb[f"{table_name}.{col_name}"] = fq
+            #aggrregate
+            fq = get_truncated_aggreggation_features(feature,aggregate_flag, aggregate_hints_truncate, 0)
+            if(len(fq) > 2) : 
+                feat_dict_aggregate[f"{table_name}.{col_name}"] = fq
+
             if(aggregate_flag == 0) : 
                 if(check_feature_group_by(feature, aggregate_flag, aggregate_hints_truncate)) : 
                     hint += table_name+'.'+col_name+ ' : '
@@ -430,27 +444,56 @@ def get_groupby_aggregate_hints(file_count,source_data_name_list,source_data_sch
                     hints += hint
         
     if(aggregate_flag) : 
-        for k in sorted(feat_dict,key=lambda k: len(feat_dict[k]), reverse=True) :
-            if (len(feat_dict[k]) > 0) : 
+        hints += "Group By Hints : \n"
+        for k in sorted(feat_dict_gb,key=lambda k: len(feat_dict_gb[k]), reverse=True) :
+            if (len(feat_dict_gb[k]) > 0) : 
                 hint = f" - {k} : " + " { "
-                for ky,v in feat_dict[k].items() :
+                for ky,v in feat_dict_gb[k].items() :
+                    hint += f"{ky} : {v} , "            
+                hint = hint[:-3] + " }\n"
+                hints += hint 
+
+        hints += "Aggregation Hints : \n"
+        for k in sorted(feat_dict_aggregate,key=lambda k: len(feat_dict_aggregate[k]), reverse=True) :
+            if (len(feat_dict_aggregate[k]) > 0) : 
+                hint = f" - {k} : " + " { "
+                for ky,v in feat_dict_aggregate[k].items() :
                     hint += f"{ky} : {v} , "            
                 hint = hint[:-3] + " }"
-                hints += hint + "\n"
-    # print(hints)
+                hints += hint 
+    print(hints)
     return [hints]
 
-def get_truncated_aggreggation_features(f, flag, aht) :
+def get_truncated_aggreggation_features(f, flag, aht, group_by_flag) :
     feature_list = {}
     if(flag) : 
-        if(f[1] >= aht[0]) :
-            feature_list["Distinct Value Ratio"] = round(f[1],2)
-        if(f[3] >= aht[1]) :
-            feature_list["Leftness"] = round(f[3],2)
-        if(f[4] <= aht[2]) :
-            feature_list["Emptiness"] = round(f[4],2)
-        if(f[7] >= aht[3]) :
-            feature_list["Peak Frequency"] = round(f[7],2)
+        if(group_by_flag) : 
+            # [dvr_ub,dvr_lb, leftness_ub,leftness_lb, emptiness_ub,emptiness_lb, peak_frequency_ub, peak_frequency_lb,value_range_ub, value_range_lb]
+            if(f[1] <= aht[1]) : # low distinct value ratio
+                feature_list["Distinct Value Ratio"] = round(f[1],2)
+            if(f[3] >= aht[2]) : # high leftness
+                feature_list["Leftness"] = round(f[2],2)
+            if(f[4] <= aht[5]) : # low emptines
+                feature_list["Emptiness"] = round(f[4],2)
+            if(f[7] >= aht[6]) : # higgh peak frequerncy
+                feature_list["Peak Frequency"] = round(f[7],2)
+            if(f[2] in [0,1] and f[6] <= aht[9]) : # small value range for group by column
+                feature_list["Value Range"] = round(f[5],2)
+
+        else : # aggregation feature
+            # [dvr_ub,dvr_lb, leftness_ub,leftness_lb, emptiness_ub,emptiness_lb, peak_frequency_ub, peak_frequency_lb,value_range_ub, value_range_lb]
+            # [01, 23, 45, 67, 89]
+            # [0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1]
+            if(f[1] >= aht[0]) : # high distinct value ratio
+                feature_list["Distinct Value Ratio"] = round(f[1],2)
+            if(f[3] <= aht[3]) : # low leftness
+                feature_list["Leftness"] = round(f[2],2)
+            if(f[4] >= aht[4]) : # may have high emptines
+                feature_list["Emptiness"] = round(f[4],2)
+            if(f[7] <= aht[7]) : # may have low peak frequerncy
+                feature_list["Peak Frequency"] = round(f[7],2)
+            if(f[2] in [0,1] and f[6] >= aht[8]) : # large value range for group by column
+                feature_list["Value Range"] = round(f[5],2)
     # print(feature_list)
     return feature_list
 
@@ -589,6 +632,53 @@ def get_fd_hints(keys,fds) :
 
 
 def calculate_score(gt_df, tgt_df) :
+
+    #parameters 
+    w1 = 1
+    w2 = 1
+    w3 = 1
+    p  = 1
+
+    # Match Functional Dependencies 
+    key_gt, fd_gt = get_filtered_functional_dependency(gt_df)
+    key_tgt, fd_tgt = get_filtered_functional_dependency(tgt_df)
+
+    print("\n\n\nScore Calculation\n\n\n")
+
+    print(fd_gt)
+    print(key_gt)
+    print("\n\nTarget : ")
+    print(fd_tgt)
+    print(key_tgt)
+
+    dependencies_gt = extract_dependencies(fd_gt)
+    dependencies_tgt = extract_dependencies(fd_tgt)
+
+    overlapping_dependencies = dependencies_gt.intersection(dependencies_tgt)
+    overlapping_keys = set(key_gt).intersection(key_tgt)
+
+    score_fd = len(overlapping_dependencies)/len(dependencies_gt) if (len(dependencies_gt)>0) else 1
+    score_key = len(overlapping_keys) / len(key_gt) if (len(key_gt)>0) else 1
+
+    matcher = algorithms.Cupid()
+
+    # Match schemas
+    matches = valentine_match(gt_df, tgt_df,matcher)
+    gt_df_columns = gt_df.columns
+
+    gt_df_columns = set(gt_df.columns)
+    matched_columns = set(match[0] for match in matches)
+    # print("\n\n Matchings : ", matches)
+    
+    column_mapping_score = len(matched_columns) / len(gt_df_columns)
+
+    score = pow( w1*(score_fd**p) + w2*(score_key**p) + w3*(column_mapping_score)**p ,1/p)
+
+    print([score_fd, score_key, column_mapping_score])
+    return score
+
+
+def calculate_score_cost(gt_df, tgt_df, cost_) :
 
     #parameters 
     w1 = 1

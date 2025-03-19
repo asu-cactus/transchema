@@ -11,10 +11,10 @@ from pathlib import Path
 
 
 # decided through parameters
-len_id = 2
-max_len_id = 2
-target_id = 6 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
-max_target_id = 6
+len_id = 5
+max_len_id = 5
+target_id = 4 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
+max_target_id = 4
 target_per = 25
 is_perc = False
 
@@ -35,9 +35,9 @@ aggregate_flag = 1
 
 #3
 #join_hints = [dvr, js, jc, vro, leftness, sortedness]
-# aggregate_hints = [dvr, leftness, emptiness, peak_frequency]
+# aggregate_hints = [dvr_ub,dvr_lb, leftness_ub,leftness_lb, emptiness_ub,emptiness_lb, peak_frequency_ub, peak_frequency_lb,value_range_ub, value_range_lb]
 join_hints_truncate = [0.027387593197926163,0.8763891522960383,0.6923226156693141,0.8946066635038473,0.14038693859523377,0.8007445686755367]
-aggregate_hints_truncate = [0.027387593197926163,0.5586898284457517,0.6704675101784022,0.1981014890848788]
+aggregate_hints_truncate = [0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1]
 
 
 fd_flag = 0
@@ -46,7 +46,7 @@ model = 'gpt-4-turbo'
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-proof-bayesian-clustering/cluster-0"
+log_dir = "logs-auto-suggest-llm-18-03"
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
@@ -111,10 +111,11 @@ for task in task_list :
                         logger.info("Token Limit Exceeded")
                         break_flag = 2
                         break
-                # # print(prompt)
+                # print(prompt)
                 # # sys.exit()
                 res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
                 operation = get_operation(res[0])
+
                 # sys.exit()
                 # operation = 'GROUP_BY/AGGREGATE'
                 
@@ -131,10 +132,14 @@ for task in task_list :
                                 break_flag = 2
                                 break
 
+                        # print(prompt[0])
+                        # sys.exit()
+
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Join")
                         joined_columns = get_columns_join(res[0])
                         history_elements.append(joined_columns)
                         operation_history.append(operation + ' : ' + str(joined_columns))
+
                         # run llm and get join columns 
                         # add it to the history
                         pass 
@@ -152,7 +157,8 @@ for task in task_list :
                                 break
 
                         # run llm and get group by column
-                        # print(prompt) 
+                        # print(prompt[0]) 
+                        # sys.exit()
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Group by/Aggergate")
                         # print(res[0])
                         # add it to the history

@@ -58,22 +58,16 @@ def run_auto_suggest_llm_bayesian(len_id, max_len_id, target_id, max_target_id, 
 # )
 
 def evaluate_parameters(training_len, target_samples, source_samples, 
-                    distinct_value_ratio, value_overlap_js, value_overlap_jc, value_range_overlap, leftness_join, sortedness, 
-                    distinct_value_count, leftness_group_by, emptiness, peak_frequency, 
-                    fd, logger) : 
+                        distinct_value_ratio, value_overlap_js, value_overlap_jc, value_range_overlap, 
+                        leftness_join, sortedness, distinct_value_ratio_ub, distinct_value_ratio_lb, 
+                        leftness_group_by_ub, leftness_group_by_lb, emptiness_ub, emptiness_lb, 
+                        peak_frequency_ub, peak_frequency_lb, value_range_ub, value_range_lb, fd, logger):
     
     # Nodes in Cluster
-    lengths = [
-    "length1_4", "length1_42", "length2_42", "length4_39", "length4_40", 
-    "length4_41", "length4_45", "length4_56", "length4_58", "length4_65", 
-    "length4_84", "length5_14", "length5_21", "length5_26", "length5_28", 
-    "length5_35", "length5_40", "length5_46", "length5_50", "length5_64", 
-    "length5_67", "length5_9", "length5_93", "length5_97", "length6_11", 
-    "length6_31", "length6_36", "length6_45", "length6_51", "length6_52", 
-    "length6_66", "length6_67", "length6_8", "length6_89", "length6_91", 
-    "length6_95", "length6_97", "length9_19", "length9_22", "length9_29", 
-    "length9_35", "length9_49"
-]
+    lengths = [ 
+    'length5_3'
+     ]
+
 
 
     evaluation_case = random.choice(lengths)
@@ -89,7 +83,8 @@ def evaluate_parameters(training_len, target_samples, source_samples,
     join_flag = 1
     aggregate_flag = 1
     join_hints_truncate = [distinct_value_ratio, value_overlap_js, value_overlap_jc, value_range_overlap, leftness_join, sortedness]
-    aggregate_hints_truncate = [distinct_value_count, leftness_group_by, emptiness, peak_frequency]
+    aggregate_hints_truncate = [distinct_value_ratio_ub, distinct_value_ratio_lb, leftness_group_by_ub, leftness_group_by_lb, 
+                                emptiness_ub, emptiness_lb, peak_frequency_ub, peak_frequency_lb, value_range_ub, value_range_lb]
     fd_flag = (1 if fd > 0.5 else 0)
     token_limit = 120000
     model = 'gpt-4-turbo'
@@ -147,34 +142,35 @@ def evaluate_parameters(training_len, target_samples, source_samples,
 # sys.exit()
 
 
-def optimization(pbounds, training_len, logger) : 
+def optimization(pbounds, training_len, logger): 
     optimizer = BayesianOptimization(
-        f = lambda target_samples, source_samples, \
-                    distinct_value_ratio, value_overlap_js, value_overlap_jc, value_range_overlap, leftness_join, sortedness, \
-                    distinct_value_count, leftness_group_by, emptiness, peak_frequency, \
-                    fd : evaluate_parameters(training_len, target_samples, source_samples, 
-                    distinct_value_ratio, value_overlap_js, value_overlap_jc , value_range_overlap, leftness_join, sortedness, 
-                    distinct_value_count, leftness_group_by, emptiness, peak_frequency, 
-                    fd, logger),
-                    pbounds = pbounds,
-                    verbose=2,
-                    random_state = 1
-        )
+        f=lambda target_samples, source_samples, \
+                  distinct_value_ratio, value_overlap_js, value_overlap_jc, value_range_overlap, leftness_join, sortedness, \
+                  distinct_value_ratio_ub,distinct_value_ratio_lb, leftness_group_by_ub, leftness_group_by_lb, emptiness_ub, emptiness_lb, peak_frequency_ub, peak_frequency_lb, \
+                  value_range_ub, value_range_lb, fd: evaluate_parameters(
+                      training_len, target_samples, source_samples, 
+                      distinct_value_ratio, value_overlap_js, value_overlap_jc, value_range_overlap, leftness_join, sortedness, 
+                      distinct_value_ratio_ub,distinct_value_ratio_lb, leftness_group_by_ub, leftness_group_by_lb, emptiness_ub, emptiness_lb, peak_frequency_ub, peak_frequency_lb, 
+                      value_range_ub, value_range_lb, fd, logger
+                  ),
+        pbounds=pbounds,
+        verbose=2,
+        random_state=1
+    )
     
-
     optimizer.set_gp_params(normalize_y=True)
 
-    utility = UtilityFunction(kind="ei", kappa=2.5, xi=0.0)
+    utility = UtilityFunction(kind="ei", kappa=2.5, xi=0.1)
 
     optimizer.maximize(
-        init_points=3,
-        n_iter=20,
+        init_points=1,
+        n_iter=2,
         acquisition_function=utility
     )
 
     best_params = optimizer.max['params']
     print("Best Parameters:", best_params)
-    logger.log("Best Parameters : ", best_params)
+    logger.log("Best Parameters : " + str(best_params))
 
     return optimizer
 
@@ -193,10 +189,17 @@ if __name__ == '__main__':
         'leftness_join' : (0,1),
         'sortedness' : (0,1),
         # aggregate
-        'distinct_value_count' : (0,1),
-        'leftness_group_by' : (0,1),
-        'emptiness' : (0,1),
-        'peak_frequency' : (0,1),
+        # [dvr_ub,dvr_lb, leftness_ub,leftness_lb, emptiness_ub,emptiness_lb, peak_frequency_ub, peak_frequency_lb,value_range_ub, value_range_lb]
+        'distinct_value_ratio_ub' : (0,1),
+        'distinct_value_ratio_lb' : (0,1),
+        'leftness_group_by_ub' : (0,1),
+        'leftness_group_by_lb' : (0,1),
+        'emptiness_ub' : (0,1),
+        'emptiness_lb' : (0,1),
+        'peak_frequency_ub' : (0,1),
+        'peak_frequency_lb' : (0,1),
+        'value_range_ub' : (0,1),
+        'value_range_lb' : (0,1),
         #functional_dependency
         'fd' : (0,1)
     }

@@ -34,7 +34,7 @@ model = sys.argv[15]
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-bayesian-parameter-optimization-cluster-0"
+log_dir = "logs-auto-suggest-llm-bayesian-parameter-optimization-cluster-1"
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
