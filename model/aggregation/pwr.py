@@ -40,6 +40,7 @@ def predict_columns(tables, model, label_encoder):
             col = table[col_name]
             features = generate_features_for_column(col, col_name, pos, total_columns, label_encoder)
             features_df = pd.DataFrame([features])
+            # print(features_df)
             score = model.predict_proba(features_df)[0][1]
             predictions.append((table_name, col_name, score))
 
@@ -56,7 +57,7 @@ if __name__ == '__main__':
     key_model = train_model(X_key, y_key)
 
     # Load tables
-    tables = load_tables('D:/transchema\model/aggregation\data_test')
+    tables = load_tables('model/aggregation/data_test')
 
     # Fit LabelEncoder on all possible data types
     all_data_types = ['int64', 'float64', 'object']  # Add more types if needed

@@ -3,7 +3,7 @@ from llm.llm_models import TokenUsageTracker,LLMClient
 from util.utils import get_test_info, execute_python, compare_lists_matching
 import time
 import auto_suggest_llm_prompts as prt
-from auto_suggest_llm_util import create_logger, get_source, get_operation, get_join_hints, get_columns, get_groupby_aggregate_hints,get_source_with_location, cost_compare, query_gpt, get_columns_aggr, get_columns_join, get_prompt
+from auto_suggest_llm_util import create_logger, get_source, get_operation, get_columns, query_gpt,  get_columns_join, get_prompt, cost_compare
 import pandas as pd
 import re
 import sys
@@ -11,12 +11,14 @@ from pathlib import Path
 
 
 # decided through parameters
-len_id = 5
-max_len_id = 5
-target_id = 4 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
-max_target_id = 4
+len_id = 1
+max_len_id = 1
+target_id = 12 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
+max_target_id = 12
 target_per = 25
 is_perc = False
+hint_source = "v2" # v1_kv, v1_text or v2(Xuanmao's hints)
+anon_flag = False
 
 #2
 # target_length = int(max(3,10*0.9695545786258186))
@@ -53,7 +55,7 @@ allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIV
 
 task_list = get_test_cases_ids(json_file_path,  len_id, max_len_id, target_id, max_target_id)
 
-logger = create_logger(log_dir,len_id, target_id,max_target_id)
+logger = create_logger("",log_dir,len_id, target_id,max_target_id)
 
 q_count = {'total' : 0, 'in_task' : 0}
 
@@ -82,7 +84,7 @@ for task in task_list :
 
         (target_data_name, target_data_schema, target_samples, file_count, source_data_name_list,
                 source_data_schema_list, source_samples_list) = (
-                get_test_info(json_file_path, len_idx_target_idx, main_folder))
+                get_test_info(json_file_path, len_idx_target_idx, main_folder,anon_flag))
 
 
         # 0 to ask for operator and 1 for column and 2 to generate script
@@ -106,7 +108,7 @@ for task in task_list :
                                 operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                                 target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                                 directory = main_folder, len_idx_target_idx = len_idx_target_idx,
-                                target_perc = target_per, is_perc = is_perc, target_length = target_length, source_length = source_length)
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length, source_length = source_length, hint_source = hint_source)
                 if(prompt[0] == '-1') : 
                         logger.info("Token Limit Exceeded")
                         break_flag = 2
@@ -117,7 +119,7 @@ for task in task_list :
                 operation = get_operation(res[0])
 
                 # sys.exit()
-                # operation = 'GROUP_BY/AGGREGATE'
+                # operation = 'JOIN'
                 
                 if operation == 'JOIN' :
                         # get join prompt 
@@ -125,7 +127,7 @@ for task in task_list :
                         operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length,join_flag = join_flag, join_hints_truncate = join_hints_truncate)
+                        target_perc = target_per, is_perc = is_perc, target_length = target_length,join_flag = join_flag, join_hints_truncate = join_hints_truncate, hint_source = hint_source)
                         # sys.exit()
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
@@ -149,7 +151,7 @@ for task in task_list :
                         operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length, aggregate_flag = aggregate_flag, aggregate_hints_truncate = aggregate_hints_truncate)
+                        target_perc = target_per, is_perc = is_perc, target_length = target_length, aggregate_flag = aggregate_flag, aggregate_hints_truncate = aggregate_hints_truncate, hint_source = hint_source)
                         # sys.exit()
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
@@ -172,7 +174,7 @@ for task in task_list :
                         operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length)
+                        target_perc = target_per, is_perc = is_perc, target_length = target_length,hint_source = hint_source)
 
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
@@ -200,7 +202,7 @@ for task in task_list :
                 else :
                         pass
 
-        print(operation_history)
+        # print(operation_history)
 
         if(break_flag == 0) :
                 # Generate Table and Compare
@@ -216,7 +218,7 @@ for task in task_list :
                                 operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema, 
                                 target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                                 directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                                target_perc = target_per, is_perc = is_perc, target_length = target_length, error_string = error_str,target_file_location = target_file_location)
+                                target_perc = target_per, is_perc = is_perc, target_length = target_length, error_string = error_str,target_file_location = target_file_location, hint_source = hint_source)
 
                         if(prompt[0] == '-1') : 
                                         logger.info("Token Limit Exceeded")
@@ -227,7 +229,7 @@ for task in task_list :
                         script = res[0].split("```Python")[1].split("```")[0].strip()
                         # print(script)
                         response = execute_python(script)
-                        print(response)
+                        # print(response)
                         error_str = error_str + response + '\n'
                         # print(error_str)
                         if(response == 'Success') : 

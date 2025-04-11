@@ -2,6 +2,7 @@ import os
 import logging
 import json
 import pandas as pd
+from padding_match import pad_comp
 
 
 def convert_target_names(target_names_str):
@@ -65,7 +66,7 @@ def create_connection():
         host="localhost",  # e.g., "localhost"
         port="5432",  # e.g., "5432"
     )
-    print("Postgres connection established.")
+    #print("Postgres connection established.")
     return conn
 
 
@@ -116,7 +117,7 @@ def execute_python(gpt_response):
 
 
 # def create_table(conn, create_statement):
-#     print(create_statement)
+#     #print(create_statement)
 #     cursor = conn.cursor()
 #     try:
 #         cursor.execute("BEGIN;")
@@ -161,7 +162,7 @@ def log_experiment_failed(
     accuracy_list,
     validation_error_list,
 ):
-    print("[FAILED] Maximum iterations reached without correct result.")
+    #print("[FAILED] Maximum iterations reached without correct result.")
     log_directory = os.path.join(".", "log")
     os.makedirs(log_directory, exist_ok=True)
 
@@ -175,12 +176,12 @@ def log_experiment_failed(
                 file.write(f"mis-match: {validation_error_list[count]}\n")
             else:
                 file.write(", ".join(map(str, iteration_scores)) + "\n")
-        print(accuracy_list)
+        #print(accuracy_list)
         file.write(f"\t\t\t\tCase accuracy: {max(accuracy_list):.2f}\n")
 
 
 def log_experiment_success(target_data_name, source_data_name_to_find, iteration_count):
-    print("[Success] Successful SQL execution with correct result.")
+    #print("[Success] Successful SQL execution with correct result.")
     log_directory = os.path.join(".", "log")
     os.makedirs(
         log_directory, exist_ok=True
@@ -215,7 +216,7 @@ def log_experiment(
     file_path = f"log/{method}.log"
     with open(file_path, "a+") as file:
         if success:
-            print(cost)
+            #print(cost)
             file.write(
                 f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n"
             )
@@ -292,36 +293,23 @@ def is_column_numerically_dominant(column):
     return numeric_count / total_count > 0.5  # Majority of values are numeric
 
 
-def compare_columns(pred_column, gold_column, threshold=1e-8):
-
+def compare_columns(pred_column, gold_column):
+    # Convert all elements to strings for consistent comparison
+    pred_column = [str(x) if x is not None else '' for x in pred_column]
+    gold_column = [str(x) if x is not None else '' for x in gold_column]
+    
+    # Sort the columns
     pred_column.sort()
     gold_column.sort()
+    
+    # Count matches
+    matches = sum(1 for p, g in zip(pred_column, gold_column) if are_elements_equal(p, g))
+    total = len(pred_column)
+    
+    return matches / total if total > 0 else 0
 
-    # Determine if columns are numerically dominant
-    is_numerical_a = is_column_numerically_dominant(pred_column)
-    is_numerical_b = is_column_numerically_dominant(gold_column)
-
-    if is_numerical_a and is_numerical_b:
-        # Both columns are numerically dominant
-        scores = [
-            numerical_similarity(float(val1 or 0), float(val2 or 0), threshold)
-            for val1, val2 in zip(pred_column, gold_column)
-        ]
-        return sum(scores) / len(scores)
-    else:
-        # For string comparison, convert strings to lower case for case-insensitive comparison
-        pred_column_lower = [str(val).lower() for val in pred_column]
-        gold_column_lower = [str(val).lower() for val in gold_column]
-
-        intersection = len(set(pred_column_lower) & set(gold_column_lower))
-        union = len(set(pred_column_lower) | set(gold_column_lower))
-        return intersection / union if union else 0
-
-
-# Main Comparison Function
 def compare_lists_matching(generated_sql_df, ground_truth_df):
-
-    print("Sorting")
+    #print("Sorting")
 
     generated_sql_df = generated_sql_df.loc[
         :, ~generated_sql_df.columns.duplicated()
@@ -329,7 +317,7 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
     generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
     ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
 
-    print("Comparing column lengths")
+    #print("Comparing column lengths")
 
     if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
         return (
@@ -339,7 +327,7 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
             ["Mismatch - No columns in one or both DataFrames"],
         )
 
-    print("Comparing row lengths")
+    #print("Comparing row lengths")
 
     if len(generated_sql_df) != len(ground_truth_df):
         return (
@@ -358,9 +346,9 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     for col in generated_sql_df.columns:
 
-        # print(col)
+        # #print(col)
         if col.find("Unnamed: 0") >= 0:
-            print("skip " + col)
+            #print("skip " + col)
             num_cols -= 1
             continue
 
@@ -370,11 +358,11 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         # Use the updated function to determine if the column is numerically dominant
         is_numerical = is_column_numerically_dominant(generated_sql_df[col])
 
-        # print(is_numerical)
+        # #print(is_numerical)
 
-        # print(pred_column)
+        # #print(pred_column)
 
-        # print(gold_column)
+        # #print(gold_column)
 
         # Use the updated compare_columns function
         column_similarity = compare_columns(pred_column, gold_column)
@@ -398,24 +386,84 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     return average_similarity, res, similarities, all_mismatches
 
+# Main Comparison Function
+def compare_lists_matching_soft(generated_sql_df, ground_truth_df, padding_added=False):
+    # Remove duplicate columns and sort
+    generated_sql_df = generated_sql_df.loc[:, ~generated_sql_df.columns.duplicated()].copy()
+    generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
+    ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
+    #print("WOOP WOOP WOOP")
+    # Only pad if we haven't already done so
+    if not padding_added:
+        if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0 or \
+           len(generated_sql_df) != len(ground_truth_df):
+            padded_dfs = pad_comp(ground_truth_df, generated_sql_df)
+            return compare_lists_matching_soft(*padded_dfs, padding_added=True)
 
-def get_test_info(json_file_path, len_id_target_id, main_folder_path):
+    generated_sql_df, ground_truth_df = pad_comp(generated_sql_df, ground_truth_df)
 
-    print(json_file_path)
+    similarities = []
+    all_mismatches = []
+    num_cols = 0
 
-    print(len_id_target_id)
+    for col in generated_sql_df.columns:
+        if col.find("Unnamed: 0") >= 0:
+            continue
+
+        num_cols += 1
+        pred_column = generated_sql_df[col].tolist()
+        gold_column = ground_truth_df[col].tolist()
+
+        column_similarity = compare_columns(pred_column, gold_column)
+        similarities.append(column_similarity)
+
+        if column_similarity < 1:
+            mismatches = [
+                {
+                    "<col, row>": f"<{col}, {i}>",
+                    "pred": pred_column[i],
+                    "gold": gold_column[i],
+                }
+                for i in range(len(pred_column))
+                if not are_elements_equal(pred_column[i], gold_column[i])
+            ]
+            all_mismatches.append((col, mismatches))
+
+    if num_cols == 0:
+        return 0, False, []
+
+    average_similarity = sum(similarities) / num_cols
+    res = average_similarity == 1
+
+    return average_similarity, res, similarities
+
+#adding code to anonymize target data schema (column names)
+def anonymize_target_data_schema(target_data_schema):
+    # Replace column names with generic names
+    ##print("length: ")
+    ##print(len(target_data_schema))
+    target_data_schema_list = target_data_schema.split(",")
+    anonymized_schema = [f"col_{i}" for i in range(len(target_data_schema_list))]
+    strigifiedschema = ",".join(anonymized_schema)
+    return strigifiedschema
+
+def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag):
+
+    #print(json_file_path)
+
+    #print(len_id_target_id)
 
     # Read the JSON file once
     with open(json_file_path, "r") as file:
         data_list = json.load(file)
         # Create a dictionary for faster lookups
         data_dict = {item["Source Data Name"]: item for item in data_list}
-        # print(data_dict)
+        # #print(data_dict)
 
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
 
-    print(sub_folder_name)
+    #print(sub_folder_name)
 
     main_folder_name = os.path.abspath(main_folder_path)
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
@@ -428,7 +476,7 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
         if file.startswith("test")
     )
 
-    print(file_count)
+    #print(file_count)
 
     # Find and store the required data
     source_data_name_list = []
@@ -436,6 +484,7 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
     source_samples_list = []
     target_data_name, target_data_schema, target_samples = None, None, None
 
+    #print(f"FILE COUNT: {file_count}")
     for i in range(file_count):
         source_data_name_to_find = f"Source{len_id_target_id}_{i}"
         data = data_dict.get(source_data_name_to_find)
@@ -447,6 +496,13 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path):
             ):  # Assuming all target data names and schemas are the same
                 target_data_name = data["Target Data Name"]
                 target_data_schema = data["Target Data Schema"]
+                #print("target_data_schema")
+                #print(target_data_schema)
+                #print("--------------------------------")
+                #adding code to anonymize target data schema (column names)
+                #anonymizes on flag condition
+                if(anon_flag == 1):
+                    target_data_schema = anonymize_target_data_schema(target_data_schema)
                 target_samples = data["Target Data Sample"]
 
             source_data_name_list.append(data["Source Data Name"])

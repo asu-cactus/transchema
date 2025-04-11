@@ -24,7 +24,7 @@ def value_range_overlap(col1, col2):
         range2 = col2.max() - col2.min()
         intersection = min(col1.max(), col2.max()) - max(col1.min(), col2.min())
         union = range1 + range2 - intersection
-        print(range1,range2,intersection,union)
+        # print(range1,range2,intersection,union)
         return max(0, intersection / union)
     return 0
 
@@ -34,7 +34,8 @@ def column_type(col):
 
 # Function to calculate left-ness
 def leftness(pos, total_columns):
-    return 1 - (pos / total_columns)
+    # return 1-(pos / total_columns)
+    return pos, (pos / total_columns)
 
 # Function to check if column is sorted
 def is_sorted(col):
@@ -71,8 +72,8 @@ def generate_features(col1, col2, table1, table2, pos1, pos2, total_columns1, to
         jaccard_containment(col1, col2),
         value_range_overlap(col1, col2),
         column_type(col1) == column_type(col2),
-        leftness(pos1, total_columns1),
-        leftness(pos2, total_columns2),
+        *leftness(pos1, total_columns1),
+        *leftness(pos2, total_columns2),
         is_sorted(col1),
         is_sorted(col2),
         is_single_col,

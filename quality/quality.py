@@ -297,6 +297,7 @@ def analyze_functional_dependencies(df):
 
     # Get functional dependencies
     Closure, F, Cardinality = GetFDs.f(C[0], df, Closure, U, Cardinality)
+    # print("\n\nClosure, F, Cardinality : ", Closure, F, Cardinality)
 
     # Filter functional dependencies
     filtered_F = []

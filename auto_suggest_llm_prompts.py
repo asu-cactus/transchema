@@ -1,7 +1,9 @@
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY', 'AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
 
-def get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, fd_hints) :
-    prompt = '''You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history" and scource, target table schema and examples.
+def get_next_operator_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, fd_hints, hints) :
+    prompt = '''
+    query1
+    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history" and scource, target table schema and examples.
 Allowed Operations: {allowed_operation_list}.
 Operation History: {operation_history}
 
@@ -11,22 +13,24 @@ Operation History: {operation_history}
 4. Multi Source Information: {source_information}
 {fd_hints}
 
+{hints}
+
 Note: The row examples provided are part of the corresponding rows.
 
 - Please answer what operation you should perform next based on "operation history", "source" and "target" information ("schema" as well as the "examples")  in one word.
-- Please ensure to use the internet and correspond/correlate missing data into this source table, and if needed, analyze the new table (add additional info, etc).
 - You may deduce the type of columns in 'Target Table' from the 'Target Examples'. Strictly make sure that the operations in 'Operation History' lead to 'Target Table' with those same type.
-- If the schemas in source tables are almost similar, give Union operation first priority.
+- If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
+- Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
 - If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
 - You should only answer from allowed operations.
-- Try to use all tables.
 - Try not to repeat operation and it's configuration from the operation history.
-- the final answer should be in $ quotes. i.e. $OPERATOR$'''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information, fd_hints = fd_hints)
+- the final answer should be in $ quotes. i.e. $OPERATOR$'''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information, fd_hints = fd_hints, hints = hints[0])  
     return [prompt]
 
 
 def get_join_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information, hints, fd_hints) :
     prompt = '''
+    query1
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be joined and at which columns?". Take this decision based on "Operation History", "Source" and "Target" (table schema as well as the examples) information.
 
 Allowed Operations: {allowed_operation_list}.
@@ -45,7 +49,6 @@ Hint : {hints}
 
 - Please answer which tables should be joined and at which columns that hasn't appeared yet in "operation history".
 - You should only answer from available columns of the source tables.
-- Please don't write your reasoning with the answer, just the answer would suffice.
 - Only return two tables that should be joined and on which columns.
 - The final answer should be in format of list.
 - The first element of list should be the list of two tables that should be joined.
@@ -77,8 +80,8 @@ Hint : {hints}
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.
 - The final answer should be in the following format. lists where first list should be group by columns, next list should cover aggregation function and on which columns aggregations should be performed.
-- Example : "group_by" = [group_by_column1, group_by_column_2, ...], "aggregations" = [aggregation_function1(aggregation_column), aggregation_function2(aggregation_column), ...]
-    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information,hints = hints, fd_hints = fd_hints)
+- Example : "group_by" = [table_name.group_by_column1, table_name.group_by_column_2, ...], "aggregations" = [aggregation_function1(table_name.aggregation_column), aggregation_function2(table_name.aggregation_column), ...]
+    '''.format(allowed_operation_list=allowed_operation_list,operation_history=operation_history,target_data_name=target_data_name,target_data_schema=target_data_schema,target_samples=target_samples, source_information=source_information,hints = hints[0], fd_hints = fd_hints)
     return [prompt]
 
 def get_union_prompt(allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count, source_information) :
@@ -118,7 +121,7 @@ def get_python_script(allowed_operation_list,operation_history,target_data_name,
 
     Transformation Plan:
  - Please ensure to use the internet and correspond/correlate missing data into this source table, and if needed, analyze the new table (add additional info, etc).
- - Provide a detailed plan, step by step for transforming the data from the source tables to match the target table format.
+ - Provide a detailed plan, step by step for transforming the data from the source tables so that the Transformed table is closer to the target table.
  - You are strictly required to perform all the operations mentioned in the "Operations History" list. 
  - You may consider the "Source" and "Target" schema and examples to build correct pipeline.
  - You may use more operations, but the ones in "Operations History" should always be covered and in that sequence.

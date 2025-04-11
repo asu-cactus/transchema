@@ -30,11 +30,29 @@ aggregate_hints_truncate = list(map(float, sys.argv[12].split(',')))
 fd_flag = int(sys.argv[13])
 token_limit = int(sys.argv[14])
 model = sys.argv[15]
+
+print(f"len_id: {len_id}")
+print(f"max_len_id: {max_len_id}")
+print(f"target_id: {target_id}")
+print(f"max_target_id: {max_target_id}")
+print(f"target_per: {target_per}")
+print(f"is_perc: {is_perc}")
+print(f"target_length: {target_length}")
+print(f"source_length: {source_length}")
+print(f"join_flag: {join_flag}")
+print(f"aggregate_flag: {aggregate_flag}")
+print(f"join_hints_truncate: {join_hints_truncate}")
+print(f"aggregate_hints_truncate: {aggregate_hints_truncate}")
+print(f"fd_flag: {fd_flag}")
+print(f"token_limit: {token_limit}")
+print(f"model: {model}")
+
+
     
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-bayesian-parameter-optimization-cluster-1"
+log_dir = "logs-auto-suggest-llm-bayesian-parameter-optimization-cluster-6"
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']

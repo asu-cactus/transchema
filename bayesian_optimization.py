@@ -65,8 +65,37 @@ def evaluate_parameters(training_len, target_samples, source_samples,
     
     # Nodes in Cluster
     lengths = [ 
-    'length5_3'
-     ]
+    "length1_11", "length2_76", "length5_44", "length5_85", "length2_84", "length2_79",
+    "length5_83", "length3_43", "length2_20", "length3_30", "length2_61", "length1_93",
+    "length2_70", "length4_18", "length4_21", "length3_20", "length2_85", "length2_74",
+    "length1_67", "length1_3", "length2_13", "length2_88", "length5_30", "length1_62",
+    "length2_1", "length2_64", "length4_9", "length2_17", "length5_1", "length5_89",
+    "length2_41", "length5_12", "length3_40", "length3_39", "length5_43", "length5_78",
+    "length2_80", "length3_22", "length2_33", "length2_39", "length2_8", "length1_38",
+    "length1_95", "length5_76", "length2_55", "length3_66", "length1_46", "length1_35",
+    "length3_59", "length2_89", "length1_70", "length5_77", "length5_86", "length2_23",
+    "length1_29", "length5_74", "length4_85", "length1_68", "length1_80", "length5_96",
+    "length3_70", "length1_44", "length1_86", "length5_10", "length5_61", "length1_59",
+    "length2_77", "length2_98", "length1_30", "length1_71", "length3_76", "length5_75",
+    "length5_36", "length3_64", "length1_0", "length3_9", "length2_32", "length3_71",
+    "length5_8", "length1_43", "length2_26", "length2_25", "length4_83", "length3_61",
+    "length1_55", "length4_75", "length1_23", "length1_77", "length4_0", "length3_21",
+    "length2_62", "length1_65", "length1_57", "length3_4", "length2_40", "length2_92",
+    "length3_69", "length2_48", "length2_75", "length2_94", "length2_72", "length2_93",
+    "length1_34", "length4_48", "length3_60", "length2_9", "length2_44", "length1_82",
+    "length4_72", "length2_58", "length2_30", "length3_35", "length5_88", "length1_16",
+    "length5_22", "length5_87", "length2_34", "length2_11", "length5_29", "length2_71",
+    "length2_87", "length3_83", "length1_94", "length5_95", "length1_81", "length6_62",
+    "length2_68", "length1_69", "length1_61", "length3_74", "length3_57", "length2_38",
+    "length1_90", "length2_18", "length2_99", "length4_20", "length1_21", "length2_69",
+    "length2_2", "length3_50", "length1_20", "length3_73", "length1_84", "length5_71",
+    "length1_97", "length1_98", "length3_65", "length3_75", "length2_83", "length5_13",
+    "length4_80", "length1_53", "length1_41", "length1_18", "length3_84", "length4_73",
+    "length2_90", "length1_92", "length1_78", "length1_13", "length5_18", "length1_60",
+    "length1_40", "length1_6", "length2_81", "length3_93", "length4_81", "length4_7",
+    "length2_16", "length1_48", "length4_19", "length2_19", "length4_57", "length2_7",
+    "length5_92"
+]
 
 
 
@@ -163,14 +192,14 @@ def optimization(pbounds, training_len, logger):
     utility = UtilityFunction(kind="ei", kappa=2.5, xi=0.1)
 
     optimizer.maximize(
-        init_points=1,
-        n_iter=2,
+        init_points=3,
+        n_iter=50,
         acquisition_function=utility
     )
 
     best_params = optimizer.max['params']
     print("Best Parameters:", best_params)
-    logger.log("Best Parameters : " + str(best_params))
+    logger.info("Best Parameters : " + str(best_params))
 
     return optimizer
 
@@ -215,7 +244,7 @@ if __name__ == '__main__':
     log_dir = f"bayesian_opt_cluster{current_date}"
 
     # Create the log file name with the current time
-    log_file = f"bayesian_opt_cluster_0{current_time}.log"
+    log_file = f"bayesian_opt_cluster_6{current_time}.log"
 
     # Check if the log directory exists, create it if it does not
     if not os.path.exists(log_dir):
