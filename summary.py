@@ -11,14 +11,28 @@ from quality.quality import analyze_functional_dependencies_1, analyze_functiona
 
 def load_tables(directory, prefixes=['test_'], target_filename='target.csv'):
     tables = {}
+
+    def clean_table(df):
+        # Drop the first column
+        df = df.iloc[:, 1:]
+        # Take min of 1000 rows
+        df = df.head(min(1000, len(df)))
+        # Take min of 15 columns
+        df = df.iloc[:, :min(15, df.shape[1])]
+        return df
+
     for filename in os.listdir(directory):
         if any(filename.startswith(prefix) for prefix in prefixes) and filename.endswith('.csv'):
             table_name = filename.split('.')[0]
-            tables[table_name] = pd.read_csv(os.path.join(directory, filename))
-    # Load the target file explicitly
+            df = pd.read_csv(os.path.join(directory, filename))
+            tables[table_name] = clean_table(df)
+
+    # Load and clean the target file explicitly
     target_path = os.path.join(directory, target_filename)
     if os.path.exists(target_path):
-        tables['target'] = pd.read_csv(target_path)
+        target_df = pd.read_csv(target_path)
+        tables['target'] = clean_table(target_df)
+
     return tables
 
 def generate_transformation_hints(tables,source_dfs, target_df, mode='light', candidate_matching_columns=None, candidate_key_columns=None):
@@ -183,11 +197,11 @@ def generate_transformation_hints(tables,source_dfs, target_df, mode='light', ca
 # Example usage
 if __name__ == '__main__':
     # Load tables
-    tables = load_tables('D:/transchema/model/aggregation/data_test')
+    tables = load_tables('model/aggregation/data_test')
 
     # Load the models
-    join_model = load_trained_model('D:/transchema/model/join/join_model.json')
-    key_model = load_trained_model('D:/transchema/model/aggregation/key_model.json')
+    join_model = load_trained_model('model/join/join_model.json')
+    key_model = load_trained_model('model/aggregation/key_model.json')
 
     # Predict join column pairs
     join_candidates = predict_join_columns(tables, join_model)
@@ -205,7 +219,9 @@ if __name__ == '__main__':
     key_candidates = predict_columns(tables, key_model, label_encoder)
     all_key_candidates.extend(key_candidates)
 
+    print(candidate_matching_columns,'\n\n',all_key_candidates)
+
     # Generate transformation hints
     source_dfs = [tables[table] for table in tables if table != target_table_name]
-    hints = generate_transformation_hints(tables,source_dfs, target_df, mode='dynamic', candidate_matching_columns=candidate_matching_columns, candidate_key_columns=all_key_candidates)
+    hints = generate_transformation_hints(tables,source_dfs, target_df, mode='light', candidate_matching_columns=candidate_matching_columns, candidate_key_columns=all_key_candidates)
     print(hints)

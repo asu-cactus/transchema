@@ -18,6 +18,7 @@ from auto_suggest_llm_util import (
     get_filtered_functional_dependency,
     calculate_score
 )
+import parameters as p
 import pandas as pd
 import re
 import sys
@@ -368,7 +369,7 @@ def precursor(length, id_, log_dir_, experiment_name,i_):
     token_tracker = TokenUsageTracker()
     script = ""
     op_hist_ = ""
-    hint_source = "v1_text"
+    hint_source = p.hint_source
     
     try:
         # decided through parameters
@@ -376,26 +377,26 @@ def precursor(length, id_, log_dir_, experiment_name,i_):
         max_len_id = length
         target_id = id_  # [18,2,32,33,96,16,27,78,91,18]
         max_target_id = id_
-        target_per = 25
-        is_perc = False
+        target_per = p.target_per
+        is_perc = p.is_perc
 
         # Best Parameters: {'distinct_value_count': 0.8781174363909454, 'distinct_value_ratio': 0.027387593197926163, 'emptiness': 0.6704675101784022, 'fd': 0.41730480236712697, 'leftness_group_by': 0.5586898284457517, 'leftness_join': 0.14038693859523377, 'peak_frequency': 0.1981014890848788, 'sortedness': 0.8007445686755367, 'source_samples': 0.9682615757193975, 'target_samples': 0.31342417815924284, 'value_overlap_jc': 0.6923226156693141, 'value_overlap_js': 0.8763891522960383, 'value_range_overlap': 0.8946066635038473}
 
        # Updated Parameters
 
-        anon_flag = 0
+        anon_flag = p.anon_flag
 
         # join_hints = [distinct_value_ratio, jaccard_similarity, jaccard_condition, value_range_overlap, leftness, sortedness]
         # aggregate_hints = [distinct_value_ratio, leftness, emptiness, peak_frequency]
-        target_length = int(max(3, 10 * 0.9578895301505019))
-        source_length = int(max(3, 10 * 0.42110762500505217))
+        target_length = p.target_length 
+        source_length = p.source_length
 
-        join_flag = 1
-        aggregate_flag = 1
+        join_flag = p.join_flag
+        aggregate_flag = p.aggregate_flag
 
 #3
 # join_hints = [dvr, js, jc, vro, leftness, sortedness]
-        join_hints_truncate = [0.7,0.7,0.7,0.7,0.7,0.7]
+        join_hints_truncate = p.join_hints_truncate
 
         # join_hints_truncate = [
         #     0.5,#0.1981014890848788,  # distinct_value_ratio (dvr)
@@ -406,23 +407,12 @@ def precursor(length, id_, log_dir_, experiment_name,i_):
         #     0.5#0.0983468338330501   # sortedness
         # ]
 
-        aggregate_hints_truncate = [
-            0.7,  # distinct_value_ratio_ub (dvr_ub)
-            0.3,  # distinct_value_ratio_lb (dvr_lb)
-            0.7, # leftness_group_by_ub (leftness_ub)
-            0.3,  # leftness_group_by_lb (leftness_lb)
-            0.7,  # emptiness_ub
-            0.3, # emptiness_lb
-            0.7,  # peak_frequency_ub
-            0.3,  # peak_frequency_lb
-            0.7,  # value_range_ub
-            0.3  # value_range_lb
-        ]
+        aggregate_hints_truncate = p.aggregate_hints_truncate
 
 
-        fd_flag = 0
-        token_limit = 120000
-        model = "gpt-4-turbo"
+        fd_flag = p.fd_flag
+        token_limit = p.token_limit
+        model = p.model
         path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
         # Counting files starting with 'test' in this subfolder
         file_count = sum(
@@ -790,7 +780,7 @@ def ms(length, id, log_dir,experiment_name):
     false_tup = []
     true_tup_ = []
     false_tup_ = []
-    for i in range(0,5):
+    for i in range(0,p.no_of_runs):
         try:
             ms_info = precursor(length, id, log_dir,experiment_name,i)
         except Exception as e:
@@ -820,14 +810,14 @@ def ms(length, id, log_dir,experiment_name):
             false_tup.append(tup)
     
     
-    if len(true_tup_) >= 3:
+    if len(true_tup_) >= p.majority_voting:
         print(f"avging {true_tup_}")
         avged_tup_ = avg_tup_(true_tup_)
     else: 
         print(f"avging {false_tup_}")
         avged_tup_ = avg_tup_(false_tup_)
         
-    if len(true_tup) >= 3:
+    if len(true_tup) >= p.majority_voting:
         avged_tup = avg_tup(true_tup)
     else:
         avged_tup = avg_tup(false_tup)     
@@ -855,7 +845,7 @@ def crit(length, id_, experiment_name):
     abc_true_ = []
     abc_false_ = []
     
-    for i in range(0,5):
+    for i in range(0,p.no_of_runs):
 
         abl_a = critique(length, id_, "og_query.txt", "crit_logs/", [1,0,0],0,i, experiment_name)
         
@@ -910,29 +900,29 @@ def crit(length, id_, experiment_name):
         else:
             abc_false.append(tup)
     
-    if len(a_true) >=3:
+    if len(a_true) >= p.majority_voting:
         avg_a  = avg_tup(a_true)
     else:
         avg_a = avg_tup(a_false)
-    if len(a_true_) >= 3:
+    if len(a_true_) >= p.majority_voting:
         avg_a_ = avg_tup_(a_true_)
     else:
         avg_a_ = avg_tup_(a_false_)
     
-    if len(ab_true) >=3:
+    if len(ab_true) >= p.majority_voting:
         avg_ab  = avg_tup(ab_true)
     else:
         avg_ab = avg_tup(ab_false)
-    if len(ab_true_) >= 3:
+    if len(ab_true_) >= p.majority_voting:
         avg_ab_ = avg_tup_(ab_true_)
     else:
         avg_ab_ = avg_tup_(ab_false_)
         
-    if len(abc_true) >=3:
+    if len(abc_true) >= p.majority_voting:
         avg_abc  = avg_tup(abc_true)
     else:
         avg_abc = avg_tup(abc_false)
-    if len(abc_true_) >= 3:
+    if len(abc_true_) >= p.majority_voting:
         avg_abc_ = avg_tup_(abc_true_)
     else:
         avg_abc_ = avg_tup_(abc_false_)
@@ -956,31 +946,30 @@ def crit(length, id_, experiment_name):
 
 
 def main():
-    length = 2
-    start = 29
-    end = 30
+    length = p.len_id
+    start = p.target_id
+    end = p.max_target_id
     Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
                 creds_file=creds_path )
 
-    cases = list(range(10, 16))
     cases = list(range(start,end))
 
-    experiment_name = "text_features"
+    experiment_name = p.experiment_name
     
-    lengths = ["length2_11", "length2_13", "length2_14", "length2_16", "length2_19", "length2_2", "length2_20", "length2_21", "length2_25", "length2_35", "length2_36", "length2_37", "length2_39", "length2_42"]
+    # lengths = ["length2_11", "length2_13", "length2_14", "length2_16", "length2_19", "length2_2", "length2_20", "length2_21", "length2_25", "length2_35", "length2_36", "length2_37", "length2_39", "length2_42"]
 
     # Get the path to credentials.json relative to the autologger package
     
-    for leng in lengths:
-        length = int(leng[6])
-        case = int(leng[8:])
-        case_path = f"{length}_{case}"
-        log_dir = f"crit_logs/{case_path}"
-
-    # for case in cases : 
-
+    # for leng in lengths:
+    #     length = int(leng[6])
+    #     case = int(leng[8:])
     #     case_path = f"{length}_{case}"
     #     log_dir = f"crit_logs/{case_path}"
+
+    for case in cases : 
+
+        case_path = f"{length}_{case}"
+        log_dir = f"crit_logs/{case_path}"
       
         try:
             #compute multisource

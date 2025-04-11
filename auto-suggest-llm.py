@@ -8,28 +8,29 @@ import pandas as pd
 import re
 import sys
 from pathlib import Path
+import parameters as p
 
 
 # decided through parameters
-len_id = 1
-max_len_id = 1
-target_id = 12 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
-max_target_id = 12
-target_per = 25
-is_perc = False
-hint_source = "v2" # v1_kv, v1_text or v2(Xuanmao's hints)
-anon_flag = False
+len_id = p.len_id
+max_len_id = p.max_len_id
+target_id = p.target_id #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
+max_target_id = p.max_target_id
+target_per = p.target_per
+is_perc = p.is_perc
+hint_source = p.hint_source # v1_kv, v1_text or v2(Xuanmao's hints)
+anon_flag = p.anon_flag
 
 #2
 # target_length = int(max(3,10*0.9695545786258186))
 # source_length = int(max(3,10*0.09828012752411708))
 
 #3
-target_length = int(max(3,10*0.31342417815924284))
-source_length = int(max(3,10*0.9682615757193975))
+target_length = p.target_length
+source_length = p.source_length
 
-join_flag = 1
-aggregate_flag = 1
+join_flag = p.join_flag
+aggregate_flag = p.aggregate_flag
 
 #2
 # join_hints_truncate = [0.9006759015810097,0.11102115895485554,0.5241539295936876,0.021526354616419163,0.9722678489028443,0.5997167278729312]
@@ -38,17 +39,17 @@ aggregate_flag = 1
 #3
 #join_hints = [dvr, js, jc, vro, leftness, sortedness]
 # aggregate_hints = [dvr_ub,dvr_lb, leftness_ub,leftness_lb, emptiness_ub,emptiness_lb, peak_frequency_ub, peak_frequency_lb,value_range_ub, value_range_lb]
-join_hints_truncate = [0.027387593197926163,0.8763891522960383,0.6923226156693141,0.8946066635038473,0.14038693859523377,0.8007445686755367]
-aggregate_hints_truncate = [0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1]
+join_hints_truncate = p.join_hints_truncate
+aggregate_hints_truncate = p.aggregate_hints_truncate
 
 
-fd_flag = 0
-token_limit = 120000
-model = 'gpt-4-turbo'
+fd_flag = p.fd_flag
+token_limit = p.token_limit
+model = p.model
 
 
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-18-03"
+log_dir = p.log_dir
 main_folder = "autopipeline-benchmarks/github-pipelines"
 
 allowed_operation_list = ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT', 'NO_MORE_OPERATION']
