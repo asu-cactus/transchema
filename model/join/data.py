@@ -24,6 +24,7 @@ def value_range_overlap(col1, col2):
         range2 = col2.max() - col2.min()
         intersection = min(col1.max(), col2.max()) - max(col1.min(), col2.min())
         union = range1 + range2 - intersection
+        # print(range1,range2,intersection,union)
         return max(0, intersection / union)
     return 0
 
@@ -33,7 +34,8 @@ def column_type(col):
 
 # Function to calculate left-ness
 def leftness(pos, total_columns):
-    return pos, pos / total_columns
+    # return 1-(pos / total_columns)
+    return pos, (pos / total_columns)
 
 # Function to check if column is sorted
 def is_sorted(col):

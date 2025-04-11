@@ -13,7 +13,7 @@ def column_data_type(col):
 
 # Function to calculate left-ness
 def leftness(pos, total_columns):
-    return pos, pos / total_columns
+    return pos,(pos / total_columns)
 
 # Function to calculate emptiness
 def emptiness(col):
@@ -34,6 +34,7 @@ def distinct_to_range_ratio(col):
 
 # Function to calculate peak frequency
 def peak_frequency(col):
+    # return col.value_counts().max() / len(col)
     return col.value_counts().max(), col.value_counts().max() / len(col)
 
 # Generate features for each column in a table
@@ -100,7 +101,7 @@ def load_tables(directory):
 # Example usage
 if __name__ == '__main__':
     # Load tables
-    tables = load_tables('D:/transchema\model/aggregation\data')
+    tables = load_tables('model/aggregation/data')
 
     # Read key labels from CSV
     key_labels = read_labels('key_labels.csv')

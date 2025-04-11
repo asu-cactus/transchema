@@ -37,7 +37,7 @@ import os
 from valentine import valentine_match
 from valentine.algorithms import Coma,Cupid
 import time
-import timeout_decorator
+# import timeout_decorator
 
 
 def schema_quality(sql_query, **kwargs):
@@ -297,6 +297,7 @@ def analyze_functional_dependencies(df):
 
     # Get functional dependencies
     Closure, F, Cardinality = GetFDs.f(C[0], df, Closure, U, Cardinality)
+    # print("\n\nClosure, F, Cardinality : ", Closure, F, Cardinality)
 
     # Filter functional dependencies
     filtered_F = []
@@ -546,18 +547,18 @@ def data_profiling(df,whether_source=False):
     df_numeric = df.apply(pd.to_numeric, errors='coerce')
 
     # Value Relationships for all columns
-    for col_a in df.columns:
-        multi_analysis['value_relationships'][col_a] = {'greater_than': [], 'equal_to': [], 'less_than': []}
-        for col_b in df.columns:
-            if col_a != col_b:
-                min_a, max_a = df_numeric[col_a].min(), df_numeric[col_a].max()
-                min_b, max_b = df_numeric[col_b].min(), df_numeric[col_b].max()
-                if min_a > max_b:
-                    multi_analysis['value_relationships'][col_a]['greater_than'].append(col_b)
-                elif max_a < min_b:
-                    multi_analysis['value_relationships'][col_a]['less_than'].append(col_b)
-                elif min_a == min_b and max_a == max_b:
-                    multi_analysis['value_relationships'][col_a]['equal_to'].append(col_b)
+    # for col_a in df.columns:
+    #     multi_analysis['value_relationships'][col_a] = {'greater_than': [], 'equal_to': [], 'less_than': []}
+    #     for col_b in df.columns:
+    #         if col_a != col_b:
+    #             min_a, max_a = df_numeric[col_a].min(), df_numeric[col_a].max()
+    #             min_b, max_b = df_numeric[col_b].min(), df_numeric[col_b].max()
+    #             if min_a > max_b:
+    #                 multi_analysis['value_relationships'][col_a]['greater_than'].append(col_b)
+    #             elif max_a < min_b:
+    #                 multi_analysis['value_relationships'][col_a]['less_than'].append(col_b)
+    #             elif min_a == min_b and max_a == max_b:
+    #                 multi_analysis['value_relationships'][col_a]['equal_to'].append(col_b)
 
     # print("\nLength Relationships (Non-Numerical Data):")
     # for col, relationships in multi_analysis['length_relationships'].items():
@@ -567,16 +568,16 @@ def data_profiling(df,whether_source=False):
         return single_analysis, multi_analysis
 
 
-    #functional_dependencies, keys = analyze_functional_dependencies(df)
+    functional_dependencies, keys = analyze_functional_dependencies(df)
 
-    # dependencies = {
-    #     'dependencies': functional_dependencies,
-    #     'keys': keys
-    # }
     dependencies = {
-        'dependencies':[] ,
-        'keys': []
+        'dependencies': functional_dependencies,
+        'keys': keys
     }
+    # dependencies = {
+    #     'dependencies':[] ,
+    #     'keys': []
+    # }
     return single_analysis, multi_analysis, dependencies
 
 
@@ -600,24 +601,24 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
             elif stats['uniqueness'] < low_uniqueness_threshold and stats['constancy'] > high_constancy_threshold:
                 columns_low.append(column)
 
-        # Check for columns with high NULL percentage and add to hints
-        if 'null_percentage' in stats and stats['null_percentage'] > high_null_threshold:
-            null_hints.append(
-                f"\"{column}\" has a high NULL percentage ({stats['null_percentage']}%). Please remove the rows with NULL values in the target table.")
+        # # Check for columns with high NULL percentage and add to hints
+        # if 'null_percentage' in stats and stats['null_percentage'] > high_null_threshold:
+        #     null_hints.append(
+        #         f"\"{column}\" has a high NULL percentage ({stats['null_percentage']}%). Please remove the rows with NULL values in the target table.")
 
     # Check for high number of duplicate values in the target table
-    uniqueness_hint = None
-    if 'duplicates_percentage' in single_analysis and single_analysis[
-        'duplicates_percentage'] > high_duplicate_threshold:
-        uniqueness_hint = "Please don't drop duplicate values in the target table."
+    # uniqueness_hint = None
+    # if 'duplicates_percentage' in single_analysis and single_analysis[
+    #     'duplicates_percentage'] > high_duplicate_threshold:
+    #     uniqueness_hint = "Please don't drop duplicate values in the target table."
 
     # Check for value pattern hints based on multiple columns with high uniqueness
-    if 'value_patterns' in multi_analysis:
-        for pattern in multi_analysis['value_patterns']:
-            columns = pattern['columns']
-            if all(single_analysis[col]['uniqueness'] > high_uniqueness_threshold for col in columns):
-                grouped_columns = ', '.join(columns)
-                value_pattern_hints.append(f"Group by {grouped_columns} and aggregate EC by counting them.")
+    # if 'value_patterns' in multi_analysis:
+    #     for pattern in multi_analysis['value_patterns']:
+    #         columns = pattern['columns']
+    #         if all(single_analysis[col]['uniqueness'] > high_uniqueness_threshold for col in columns):
+    #             grouped_columns = ', '.join(columns)
+    #             value_pattern_hints.append(f"Group by {grouped_columns} and aggregate EC by counting them.")
 
     # Generate a single hint for using aggregation functions and group by, if there are any columns for grouping
     if columns_high and columns_low:
@@ -633,21 +634,21 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
     else:
         schema_change_hints = ""
 
-    if null_hints:
-        schema_change_hints += "\n" + "\n".join(null_hints)
+    # if null_hints:
+    #     schema_change_hints += "\n" + "\n".join(null_hints)
 
-    if value_pattern_hints:
-        schema_change_hints += "\n" + "\n".join(value_pattern_hints)
+    # if value_pattern_hints:
+    #     schema_change_hints += "\n" + "\n".join(value_pattern_hints)
 
     # Constructing value pattern based on multi_analysis
     value_relations_summary = []
-    for col, relationships in multi_analysis['value_relationships'].items():
-        greater_than_cols = ', '.join(relationships['greater_than'])
-        equal_to_cols = ', '.join(relationships['equal_to'])
-        if greater_than_cols:
-            value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
-        if equal_to_cols:
-            value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
+    #for col, relationships in multi_analysis['value_relationships'].items():
+        # greater_than_cols = ', '.join(relationships['greater_than'])
+        # equal_to_cols = ', '.join(relationships['equal_to'])
+        # if greater_than_cols:
+        #     value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
+        # if equal_to_cols:
+        #     value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
     value_pattern_msg = "Value pattern in table: " + '; '.join(
         value_relations_summary) + '.' if value_relations_summary else ""
 
