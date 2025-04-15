@@ -13,9 +13,10 @@ def jaccard_similarity(col1, col2):
     return len(set1 & set2) / len(set1 | set2)
 
 # Function to calculate Jaccard containment
+# Jaccard Containment(A,B) = |A ∩ B| / |A|
 def jaccard_containment(col1, col2):
     set1, set2 = set(col1), set(col2)
-    return len(set1 & set2) / min(len(set1), len(set2))
+    return len(set1 & set2) / len(set1)
 
 # Function to calculate value-range-overlap
 def value_range_overlap(col1, col2):
