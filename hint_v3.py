@@ -380,7 +380,7 @@ def aggregation_check1(col,t,c,pos,total_columns) :
     k = f"{t}.{c}"
     
         # calculate the foreign_key 
-    if(get_type(col,k) in ["int64","float64"] and get_leftness(col,t,c,pos,total_columns) > 0.8) : 
+    if(get_type(col,k) in ["int64","float64"] and get_leftness(col,t,c,pos,total_columns) > 0.45) : 
         return True
     
     return False
@@ -388,32 +388,32 @@ def aggregation_check1(col,t,c,pos,total_columns) :
 def aggregation_check2(col,t,c,pos,total_columns) :
     k = f"{t}.{c}"
 
-    if(get_type(col,k) in ["object","datetime","bool"] and get_leftness(col,t,c,pos,total_columns) > 0.8 ) :
+    if(get_type(col,k) in ["object","datetime","bool"] and get_leftness(col,t,c,pos,total_columns) > 0.45 ) :
         return True
 
     return False
 
 def aggregation_check3(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.8) : 
+    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45) : 
         return True
     return False
 
 def aggregation_check4(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) != "int64" and get_type(target_column,f"target.{c}") == "int64" and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.8) : 
+    if(get_type(col,k) != "int64" and get_type(target_column,f"target.{c}") == "int64" and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45) : 
         return True
     return False
 
 def aggregation_check5(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.8 and np.mean(target_column)/np.mean(col)> 10) : 
+    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45 and np.mean(target_column)/np.mean(col)> 10) : 
         return True
     return False
 
 def aggregation_check6(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.8 and np.mean(target_column)/np.mean(col) > 0.5 and np.mean(target_column)/np.mean(col) < 2) : 
+    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45 and np.mean(target_column)/np.mean(col) > 0.5 and np.mean(target_column)/np.mean(col) < 2) : 
         return True
     return False
 
@@ -438,37 +438,41 @@ def get_join_hints(hint_source,file_count,source_data_name_list,source_data_sche
             for col2 in columns2 :
 
                 # print(f"Checking {table_name1}.{col1} and {table_name2}.{col2}")
+                hint = ""
 
-                # check for foreignkey 
-                if(foreign_key(table1[col1],table2[col2], table_name1, table_name2, col1, col2)) : 
-                    hints += f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
-                # check for jh1
-                if(join_check_1(table1[col1],table2[col2], table_name1, table_name2, col1, col2)) : 
-                    hints += f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
-                # # check for jh2 
-                if(join_check_2(table1[col1],table2[col2], table_name1, table_name2, col1, col2)) : 
-                    hints += f"It is highly probable that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
-                # # check for jh3 
-                if(join_check_3(table1[col1],table2[col2], table_name1, table_name2, col1, col2, columns1.get_loc(col1), columns2.get_loc(col2), total_columns1, total_columns2)) : 
-                    hints += f"It is probable that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
-                # # check for jh4 
-                if(join_check_4(table1[col1],table2[col2], table_name1, table_name2, col1, col2)) : 
-                    hints += f"It is probable that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
-                # # check for jh5
-                if(join_check_5(table1[col1],table2[col2], table_name1, table_name2, col1, col2, columns1.get_loc(col1), columns2.get_loc(col2), total_columns1, total_columns2)) : 
-                    hints += f"It is highly possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
+               # Highest severity → lowest
+                if join_check_2(table1[col1], table2[col2], table_name1, table_name2, col1, col2):
+                    hint = f"It is HIGHLY PROBABLE that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
 
-                # join type prediction
-                if(join_check_1(table1[col1],table2[col2], table_name1, table_name2, col1, col2) 
-                   and get_jaccard_containment(table1[col1],table2[col2], table_name1, table_name2, col1, col2) >= 0.8 
-                   and get_jaccard_containment(table2[col2],table1[col1], table_name2, table_name1, col2, col1) <= 0.2
-                   and get_missing_value_ratio(target_table) > 0.4) : 
-                    hints += f"It is possible that {table_name1} LEFT OUTER JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
-                if(join_check_1(table1[col1],table2[col2], table_name1, table_name2, col1, col2)
-                   and get_jaccard_containment(table2[col2],table1[col1], table_name2, table_name1, col2, col1) >= 0.8
-                   and get_jaccard_containment(table1[col1],table2[col2], table_name1, table_name2, col1, col2) <= 0.2
-                   and get_missing_value_ratio(target_table) > 0.4) : 
-                    hints += f"It is possible that {table_name1} RIGHT OUTER JOIN {table_name2} ON {table_name1}.{col1} = {table_name1}.{col2}\n"
+                elif join_check_5(table1[col1], table2[col2], table_name1, table_name2, col1, col2, columns1.get_loc(col1), columns2.get_loc(col2), total_columns1, total_columns2):
+                    hint = f"It is HIGHLY POSSIBLE that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                elif join_check_3(table1[col1], table2[col2], table_name1, table_name2, col1, col2, columns1.get_loc(col1), columns2.get_loc(col2), total_columns1, total_columns2):
+                    hint = f"It is probable that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                elif join_check_4(table1[col1], table2[col2], table_name1, table_name2, col1, col2):
+                    hint = f"It is probable that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                elif foreign_key(table1[col1], table2[col2], table_name1, table_name2, col1, col2):
+                    hint = f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                elif join_check_1(table1[col1], table2[col2], table_name1, table_name2, col1, col2):
+                    hint = f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                if join_check_1(table1[col1], table2[col2], table_name1, table_name2, col1, col2) and \
+                    get_jaccard_containment(table1[col1], table2[col2], table_name1, table_name2, col1, col2) >= 0.8 and \
+                    get_jaccard_containment(table2[col2], table1[col1], table_name2, table_name1, col2, col1) <= 0.2 and \
+                    get_missing_value_ratio(target_table, "target") > 0.4:
+                    hint = f"It is possible that {table_name1} LEFT OUTER JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                if join_check_1(table1[col1], table2[col2], table_name1, table_name2, col1, col2) and \
+                    get_jaccard_containment(table2[col2], table1[col1], table_name2, table_name1, col2, col1) >= 0.8 and \
+                    get_jaccard_containment(table1[col1], table2[col2], table_name1, table_name2, col1, col2) <= 0.2 and \
+                    get_missing_value_ratio(target_table, "target") > 0.4:
+                    hint = f"It is possible that {table_name1} RIGHT OUTER JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                if hint:
+                    hints += hint
     return [hints]
 
 def get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, aggregate_flag, aggregate_hints_truncate) : 
@@ -511,25 +515,43 @@ def get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,sou
         columns = table.columns
         total_columns = len(columns)
         for pos, col_name in enumerate(columns):
+
+            # print(col_name, table[col_name].dtype, get_leftness(table[col_name],table_name,col_name,pos,total_columns))
             
-            # source based aggregation hints 
-            if(aggregation_check1(table[col_name], table_name, col_name, pos, total_columns)) :
-                hints += f"It is possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be sum, avg, max, min, count.\n"
-            if(aggregation_check2(table[col_name], table_name, col_name, pos, total_columns)) :
-                hints += f"It is possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
+            # Initialize hint
+            hint = ""
 
-            # target based aggregation hints
-            if(col_name in target_columns) : 
-                target_col_position = target_columns.get_loc(col_name)
-                if(aggregation_check3(table[col_name], target_table[col_name], table_name, col_name, pos, total_columns,target_col_position, len(target_columns))) :
-                    hints += f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be sum, avg, max, min, count.\n"
-                if(aggregation_check4(table[col_name], target_table[col_name], table_name, col_name, pos, total_columns,target_col_position, len(target_columns))) :
-                    hints += f"It is hihgly possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
-                if(aggregation_check5(table[col_name], target_table[col_name], table_name, col_name, pos, total_columns,target_col_position, len(target_columns))) :
-                    hints += f"It is highly possible that SUM({table_name}.{col_name}) exists in the transformation logic.\n"
-                if(aggregation_check6(table[col_name], target_table[col_name], table_name, col_name, pos, total_columns,target_col_position, len(target_columns))) :
-                    hints += f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be avg, max, min.\n"
+            # Step 1: Target-based aggregation hints (high confidence)
+            for target_col in target_columns:
+                if col_name.lower() in target_col.lower():
+                    target_col_position = target_columns.get_loc(target_col)
 
+                    if aggregation_check5(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                        hint = f"It is highly possible that SUM({table_name}.{col_name}) exists in the transformation logic.\n"
+                        break
+                    elif aggregation_check4(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                        hint = f"It is highly possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
+                        break
+                    elif aggregation_check6(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                        hint = f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be AVG, MAX, MIN.\n"
+                        break
+                    elif aggregation_check3(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                        hint = f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be SUM, AVG, MAX, MIN, COUNT.\n"
+                        break
+                    
+
+            # Step 2: Source-based aggregation hints (fallback if no target match)
+            if not hint:
+                if aggregation_check1(table[col_name], table_name, col_name, pos, total_columns):
+                    hint = f"It is possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be SUM, AVG, MAX, MIN, COUNT.\n"
+                elif aggregation_check2(table[col_name], table_name, col_name, pos, total_columns):
+                    hint = f"It is possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
+
+            # Append hint if generated
+            if hint:
+                hints += hint
+        
+        # break  # Stop after the first match
     # column equivalence check 
     column_set = get_column_equivalence(target_table)
     if(len(column_set) > 3) : 

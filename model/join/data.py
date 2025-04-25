@@ -36,7 +36,7 @@ def column_type(col):
 # Function to calculate left-ness
 def leftness(pos, total_columns):
     # return 1-(pos / total_columns)
-    return pos, (pos / total_columns)
+    return (pos+1), ((pos+1) / total_columns)
 
 # Function to check if column is sorted
 def is_sorted(col):
