@@ -116,11 +116,11 @@ for task in task_list :
                         break
                 # print(prompt)
                 # # sys.exit()
-                res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
-                operation = get_operation(res[0])
+                # res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
+                # operation = get_operation(res[0])
 
                 # sys.exit()
-                # operation = 'JOIN'
+                operation = 'GROUP_BY/AGGREGATE'
                 
                 if operation == 'JOIN' :
                         # get join prompt 
@@ -135,8 +135,8 @@ for task in task_list :
                                 break_flag = 2
                                 break
 
-                        # print(prompt[0])
-                        # sys.exit()
+                        print(prompt[0])
+                        sys.exit()
 
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Join")
                         joined_columns = get_columns_join(res[0])
@@ -160,8 +160,8 @@ for task in task_list :
                                 break
 
                         # run llm and get group by column
-                        # print(prompt[0]) 
-                        # sys.exit()
+                        print(prompt[0]) 
+                        sys.exit()
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Group by/Aggergate")
                         # print(res[0])
                         # add it to the history

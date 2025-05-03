@@ -299,8 +299,8 @@ class Experiment:
                     #summary
                     tables = load_tables(test_dir)
                     # Load the models
-                    join_model = load_trained_model('D:/transchema/model/join/join_model.json')
-                    key_model = load_trained_model('D:/transchema/model/aggregation/key_model.json')
+                    join_model = load_trained_model('model/join/join_model.json')
+                    key_model = load_trained_model('model/aggregation/key_model.json')
                     # Predict join column pairs
                     join_candidates = predict_join_columns(tables, join_model)
                     candidate_matching_columns = [(f"{t1}.{c1}", f"{t2}.{c2}", s) for (t1, c1), (t2, c2), s in

@@ -5,7 +5,7 @@ target_id = 12 #[11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
 max_target_id = 13
 target_per = 25
 is_perc = False
-hint_source = "v2" # v1_kv, v1_text or v2(Xuanmao's hints)
+hint_source = "v3" # v1_kv, v1_text or v2(Xuanmao's hints)
 anon_flag = False
 
 target_length = int(max(3,10*0.31342417815924284))
