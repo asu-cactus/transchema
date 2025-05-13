@@ -970,22 +970,22 @@ def main():
     # lengths = ["length5_36", "length5_39", "length5_40", "length5_64"]
     # lengths = ["length5_69", "length5_70", "length5_75", "length5_87"]
     # lengths = ["length5_89", "length5_92", "length5_98", "length5_99"]
-    lengths = ["length5_10"]
+    # lengths = ["length5_10"]
 
 
 
     # Get the path to credentials.json relative to the autologger package
     
-    for leng in lengths:
-        length = int(leng[6])
-        case = int(leng[8:])
-        case_path = f"{length}_{case}"
-        log_dir = f"crit_logs/{case_path}"
-
-    # for case in cases : 
-
+    # for leng in lengths:
+    #     length = int(leng[6])
+    #     case = int(leng[8:])
     #     case_path = f"{length}_{case}"
     #     log_dir = f"crit_logs/{case_path}"
+
+    for case in cases : 
+
+        case_path = f"{length}_{case}"
+        log_dir = f"crit_logs/{case_path}"
       
         try:
             #compute multisource
