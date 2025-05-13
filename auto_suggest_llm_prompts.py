@@ -68,41 +68,57 @@ def get_next_operator_prompt_with_intermediate_materialization(
     hints,
     all_intermediate_results,
 ):
+
+    assert len(all_intermediate_results) == len(
+        operation_history
+    ), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
+    if fd_hints.strip() == "":
+        fd_hints = ""
+    else:
+        fd_hints = f"\nFunctional Dependency Hints:\n{fd_hints}"
+
     prompt_start = f"""
     query1
-    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history" and scource, target table schema and examples.
+You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". The operation can be performed on both the source tables and the intermediate tables if any.
+Take this decision based on "operation history", intermediate tables and source, target table schema and examples.
 Allowed Operations: {allowed_operation_list}.
-Operation History: {operation_history}
 
 1. Target Table Name: {target_data_name}
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
 4. Multi Source Information: {source_information}
-{fd_hints}
-
+ 
+Some useful hints:
 {hints}
 
+Operation History: 
+{operation_history}
 """
-    prompts = [
-        f"After the {i}st/nd/rd/th operation {op}, the intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}"
+    subprompts_middle = [
+        f"After the {i}st/nd/rd/th operation {op}, the intermediate table is named 'intermediate_step{i}'.\nThe intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}"
         for i, (interm, op) in enumerate(
             zip(all_intermediate_results, operation_history), start=1
         )
     ]
-    prompt_middle = "\n".join(prompts)
-    prompt_last = """
+    prompt_middle = "\n".join(subprompts_middle)
 
-Note: The row examples provided are part of the corresponding rows.
+    prompt_last = f"""
+{fd_hints}
+Note: The above row examples provided are only part of the corresponding rows.
 
-- Please answer what operation you should perform next based on "operation history", "source" and "target" information ("schema" as well as the "examples")  in one word.
-- You may deduce the type of columns in 'Target Table' from the 'Target Examples'. Strictly make sure that the operations in 'Operation History' lead to 'Target Table' with those same type.
+More Instructions:
+- You should answer with the next OPERATION following the operation history, as well as the CONFIGURATION of the next operation. 
+    - For Union, it should be a list of table names; 
+    - For Join, it should be a list of tables and the columns to join on, the format is [table1.join_column_from_table1, table2.join_column_from_table2]; 
+    - For Group By, it should be the table and a list of columns to group by and the aggregation function to use; 
+    - For PIVOT and UNPIVOT, no configuration is needed, you can set CONFIGURATION to NONE.  
+    - If you need help from tools to determine the configuration, you can set CONFIGURATION to NONE.
+- You can propose a whole plan of operations that follow the operation history. After thinking step by step, the final answer should be presented in the last single line and strictly follow this format: Next operation after operation history is OPERATOR and configuration is CONFIGURATION.
 - If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
-- Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
-- If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
-- You should only answer from allowed operations.
+- You should only answer from allowed operations or if you feel no more operation is needed further, please set OPERATION to NO_MORE_OPERATION.
 - Try not to repeat operation and it's configuration from the operation history.
-- the final answer should be in $ quotes. i.e. $OPERATOR$"""
-    return [prompt_start + prompt_middle + prompt_last]
+"""
+    return [f"{prompt_start}{prompt_middle}{prompt_last}"]
 
 
 def get_join_prompt(
@@ -304,46 +320,47 @@ def get_python_script_with_intermediate_materialization(
     error_string,
     all_intermediate_results,
 ):
+    assert len(all_intermediate_results) + 1 == len(
+        operation_history
+    ), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
+    past_operations = operation_history[:-1] if len(operation_history) > 1 else []
+    next_operation = operation_history[-1]
+
     prompt_start = f"""
-You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table and STRICTLY follow the sequence of the operations mentioned in 'operation_history' list . The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. 
+You are writing executable Python code at runtime. The overall goal is to convert multiple source tables to the format of the target table. Some operations have already been performed, and you need to write the code for the next operation.
+The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. 
     1. Target Table Name: {target_data_name}
     2. Target Schema: {target_data_schema}
     3. Target Examples: {target_samples}
     4. Multi Source Information: {source_information_with_location}
     5. Write the result to this path {save_path}
 
-Operation History: {operation_history}
-    """
+Past operations: {past_operations}
+Next Operation : {next_operation}
 
-    prompts = [
-        f"After the {i}st/nd/rd/th operation {op}, the intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}"
-        for i, (interm, op) in enumerate(
-            zip(all_intermediate_results, operation_history), start=1
-        )
+The intermediate results of the past operations are saved in the following locations:
+"""
+
+    subprompts_middle = [
+        f"{op}. File location: {res.file_path}"
+        for op, res in zip(past_operations, all_intermediate_results)
     ]
-    prompt_middle = "\n".join(prompts)
+    prompt_middle = "\n".join(subprompts_middle)
 
     prompt_last = f"""
 
     Transformation Plan:
- - Please ensure to use the internet and correspond/correlate missing data into this source table, and if needed, analyze the new table (add additional info, etc).
- - Provide a detailed plan, step by step for transforming the data from the source tables so that the Transformed table is closer to the target table.
- - You are strictly required to perform all the operations mentioned in the "Operations History" list. 
- - You may consider the "Source" and "Target" schema and examples to build correct pipeline.
- - You may use more operations, but the ones in "Operations History" should always be covered and in that sequence.
+ - Please write python code to execute the next operation {next_operation}. 
+ - You should use the intermediate results of the past operations as the source tables whenever it is possible.
  - You may use string conversions or date conversions if needed.
- - Make sure that table generated through the script has the same column structure as target.
 
   Python Script:
  - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
  Please quote the Python script between one single "```Python" and "```".
 
- Errors in previous Attempts : {error_string}
-
     """
-
-    return [prompt_start + prompt_middle + prompt_last]
+    return [f"{prompt_start}{prompt_middle}{prompt_last}"]
 
 
 # Plan :

@@ -31,18 +31,19 @@ import tiktoken
 from quality.quality import analyze_functional_dependencies
 
 
-from valentine import valentine_match
-import valentine.algorithms as algorithms
+from valentine import valentine_match, algorithms
+
+# import valentine.algorithms as algorithms
 
 
-class PromptTooLongError(Exception):
+class PromptTooLongException(Exception):
     """Custom exception for when the prompt exceeds the maximum token limit."""
 
     def __init__(self, message):
         super().__init__(message)
 
 
-class InvalidPromptTypeError(Exception):
+class InvalidPromptTypeException(Exception):
     """Custom exception for when an invalid prompt type is provided."""
 
     def __init__(self, message):
@@ -77,12 +78,15 @@ def get_prompt(
     aggregate_hints_truncate=[],
     fd_flag=0,
     model="gpt-4-turbo",
-    source_space=0,
     hint_source="v1",
     save_path="",
-    use_intermediate_materialization=False,
+    nth_intermediate_step=0,
 ):
-
+    """
+    Args:
+        nth_intermediate_step (int): The step at which to materialize the intermediate result.
+        Default is 0, which means no intermediate materialization.
+    """
     # we can generate hints here itself
     # we need these information
     # file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx
@@ -91,26 +95,28 @@ def get_prompt(
     # static : content in the prompt without target examples
     # dynamic : target_examples
     # max_tokens = 128000 # for gpt4turbo
-    if source_space == 1:
-        source_directory = directory + "/source_space"
-    else:
-        source_directory = directory
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except:
-        encoding = tiktoken.encoding_for_model("gpt-4-turbo")
 
-    if use_intermediate_materialization:
-        intermediate_dir = f"{directory}/source_space/length{len_idx_target_idx}/"
+    if model == "gpt-4.1-mini":
+        # According to https://github.com/openai/tiktoken/issues/395
+        encoding = tiktoken.get_encoding("o200k_base")
+    else:
+        encoding = tiktoken.encoding_for_model(model)
+
+    if nth_intermediate_step == 1:
+        all_intermediate_results = []
+    if nth_intermediate_step > 1:
+        # Get the intermediate results only if nth_intermediate_step > 1 because at the 1st step won't
+        # have intermediate results
+        intermediate_dir = f"{directory}/length{len_idx_target_idx}/"
         all_intermediate_results = get_all_intermediate(
-            intermediate_dir, encoding, source_length
+            intermediate_dir, encoding, source_length, nth_intermediate_step
         )
 
     source_information = get_source(
         file_count,
         source_data_name_list,
         source_data_schema_list,
-        source_directory,
+        directory,
         len_idx_target_idx,
         source_length,
         encoding,
@@ -124,6 +130,31 @@ def get_prompt(
         df = df.drop(df.columns[0], axis=1)
         keys, fds = get_filtered_functional_dependency(df)
         fd_hints = get_fd_hints(keys, fds)
+
+        if nth_intermediate_step > 1:
+            for step in range(1, nth_intermediate_step):
+
+                file_path = f"{intermediate_dir}/intermediate_step{step}.csv"
+                intermediate_df = pd.read_csv(file_path, low_memory=False)
+                # Get functional dependency hints
+                intermediate_keys, intermediate_fds = (
+                    get_filtered_functional_dependency(intermediate_df)
+                )
+                intermediate_fd_hints = get_fd_hints_for_materialization(
+                    intermediate_keys, intermediate_fds, step
+                )
+                fd_hints += intermediate_fd_hints
+
+            # Get key column hints
+            fd_hints += "\n\nKey column hints:\n"
+            fd_hints += get_key_column_hints(keys, 0)
+            for step in range(1, nth_intermediate_step):
+                fd_hints += get_key_column_hints(intermediate_keys, step)
+
+            # Get column matching hints
+            fd_hints += "\n\nColumn Matching Hints:\n"
+            for step in range(1, nth_intermediate_step):
+                fd_hints += get_column_matching_hints(intermediate_df, df, step)
 
     if prompt_type == "get_next_operator":
         hints = get_hints(
@@ -161,7 +192,7 @@ def get_prompt(
             encoding,
         )[0]
 
-        if use_intermediate_materialization:
+        if nth_intermediate_step > 0:
             prompt = prt.get_next_operator_prompt_with_intermediate_materialization(
                 allowed_operation_list,
                 operation_history,
@@ -352,7 +383,8 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )[0]
-        if use_intermediate_materialization:
+        if nth_intermediate_step > 0:
+
             prompt = prt.get_python_script_with_intermediate_materialization(
                 allowed_operation_list,
                 operation_history,
@@ -378,14 +410,16 @@ def get_prompt(
                 error_string,
             )[0]
     else:
-        raise InvalidPromptTypeError(f"Invalid prompt type {prompt_type}.")
+        raise InvalidPromptTypeException(f"Invalid prompt type {prompt_type}.")
 
     # print(prompt)
     # print(len(encoding.encode(prompt)))
     prompt_len = len(encoding.encode(prompt))
     if prompt_len > max_tokens:
         # return ["-1"]
-        raise PromptTooLongError(f"Prompt length {prompt_len} exceeds maximum tokens.")
+        raise PromptTooLongException(
+            f"Prompt length {prompt_len} exceeds maximum tokens."
+        )
 
     return prompt
     # return [prompt]
@@ -517,7 +551,7 @@ def get_source(
     sample_length,
     encoding,
 ):
-    ss = ""
+    ss = "\n"
     for i in range(file_count):
         ss += "\tSource {i}:\n".format(i=i)
         ss += "\tSource {i} Name: {source_data_name_list}\n".format(
@@ -585,31 +619,37 @@ def get_source_with_location(
 class IntermediateResult:
     schema: list
     source_samples_string: str
+    file_path: str
 
 
-def get_all_intermediate(intermediate_dir, encoding, sample_length):
+def get_all_intermediate(
+    intermediate_dir, encoding, sample_length, nth_intermediate_step
+):
+    def get_intermediate(file_path, encoding, sample_length):
+        source_df = pd.read_csv(file_path, low_memory=False)
+        source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
+        source_samples_string = get_target_string(
+            source_df_sampled, 128000, encoding
+        )  # -1000 buffer for good measures # for now no limit on max_tokens for source
+
+        schema = source_df.columns.tolist()
+        return IntermediateResult(schema, source_samples_string, str(file_path))
+
+    # assert (
+    #     nth_intermediate_step > 0
+    # ), f"current_step should be greater than 1, otherwise no intermediate results are available, got {nth_intermediate_step}"
+    if nth_intermediate_step == 1:
+        return []
+
     source_dir = Path(intermediate_dir)
     # Find all files matching the pattern "test{integer}.csv" in the source directory
     all_intermediate_results = []
-    for filename in source_dir.glob("materialize_step*.csv"):
-        intermediate_result = get_intermediate_schema(filename, encoding, sample_length)
+    for step in range(1, nth_intermediate_step):
+        file_path = source_dir / f"intermediate_step{step}.csv"
+        intermediate_result = get_intermediate(file_path, encoding, sample_length)
         all_intermediate_results.append(intermediate_result)
 
     return all_intermediate_results
-
-
-def get_intermediate_schema(filename, encoding, sample_length):
-    # filename = f"{main_directory}/length{len_idx_target_idx}/test_{i}.csv"
-    # print(filename)
-    # sys.exit()
-    source_df = pd.read_csv(filename, low_memory=False)
-    source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
-    source_samples_string = get_target_string(
-        source_df_sampled, 128000, encoding
-    )  # -1000 buffer for good measures # for now no limit on max_tokens for source
-
-    schema = source_df.columns.tolist()
-    return IntermediateResult(schema, source_samples_string)
 
 
 def create_logger(
@@ -1268,18 +1308,16 @@ def get_filtered_functional_dependency(df):
 
 def get_fd_hints(keys, fds):
     if not keys:
-        return "\n\nNo Clear Functional Dependencies Found\n\n"
+        return "No Clear Functional Dependencies Found in Target Table.\n\n"
 
-    hint = "\n\nFunctional Dependencies discovered from Target Table : \n"
+    hint = "Functional Dependencies discovered from Target Table:\n"
     for key in keys:
         hint += "Functional Dependencies Associated with key " + key + " : "
         for v in fds[key]:
             hint += key + " -> " + v + " , "
         hint += "\n"
-    if hint == "\n\nFunctional Dependencies discovered from Target Table : \n":
-        return ""
-    else:
-        return hint + "\n\n"
+    hint += "\n"
+    return hint
     # if not sorted_filtered_keys:
     #     return "No clear functional dependencies found"
 
@@ -1293,6 +1331,60 @@ def get_fd_hints(keys, fds):
     #     return ""
     # else :
     #     return hint
+
+
+def get_fd_hints_for_materialization(keys, fds, step):
+    if not keys:
+        return f"\n\nNo clear functional dependencies found in the intermediate_step{step} table.\n\n"
+    hint = f"Functional dependencies discovered from the intermediate_step{step} table are :\n"
+    for key in keys:
+        hint += "Functional dependencies associated with key " + key + " : "
+        for v in fds[key]:
+            hint += key + " -> " + v + " , "
+        hint += "\n"
+    return hint
+
+
+def get_key_column_hints(keys, step):
+    if step <= 0:
+        # For target table
+        if not keys:
+            hints = f"No clear key columns found in the target table."
+        else:
+            hints = f"Key columns discovered from the target table: {keys}\n"
+    else:
+        # For intermediate step
+        if not keys:
+            hints = f"No clear key columns found in the intermediate_step{step} table."
+        else:
+            hints = f"Key columns discovered from the intermediate_step{step} table : {keys}\n"
+    return hints
+
+
+def get_column_matching_hints(intermediate_df, target_df, step):
+    """Compare the target df and ground truth df and return the matching columns
+    Args:
+        intermediate_df: the dataframe got by the transform pipeline
+        target_df: the ground truth dataframe from the "target.csv" file.
+        step: the step number of intermediate materialization
+    """
+    MATCHING_THRESHOLD = 0.95
+    # Match schemas
+    matcher = algorithms.Cupid()
+
+    # Match schemas
+    matches = valentine_match(intermediate_df, target_df, matcher)
+    match_columns = []
+    for ((_, col1), (_, col2)), score in matches.items():
+        if score > MATCHING_THRESHOLD:
+            match_columns.append((col1, col2))
+    if match_columns:
+        hint = ""
+        for col1, col2 in match_columns:
+            hint += f"Column {col1} from intermediate_step{step} table matches with column {col2} from target table.\n"
+        return hint
+    else:
+        return f"\n\nNo matching columns found between intermediate_step{step} table and target tables.\n\n"
 
 
 def calculate_score(gt_df, tgt_df):

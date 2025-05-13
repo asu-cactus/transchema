@@ -1,13 +1,19 @@
-# intermediate Materialization Algorithm
+"""Intermediate Materialization Algorithm
 
-# while Stopping Criteria
-#     get operation and configure
-#     op_hist = op_hist + (op,conf)
-#     if materialization_criteria
-#         mat_table = materialize(source,op_hist)
-#         source_space = source_space - source_op_hist + mat_table
-#         op_hist = []
+while Stopping Criteria
+    get operation and configure
+    op_hist = op_hist + (op,conf)
+    if materialization_criteria
+        mat_table = materialize(source,op_hist)
+        source_space = source_space - source_op_hist + mat_table
+        op_hist = []
 
+"""
+
+import re
+from pathlib import Path
+import shutil
+import pdb
 
 from test_scope import get_test_cases_ids
 from llm.llm_models import TokenUsageTracker, LLMClient
@@ -17,35 +23,29 @@ from util.utils import (
     compare_lists_matching,
     compare_lists_matching_soft,
 )
-import parameters as p
-import pdb
 
 # import auto_suggest_llm_prompts as prt
 from auto_suggest_llm_util import (
     create_logger,
-    get_operation,
     get_columns,
     query_gpt,
     get_columns_join,
     get_prompt,
-    get_filtered_functional_dependency,
-    PromptTooLongError,
+    PromptTooLongException,
 )
 
-import re
-from pathlib import Path
-import shutil
 import pandas as pd
-
 
 # decided through parameters
 len_id = 3
 max_len_id = len_id
-target_id = 1  # [11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
+target_id = 35  # [11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
 max_target_id = target_id
 target_per = 25
 is_perc = False
-hint_source = p.hint_source
+hint_source = "v3"
+use_new_prompt = True
+
 # 2
 # target_length = int(max(3,10*0.9695545786258186))
 # source_length = int(max(3,10*0.09828012752411708))
@@ -56,9 +56,10 @@ source_length = int(max(3, 10 * 0.9682615757193975))
 
 join_flag = 0
 aggregate_flag = 0
+fd_flag = 1
+token_limit = 120000
+model = "gpt-4.1-mini"  # "gpt-4-turbo" # "gpt-3.5-turbo-16k" # "gpt-4-1-mini"
 
-
-use_intermediate_materialization = True
 
 # 2
 # join_hints_truncate = [0.9006759015810097,0.11102115895485554,0.5241539295936876,0.021526354616419163,0.9722678489028443,0.5997167278729312]
@@ -78,15 +79,10 @@ join_hints_truncate = [
 aggregate_hints_truncate = [0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1]
 
 
-fd_flag = 1
-token_limit = 120000
-model = "gpt-4.1-mini"  # "gpt-4-turbo" # "gpt-3.5-turbo-16k" # "gpt-4-1-mini"
-
-
 json_file_path = "data/chatgpt_github_ms.json"
-log_dir = "logs-auto-suggest-llm-24-03"
+log_dir = "logs-materialization-v1-text-fd"
 main_folder = "autopipeline-benchmarks/github-pipelines"
-source_space_dir = "source_space"
+source_space_name = "source_space"
 
 allowed_operation_list = [
     "JOIN",
@@ -102,67 +98,90 @@ q_count = {"total": 0, "in_task": 0}
 
 def create_source_space(main_folder, len_id, target_id):
     # create source space
-    source_space_path = Path(
-        f"{main_folder}/{source_space_dir}/length{len_id}_{target_id}"
-    )
+    source_space_dir = f"{main_folder}/{source_space_name}"
+    source_space_path = Path(f"{source_space_dir}/length{len_id}_{target_id}")
     source_space_path.mkdir(exist_ok=True, parents=True)
 
     source_dir = Path(f"{main_folder}/length{len_id}_{target_id}")
     # Find all files matching the pattern "test{integer}.csv" in the source directory
-    for file in source_dir.glob("test*.csv"):
+    for file in source_dir.glob("*"):
         shutil.copy(file, source_space_path)
+    return source_space_dir
 
 
-def get_operator(llm_client, operation_history):
-    operation = None
+def get_operation_and_configuration(res):
+    last_line = res.split("\n")[-1]
+    m = re.match(
+        r"Next operation after operation history is (.*) and configuration is (.*).",
+        last_line,
+    )
     try:
-        prompt = get_prompt(
-            prompt_type="get_next_operator",
-            max_tokens=token_limit,
-            model=model,
-            allowed_operation_list=allowed_operation_list,
-            operation_history=operation_history,
-            target_data_name=target_data_name,
-            target_data_schema=target_data_schema,
-            target_samples=target_samples,
-            file_count=file_count,
-            source_data_name_list=source_data_name_list,
-            source_data_schema_list=source_data_schema_list,
-            directory=main_folder,
-            len_idx_target_idx=len_idx_target_idx,
-            target_perc=target_per,
-            is_perc=is_perc,
-            target_length=target_length,
-            source_length=source_length,
-            source_space=1,
-            fd_flag=fd_flag,
-            hint_source=hint_source,
-            use_intermediate_materialization=use_intermediate_materialization,
-        )
-    except PromptTooLongError as e:
-        logger.info("Get Operator: Token Limit Exceeded")
+        operation = m.group(1)
+        configuration = m.group(2)
     except Exception as e:
-        raise e
+        pdb.set_trace()
+    if operation not in allowed_operation_list:
+        raise Exception("Operation not in allowed list")
+    return operation, configuration
+
+
+def get_operator(llm_client, operation_history, nth_intermediate_step):
+    operation = None
+
+    prompt = get_prompt(
+        prompt_type="get_next_operator",
+        max_tokens=token_limit,
+        model=model,
+        allowed_operation_list=allowed_operation_list,
+        operation_history=operation_history,
+        target_data_name=target_data_name,
+        target_data_schema=target_data_schema,
+        target_samples=target_samples,
+        file_count=file_count,
+        source_data_name_list=source_data_name_list,
+        source_data_schema_list=source_data_schema_list,
+        directory=source_space_dir,
+        len_idx_target_idx=len_idx_target_idx,
+        target_perc=target_per,
+        is_perc=is_perc,
+        target_length=target_length,
+        source_length=source_length,
+        fd_flag=fd_flag,
+        hint_source=hint_source,
+        nth_intermediate_step=nth_intermediate_step,
+    )
+
+    res = query_gpt(
+        llm_client,
+        model,
+        prompt,
+        q_count,
+        logger,
+        cost_summary,
+        token_tracker,
+        type="Ask For Operator",
+    )[0]
+    if use_new_prompt:
+        operation, configuration = get_operation_and_configuration(res)
+
+        assert operation in allowed_operation_list
+        if configuration.lower() == "none":
+            configuration = None
+        return operation, configuration
     else:
-        res = query_gpt(
-            llm_client,
-            model,
-            prompt,
-            q_count,
-            logger,
-            cost_summary,
-            token_tracker,
-            type="Ask For Operator",
-        )
-        operation = get_operation(res[0])
-        if operation not in allowed_operation_list:
-            raise Exception("Operation not in allowed list")
+        from auto_suggest_llm_util import get_operation
 
-    return operation
+        operation = get_operation(res)
+        return operation, None
 
 
-def configure_operator(llm_client, operation):
-    assert operation in allowed_operation_list
+def configure_operator(
+    llm_client, operation, configuration, operation_history, nth_intermediate_step
+):
+    if configuration is not None:
+        operation_history.append(f"{operation} : {configuration}")
+        return
+
     if operation in ["JOIN", "UNION", "GROUP_BY/AGGREGATE"]:
         prompt_type_mapping = {
             "JOIN": "join",
@@ -174,35 +193,29 @@ def configure_operator(llm_client, operation):
             "UNION": "Configure Union",
             "GROUP_BY/AGGREGATE": "Configure Group by/Aggergate",
         }
-        try:
-            prompt = get_prompt(
-                prompt_type=prompt_type_mapping[operation],
-                max_tokens=token_limit,
-                model=model,
-                allowed_operation_list=allowed_operation_list,
-                operation_history=operation_history,
-                target_data_name=target_data_name,
-                target_data_schema=target_data_schema,
-                target_samples=target_samples,
-                file_count=file_count,
-                source_data_name_list=source_data_name_list,
-                source_data_schema_list=source_data_schema_list,
-                directory=main_folder,
-                len_idx_target_idx=len_idx_target_idx,
-                target_perc=target_per,
-                is_perc=is_perc,
-                target_length=target_length,
-                join_flag=join_flag,
-                join_hints_truncate=join_hints_truncate,
-                fd_flag=fd_flag,
-                hint_source=hint_source,
-                use_intermediate_materialization=use_intermediate_materialization,
-            )
-        except PromptTooLongError as e:
-            logger.info("Configure operator: Token Limit Exceeded")
-
-        except Exception as e:
-            raise e
+        prompt = get_prompt(
+            prompt_type=prompt_type_mapping[operation],
+            max_tokens=token_limit,
+            model=model,
+            allowed_operation_list=allowed_operation_list,
+            operation_history=operation_history,
+            target_data_name=target_data_name,
+            target_data_schema=target_data_schema,
+            target_samples=target_samples,
+            file_count=file_count,
+            source_data_name_list=source_data_name_list,
+            source_data_schema_list=source_data_schema_list,
+            directory=source_space_dir,
+            len_idx_target_idx=len_idx_target_idx,
+            target_perc=target_per,
+            is_perc=is_perc,
+            target_length=target_length,
+            join_flag=join_flag,
+            join_hints_truncate=join_hints_truncate,
+            fd_flag=fd_flag,
+            hint_source=hint_source,
+            nth_intermediate_step=nth_intermediate_step,
+        )
 
         res = query_gpt(
             llm_client,
@@ -237,9 +250,12 @@ def configure_operator(llm_client, operation):
         operation_history.append(operation)
 
 
-def materialize_chatgpt(llm_client, operation_history, save_path):
+def materialize_chatgpt(
+    llm_client, operation_history, save_path, nth_intermediate_step
+):
+    n_trails = 5
     error_str = ""
-    for script_cnt in range(5):
+    for script_cnt in range(n_trails):
         try:
             prompt = get_prompt(
                 prompt_type="python_script",
@@ -253,19 +269,18 @@ def materialize_chatgpt(llm_client, operation_history, save_path):
                 file_count=file_count,
                 source_data_name_list=source_data_name_list,
                 source_data_schema_list=source_data_schema_list,
-                directory=main_folder,
+                directory=source_space_dir,
                 len_idx_target_idx=len_idx_target_idx,
                 target_perc=target_per,
                 is_perc=is_perc,
                 target_length=target_length,
                 error_string=error_str,
-                source_space=1,
                 fd_flag=fd_flag,
                 hint_source=hint_source,
                 save_path=save_path,
-                use_intermediate_materialization=use_intermediate_materialization,
+                nth_intermediate_step=nth_intermediate_step,
             )
-        except PromptTooLongError as e:
+        except PromptTooLongException as e:
             logger.info("Materialization: Token Limit Exceeded")
 
         except Exception as e:
@@ -280,18 +295,18 @@ def materialize_chatgpt(llm_client, operation_history, save_path):
             cost_summary,
             token_tracker,
             type="Get Python Script",
-        )
-        print(res[0])
-        script = res[0].split("```Python")[1].split("```")[0].strip()
-        # print(script)
+        )[0]
+
+        script = res.split("```Python")[1].split("```")[0].strip()
 
         response = execute_python(script)
         print(f"Python execution: {response}")
+        logger.info(f"Python execution: {response}")
         error_str = error_str + response + "\n"
         # print(error_str)
         if response == "Success":
             return
-    raise Exception("Materialization Failed")
+    raise Exception(f"Exceed {n_trails} trails, Materialization Failed")
 
 
 def get_task(logger):
@@ -338,7 +353,8 @@ def verify_result(target_file_location, ground_truth_location):
 #################################################################################################################################
 
 if __name__ == "__main__":
-    create_source_space(main_folder, len_id, target_id)
+
+    source_space_dir = create_source_space(main_folder, len_id, target_id)
     logger = create_logger("materialization", log_dir, len_id, target_id, max_target_id)
     task = get_task(logger)
 
@@ -372,23 +388,48 @@ if __name__ == "__main__":
     materialization_criteria = MaterializationCriteria()
 
     max_round = 6
-    for _ in range(max_round):
+    for nth_round in range(max_round):
         # first_get_operator
-        op = get_operator(llm_client, operation_history)
-        if op is None:
+        if use_new_prompt:
+            nth_intermediate_step = materialization_criteria.ncalls + 1
+        else:
+            nth_intermediate_step = 0
+
+        operation, configuration = get_operator(
+            llm_client, operation_history, nth_intermediate_step
+        )
+        if operation is None:
             print("No Operation Found, prompt is too long")
+            if nth_round == max_round - 1:
+                print("Max round reached")
+                logger.info("Max round reached")
+                break
             continue
-        if op == "NO_MORE_OPERATION":
+        if operation == "NO_MORE_OPERATION":
             print("No More Operation")
             break
 
-        configure_operator(llm_client, op)
+        configure_operator(
+            llm_client,
+            operation,
+            configuration,
+            operation_history,
+            nth_intermediate_step,
+        )
 
         print(operation_history)
 
         if materialization_criteria():
-            save_path = f"{main_folder}/{source_space_dir}/length{len_idx_target_idx}/materialize_step{materialization_criteria.ncalls}.csv"
-            mat_table = materialize_chatgpt(llm_client, operation_history, save_path)
+            intermediate_filename = f"intermediate_step{nth_intermediate_step}"
+            save_path = f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
+            materialize_chatgpt(
+                llm_client,
+                operation_history,
+                save_path,
+                nth_intermediate_step,
+            )
+            if use_new_prompt:
+                source_data_name_list.append(intermediate_filename)
 
             is_correct = verify_result(
                 save_path,
