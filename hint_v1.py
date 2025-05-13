@@ -29,9 +29,9 @@ def get_table_matching(source_data_schema_list, source_data_name_list, target_da
             name1, name2 = source_data_name_list[i], source_data_name_list[j]
             
             if set1.issubset(set2) and len(set2) == len(set1) + 1:
-                table_matchings.append(f"{len(set1)}/{len(set2)} columns of {name1} are covered by {name2} and {len(set2)}/{len(set2)} columns of {name2} are covered by {name1} suggesting outer union.")
+                table_matchings.append(f"{len(set1)}/{len(set2)} columns of {name1} are covered by {name2} and {len(set2)}/{len(set2)} columns of {name2} are covered by {name1} suggesting UNION.")
             elif set2.issubset(set1) and len(set1) == len(set2) + 1:
-                table_matchings.append(f"{len(set2)}/{len(set1)} columns of {name2} are covered by {name1} and {len(set1)}/{len(set1)} columns of {name1} are covered by {name2} suggesting outer union.")
+                table_matchings.append(f"{len(set2)}/{len(set1)} columns of {name2} are covered by {name1} and {len(set1)}/{len(set1)} columns of {name1} are covered by {name2} suggesting UNION.")
     
     return '\n'.join(table_matchings)
     

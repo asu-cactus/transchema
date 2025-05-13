@@ -18,26 +18,33 @@ class TokenUsageTracker:
     def add_usage(self, model, completion, prompt):
         """Adds token usage to the tracker for a specific model."""
         if model not in self.usage:
-            self.usage[model] = {'completion_tokens': 0, 'prompt_tokens': 0}
-        self.usage[model]['completion_tokens'] += completion
-        self.usage[model]['prompt_tokens'] += prompt
+            self.usage[model] = {"completion_tokens": 0, "prompt_tokens": 0}
+        self.usage[model]["completion_tokens"] += completion
+        self.usage[model]["prompt_tokens"] += prompt
 
     def _calculate_cost(self, model):
-        """Calculates the cost based on the model and its token usage."""
+        """
+        Calculates the cost based on the model and its token usage.
+        Reference: https://platform.openai.com/docs/pricing
+        """
         rate = {
-            #"gpt-4-1106-preview": (0.06, 0.03),
-            "gpt-3.5-turbo-0125": (0.0015, 0.0005), #gpt-3.5-turbo-16k
-            #"gpt-4-0125-preview": (0.06, 0.03),
-            "gpt-4-turbo": (0.03, 0.01), # This model supports at most 4096 completion tokens,
+            # "gpt-4-1106-preview": (0.06, 0.03),
+            "gpt-3.5-turbo-0125": (0.0015, 0.0005),  # gpt-3.5-turbo-16k
+            # "gpt-4-0125-preview": (0.06, 0.03),
+            # gpt-4-turbo supports at most 4096 completion tokens
+            "gpt-4-turbo": (0.03, 0.01),
+            "gpt-4.1-mini": (0.0016, 0.0004),
         }.get(model, (0, 0))
 
-        model_usage = self.usage.get(model, {'completion_tokens': 0, 'prompt_tokens': 0})
-        completion_cost = model_usage['completion_tokens'] / 1000 * rate[0]
-        prompt_cost = model_usage['prompt_tokens'] / 1000 * rate[1]
+        model_usage = self.usage.get(
+            model, {"completion_tokens": 0, "prompt_tokens": 0}
+        )
+        completion_cost = model_usage["completion_tokens"] / 1000 * rate[0]
+        prompt_cost = model_usage["prompt_tokens"] / 1000 * rate[1]
         return {
-            "completion_tokens": model_usage['completion_tokens'],
-            "prompt_tokens": model_usage['prompt_tokens'],
-            "cost": completion_cost + prompt_cost
+            "completion_tokens": model_usage["completion_tokens"],
+            "prompt_tokens": model_usage["prompt_tokens"],
+            "cost": completion_cost + prompt_cost,
         }
 
     def cost_summary(self):
@@ -46,12 +53,9 @@ class TokenUsageTracker:
         detailed_summary = {}
         for model, usage in self.usage.items():
             model_cost = self._calculate_cost(model)
-            total_cost += model_cost['cost']
+            total_cost += model_cost["cost"]
             detailed_summary[model] = model_cost
-        return {
-            "total_cost": total_cost,
-            "detailed_cost": detailed_summary
-        }
+        return {"total_cost": total_cost, "detailed_cost": detailed_summary}
 
 
 class LLMClient:
@@ -61,7 +65,12 @@ class LLMClient:
         """Initializes the client with a specified model and a usage tracker."""
         self.client = openai.OpenAI(api_key=openai.api_key)
         self.model = model
-        self.encoding = tiktoken.encoding_for_model(model)
+        if model == "gpt-4.1-mini":
+            # According to https://github.com/openai/tiktoken/issues/395
+            self.encoding = tiktoken.get_encoding("o200k_base")
+        else:
+            self.encoding = tiktoken.encoding_for_model(model)
+
         self.tracker = tracker
         self.logger = logger
 
@@ -90,9 +99,11 @@ class LLMClient:
         return self.chatgpt([{"role": "user", "content": prompt}], **kwargs)
 
     def _backoff_handler(self, details):
-        self.logger.warning("Backing off {wait:0.1f} seconds after {tries} tries "
-                            "calling function {target} with args {args} and kwargs "
-                            "{kwargs}".format(**details))
+        self.logger.warning(
+            "Backing off {wait:0.1f} seconds after {tries} tries "
+            "calling function {target} with args {args} and kwargs "
+            "{kwargs}".format(**details)
+        )
 
     def _success_handler(self, details):
         self.logger.info(f"Success after {details['tries']} tries")
@@ -101,20 +112,31 @@ class LLMClient:
         self.logger.error("Giving up on request")
 
     def _request_completion(self, messages, temperature, max_tokens, stop):
-        @backoff.on_exception(backoff.expo,
-                              openai._exceptions.OpenAIError,
-                              max_tries=5,
-                              on_backoff=lambda details: self._backoff_handler(details),
-                              on_success=lambda details: self._success_handler(details),
-                              on_giveup=lambda details: self._giveup_handler(details))
+        @backoff.on_exception(
+            backoff.expo,
+            openai._exceptions.OpenAIError,
+            max_tries=5,
+            on_backoff=lambda details: self._backoff_handler(details),
+            on_success=lambda details: self._success_handler(details),
+            on_giveup=lambda details: self._giveup_handler(details),
+        )
         def _request_with_backoff():
             return self.client.chat.completions.create(
-                model=self.model, messages=messages, temperature=temperature,
-                max_tokens=max_tokens, stop=stop, top_p=1, frequency_penalty=0.0, presence_penalty=0.0
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                # max_completion_tokens=max_tokens,
+                stop=stop,
+                top_p=1,
+                frequency_penalty=0.0,
+                presence_penalty=0.0,
             )
 
         response = _request_with_backoff()
-        self.tracker.add_usage(self.model, response.usage.completion_tokens, response.usage.prompt_tokens)
+        self.tracker.add_usage(
+            self.model, response.usage.completion_tokens, response.usage.prompt_tokens
+        )
         return response
 
 
@@ -129,7 +151,7 @@ def gpt3(prompt_, stop=None):
         top_p=1,
         frequency_penalty=0.0,
         presence_penalty=0.0,
-        stop=stop
+        stop=stop,
     )
     return response.choices[0].message.content
 
@@ -145,6 +167,6 @@ def gpt4(prompt_, stop=None):
         top_p=1,
         frequency_penalty=0.0,
         presence_penalty=0.0,
-        stop=stop
+        stop=stop,
     )
     return response.choices[0].message.content

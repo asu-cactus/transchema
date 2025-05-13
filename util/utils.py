@@ -308,6 +308,55 @@ def compare_columns(pred_column, gold_column):
     
     return matches / total if total > 0 else 0
 
+from collections import Counter
+import bisect
+
+def compare_columns_1(pred_column, gold_column, tol=1e-2):
+    # --- 1) Split into numeric vs “everything else” ---
+    pred_non = []
+    pred_nums = []
+    for x in pred_column:
+        if x is None:
+            pred_non.append('')
+        elif isinstance(x, (int, float)):
+            pred_nums.append(float(x))
+        else:
+            pred_non.append(str(x))
+
+    gold_non = []
+    gold_nums = []
+    for x in gold_column:
+        if x is None:
+            gold_non.append('')
+        elif isinstance(x, (int, float)):
+            gold_nums.append(float(x))
+        else:
+            gold_non.append(str(x))
+
+    # --- 2) Exact‐match recall on non‐numeric ---
+    pred_non_freq = Counter(pred_non)
+    gold_non_freq = Counter(gold_non)
+    matched_non = sum(
+        min(pred_non_freq[v], gold_non_freq[v]) 
+        for v in gold_non_freq
+    )
+
+    # --- 3) Approximate‐match recall on numeric (ints+floats) ---
+    pred_nums.sort()
+    matched_nums = 0
+    for g in gold_nums:
+        i = bisect.bisect_left(pred_nums, g - tol)
+        if i < len(pred_nums) and abs(pred_nums[i] - g) <= tol:
+            matched_nums += 1
+            pred_nums.pop(i)   # consume that prediction
+
+    # --- 4) Combine and return recall over all gold values ---
+    total_gold   = len(gold_column)
+    total_matched = matched_non + matched_nums
+    return total_matched / total_gold if total_gold > 0 else 0.0
+
+
+
 def compare_lists_matching(generated_sql_df, ground_truth_df):
     #print("Sorting")
 
@@ -353,7 +402,12 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
             continue
 
         pred_column = generated_sql_df[col].tolist()
-        gold_column = ground_truth_df[col].tolist()
+        if(col in ground_truth_df.columns):
+            gold_column = ground_truth_df[col].tolist()
+        else : 
+            column_similarity = 0
+            similarities.append(column_similarity)
+            continue
 
         # Use the updated function to determine if the column is numerically dominant
         is_numerical = is_column_numerically_dominant(generated_sql_df[col])
@@ -386,8 +440,26 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     return average_similarity, res, similarities, all_mismatches
 
+def find_best_matching_column(pred_col, ground_truth_df):
+    max_matches = -1
+    best_col = None
+
+    for gt_col in ground_truth_df.columns:
+        gt_values = ground_truth_df[gt_col].dropna().astype(str).tolist()
+        pred_values = pred_col.dropna().astype(str).tolist()
+        common = set(gt_values) & set(pred_values)
+        if len(common) > max_matches:
+            max_matches = len(common)
+            best_col = gt_col
+
+    return best_col
+
+
 # Main Comparison Function
-def compare_lists_matching_soft(generated_sql_df, ground_truth_df, padding_added=False):
+# updated definition
+# to accounnt for the the definition how much of the ground truth is covered by the generated sql
+# i have replaced the sequence of the ground truth and generated sql parameters.
+def compare_lists_matching_soft(ground_truth_df, generated_sql_df, padding_added=False):
     # Remove duplicate columns and sort
     generated_sql_df = generated_sql_df.loc[:, ~generated_sql_df.columns.duplicated()].copy()
     generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
@@ -400,7 +472,7 @@ def compare_lists_matching_soft(generated_sql_df, ground_truth_df, padding_added
             padded_dfs = pad_comp(ground_truth_df, generated_sql_df)
             return compare_lists_matching_soft(*padded_dfs, padding_added=True)
 
-    generated_sql_df, ground_truth_df = pad_comp(generated_sql_df, ground_truth_df)
+    # generated_sql_df, ground_truth_df = pad_comp(generated_sql_df, ground_truth_df)
 
     similarities = []
     all_mismatches = []
@@ -412,9 +484,20 @@ def compare_lists_matching_soft(generated_sql_df, ground_truth_df, padding_added
 
         num_cols += 1
         pred_column = generated_sql_df[col].tolist()
-        gold_column = ground_truth_df[col].tolist()
+        pred_col = generated_sql_df[col]
+        if col not in ground_truth_df.columns:
+            best_match_col = find_best_matching_column(pred_col, ground_truth_df)
+            if best_match_col is not None:
+                gold_column = ground_truth_df[best_match_col].tolist()
+            else:
+                continue
+        else:
+            gold_column = ground_truth_df[col].tolist()
 
-        column_similarity = compare_columns(pred_column, gold_column)
+        # print(pred_column)
+        # print(gold_column)
+        
+        column_similarity = compare_columns_1(pred_column, gold_column)
         similarities.append(column_similarity)
 
         if column_similarity < 1:

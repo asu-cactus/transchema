@@ -77,6 +77,7 @@ Hint : {hints}
 {fd_hints}
 
 - Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used. 
+- If you use aggregation on a column from the hint set, use one of the suggested aggregation functions for that column.
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.
 - The final answer should be in the following format. lists where first list should be group by columns, next list should cover aggregation function and on which columns aggregations should be performed.
@@ -120,13 +121,13 @@ def get_python_script(allowed_operation_list,operation_history,target_data_name,
     5. Write the result to this path {target_file_location}
 
     Transformation Plan:
+ - Make sure that table generated through THE PYTHON SCRIPT has the EXACT SAME COLUMN SCHEMA as target. [DO NOT ADD ANY NEW COLUMNS]
  - Please ensure to use the internet and correspond/correlate missing data into this source table, and if needed, analyze the new table (add additional info, etc).
  - Provide a detailed plan, step by step for transforming the data from the source tables so that the Transformed table is closer to the target table.
  - You are strictly required to perform all the operations mentioned in the "Operations History" list. 
  - You may consider the "Source" and "Target" schema and examples to build correct pipeline.
  - You may use more operations, but the ones in "Operations History" should always be covered and in that sequence.
  - You may use string conversions or date conversions if needed.
- - Make sure that table generated through the script has the same column structure as target.
 
   Python Script:
  - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.

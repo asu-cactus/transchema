@@ -63,7 +63,10 @@ def get_prompt(prompt_type, allowed_operation_list,
         source_directory = directory + "/source_space"
     else : 
         source_directory = directory
-    encoding = tiktoken.encoding_for_model(model)
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except:
+        encoding = tiktoken.encoding_for_model("gpt-4-turbo")
     source_information = get_source(file_count, source_data_name_list,
                 source_data_schema_list, source_directory, len_idx_target_idx,source_length, encoding)
 
@@ -267,21 +270,36 @@ def get_source_with_location(file_count, source_data_name_list,
         ss+= '\tSource {i} File Location: {main_directory}/length{len_idx_target_idx}/test_{i}.csv\n'.format(i = i, main_directory = main_directory, len_idx_target_idx = len_idx_target_idx)
     return ss     
 
-def create_logger(type_, log_dir, pipeline_len_start_idx,target_start_idx,max_target_idx):
-        # Get current system time
-        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+def create_logger(type_, log_dir, pipeline_len_start_idx, target_start_idx, max_target_idx):
+    # Get current system time
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Create the log file name with the current time
-        log_file = f"{pipeline_len_start_idx}_target{target_start_idx}_{type_}_{current_time}.log"
+    # Create the log file name with the current time
+    log_file = f"{pipeline_len_start_idx}_target{target_start_idx}_{type_}_{current_time}.log"
+    log_path = os.path.join(log_dir, log_file)
+    print(f"Logging to: {log_path}")
 
-        # Check if the log directory exists, create it if it does not
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+    # Check if the log directory exists, create it if it does not
+    os.makedirs(log_dir, exist_ok=True)
 
-        # Setup logging
-        logging.basicConfig(filename=os.path.join(log_dir, log_file), level=logging.INFO,
-                            format='%(asctime)s - %(levelname)s - %(message)s', filemode='a+')
-        return logging.getLogger()
+    # Create a new logger
+    logger = logging.getLogger(f"{type_}_{pipeline_len_start_idx}_{target_start_idx}")
+    logger.setLevel(logging.INFO)
+
+    # Avoid duplicate handlers if the function is called multiple times
+    if not logger.handlers:
+        # Create file handler
+        file_handler = logging.FileHandler(log_path, mode='a+')
+        file_handler.setLevel(logging.INFO)
+
+        # Create formatter and add it to the handler
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+
+        # Add handler to logger
+        logger.addHandler(file_handler)
+
+    return logger
 
 def get_operation(s) :
     match = re.search(r'\$(.*?)\$', s)

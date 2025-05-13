@@ -20,12 +20,14 @@ def jaccard_containment(col1, col2):
 
 # Function to calculate value-range-overlap
 def value_range_overlap(col1, col2):
-    if pd.api.types.is_numeric_dtype(col1) and pd.api.types.is_numeric_dtype(col2):
+    if pd.api.types.is_numeric_dtype(col1) and pd.api.types.is_numeric_dtype(col2) and not pd.api.types.is_bool_dtype(col1) and not pd.api.types.is_bool_dtype(col2):
+        # print(col1.dtype, col2.dtype)
         range1 = col1.max() - col1.min()
         range2 = col2.max() - col2.min()
         intersection = min(col1.max(), col2.max()) - max(col1.min(), col2.min())
+        # union = 
         union = range1 + range2 - intersection
-        # print(range1,range2,intersection,union)
+        # print("Intersection,union : ", range1,range2, intersection,union)
         return max(0, intersection / union)
     return 0
 

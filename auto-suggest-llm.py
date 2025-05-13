@@ -114,13 +114,13 @@ for task in task_list :
                         logger.info("Token Limit Exceeded")
                         break_flag = 2
                         break
-                # print(prompt)
-                # # sys.exit()
-                # res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
-                # operation = get_operation(res[0])
+                # print(prompt[0])
+                # sys.exit()
+                res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
+                operation = get_operation(res[0])
 
                 # sys.exit()
-                operation = 'GROUP_BY/AGGREGATE'
+                # operation = 'JOIN'
                 
                 if operation == 'JOIN' :
                         # get join prompt 
@@ -129,14 +129,13 @@ for task in task_list :
                         target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
                         directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
                         target_perc = target_per, is_perc = is_perc, target_length = target_length,join_flag = join_flag, join_hints_truncate = join_hints_truncate, hint_source = hint_source)
-                        # sys.exit()
                         if(prompt[0] == '-1') : 
                                 logger.info("Token Limit Exceeded")
                                 break_flag = 2
                                 break
 
-                        print(prompt[0])
-                        sys.exit()
+                        # print(prompt[0])
+                        # sys.exit()
 
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Join")
                         joined_columns = get_columns_join(res[0])
@@ -160,8 +159,8 @@ for task in task_list :
                                 break
 
                         # run llm and get group by column
-                        print(prompt[0]) 
-                        sys.exit()
+                        # print(prompt[0]) 
+                        # sys.exit()
                         res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Group by/Aggergate")
                         # print(res[0])
                         # add it to the history
@@ -244,7 +243,7 @@ for task in task_list :
                                 df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
                                 case_accuracy, is_correct, similarity_scores, validation_error = (
                             compare_lists_matching(df_our_response, df_ground_truth))
-                                print(case_accuracy,is_correct,similarity_scores,validation_error)
+                                print(case_accuracy,is_correct,similarity_scores)
                                 logger.info("Task : "+task + " Case Accuracy : "+str(case_accuracy)+ ", is_correct : " + str(is_correct) +", similarity_score : "+ str(similarity_scores))
                         except :
                                 # logger.info(validation_error)

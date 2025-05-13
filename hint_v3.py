@@ -9,6 +9,7 @@ import os
 import json
 import numpy as np
 from itertools import combinations
+from parameters import hints_v3_truncates as trun
 
 
 column_level_attributes = {}
@@ -61,6 +62,7 @@ def get_jaccard_containment(col1,col2,t1,t2,c1,c2) :
             pair_level_attributes[k] = {}
         # calculate the jaccard containment
         jc = jd.jaccard_containment(col1, col2)
+        # print("Jaccard Containment : ",c1,c2,jc)
         pair_level_attributes[k]["jc"] = jc
         return jc
     
@@ -77,7 +79,8 @@ def match(col1,col2,t1,t2,c1,c2) :
         if(k not in pair_level_attributes) :
             pair_level_attributes[k] = {}
         # calculate the match
-        if(get_jaccard_similarity(col1,col2,t1,t2,c1,c2) >= 0.8 or get_jaccard_containment(col1,col2,t1,t2,c1,c2) >= 0.8 or (get_type(col1,k1) == get_type(col2,k2) and get_jaccard_containment(col2,col1,t2,t1,c2,c1) >= 0.8)) :
+        if(get_jaccard_similarity(col1,col2,t1,t2,c1,c2) >= trun["t1"] or get_jaccard_containment(col1,col2,t1,t2,c1,c2) >= trun["t2"] or get_value_range_overlap(col1,col2,t1,t2,c1,c2)>= trun["t3"] or (get_type(col1,k1) == get_type(col2,k2) and get_jaccard_containment(col2,col1,t2,t1,c2,c1) >= trun["t2"])) :
+            
             pair_level_attributes[k]["match"] = True
             return True
             
@@ -207,6 +210,8 @@ def get_value_range_overlap(col1,col2,t1,t2,c1,c2) :
         if(k not in pair_level_attributes) :
             pair_level_attributes[k] = {}
         # calculate the value range overlap
+        # if(c1 == "COD_IDCONTRA" and c2 == "COD_IDCONTRA") :
+        #     print("Calculating value range overlap for COD_IDCONTRA")
         vro = jd.value_range_overlap(col1, col2)
         pair_level_attributes[k]["vro"] = vro
         return vro
@@ -253,7 +258,7 @@ def join_check_1(col1,col2,t1,t2,c1,c2) :
         # calculate the foreign_key 
         if(k not in pair_level_attributes) :
             pair_level_attributes[k] = {}
-        if(get_type(col1,k1) == get_type(col2,k2) and len(col1) > 10 and len(col2) > 10 and match(col1,col2,t1,t2,c1,c2)) : 
+        if(get_type(col1,k1) == get_type(col2,k2) and len(col1) > trun["t4"] and len(col2) > trun["t4"] and match(col1,col2,t1,t2,c1,c2)) : 
             pair_level_attributes[k]["j1"] = True
             return True
     
@@ -279,7 +284,7 @@ def join_check_3(col1,col2,t1,t2,c1,c2,pos1,pos2,total_columns1,total_columns2) 
     # calculate the foreign_key 
     if(k not in pair_level_attributes) :
         pair_level_attributes[k] = {}
-    if(get_average_leftness(col1,col2,t1,t2,c1,c2,pos1,pos2,total_columns1,total_columns2) <= 0.2  and join_check_1(col1,col2,t1,t2,c1,c2)) : 
+    if(get_average_leftness(col1,col2,t1,t2,c1,c2,pos1,pos2,total_columns1,total_columns2) <= trun["t13"]  and join_check_1(col1,col2,t1,t2,c1,c2)) : 
         return True
     
     return False
@@ -307,7 +312,7 @@ def join_check_5(col1,col2,t1,t2,c1,c2,pos1,pos2,total_columns1,total_columns2) 
     # calculate the foreign_key 
     if(k not in pair_level_attributes) :
         pair_level_attributes[k] = {}
-    if(get_average_leftness(col1,col2,t1,t2,c1,c2,pos1,pos2,total_columns1,total_columns2) <= 0.2 and (get_sortedness(col1,t1,c1) or get_sortedness(col2,t2,c2)) and join_check_1(col1,col2,t1,t2,c1,c2)) : 
+    if(get_average_leftness(col1,col2,t1,t2,c1,c2,pos1,pos2,total_columns1,total_columns2) <= trun["t13"] and (get_sortedness(col1,t1,c1) or get_sortedness(col2,t2,c2)) and join_check_1(col1,col2,t1,t2,c1,c2)) : 
         return True
     
     return False
@@ -322,7 +327,7 @@ def group_by_check1(col,t,c,pos,total_columns) :
         # calculate the foreign_key 
         if(k not in column_level_attributes) :
             column_level_attributes[k] = {}
-        if(get_type(col,k) in ["object","bool","datetime"] and get_peak_frequency(col,k) > 0.7 and get_emptiness(col,k) < 0.5 and get_distinct_value_ratio(col,k) < 0.7) : 
+        if(get_type(col,k) in ["object","bool","datetime"] and get_peak_frequency(col,k) > trun["t10"] and get_emptiness(col,k) < trun["t9"] and get_distinct_value_ratio(col,k) < trun["t8"]) : 
             column_level_attributes[k]["gb1"] = True
             return True
     
@@ -338,7 +343,7 @@ def group_by_check2(col,t,c,pos,total_columns) :
         # calculate the foreign_key 
         if(k not in column_level_attributes) :
             column_level_attributes[k] = {}
-        if(get_type(col,k) in ["int64"] and get_peak_frequency(col,k) > 0.7 and get_emptiness(col,k) < 0.5 and get_distinct_value_ratio(col,k) < 0.7 and get_value_range(col,k) <= 100) : 
+        if(get_type(col,k) in ["int64"] and get_peak_frequency(col,k) > trun["t10"] and get_emptiness(col,k) < trun["t9"] and get_distinct_value_ratio(col,k) < trun["t8"] and get_value_range(col,k) <= trun["t11"]) : 
             column_level_attributes[k]["gb2"] = True
             return True
     
@@ -346,14 +351,14 @@ def group_by_check2(col,t,c,pos,total_columns) :
 
 def group_by_check3(col,t,c,pos,total_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) in ["object","bool","datetime"] and get_emptiness(col,k) < 0.9 and get_distinct_value_ratio(col,k) < 0.7) : 
+    if(get_type(col,k) in ["object","bool","datetime"] and get_emptiness(col,k) < trun["t9"] and get_distinct_value_ratio(col,k) < trun["t8"]) : 
         return True
     
     return False
 
 def group_by_check4(col,t,c,pos,total_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) in ["int64"] and get_emptiness(col,k) < 0.9 and get_distinct_value_ratio(col,k) < 0.7 and get_value_range(col,k) <= 100 and  get_leftness(col,t,c,pos,total_columns) < 0.2) : 
+    if(get_type(col,k) in ["int64"] and get_emptiness(col,k) < trun["t9"] and get_distinct_value_ratio(col,k) < trun["t8"] and get_value_range(col,k) <= trun["t11"] and  get_leftness(col,t,c,pos,total_columns) < 0.2) : 
         return True
     
     return False
@@ -380,7 +385,7 @@ def aggregation_check1(col,t,c,pos,total_columns) :
     k = f"{t}.{c}"
     
         # calculate the foreign_key 
-    if(get_type(col,k) in ["int64","float64"] and get_leftness(col,t,c,pos,total_columns) > 0.45) : 
+    if(get_type(col,k) in ["int64","float64"] and get_leftness(col,t,c,pos,total_columns) > trun["t12"]) : 
         return True
     
     return False
@@ -388,32 +393,32 @@ def aggregation_check1(col,t,c,pos,total_columns) :
 def aggregation_check2(col,t,c,pos,total_columns) :
     k = f"{t}.{c}"
 
-    if(get_type(col,k) in ["object","datetime","bool"] and get_leftness(col,t,c,pos,total_columns) > 0.45 ) :
+    if(get_type(col,k) in ["object","datetime","bool"] and get_leftness(col,t,c,pos,total_columns) > trun["t12"] ) :
         return True
 
     return False
 
 def aggregation_check3(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45) : 
+    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > trun["t12"]) : 
         return True
     return False
 
 def aggregation_check4(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) != "int64" and get_type(target_column,f"target.{c}") == "int64" and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45) : 
+    if(get_type(col,k) != "int64" and get_type(target_column,f"target.{c}") == "int64" and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > trun["t12"]) : 
         return True
     return False
 
 def aggregation_check5(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45 and np.mean(target_column)/np.mean(col)> 10) : 
+    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > trun["t12"] and np.mean(target_column)/np.mean(col)> 10) : 
         return True
     return False
 
 def aggregation_check6(col,target_column,t,c,pos,total_columns,target_col_position,total_target_columns) :
     k = f"{t}.{c}"
-    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > 0.45 and np.mean(target_column)/np.mean(col) > 0.5 and np.mean(target_column)/np.mean(col) < 2) : 
+    if(get_type(col,k) == get_type(target_column,f"target.{c}") and (get_type(col,k) in ["float64", "int64"]) and get_average_leftness(col,target_column,t,"target",c,c,pos,target_col_position,total_columns,total_target_columns) > trun["t12"] and np.mean(target_column)/np.mean(col) > 0.5 and np.mean(target_column)/np.mean(col) < 2) : 
         return True
     return False
 
@@ -460,19 +465,26 @@ def get_join_hints(hint_source,file_count,source_data_name_list,source_data_sche
                     hint = f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
 
                 if join_check_1(table1[col1], table2[col2], table_name1, table_name2, col1, col2) and \
-                    get_jaccard_containment(table1[col1], table2[col2], table_name1, table_name2, col1, col2) >= 0.8 and \
-                    get_jaccard_containment(table2[col2], table1[col1], table_name2, table_name1, col2, col1) <= 0.2 and \
-                    get_missing_value_ratio(target_table, "target") > 0.4:
+                    get_jaccard_containment(table1[col1], table2[col2], table_name1, table_name2, col1, col2) >= trun["t6"] and \
+                    get_jaccard_containment(table2[col2], table1[col1], table_name2, table_name1, col2, col1) <= trun["t7"] and \
+                    get_missing_value_ratio(target_table, "target") > trun["t5"]:
                     hint = f"It is possible that {table_name1} LEFT OUTER JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
 
                 if join_check_1(table1[col1], table2[col2], table_name1, table_name2, col1, col2) and \
-                    get_jaccard_containment(table2[col2], table1[col1], table_name2, table_name1, col2, col1) >= 0.8 and \
-                    get_jaccard_containment(table1[col1], table2[col2], table_name1, table_name2, col1, col2) <= 0.2 and \
-                    get_missing_value_ratio(target_table, "target") > 0.4:
+                    get_jaccard_containment(table2[col2], table1[col1], table_name2, table_name1, col2, col1) >= trun["t6"] and \
+                    get_jaccard_containment(table1[col1], table2[col2], table_name1, table_name2, col1, col2) <= trun["t7"] and \
+                    get_missing_value_ratio(target_table, "target") > trun["t5"]:
                     hint = f"It is possible that {table_name1} RIGHT OUTER JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
 
                 if hint:
                     hints += hint
+    # print(pair_level_attributes["Source4_13_3.COD_IDCONTRA<->Source4_13_0.IDCONTRA"])
+    # OIN :  [ ["Source4_13_1", "Source4_13_2"], ["Source4_13_1.COD_OFICIPAL", "Source4_13_2.COD_OFICI"] ], 
+    # def get_value_range_overlap(col1,col2,t1,t2,c1,c2) :
+    # print("Value Range Overlap : ",get_value_range_overlap(tables["Source4_13_0"]["COD_IDCONTRA"], tables["Source4_13_3"]["COD_IDCONTRA"], "Source4_13_0", "Source4_13_3", "COD_IDCONTRA", "COD_IDCONTRA"))
+    # for key, value in pair_level_attributes.items():
+    #     if "COD_OFICI" in key and "OFICIPAL" in key:
+    #         print(key," : ",value)
     return [hints]
 
 def get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, aggregate_flag, aggregate_hints_truncate) : 
@@ -494,20 +506,20 @@ def get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,sou
             # only source table based attributes
             if(group_by_check1(table[col_name], table_name, col_name, pos, total_columns)) :
                 hints += f"It is possible that the previous results are applied with GROUP By {table_name}.{col_name}\n"
-            if(group_by_check2(table[col_name], table_name, col_name, pos, total_columns)) :
+            elif(group_by_check2(table[col_name], table_name, col_name, pos, total_columns)) :
                 hints += f"It is possible that the previous results are applied with GROUP By {table_name}.{col_name}\n"
-            if(group_by_check3(table[col_name], table_name, col_name, pos, total_columns)) :
+            elif(group_by_check3(table[col_name], table_name, col_name, pos, total_columns)) :
                 hints += f"It is possible that the previous results are applied with GROUP By {table_name}.{col_name}\n"
-            if(group_by_check4(table[col_name], table_name, col_name, pos, total_columns)) :
+            elif(group_by_check4(table[col_name], table_name, col_name, pos, total_columns)) :
                 hints += f"It is probable that the previous results are applied with GROUP By {table_name}.{col_name}\n"
             
 
             # target table based attributes
             if(col_name in target_columns) : 
-                if(group_by_check5(table[col_name],target_table[col_name], table_name, col_name, pos, total_columns)) :
-                    hints += f"It is probable that the previous results are applied with GROUP By {table_name}.{col_name}\n"
                 if(group_by_check6(table[col_name],target_table[col_name], table_name, col_name, pos, total_columns)) :
                     hints += f"It is highly probable that the previous results are applied with GROUP By {table_name}.{col_name}\n"
+                elif(group_by_check5(table[col_name],target_table[col_name], table_name, col_name, pos, total_columns)) :
+                    hints += f"It is probable that the previous results are applied with GROUP By {table_name}.{col_name}\n"
 
     # get aggregation hints 
     hints += "Aggregation hints:\n"
@@ -523,29 +535,35 @@ def get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,sou
 
             # Step 1: Target-based aggregation hints (high confidence)
             for target_col in target_columns:
-                if col_name.lower() in target_col.lower():
-                    target_col_position = target_columns.get_loc(target_col)
+                try : 
+                    if col_name.lower() in target_col.lower():
+                        target_col_position = target_columns.get_loc(target_col)
 
-                    if aggregation_check5(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
-                        hint = f"It is highly possible that SUM({table_name}.{col_name}) exists in the transformation logic.\n"
-                        break
-                    elif aggregation_check4(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
-                        hint = f"It is highly possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
-                        break
-                    elif aggregation_check6(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
-                        hint = f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be AVG, MAX, MIN.\n"
-                        break
-                    elif aggregation_check3(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
-                        hint = f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be SUM, AVG, MAX, MIN, COUNT.\n"
-                        break
+                        if aggregation_check5(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                            hint = f"It is highly possible that SUM({table_name}.{col_name}) exists in the transformation logic.\n"
+                            break
+                        elif aggregation_check4(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                            hint = f"It is highly possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
+                            break
+                        elif aggregation_check6(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                            hint = f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be AVG, MAX, MIN.\n"
+                            break
+                        elif aggregation_check3(table[col_name], target_table[target_col], table_name, col_name, pos, total_columns, target_col_position, len(target_columns)):
+                            hint = f"It is highly possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be SUM, AVG, MAX, MIN, COUNT.\n"
+                            break
+                except : 
+                    pass
                     
 
             # Step 2: Source-based aggregation hints (fallback if no target match)
             if not hint:
-                if aggregation_check1(table[col_name], table_name, col_name, pos, total_columns):
-                    hint = f"It is possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be SUM, AVG, MAX, MIN, COUNT.\n"
-                elif aggregation_check2(table[col_name], table_name, col_name, pos, total_columns):
-                    hint = f"It is possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
+                try : 
+                    if aggregation_check1(table[col_name], table_name, col_name, pos, total_columns):
+                        hint = f"It is possible that AGG({table_name}.{col_name}) exists in the transformation logic, where agg could be SUM, AVG, MAX, MIN, COUNT.\n"
+                    elif aggregation_check2(table[col_name], table_name, col_name, pos, total_columns):
+                        hint = f"It is possible that COUNT({table_name}.{col_name}) exists in the transformation logic.\n"
+                except : 
+                    pass
 
             # Append hint if generated
             if hint:
