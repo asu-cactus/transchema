@@ -468,29 +468,30 @@ if __name__ == "__main__":
             print("Successful transformation")
             break
 
-    # Do the final verification
-    _, hard_avg_similarity, soft_avg_similarity = verify_result(
-        save_path,
-        f"{main_folder}/length{len_idx_target_idx}/target.csv",
-    )
-    # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
-    result_dir = Path("results")
-    result_dir.mkdir(exist_ok=True, parents=True)
-    if args.use_old_prompt:
-        file_name = "old_prompt.csv"
-    elif args.combine_ask_and_configure:
-        # With "combine ask for and configure", thinking is enable.
-        file_name = "combine_ask_and_configure.csv"
-    elif args.no_thinking:
-        # With no thinking, "Ask for operation" and "Configure operation" are seperated
-        file_name = "no_thinking.csv"
-    else:
-        # Default setting is not combining ask for and configure, and thinking is enable.
-        file_name = "default.csv"
+    if nth_intermediate_step > 1:
+        # Do the final verification
+        _, hard_avg_similarity, soft_avg_similarity = verify_result(
+            save_path,
+            f"{main_folder}/length{len_idx_target_idx}/target.csv",
+        )
+        # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
+        result_dir = Path("results")
+        result_dir.mkdir(exist_ok=True, parents=True)
+        if args.use_old_prompt:
+            file_name = "old_prompt.csv"
+        elif args.combine_ask_and_configure:
+            # With "combine ask for and configure", thinking is enable.
+            file_name = "combine_ask_and_configure.csv"
+        elif args.no_thinking:
+            # With no thinking, "Ask for operation" and "Configure operation" are seperated
+            file_name = "no_thinking.csv"
+        else:
+            # Default setting is not combining ask for and configure, and thinking is enable.
+            file_name = "default.csv"
 
-    result_file = result_dir / file_name
-    if not result_file.exists():
-        with open(result_file, "w") as f:
-            f.write("task,hard_avg_similarity,soft_avg_similarity\n")
-    with open(result_file, "a") as f:
-        f.write(f"{task},{hard_avg_similarity},{soft_avg_similarity}\n")
+        result_file = result_dir / file_name
+        if not result_file.exists():
+            with open(result_file, "w") as f:
+                f.write("task,hard_avg_similarity,soft_avg_similarity\n")
+        with open(result_file, "a") as f:
+            f.write(f"{task},{hard_avg_similarity},{soft_avg_similarity}\n")
