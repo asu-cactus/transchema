@@ -33,22 +33,6 @@ from quality.quality import analyze_functional_dependencies
 
 from valentine import valentine_match, algorithms
 
-# import valentine.algorithms as algorithms
-
-
-class PromptTooLongException(Exception):
-    """Custom exception for when the prompt exceeds the maximum token limit."""
-
-    def __init__(self, message):
-        super().__init__(message)
-
-
-class InvalidPromptTypeException(Exception):
-    """Custom exception for when an invalid prompt type is provided."""
-
-    def __init__(self, message):
-        super().__init__(message)
-
 
 # prt.get_prompt("join",                allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)
 # prt.get_prompt("group_by_aggregate",  allowed_operation_list,operation_history,target_data_name,target_data_schema,target_samples,file_count,source_information,hints)
@@ -81,11 +65,17 @@ def get_prompt(
     hint_source="v1",
     save_path="",
     nth_intermediate_step=0,
+    combine_ask_and_configure=False,
+    no_thinking=False,
 ):
     """
     Args:
-        nth_intermediate_step (int): The step at which to materialize the intermediate result.
-        Default is 0, which means no intermediate materialization.
+        save_path (str): Path to save the intermediate results.
+        nth_intermediate_step (int): Current step at which to materialize the intermediate result.
+            Show the intermediate results in the steps [1,2,3,...,n-1].
+            Default is 0, which means no intermediate materialization.
+        combine_ask_and_configure (bool): Whether try to combine the ask and configure steps.
+        no_thinking (bool): Whether to disable the thinking process.
     """
     # we can generate hints here itself
     # we need these information
@@ -204,6 +194,8 @@ def get_prompt(
                 fd_hints,
                 hints,
                 all_intermediate_results,
+                combine_ask_and_configure=combine_ask_and_configure,
+                no_thinking=no_thinking,
             )[0]
         else:
             prompt = prt.get_next_operator_prompt(
@@ -384,7 +376,6 @@ def get_prompt(
             encoding,
         )[0]
         if nth_intermediate_step > 0:
-
             prompt = prt.get_python_script_with_intermediate_materialization(
                 allowed_operation_list,
                 operation_history,
@@ -410,16 +401,14 @@ def get_prompt(
                 error_string,
             )[0]
     else:
-        raise InvalidPromptTypeException(f"Invalid prompt type {prompt_type}.")
+        raise ValueError(f"Invalid prompt type {prompt_type}.")
 
     # print(prompt)
     # print(len(encoding.encode(prompt)))
     prompt_len = len(encoding.encode(prompt))
     if prompt_len > max_tokens:
         # return ["-1"]
-        raise PromptTooLongException(
-            f"Prompt length {prompt_len} exceeds maximum tokens."
-        )
+        raise Exception(f"Prompt length {prompt_len} exceeds maximum tokens.")
 
     return prompt
     # return [prompt]
