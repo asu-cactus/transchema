@@ -13,6 +13,7 @@ while Stopping Criteria
 import re
 from pathlib import Path
 import shutil
+import argparse
 import pdb
 
 from test_scope import get_test_cases_ids
@@ -31,20 +32,16 @@ from auto_suggest_llm_util import (
     query_gpt,
     get_columns_join,
     get_prompt,
-    PromptTooLongException,
 )
 
 import pandas as pd
 
 # decided through parameters
-len_id = 3
-max_len_id = len_id
-target_id = 35  # [11,18,22,25,62,10,16,31,38,5] # [18,2,32,33,96,16,27,78,91,18]
-max_target_id = target_id
+
 target_per = 25
 is_perc = False
 hint_source = "v3"
-use_new_prompt = True
+
 
 # 2
 # target_length = int(max(3,10*0.9695545786258186))
@@ -96,6 +93,29 @@ allowed_operation_list = [
 q_count = {"total": 0, "in_task": 0}
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Intermediate Materialization")
+    parser.add_argument(
+        "--len_id", type=int, default=2, help="Length ID for the test case"
+    )
+    parser.add_argument(
+        "--target_id", type=int, default=2, help="Target ID for the test case"
+    )
+    parser.add_argument(
+        "--use_old_prompt", action="store_true", help="Use new prompt or not"
+    )
+    parser.add_argument(
+        "--combine_ask_and_configure",
+        action="store_true",
+        help="Combine ask for and configure an operations.",
+    )
+    parser.add_argument(
+        "--no_thinking", action="store_true", help="Disable thinking process"
+    )
+    args = parser.parse_args()
+    return args
+
+
 def create_source_space(main_folder, len_id, target_id):
     # create source space
     source_space_dir = f"{main_folder}/{source_space_name}"
@@ -109,24 +129,42 @@ def create_source_space(main_folder, len_id, target_id):
     return source_space_dir
 
 
+def get_operation(res):
+    last_line = res.split("\n")[-1]
+    match = re.search(r"\$(.*?)\$", last_line)
+    if match:
+        operation = match.group(1)
+    else:
+        raise Exception(f"Operation not found in the response. Response:\n{res}")
+    assert (
+        operation in allowed_operation_list
+    ), f"Operation not in allowed list: {repr(operation)}"
+    return operation
+
+
 def get_operation_and_configuration(res):
     last_line = res.split("\n")[-1]
-    m = re.match(
-        r"Next operation after operation history is (.*) and configuration is (.*).",
+    match = re.search(
+        r"Next operation after operation history is \$(.*)\$ and configuration is \$(.*)\$",
         last_line,
     )
-    try:
-        operation = m.group(1)
-        configuration = m.group(2)
-    except Exception as e:
+    if match:
+        operation = match.group(1)
+        configuration = match.group(2)
+    else:
+        print(f"Last line:\n{last_line}")
         pdb.set_trace()
-    if operation not in allowed_operation_list:
-        raise Exception("Operation not in allowed list")
+    assert (
+        operation in allowed_operation_list
+    ), f"Operation not in allowed list: {operation}"
     return operation, configuration
 
 
-def get_operator(llm_client, operation_history, nth_intermediate_step):
-    operation = None
+def get_operator(llm_client, operation_history, nth_intermediate_step, args):
+
+    if args.use_old_prompt:
+        # Overwrite nth_intermediate_step=0 to use the old prompt, i.e., no intermediate materialization
+        nth_intermediate_step = 0
 
     prompt = get_prompt(
         prompt_type="get_next_operator",
@@ -149,6 +187,8 @@ def get_operator(llm_client, operation_history, nth_intermediate_step):
         fd_flag=fd_flag,
         hint_source=hint_source,
         nth_intermediate_step=nth_intermediate_step,
+        combine_ask_and_configure=args.combine_ask_and_configure,
+        no_thinking=args.no_thinking,
     )
 
     res = query_gpt(
@@ -161,26 +201,24 @@ def get_operator(llm_client, operation_history, nth_intermediate_step):
         token_tracker,
         type="Ask For Operator",
     )[0]
-    if use_new_prompt:
-        operation, configuration = get_operation_and_configuration(res)
 
+    if args.use_old_prompt or not args.combine_ask_and_configure:
+        operation = get_operation(res)
         assert operation in allowed_operation_list
+        return operation, None
+    else:
+        try:
+            operation, configuration = get_operation_and_configuration(res)
+        except Exception as e:
+            print(res)
+            pdb.set_trace()
+
         if configuration.lower() == "none":
             configuration = None
         return operation, configuration
-    else:
-        from auto_suggest_llm_util import get_operation
-
-        operation = get_operation(res)
-        return operation, None
 
 
-def configure_operator(
-    llm_client, operation, configuration, operation_history, nth_intermediate_step
-):
-    if configuration is not None:
-        operation_history.append(f"{operation} : {configuration}")
-        return
+def configure_operator(llm_client, operation, operation_history, nth_intermediate_step):
 
     if operation in ["JOIN", "UNION", "GROUP_BY/AGGREGATE"]:
         prompt_type_mapping = {
@@ -256,35 +294,29 @@ def materialize_chatgpt(
     n_trails = 5
     error_str = ""
     for script_cnt in range(n_trails):
-        try:
-            prompt = get_prompt(
-                prompt_type="python_script",
-                max_tokens=token_limit,
-                model=model,
-                allowed_operation_list=allowed_operation_list,
-                operation_history=operation_history,
-                target_data_name=target_data_name,
-                target_data_schema=target_data_schema,
-                target_samples=target_samples,
-                file_count=file_count,
-                source_data_name_list=source_data_name_list,
-                source_data_schema_list=source_data_schema_list,
-                directory=source_space_dir,
-                len_idx_target_idx=len_idx_target_idx,
-                target_perc=target_per,
-                is_perc=is_perc,
-                target_length=target_length,
-                error_string=error_str,
-                fd_flag=fd_flag,
-                hint_source=hint_source,
-                save_path=save_path,
-                nth_intermediate_step=nth_intermediate_step,
-            )
-        except PromptTooLongException as e:
-            logger.info("Materialization: Token Limit Exceeded")
-
-        except Exception as e:
-            raise e
+        prompt = get_prompt(
+            prompt_type="python_script",
+            max_tokens=token_limit,
+            model=model,
+            allowed_operation_list=allowed_operation_list,
+            operation_history=operation_history,
+            target_data_name=target_data_name,
+            target_data_schema=target_data_schema,
+            target_samples=target_samples,
+            file_count=file_count,
+            source_data_name_list=source_data_name_list,
+            source_data_schema_list=source_data_schema_list,
+            directory=source_space_dir,
+            len_idx_target_idx=len_idx_target_idx,
+            target_perc=target_per,
+            is_perc=is_perc,
+            target_length=target_length,
+            error_string=error_str,
+            fd_flag=fd_flag,
+            hint_source=hint_source,
+            save_path=save_path,
+            nth_intermediate_step=nth_intermediate_step,
+        )
 
         res = query_gpt(
             llm_client,
@@ -319,40 +351,42 @@ def get_task(logger):
     return task
 
 
-class MaterializationCriteria:
-    def __init__(self):
-        self.ncalls = 0
-
-    def __call__(self):
-        self.ncalls += 1
-        return True
-
-
 def verify_result(target_file_location, ground_truth_location):
 
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-    case_accuracy, is_correct, similarity_scores, validation_error = (
+    hard_avg_similarity, is_correct, similarity_scores, validation_error = (
         compare_lists_matching(df_our_response, df_ground_truth)
     )
-    log_str = f"Hard comparison, Task : {task} Case Accuracy : {case_accuracy}, is_correct : {is_correct}, similarity_score : {similarity_scores}"
+    log_str = f"Hard comparison, {task=}, {hard_avg_similarity=},  {is_correct=}, {similarity_scores=}"
     print(log_str)
     logger.info(log_str)
     # logger.info(validation_error)
-    case_accuracy, is_correct, similarity_scores = compare_lists_matching_soft(
+    soft_avg_similarity, is_correct, similarity_scores = compare_lists_matching_soft(
         df_our_response, df_ground_truth
     )
-    log_str = f"Soft comparison, Task : {task} Case Accuracy : {case_accuracy}, is_correct : {is_correct}, similarity_score : {similarity_scores}"
+    log_str = f"Soft comparison, {task=}, {soft_avg_similarity=},  {is_correct=}, {similarity_scores=}"
     print(log_str)
     logger.info(log_str)
-    compare_lists_matching_soft
-    return is_correct
+
+    return (
+        is_correct,
+        hard_avg_similarity,
+        soft_avg_similarity,
+    )
 
 
 #################################################################################################################################
 
 if __name__ == "__main__":
+    args = parse_args()
+
+    len_id = args.len_id
+    max_len_id = len_id
+    target_id = args.target_id
+    max_target_id = target_id
+    use_old_prompt = args.use_old_prompt
 
     source_space_dir = create_source_space(main_folder, len_id, target_id)
     logger = create_logger("materialization", log_dir, len_id, target_id, max_target_id)
@@ -385,56 +419,78 @@ if __name__ == "__main__":
 
     llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
 
-    materialization_criteria = MaterializationCriteria()
+    # materialization_criteria = MaterializationCriteria()
 
-    max_round = 6
-    for nth_round in range(max_round):
-        # first_get_operator
-        if use_new_prompt:
-            nth_intermediate_step = materialization_criteria.ncalls + 1
-        else:
-            nth_intermediate_step = 0
+    max_operations = 5
+    for nth_intermediate_step in range(1, max_operations + 1):
 
+        # Get the operation
         operation, configuration = get_operator(
-            llm_client, operation_history, nth_intermediate_step
+            llm_client, operation_history, nth_intermediate_step, args
         )
-        if operation is None:
-            print("No Operation Found, prompt is too long")
-            if nth_round == max_round - 1:
-                print("Max round reached")
-                logger.info("Max round reached")
-                break
-            continue
+
         if operation == "NO_MORE_OPERATION":
             print("No More Operation")
+            logger.info("No More Operation")
             break
 
-        configure_operator(
-            llm_client,
-            operation,
-            configuration,
-            operation_history,
-            nth_intermediate_step,
-        )
-
-        print(operation_history)
-
-        if materialization_criteria():
-            intermediate_filename = f"intermediate_step{nth_intermediate_step}"
-            save_path = f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
-            materialize_chatgpt(
+        # Configure the operation
+        if configuration is not None:
+            operation_history.append(f"{operation} : {configuration}")
+        else:
+            configure_operator(
                 llm_client,
+                operation,
                 operation_history,
-                save_path,
                 nth_intermediate_step,
             )
-            if use_new_prompt:
-                source_data_name_list.append(intermediate_filename)
+        print(operation_history)
 
-            is_correct = verify_result(
-                save_path,
-                f"{main_folder}/length{len_idx_target_idx}/target.csv",
-            )
-            if is_correct:
-                print("Successful transformation")
-                break
+        # Materialize the operation
+        intermediate_filename = f"intermediate_step{nth_intermediate_step}"
+        save_path = (
+            f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
+        )
+        materialize_chatgpt(
+            llm_client,
+            operation_history,
+            save_path,
+            nth_intermediate_step,
+        )
+        if not use_old_prompt:
+            source_data_name_list.append(intermediate_filename)
+
+        is_correct, _, _ = verify_result(
+            save_path,
+            f"{main_folder}/length{len_idx_target_idx}/target.csv",
+        )
+        if is_correct:
+            print("Successful transformation")
+            break
+
+    # Do the final verification
+    _, hard_avg_similarity, soft_avg_similarity = verify_result(
+        save_path,
+        f"{main_folder}/length{len_idx_target_idx}/target.csv",
+    )
+    # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
+    result_dir = Path("results")
+    result_dir.mkdir(exist_ok=True, parents=True)
+    if args.use_old_prompt:
+        file_name = "old_prompt.csv"
+    elif args.combine_ask_and_configure:
+        # With "combine ask for and configure", thinking is enable.
+        file_name = "combine_ask_and_configure.csv"
+    elif args.no_thinking:
+        # With no thinking, "Ask for operation" and "Configure operation" are seperated
+        file_name = "no_thinking.csv"
+    else:
+        # Default setting is not combining ask for and configure, and thinking is enable.
+        file_name = "default.csv"
+
+    result_file = result_dir / file_name
+    if not result_file.exists():
+        with open(result_file, "w") as f:
+            f.write("task,hard_avg_similarity,soft_avg_similarity\n")
+    with open(result_file, "a") as f:
+        f.write(f"{task},{hard_avg_similarity},{soft_avg_similarity}\n")
