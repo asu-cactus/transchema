@@ -57,14 +57,6 @@ fd_flag = 1
 token_limit = 120000
 model = "gpt-4.1-mini"  # "gpt-4-turbo" # "gpt-3.5-turbo-16k" # "gpt-4-1-mini"
 
-
-# 2
-# join_hints_truncate = [0.9006759015810097,0.11102115895485554,0.5241539295936876,0.021526354616419163,0.9722678489028443,0.5997167278729312]
-# aggregate_hints_truncate = [0.9006759015810097,0.5797659415180153,0.46440152668695256,0.8109176073751933]
-
-# 3
-# join_hints = [dvr, js, jc, vro, leftness, sortedness]
-# aggregate_hints = [dvr_ub,dvr_lb, leftness_ub,leftness_lb, emptiness_ub,emptiness_lb, peak_frequency_ub, peak_frequency_lb,value_range_ub, value_range_lb]
 join_hints_truncate = [
     0.027387593197926163,
     0.8763891522960383,

@@ -486,13 +486,6 @@ def get_join_hints(hint_source,file_count,source_data_name_list,source_data_sche
 
                 if hint:
                     hints += hint
-    # print(pair_level_attributes["Source4_13_3.COD_IDCONTRA<->Source4_13_0.IDCONTRA"])
-    # OIN :  [ ["Source4_13_1", "Source4_13_2"], ["Source4_13_1.COD_OFICIPAL", "Source4_13_2.COD_OFICI"] ], 
-    # def get_value_range_overlap(col1,col2,t1,t2,c1,c2) :
-    # print("Value Range Overlap : ",get_value_range_overlap(tables["Source4_13_0"]["COD_IDCONTRA"], tables["Source4_13_3"]["COD_IDCONTRA"], "Source4_13_0", "Source4_13_3", "COD_IDCONTRA", "COD_IDCONTRA"))
-    # for key, value in pair_level_attributes.items():
-    #     if "COD_OFICI" in key and "OFICIPAL" in key:
-    #         print(key," : ",value)
     return [hints]
 
 def get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, aggregate_flag, aggregate_hints_truncate) : 

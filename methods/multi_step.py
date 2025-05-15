@@ -5,7 +5,6 @@ from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import (
-    create_logger,
     get_filtered_functional_dependency,
     calculate_score,
     get_prompt,
@@ -14,6 +13,8 @@ from auto_suggest_llm_util import (
     get_columns,
     get_columns_join,
 )
+
+from log_util.log_util import create_logger
 from prompts.next_operator_prompt import get_next_operator_prompt
 import parameters as p
 import re 
@@ -36,42 +37,18 @@ def precursor(length, id_, log_dir_, experiment_name,i_):
     script = ""
     op_hist_ = ""
     hint_source = p.hint_source
-    
-        # decided through parameters
     len_id = length
     max_len_id = length
-    target_id = id_  # [18,2,32,33,96,16,27,78,91,18]
+    target_id = id_  
     max_target_id = id_
     target_per = p.target_per
     is_perc = p.is_perc
-
-    # Best Parameters: {'distinct_value_count': 0.8781174363909454, 'distinct_value_ratio': 0.027387593197926163, 'emptiness': 0.6704675101784022, 'fd': 0.41730480236712697, 'leftness_group_by': 0.5586898284457517, 'leftness_join': 0.14038693859523377, 'peak_frequency': 0.1981014890848788, 'sortedness': 0.8007445686755367, 'source_samples': 0.9682615757193975, 'target_samples': 0.31342417815924284, 'value_overlap_jc': 0.6923226156693141, 'value_overlap_js': 0.8763891522960383, 'value_range_overlap': 0.8946066635038473}
-
-    # Updated Parameters
-
     anon_flag = p.anon_flag
-
-    # join_hints = [distinct_value_ratio, jaccard_similarity, jaccard_condition, value_range_overlap, leftness, sortedness]
-    # aggregate_hints = [distinct_value_ratio, leftness, emptiness, peak_frequency]
     target_length = p.target_length 
     source_length = p.source_length
-
     join_flag = p.join_flag
     aggregate_flag = p.aggregate_flag
-
-#3
-# join_hints = [dvr, js, jc, vro, leftness, sortedness]
     join_hints_truncate = p.join_hints_truncate
-
-    # join_hints_truncate = [
-    #     0.5,#0.1981014890848788,  # distinct_value_ratio (dvr)
-    #     0.6918771139504734,  # value_overlap_js (js)
-    #     0.5331652849730171,  # value_overlap_jc (jc)
-    #     0.6865009276815837,  # value_range_overlap (vro)
-    #     0.5,#0.03905478323288236, # leftness_join (leftness)
-    #     0.5#0.0983468338330501   # sortedness
-    # ]
-
     aggregate_hints_truncate = p.aggregate_hints_truncate
 
 
@@ -355,19 +332,6 @@ def precursor(length, id_, log_dir_, experiment_name,i_):
                         is_correct = False
                     # calculate score 
                     score = calculate_score(df_ground_truth, df_our_response)
-                    # print(
-                    #     case_accuracy, is_correct, is_correct_,similarity_scores, validation_error
-                    # )
-                    # logger.info(
-                    #     "Task : "
-                    #     + task
-                    #     + " Case Accuracy : "
-                    #     + str(case_accuracy)
-                    #     + ", is_correct : "
-                    #     + str(is_correct)
-                    #     + ", similarity_score : "
-                    #     + str(similarity_scores)
-                    # )
                 except Exception as e:
                     print("".join(traceback.format_exc()))
                     case_accuracy = 0
@@ -403,19 +367,5 @@ def precursor(length, id_, log_dir_, experiment_name,i_):
     )
     print(f"ms_info: {ms_info}")
     logger.info("Total Queries Made : {q}".format(q=q_count["total"]))
+    
     return ms_info
-        
-    # except Exception as e:
-    #     print("".join(traceback.format_exc()))
-    #     end_time = time.time()
-    #     time_elapsed = end_time - start_time
-    #     ms_info = (
-    #         False,
-    #         False,
-    #         0.0,  # Default cost when there's an error
-    #         total_cost,
-    #         time_elapsed,
-    #         0.0,
-    #         op_hist_
-    #     )
-    #     return ms_info

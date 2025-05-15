@@ -1,13 +1,5 @@
 from util.utils import are_elements_equal
 
-def convert_if_number(s):
-    if s is None:
-        return None
-    try:
-        return float(s)
-    except ValueError:
-        return s
-
 
 
 def compare_columns(pred_column, gold_column):
