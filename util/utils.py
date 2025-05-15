@@ -3,7 +3,31 @@ import logging
 import json
 import pandas as pd
 from padding_match import pad_comp
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import CountVectorizer
+import psycopg2
+import csv
+import re
 
+
+def convert_if_number(s):
+    if s is None:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return s
+
+def are_elements_equal(elem1, elem2, tolerance=1e-8):
+    elem1 = "" if elem1 is None else elem1
+    elem2 = "" if elem2 is None else elem2
+    elem1, elem2 = convert_if_number(elem1), convert_if_number(elem2)
+    if isinstance(elem1, float) and isinstance(elem2, float):
+        return abs(elem1 - elem2) < tolerance
+    elif isinstance(elem1, str) and isinstance(elem2, str):
+        return elem1.strip().lower() == elem2.strip().lower()
+    else:
+        return elem1 == elem2
 
 def convert_target_names(target_names_str):
     target_names = target_names_str.split(",")
@@ -41,14 +65,6 @@ def read_csv_target(target):
         for row in reader:
             gold_target.append(tuple(row))
     return gold_target
-
-
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import CountVectorizer
-import psycopg2
-import csv
-import re
-
 
 def read_csv_file(file_path):
     with open(file_path, "r") as file:
@@ -255,187 +271,10 @@ def calculate_similarity(
         )[0, 0]
 
 
-def convert_if_number(s):
-    if s is None:
-        return None
-    try:
-        return float(s)
-    except ValueError:
-        return s
-
-
-def are_elements_equal(elem1, elem2, tolerance=1e-8):
-    elem1 = "" if elem1 is None else elem1
-    elem2 = "" if elem2 is None else elem2
-    elem1, elem2 = convert_if_number(elem1), convert_if_number(elem2)
-    if isinstance(elem1, float) and isinstance(elem2, float):
-        return abs(elem1 - elem2) < tolerance
-    elif isinstance(elem1, str) and isinstance(elem2, str):
-        return elem1.strip().lower() == elem2.strip().lower()
-    else:
-        return elem1 == elem2
 
 
 def numerical_similarity(num1, num2, threshold=1e-8):
     return abs(num1 - num2) < threshold
-
-
-def is_column_numerically_dominant(column):
-    numeric_count = 0
-    total_count = len(column)
-    for val in column:
-        try:
-            float(val)
-            numeric_count += 1
-        except (ValueError, TypeError):
-            if val == "":
-                total_count -= 1  # do not consider empty string
-    return numeric_count / total_count > 0.5  # Majority of values are numeric
-
-
-def compare_columns(pred_column, gold_column):
-    # Convert all elements to strings for consistent comparison
-    pred_column = [str(x) if x is not None else '' for x in pred_column]
-    gold_column = [str(x) if x is not None else '' for x in gold_column]
-    
-    # Sort the columns
-    pred_column.sort()
-    gold_column.sort()
-    
-    # Count matches
-    matches = sum(1 for p, g in zip(pred_column, gold_column) if are_elements_equal(p, g))
-    total = len(pred_column)
-    
-    return matches / total if total > 0 else 0
-
-def compare_lists_matching(generated_sql_df, ground_truth_df):
-    #print("Sorting")
-
-    generated_sql_df = generated_sql_df.loc[
-        :, ~generated_sql_df.columns.duplicated()
-    ].copy()
-    generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
-    ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
-
-    #print("Comparing column lengths")
-
-    if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
-        return (
-            0,
-            False,
-            ["mismatch"],
-            ["Mismatch - No columns in one or both DataFrames"],
-        )
-
-    #print("Comparing row lengths")
-
-    if len(generated_sql_df) != len(ground_truth_df):
-        return (
-            0,
-            False,
-            ["mismatch"],
-            [
-                f"Mismatch - DataFrames lengths differ (pred:{len(generated_sql_df)} v.s. gold:{len(ground_truth_df)})"
-            ],
-        )
-
-    similarities = []
-    all_mismatches = []
-
-    num_cols = len(generated_sql_df.columns)
-
-    for col in generated_sql_df.columns:
-
-        # #print(col)
-        if col.find("Unnamed: 0") >= 0:
-            #print("skip " + col)
-            num_cols -= 1
-            continue
-
-        pred_column = generated_sql_df[col].tolist()
-        gold_column = ground_truth_df[col].tolist()
-
-        # Use the updated function to determine if the column is numerically dominant
-        is_numerical = is_column_numerically_dominant(generated_sql_df[col])
-
-        # #print(is_numerical)
-
-        # #print(pred_column)
-
-        # #print(gold_column)
-
-        # Use the updated compare_columns function
-        column_similarity = compare_columns(pred_column, gold_column)
-
-        similarities.append(column_similarity)
-
-        if column_similarity < 1:
-            mismatches = [
-                {
-                    "<col, row>": "<" + str(col) + ", " + str(i) + ">",
-                    "pred": pred_column[i],
-                    "gold": gold_column[i],
-                }
-                for i in range(len(pred_column))
-                if not are_elements_equal(pred_column[i], gold_column[i])
-            ]
-            all_mismatches.append((col, mismatches))
-
-    average_similarity = sum(similarities) / num_cols
-    res = average_similarity == 1
-
-    return average_similarity, res, similarities, all_mismatches
-
-# Main Comparison Function
-def compare_lists_matching_soft(generated_sql_df, ground_truth_df, padding_added=False):
-    # Remove duplicate columns and sort
-    generated_sql_df = generated_sql_df.loc[:, ~generated_sql_df.columns.duplicated()].copy()
-    generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
-    ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
-    #print("WOOP WOOP WOOP")
-    # Only pad if we haven't already done so
-    if not padding_added:
-        if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0 or \
-           len(generated_sql_df) != len(ground_truth_df):
-            padded_dfs = pad_comp(ground_truth_df, generated_sql_df)
-            return compare_lists_matching_soft(*padded_dfs, padding_added=True)
-
-    generated_sql_df, ground_truth_df = pad_comp(generated_sql_df, ground_truth_df)
-
-    similarities = []
-    all_mismatches = []
-    num_cols = 0
-
-    for col in generated_sql_df.columns:
-        if col.find("Unnamed: 0") >= 0:
-            continue
-
-        num_cols += 1
-        pred_column = generated_sql_df[col].tolist()
-        gold_column = ground_truth_df[col].tolist()
-
-        column_similarity = compare_columns(pred_column, gold_column)
-        similarities.append(column_similarity)
-
-        if column_similarity < 1:
-            mismatches = [
-                {
-                    "<col, row>": f"<{col}, {i}>",
-                    "pred": pred_column[i],
-                    "gold": gold_column[i],
-                }
-                for i in range(len(pred_column))
-                if not are_elements_equal(pred_column[i], gold_column[i])
-            ]
-            all_mismatches.append((col, mismatches))
-
-    if num_cols == 0:
-        return 0, False, []
-
-    average_similarity = sum(similarities) / num_cols
-    res = average_similarity == 1
-
-    return average_similarity, res, similarities
 
 #adding code to anonymize target data schema (column names)
 def anonymize_target_data_schema(target_data_schema):

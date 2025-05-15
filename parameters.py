@@ -25,5 +25,5 @@ log_dir = "logs-auto-suggest-llm-18-03"
 
 experiment_name = "text_features"
 
-no_of_runs = 3
+no_of_runs = 1
 majority_voting = no_of_runs // 2 + 1

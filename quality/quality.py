@@ -24,7 +24,8 @@ Type 2 quality checks are performed by the following functions:
 import itertools
 import re
 import ast
-from util.utils import execute_sql, compare_lists_matching
+from validation.hard_match import compare_lists_matching
+from validation.soft_match import compare_lists_matching_soft
 import sqlparse
 from sqlparse.sql import Identifier, IdentifierList
 from sqlparse.tokens import DML

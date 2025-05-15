@@ -15,8 +15,8 @@ def get_hints(prompt_type, hint_source,target_data_schema, file_count,source_dat
             hints = h.get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, hint_flag, hints_truncate)
         if(prompt_type == "get_next_operator") :
             table_matching = h.get_table_matching(source_data_schema_list, source_data_name_list, target_data_schema)
-            column_table_mapping = h.get_column_table_mapping(target_data_schema, source_data_schema_list, source_data_name_list)
-            hints = [table_matching + "\n\n" + column_table_mapping]
+            # column_table_mapping = h.get_column_table_mapping(target_data_schema, source_data_schema_list, source_data_name_list)
+            hints = [table_matching]
     elif(hint_source == "v2") : 
         tables = summary.load_tables(directory + "/length" + len_idx_target_idx)
         # Load the models

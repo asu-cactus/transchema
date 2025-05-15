@@ -1,6 +1,8 @@
 from test_scope import get_test_cases_ids
 from llm.llm_models import TokenUsageTracker, LLMClient
-from util.utils import get_test_info, execute_python, compare_lists_matching, compare_lists_matching_soft
+from util.utils import get_test_info, execute_python
+from validation.hard_match import compare_lists_matching
+from validation.soft_match import compare_lists_matching_soft
 from padding_match import pad_comp
 import time
 import auto_suggest_llm_prompts as prt
@@ -25,6 +27,7 @@ import sys
 from pathlib import Path
 import os
 import traceback
+from methods.multi_step import precursor
 
 from auto.main import Autologtuple,sheet_dir,creds_path, sheets
 
@@ -77,7 +80,7 @@ def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
         type_ = "NEW_CRITIQUE"
     logger = create_logger(type_, log_dir, len_id, target_id, max_target_id)
 
-    llm_client = LLMClient(model="gpt-4-turbo", tracker=token_tracker, logger=logger)
+    llm_client = LLMClient(model=p.model, tracker=token_tracker, logger=logger)
 
     # get schema
     (
@@ -293,7 +296,7 @@ def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
     query_generator = """Based on the Critisizer Response, can you add the response in the python code.
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
-    - Please keep the final output columns the same as it was in the python script given.
+    - Please keep the final output columns the same as it was in the python script given. [Strictly do not add prefix or suffix to the column names]
     - You just need to apply the group by according to the criticizer response.
     - Do not use assignment operation for any column.
     Python Code : ```Python 
@@ -324,8 +327,8 @@ def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
     ##print(script)
     response = execute_python(script)
     logger.info(response)
-    df_critique = pd.read_csv(target_location_critique, low_memory=False)
     try:
+        df_critique = pd.read_csv(target_location_critique, low_memory=False)
         (
             case_accuracy,
             is_correct,
@@ -356,394 +359,6 @@ def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
     
     return crit_info 
 
-def precursor(length, id_, log_dir_, experiment_name,i_):
-    # Initialize required variables
-    case_path = f"{length}_{id_}"
-    is_correct = False
-    is_correct_ = False
-    case_accuracy_ = 0
-    score = 0
-    case_accuracy = 0
-    cost_summary = []
-    start_time = time.time()
-    token_tracker = TokenUsageTracker()
-    script = ""
-    op_hist_ = ""
-    hint_source = p.hint_source
-    
-    try:
-        # decided through parameters
-        len_id = length
-        max_len_id = length
-        target_id = id_  # [18,2,32,33,96,16,27,78,91,18]
-        max_target_id = id_
-        target_per = p.target_per
-        is_perc = p.is_perc
-
-        # Best Parameters: {'distinct_value_count': 0.8781174363909454, 'distinct_value_ratio': 0.027387593197926163, 'emptiness': 0.6704675101784022, 'fd': 0.41730480236712697, 'leftness_group_by': 0.5586898284457517, 'leftness_join': 0.14038693859523377, 'peak_frequency': 0.1981014890848788, 'sortedness': 0.8007445686755367, 'source_samples': 0.9682615757193975, 'target_samples': 0.31342417815924284, 'value_overlap_jc': 0.6923226156693141, 'value_overlap_js': 0.8763891522960383, 'value_range_overlap': 0.8946066635038473}
-
-       # Updated Parameters
-
-        anon_flag = p.anon_flag
-
-        # join_hints = [distinct_value_ratio, jaccard_similarity, jaccard_condition, value_range_overlap, leftness, sortedness]
-        # aggregate_hints = [distinct_value_ratio, leftness, emptiness, peak_frequency]
-        target_length = p.target_length 
-        source_length = p.source_length
-
-        join_flag = p.join_flag
-        aggregate_flag = p.aggregate_flag
-
-#3
-# join_hints = [dvr, js, jc, vro, leftness, sortedness]
-        join_hints_truncate = p.join_hints_truncate
-
-        # join_hints_truncate = [
-        #     0.5,#0.1981014890848788,  # distinct_value_ratio (dvr)
-        #     0.6918771139504734,  # value_overlap_js (js)
-        #     0.5331652849730171,  # value_overlap_jc (jc)
-        #     0.6865009276815837,  # value_range_overlap (vro)
-        #     0.5,#0.03905478323288236, # leftness_join (leftness)
-        #     0.5#0.0983468338330501   # sortedness
-        # ]
-
-        aggregate_hints_truncate = p.aggregate_hints_truncate
-
-
-        fd_flag = p.fd_flag
-        token_limit = p.token_limit
-        model = p.model
-        path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
-        # Counting files starting with 'test' in this subfolder
-        file_count = sum(
-            1
-            for _, _, files in os.walk(path_to_files)
-            for file in files
-            if file.startswith("test")
-        )
-        
-        #print(file_count)
-
-        if file_count > 1:
-            json_file_path = "data/chatgpt_github_ms.json"
-        else:            
-            json_file_path = "data/chatgpt_github_ss.json"
-
-        # log_dir = "logs-auto-suggest-llm-proof-bayesian"
-        log_dir = log_dir_
-        main_folder = "autopipeline-benchmarks/github-pipelines"
-
-        allowed_operation_list = [
-            "JOIN",
-            "UNION",
-            "GROUP_BY/AGGREGATE",
-            "PIVOT",
-            "UNPIVOT",
-            "NO_MORE_OPERATION",
-        ]
-
-        task_list = get_test_cases_ids(
-            json_file_path, len_id, max_len_id, target_id, max_target_id
-        )
-
-        logger = create_logger("AUTOSUGGEST", log_dir, len_id, target_id, max_target_id)
-
-        q_count = {"total": 0, "in_task": 0}
-
-        # language = 'sql' #or 'python'
-
-        ################## Run for each task ##################
-
-        for task in task_list:
-
-            q_count["in_task"] = 0
-
-            logger.info("Started Experiment for : " + str(task))
-
-            cost_summary = []
-
-            start_time = time.time()
-            token_tracker = TokenUsageTracker()
-            cost_summary.append(token_tracker.cost_summary())
-            # #print(cost_summary)
-
-            len_idx_target_idx = task[6:]
-
-            # #print(len_idx_target_idx)
-
-            # Get the information of the target and source data
-
-            (
-                target_data_name,
-                target_data_schema,
-                target_samples,
-                file_count,
-                source_data_name_list,
-                source_data_schema_list,
-                source_samples_list,
-            ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
-            # added anon_flag to get_test_info() call
-
-            # 0 to ask for operator and 1 for column and 2 to generate script
-            toggle_operator = 0
-            history_op = []
-            history_elements = []
-            operation_history = []
-
-            llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
-            break_flag = 1
-
-            while break_flag:
-
-                prompt = get_prompt(prompt_type="get_next_operator", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
-                                operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
-                                target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
-                                directory = main_folder, len_idx_target_idx = len_idx_target_idx,
-                                target_perc = target_per, is_perc = is_perc, target_length = target_length, source_length = source_length, hint_source = hint_source)
-                if(prompt[0] == '-1') : 
-                        logger.info("Token Limit Exceeded")
-                        break_flag = 2
-                        break
-                # print(prompt)
-                # # sys.exit()
-                res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Ask For Operator")
-                operation = get_operation(res[0])
-
-                # sys.exit()
-                # operation = 'JOIN'
-                
-                if operation == 'JOIN' :
-                        # get join prompt 
-                        prompt = get_prompt(prompt_type="join", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
-                        operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
-                        target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
-                        directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length,join_flag = join_flag, join_hints_truncate = join_hints_truncate, hint_source = hint_source)
-                        # sys.exit()
-                        if(prompt[0] == '-1') : 
-                                logger.info("Token Limit Exceeded")
-                                break_flag = 2
-                                break
-
-                        # print(prompt[0])
-                        # sys.exit()
-
-                        res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Join")
-                        joined_columns = get_columns_join(res[0])
-                        history_elements.append(joined_columns)
-                        operation_history.append(operation + ' : ' + str(joined_columns))
-
-                        # run llm and get join columns 
-                        # add it to the history
-                        pass 
-                elif operation == 'GROUP_BY/AGGREGATE' :
-                        # get group by prompt 
-                        prompt = get_prompt(prompt_type="group_by_aggregate", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
-                        operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
-                        target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
-                        directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length, aggregate_flag = aggregate_flag, aggregate_hints_truncate = aggregate_hints_truncate, hint_source = hint_source)
-                        # sys.exit()
-                        if(prompt[0] == '-1') : 
-                                logger.info("Token Limit Exceeded")
-                                break_flag = 2
-                                break
-
-                        # run llm and get group by column
-                        # print(prompt[0]) 
-                        # sys.exit()
-                        res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Group by/Aggergate")
-                        # print(res[0])
-                        # add it to the history
-                        group_by_column = re.sub(r'```json\n|\n|```', '', res[0])
-                        history_elements.append(res)
-                        operation_history.append(group_by_column)
-                        #operation_history.append(operation + ' : [ group_by : {group_by_column[0]}, aggregate : {group_by_column[1]}, aggregation_function : {group_by_column[2]} ]'.format(group_by_column = group_by_column))
-                        pass
-                elif operation == 'UNION' :
-                        prompt = get_prompt(prompt_type="union", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
-                        operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema,
-                        target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
-                        directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                        target_perc = target_per, is_perc = is_perc, target_length = target_length,hint_source = hint_source)
-
-                        if(prompt[0] == '-1') : 
-                                logger.info("Token Limit Exceeded")
-                                break_flag = 2
-                                break
-
-                        res = query_gpt(llm_client,model,prompt, q_count,logger, cost_summary, token_tracker, type = "Configure Union")
-                        # print(res[0])
-                        tables_ = get_columns(res[0])
-                        history_elements.append(tables_)
-                        operation_history.append(operation + ' : ' + str(tables_))
-                        pass
-                elif operation == 'PIVOT' :
-                        operation_history.append(operation)
-                        pass 
-                elif operation == 'UNPIVOT' :
-                        operation_history.append(operation)
-                        pass
-                elif operation == 'NO_MORE_OPERATION' :
-                        # generate python script 
-                        # do similarity search 
-                        # go to next 
-                        break_flag = 0 
-                        pass
-                else :
-                        pass
-
-            #print(operation_history)
-
-            if break_flag == 0:
-                # Generate Table and Compare
-                # ss = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, main_folder, len_idx_target_idx)
-                target_file_location = "{main_folder}/length{len_idx_target_idx}/target_multisource.csv".format(
-                    main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
-                )
-                ground_truth_location = (
-                    "{main_folder}/length{len_idx_target_idx}/target.csv".format(
-                        main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
-                    )
-                )
-                Path(target_file_location).touch()
-                # put this in a loop
-                script_cnt = 0
-                error_str = ""
-                while script_cnt < 5:
-                    prompt = get_prompt(prompt_type="python_script", max_tokens = token_limit,model=model,allowed_operation_list=allowed_operation_list,
-                                operation_history = operation_history,target_data_name = target_data_name,target_data_schema = target_data_schema, 
-                                target_samples = target_samples,file_count = file_count,source_data_name_list = source_data_name_list,source_data_schema_list = source_data_schema_list, 
-                                directory = main_folder, len_idx_target_idx = len_idx_target_idx, 
-                                target_perc = target_per, is_perc = is_perc, target_length = target_length, error_string = error_str,target_file_location = target_file_location, hint_source = hint_source)
-
-
-                    if prompt[0] == "-1":
-                        logger.info("Token Limit Exceeded")
-                        break_flag = 2
-                        break
-
-                    res = query_gpt(
-                        llm_client,
-                        model,
-                        prompt,
-                        q_count,
-                        logger,
-                        cost_summary,
-                        token_tracker,
-                        type="Get Python Script",
-                    )
-                    script = res[0].split("```Python")[1].split("```")[0].strip()
-                    # #print(script)
-                    response = execute_python(script)
-                    #print(response)
-                    error_str = error_str + response + "\n"
-                    # #print(error_str)
-                    if response == "Success":
-                        break
-                    script_cnt += 1
-
-                if response == "Success":
-                    # save file here 
-                    # file_name
-                    if not os.path.exists(f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"):
-                        os.makedirs(f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive")
-                    with open(
-                        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive/{experiment_name}_{i_}.py",
-                        "w",
-                    ) as file:
-                        file.write(script)
-
-
-                    # name_of_experiment_pass_1
-                    df_our_response = pd.read_csv(
-                        target_file_location, low_memory=False
-                    )
-                    df_ground_truth = pd.read_csv(
-                        ground_truth_location, low_memory=False
-                    )
-                    df_ground_truth.drop(
-                        columns=df_ground_truth.columns[0], axis=1, inplace=True
-                    )
-                    (
-                        case_accuracy_,
-                        is_correct_,
-                        similarity_scores_
-                    ) = compare_lists_matching_soft(df_our_response, df_ground_truth)
-                    eps = 0.1
-                    if case_accuracy_ < eps:
-                        case_accuracy_ = 0
-                    try:
-                        (
-                            case_accuracy,
-                            is_correct,
-                            similarity_scores,
-                            validation_error,
-                        ) = compare_lists_matching(df_our_response, df_ground_truth)
-                        '''
-                        print(
-                            case_accuracy, is_correct, similarity_scores, validation_error
-                        )
-                        '''
-                    except Exception as e:
-                        print("".join(traceback.format_exc()))
-                        is_correct = False
-                    # calculate score 
-                    score = calculate_score(df_ground_truth, df_our_response)
-                    # print(
-                    #     case_accuracy, is_correct, is_correct_,similarity_scores, validation_error
-                    # )
-                    # logger.info(
-                    #     "Task : "
-                    #     + task
-                    #     + " Case Accuracy : "
-                    #     + str(case_accuracy)
-                    #     + ", is_correct : "
-                    #     + str(is_correct)
-                    #     + ", similarity_score : "
-                    #     + str(similarity_scores)
-                    # )
-        op_hist_ = str(operation_history)
-        end_time = time.time()
-
-        # Only try to write the file if script was actually generated
-        if script:
-            with open(
-                f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/python_recovered.py",
-                "w",
-            ) as file:
-                file.write(script)
-        case_path = f"{length}_{id_}"
-        cost_data = token_tracker.cost_summary()  # This returns a dictionary
-        total_cost = cost_data.get('total_cost', 0.0)  # Safely get total_cost with default
-        time_elapsed = end_time - start_time
-        #print("++++++++++++++++++++++++++++++++++++")
-        #print(cost_data)
-        #print("++++++++++++++++++++++++++++++++++++")
-        ms_info = (
-            is_correct,
-            is_correct_,
-            case_accuracy_,
-            total_cost,  # Use the extracted total_cost value
-            time_elapsed,
-            score, 
-            op_hist_
-        )
-        print(f"ms_info: {ms_info}")
-        logger.info("Total Queries Made : {q}".format(q=q_count["total"]))
-        return ms_info
-        
-    except Exception as e:
-        print("".join(traceback.format_exc()))
-        end_time = time.time()
-        time_elapsed = end_time - start_time
-        ms_info = (
-            False,
-            0.0,  # Default cost when there's an error
-            time_elapsed,
-            str(e)
-        )
-        return ms_info
 
 def avg_tup(list_tup):
     avg_cost = 0
@@ -846,12 +461,12 @@ def crit(length, id_, experiment_name):
     abc_false_ = []
     
     for i in range(0,p.no_of_runs):
-
-        abl_a = critique(length, id_, "og_query.txt", "crit_logs/", [1,0,0],0,i, experiment_name)
+        # def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
+        abl_a = critique(length, id_, "og_query.txt", f"crit_logs/{length}_{id_}/", [1,0,0],0,i, experiment_name)
         
-        abl_ab = critique(length, id_, "query.txt", "crit_logs/", [1,1,0],1,i, experiment_name)
+        abl_ab = critique(length, id_, "query.txt", f"crit_logs/{length}_{id_}/", [1,1,0],1,i, experiment_name)
         
-        abl_abc = critique(length, id_, "query.txt", "crit_logs/", [1,1,1],1,i, experiment_name)
+        abl_abc = critique(length, id_, "query.txt", f"crit_logs/{length}_{id_}/", [1,1,1],1,i, experiment_name)
 
         a_results.append(abl_a)
         ab_results.append(abl_ab)
@@ -956,20 +571,38 @@ def main():
 
     experiment_name = p.experiment_name
     
-    # lengths = ["length2_11", "length2_13", "length2_14", "length2_16", "length2_19", "length2_2", "length2_20", "length2_21", "length2_25", "length2_35", "length2_36", "length2_37", "length2_39", "length2_42"]
+
+    # lengths = ["length5_0",  "length5_3",  "length5_10", "length5_34"]
+    # lengths = ["length5_36", "length5_39", "length5_40", "length5_64"]
+    # lengths = ["length5_69", "length5_70", "length5_75", "length5_87"]
+    # lengths = ["length5_89", "length5_92", "length5_98", "length5_99"]
+    # lengths = ["length5_10"]
+
+    lengths = [
+    # "Target2_2", "Target2_3", "Target2_4", "Target2_5", "Target2_6",
+    # "Target2_7", "Target2_8", "Target2_9", "Target2_10", "Target2_11",
+    # "Target3_1", "Target3_2",
+      "Target2_2", 
+    #   "Target3_5", "Target3_6",
+    # "Target3_7", "Target3_8", 
+    # "Target3_9", "Target3_10"
+    # , "Target3_11"
+]
+
+
 
     # Get the path to credentials.json relative to the autologger package
     
-    # for leng in lengths:
-    #     length = int(leng[6])
-    #     case = int(leng[8:])
-    #     case_path = f"{length}_{case}"
-    #     log_dir = f"crit_logs/{case_path}"
-
-    for case in cases : 
-
+    for leng in lengths:
+        length = int(leng[6])
+        case = int(leng[8:])
         case_path = f"{length}_{case}"
         log_dir = f"crit_logs/{case_path}"
+
+    # for case in cases : 
+
+    #     case_path = f"{length}_{case}"
+    #     log_dir = f"crit_logs/{case_path}"
       
         try:
             #compute multisource
