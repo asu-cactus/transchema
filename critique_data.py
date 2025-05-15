@@ -27,6 +27,8 @@ import sys
 from pathlib import Path
 import os
 import traceback
+import argparse
+import json
 
 from methods.multi_step import precursor
 from methods.critique import critique
@@ -233,11 +235,99 @@ def crit(length, id_, experiment_name):
     avg_results[max_ind] += ('MAX',)
     return avg_results
 
+def get_parser():
+    parser = argparse.ArgumentParser(description='Critique Data Script Parameterization')
+
+    # Scalar integer parameters
+    parser.add_argument('--len-id', type=int, default=5, help='Len ID')
+    parser.add_argument('--max-len-id', type=int, default=5, help='Max Len ID')
+    parser.add_argument('--target-id', type=int, default=12, help='Target ID')
+    parser.add_argument('--max-target-id', type=int, default=40, help='Max Target ID')
+    parser.add_argument('--target-per', type=int, default=25, help='Target Percentage')
+
+    # Boolean flags
+    parser.add_argument('--is-perc', action='store_true', help='Set is_perc to True')
+    parser.add_argument('--no-perc', dest='is_perc', action='store_false', help='Set is_perc to False')
+    parser.set_defaults(is_perc=False)
+
+    parser.add_argument('--hint-source', type=str, default='v3',
+                        choices=['v1_kv', 'v1_text', 'v2', 'v3'],
+                        help='Hint source selection')
+    parser.add_argument('--anon-flag', action='store_true', help='Set anon_flag to True')
+    parser.add_argument('--no-anon', dest='anon_flag', action='store_false', help='Set anon_flag to False')
+    parser.set_defaults(anon_flag=False)
+
+    # Computed lengths (override if desired)
+    parser.add_argument('--target-length', type=int,
+                        default=int(max(3, 10 * 0.31342417815924284)),
+                        help='Computed target length')
+    parser.add_argument('--source-length', type=int,
+                        default=int(max(3, 10 * 0.9682615757193975)),
+                        help='Computed source length')
+
+    # Flow control flags
+    parser.add_argument('--join-flag', type=int, default=0, help='Join flag')
+    parser.add_argument('--aggregate-flag', type=int, default=0, help='Aggregate flag')
+    parser.add_argument('--fd-flag', type=int, default=0, help='Functional dependency flag')
+
+    # Lists of floats
+    parser.add_argument('--join-hints-truncate', type=float, nargs='+',
+                        default=[0.027387593197926163, 0.8763891522960383, 0.6923226156693141,
+                                 0.8946066635038473, 0.14038693859523377, 0.8007445686755367],
+                        help='Join hints truncate thresholds')
+    parser.add_argument('--aggregate-hints-truncate', type=float, nargs='+',
+                        default=[0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1],
+                        help='Aggregate hints truncate thresholds')
+
+    # Other parameters
+    parser.add_argument('--token-limit', type=int, default=120000, help='Token limit')
+    parser.add_argument('--model', type=str, default='gpt-4-turbo', help='Model name')
+    parser.add_argument('--log-dir', type=str, default='logs-auto-suggest-llm-21-04', help='Log directory')
+    parser.add_argument('--experiment-name', type=str, default='feature_v3_2', help='Experiment name')
+    parser.add_argument('--no-of-runs', type=int, default=1, help='Number of runs')
+
+    # Complex dict via JSON
+    default_hints = {
+        't1': 0.7, 't2': 0.7, 't3': 0.7, 't4': 10,
+        't5': 0.1, 't6': 0.8, 't7': 0.4,
+        't8': 0.3, 't9': 0.2, 't10': 0.3, 't11': 0.5, 't12': 0.7, 't13': 0.2
+    }
+    parser.add_argument('--hints-v3-truncates', type=json.loads, default=default_hints,
+                        help='JSON string for hints_v3_truncates dict')
+
+    return parser
 
 def main():
+
+    args = get_parser().parse_args()
+
+    # Unpack parameters
+    p.len_id = args.len_id
+    p.max_len_id = args.max_len_id
+    p.target_id = args.target_id
+    p.max_target_id = args.max_target_id
+    p.target_per = args.target_per
+    p.is_perc = args.is_perc
+    p.hint_source = args.hint_source
+    p.anon_flag = args.anon_flag
+    p.target_length = args.target_length
+    p.source_length = args.source_length
+    p.join_flag = args.join_flag
+    p.aggregate_flag = args.aggregate_flag
+    p.fd_flag = args.fd_flag
+    p.join_hints_truncate = args.join_hints_truncate
+    p.aggregate_hints_truncate = args.aggregate_hints_truncate
+    p.token_limit = args.token_limit
+    p.model = args.model
+    p.log_dir = args.log_dir
+    p.experiment_name = args.experiment_name
+    p.no_of_runs = args.no_of_runs
+    p.majority_voting = p.no_of_runs // 2 + 1
+    p.hints_v3_truncates = args.hints_v3_truncates
+
     length = p.len_id
     start = p.target_id
-    end = p.max_target_id
+    end = p.max_target_id + 1
     Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
                 creds_file=creds_path )
 
@@ -245,24 +335,24 @@ def main():
 
     experiment_name = p.experiment_name
 
-    lengths = [
-      "Target3_11", 
-    ]
+    # lengths = [
+    #   "Target3_11", 
+    # ]
 
 
 
     # Get the path to credentials.json relative to the autologger package
     
-    for leng in lengths:
-        length = int(leng[6])
-        case = int(leng[8:])
-        case_path = f"{length}_{case}"
-        log_dir = f"crit_logs/{case_path}"
-
-    # for case in cases : 
-
+    # for leng in lengths:
+    #     length = int(leng[6])
+    #     case = int(leng[8:])
     #     case_path = f"{length}_{case}"
     #     log_dir = f"crit_logs/{case_path}"
+
+    for case in cases : 
+
+        case_path = f"{length}_{case}"
+        log_dir = f"crit_logs/{case_path}"
       
         try:
             #compute multisource
@@ -296,4 +386,5 @@ def main():
             print(f"Error processing case {case_path}: {str(e)}")
 
 if __name__ == "__main__":
+    # Let's make it parameterized 
     main()
