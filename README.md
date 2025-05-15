@@ -8,26 +8,10 @@ This repository contains Python scripts designed to automate the generation of S
 
 ## Table of Contents
 
-- [Dependencies](#dependencies)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Scripts](#scripts)
 - [Contributing](#contributing)
-
----
-
-## Dependencies
-
-- Python 3.8+
-- `pandas`
-- `openai`
-- `matplotlib`
-- `seaborn`
-- `sqlparse`
-- `postgres`
-- `psycopg2-binary`
-- `numpy`
-- `sklearn`
 
 ---
 
@@ -44,26 +28,16 @@ This repository contains Python scripts designed to automate the generation of S
 3. Install the required packages:
     ```bash
     pip install -r requirements.txt
-    ```
-4. Install postgres and create a user postgres
-   ```bash
-   brew install postgresql
-   brew info postgresql@14
-   /opt/homebrew/opt/postgresql@14/bin/createuser -s postgres
-   ```   
+    ```  
 ---
 
 ## Usage
 
-1. Create a `config.py` file and put your OpenAI API key there.
+1. Create a environment variable with your OpenAI API key.
     ```
-    OPENAI_API_KEY = "{your_openai_api_key}"
+    export OPENAI_API_KEY={your_openai_api_key}
     ```
-2. Run the run.py script to start the experiment:
-    ```bash
-    python run.py
-    ```
-3. Pick a dataset from out benchmark: {‘Smart Building’, ‘COVID-19 & Machine Log’,Commercial dataset-1’, ‘Commercial dataset-2’} and change the ‘excel_file_path’ and ‘json_file_path’ in ‘excel2json.py’ accordingly. Here is the link for the benchmark dataset <[link](https://github.com/asu-cactus/Data_Transformation_Benchmark)>
+2. Pick a dataset from out benchmark: {‘Smart Building’, ‘COVID-19 & Machine Log’,Commercial dataset-1’, ‘Commercial dataset-2’} and change the ‘excel_file_path’ and ‘json_file_path’ in ‘excel2json.py’ accordingly. Here is the link for the benchmark dataset <[link](https://github.com/asu-cactus/Data_Transformation_Benchmark)>
     ````
     # Path to the Excel file
     excel_file_path = '<dataset_you_picked>.xlsx'
@@ -72,22 +46,62 @@ This repository contains Python scripts designed to automate the generation of S
     # Path to save the JSON file
     json_file_path = <dataset_you_picked>.json'
     ```
-4. Run the `excel2json.py` script to convert the .xlsx benchmark dataset to .json format:
+3. Run the `excel2json.py` script to convert the .xlsx benchmark dataset to .json format:
     ```bash
     python excel2json.py
     ```
-5. You can set the configurations such as template_option, source, target in run.py. Here's an example
+4. You can set the configurations in experiment_multistep.sh. Here's an example
     ```
-    template_option = 1
-    target_id, max_target_id = 10, 10
-    source_id, max_source_id = 1, 1
+python3 critique_data.py \
+  # ─── Experiment scope ──────────────────────────────────────────────────────
+  --len-id 5 \                            # start pipeline length directory (e.g. length5)  
+  --max-len-id 5 \                        # end pipeline length directory (inclusive)  
+  --target-id 12 \                        # start target table ID for experiment  
+  --max-target-id 40 \                    # end target table ID for experiment  
+
+  # ─── Sampling configuration ────────────────────────────────────────────────
+  --no-perc \                             # disable percentage-based sampling (use fixed --target-length)  
+  --target-per 25 \                       # % of target rows to sample (only if using percentage)  
+  --target-length 3 \                     # fixed number of target samples (when --no-perc)  
+  --source-length 9 \                     # number of source samples to include in prompt  
+
+  # ─── Hint selection & anonymization ────────────────────────────────────────
+  --hint-source v3 \                      # choose hint set: v1_kv, v1_text, v2, or v3  
+  --no-anon \                             # do NOT anonymize column names in prompts  
+  --fd-flag 0 \                           # include (1) or exclude (0) functional‐dependency info  
+
+  # ─── Hint truncation flags & thresholds ───────────────────────────────────
+  --join-flag 0 \                         # truncate join hints? 0=no (all), 1=yes (apply thresholds)  
+  --join-hints-truncate \
+    0.027387593197926163 \
+    0.8763891522960383 \
+    0.6923226156693141 \
+    0.8946066635038473 \
+    0.14038693859523377 \
+    0.8007445686755367 \                 # 6 thresholds for join-hint truncation  
+
+  --aggregate-flag 0 \                    # truncate aggregate hints? 0=no, 1=yes  
+  --aggregate-hints-truncate \
+    0.9 0.1 0.9 0.1 0.9 0.1 0.9 0.1 0.9 0.1 \ # 10 thresholds for aggregate-hint truncation  
+
+  --hints-v3-truncates \
+    '{"t1":0.7,"t2":0.7,"t3":0.7,"t4":10,"t5":0.1,"t6":0.8,"t7":0.4,"t8":0.3,"t9":0.2,"t10":0.3,"t11":0.5,"t12":0.7,"t13":0.2}' \
+    # JSON mapping for v3 text-hint truncation parameters  
+
+  # ─── Prompt & model configuration ──────────────────────────────────────────
+  --token-limit 120000 \                  # max tokens per prompt (affects context size)  
+  --model gpt-4-turbo \                   # model to use: gpt-4-turbo or gpt-4.1-mini  
+
+  # ─── Logging & experiment metadata ────────────────────────────────────────
+  --log-dir logs-auto-suggest-llm-21-04 \ # where to write logs  
+  --experiment-name feature_v3_2 \        # experiment identifier (used in filenames)  
+  --no-of-runs 1                          # how many times to repeat each configuration  
+
     ```
-    `target_id`,`max_target_id` mean the first group and the last group the script will iterate. `source_id`, `max_source_id` mean the first source and the last source the script will iterate.
-6.  Run the run.py script to start the experiment:
+4.  Run the run.py script to start the experiment:
     ```bash
-    python run.py
+    experiment_multistep.sh
     ```
-Note: Detailed template_option are in the gpt.py. Option 3 and 4 both belong to Option 3 in the paper, and Option 5 corresponds to Option 4 in the paper, etc.
 
 ---
 
@@ -103,17 +117,6 @@ Then, do the following steps:
 6. to get output.xlsx, run the react/pre_processing/generate_output.py
 
 7. to get the json file, run the react/pre_processing/excel2json.py
-
----
-
-## Scripts
-
-- `excel2json.py`: Converts Excel data to JSON format.
-- `gpt.py`: Interacts with the GPT-3 model to generate SQL queries.
-- `join.py`: Handles JOIN operations in SQL.
-- `run.py`: Main script to run the experiments.
-- `sql_complexity_analyzer.py`: Analyzes the complexity of SQL queries.
-- `util.py`: Contains utility functions for database operations and more.
 
 ---
 
