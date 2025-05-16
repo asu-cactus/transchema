@@ -50,3 +50,8 @@ hints_v3_truncates = {
     't13': 0.2 # value range overlap < t13
     }
 # END hints_v3_truncates
+
+intermediate_materialization_flag = 0
+use_old_prompt = 0
+combine_ask_and_configure = 0
+no_thinking = 0

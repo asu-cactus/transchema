@@ -1,31 +1,4 @@
-from test_scope import get_test_cases_ids
-from llm.llm_models import TokenUsageTracker, LLMClient
-from util.utils import get_test_info, execute_python
-from validation.hard_match import compare_lists_matching
-from validation.soft_match import compare_lists_matching_soft
-from padding_match import pad_comp
-import time
-import auto_suggest_llm_prompts as prt
-from auto_suggest_llm_util import (
-    get_source,
-    get_operation,
-    get_columns,
-    get_source_with_location,
-    cost_compare,
-    query_gpt,
-    get_columns_aggr,
-    get_columns_join,
-    get_prompt,
-    get_filtered_functional_dependency,
-    calculate_score
-)
-from log_util.log_util import create_logger
 import parameters as p
-import pandas as pd
-import re
-import sys
-from pathlib import Path
-import os
 import traceback
 import argparse
 import json
@@ -293,6 +266,16 @@ def get_parser():
     }
     parser.add_argument('--hints-v3-truncates', type=json.loads, default=default_hints,
                         help='JSON string for hints_v3_truncates dict')
+    
+    parser.add_argument('--intermediate-materialization-flag', type=int, default=0,
+                        help='Intermediate materialization flag')
+
+    parser.add_argument('--use-old-prompt', type=int, default=0,
+                        help='Use old prompt flag (0 or 1)')
+    parser.add_argument('--combine-ask-and-configure', type=int, default=0,
+                        help='Combine ask and configure flag (0 or 1)')
+    parser.add_argument('--no-thinking', type=int, default=0,
+                        help='No think flag (0 or 1)')
 
     return parser
 
@@ -323,6 +306,10 @@ def main():
     p.no_of_runs = args.no_of_runs
     p.majority_voting = p.no_of_runs // 2 + 1
     p.hints_v3_truncates = args.hints_v3_truncates
+    p.intermediate_materialization_flag = args.intermediate_materialization_flag
+    p.use_old_prompt = args.use_old_prompt
+    p.combine_ask_and_configure = args.combine_ask_and_configure
+    p.no_thinking = args.no_thinking
 
     length = p.len_id
     start = p.target_id
@@ -369,7 +356,8 @@ def main():
             )
             
             # critique iff ms is wrong
-            if not result[1]:
+            # critique not supported yet for intermediate materialization
+            if not result[1] and not p.intermediate_materialization_flag:
                 crit_info = crit(length, case, experiment_name)
 
                 for crit_ in crit_info:

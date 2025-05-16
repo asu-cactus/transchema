@@ -10,7 +10,7 @@ from datetime import datetime
 from util.utils import get_test_info
 from test_scope import get_test_cases_ids
 from hints.hint import get_hints
-import auto_suggest_llm_prompts as prt
+# import auto_suggest_llm_prompts as prt
 import tiktoken
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms

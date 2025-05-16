@@ -13,7 +13,6 @@ while Stopping Criteria
 import re
 from pathlib import Path
 import shutil
-import argparse
 import pdb
 import os
 import time
@@ -63,7 +62,8 @@ def create_source_space(main_folder, len_id, target_id):
     source_dir = Path(f"{main_folder}/length{len_id}_{target_id}")
     # Find all files matching the pattern "test{integer}.csv" in the source directory
     for file in source_dir.glob("*"):
-        shutil.copy(file, source_space_path)
+        if file.is_file():  # Skip directories
+            shutil.copy(file, source_space_path)
     return source_space_dir
 
 
@@ -289,24 +289,24 @@ def verify_result(target_file_location, ground_truth_location, config):
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-    hard_avg_similarity, is_correct, similarity_scores, validation_error = (
+    hard_avg_similarity, hard_is_correct, hard_similarity_scores, hard_validation_error = (
         compare_lists_matching(df_our_response, df_ground_truth)
     )
-    log_str = f"Hard comparison, {config["task"]=}, {hard_avg_similarity=},  {is_correct=}, {similarity_scores=}"
+    log_str = f"Hard comparison, {config["task"]=}, {hard_avg_similarity=},  {hard_is_correct=}, {hard_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
     # logger.info(validation_error)
-    soft_avg_similarity, is_correct, similarity_scores = compare_lists_matching_soft(
+    soft_avg_similarity, soft_is_correct, soft_similarity_scores = compare_lists_matching_soft(
         df_our_response, df_ground_truth
     )
-    log_str = f"Soft comparison, {config["task"]=}, {soft_avg_similarity=},  {is_correct=}, {similarity_scores=}"
+    log_str = f"Soft comparison, {config["task"]=}, {soft_avg_similarity=},  {soft_is_correct=}, {soft_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
 
     return (
-        is_correct, # only considers soft match's similarity
-        [hard_avg_similarity,is_correct, similarity_scores],
-        [soft_avg_similarity,is_correct, similarity_scores]
+        soft_is_correct, # only considers soft match's similarity
+        [hard_avg_similarity,hard_is_correct, hard_similarity_scores],
+        [soft_avg_similarity,soft_is_correct, soft_similarity_scores]
     )
 
 
@@ -391,6 +391,7 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
     config["source_data_schema_list"] = source_data_schema_list
     config["source_samples_list"] = source_samples_list
     config["main_folder"] = main_folder
+    config["task"] = task
 
     # materialization_criteria = MaterializationCriteria()
 
@@ -438,6 +439,7 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
         is_correct, _, _ = verify_result(
             save_path,
             f"{main_folder}/length{len_idx_target_idx}/target.csv",
+            config,
         )
         if is_correct:
             print("Successful transformation")
@@ -445,9 +447,10 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
 
     if nth_intermediate_step > 1:
         # Do the final verification
-        _, hard_similarity, soft_similarity = verify_result(
+        is_correct, hard_similarity, soft_similarity = verify_result(
             save_path,
             f"{main_folder}/length{len_idx_target_idx}/target.csv",
+            config
         )
         # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
         result_dir = Path("results")
@@ -472,16 +475,15 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
             f.write(f"{task},{hard_similarity[0]},{soft_similarity}\n")
         end_time = time.time()
         time_elapsed = end_time - start_time
-        total_cost = sum(
-            [cost["total"] for cost in cost_summary]
-        )
-        ms_info = [
-            is_correct,
+        cost_data = token_tracker.cost_summary()  # This returns a dictionary
+        total_cost = cost_data.get('total_cost', 0.0)
+        ms_info = (
+            is_correct, 
             is_correct,
             soft_similarity[0],
             total_cost,  # Use the extracted total_cost value
             time_elapsed,
             0, 
             operation_history
-        ]
+        )
         return ms_info

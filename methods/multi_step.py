@@ -5,7 +5,6 @@ from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import (
-    get_filtered_functional_dependency,
     calculate_score,
     get_prompt,
     query_gpt,
@@ -15,7 +14,6 @@ from auto_suggest_llm_util import (
 )
 
 from log_util.log_util import create_logger
-from prompts.next_operator_prompt import get_next_operator_prompt
 import parameters as p
 import re 
 import pandas as pd
