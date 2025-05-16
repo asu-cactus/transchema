@@ -16,6 +16,7 @@ import shutil
 import argparse
 import pdb
 import os
+import time
 
 from test_scope import get_test_cases_ids
 from llm.llm_models import TokenUsageTracker, LLMClient
@@ -303,15 +304,16 @@ def verify_result(target_file_location, ground_truth_location, config):
     logger.info(log_str)
 
     return (
-        is_correct,
-        hard_avg_similarity,
-        soft_avg_similarity,
+        is_correct, # only considers soft match's similarity
+        [hard_avg_similarity,is_correct, similarity_scores],
+        [soft_avg_similarity,is_correct, similarity_scores]
     )
 
 
 #################################################################################################################################
 
 def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
+    start_time = time.time()
     len_id = length
     max_len_id = length
     target_id = id_
@@ -443,7 +445,7 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
 
     if nth_intermediate_step > 1:
         # Do the final verification
-        _, hard_avg_similarity, soft_avg_similarity = verify_result(
+        _, hard_similarity, soft_similarity = verify_result(
             save_path,
             f"{main_folder}/length{len_idx_target_idx}/target.csv",
         )
@@ -467,4 +469,19 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
             with open(result_file, "w") as f:
                 f.write("task,hard_avg_similarity,soft_avg_similarity\n")
         with open(result_file, "a") as f:
-            f.write(f"{task},{hard_avg_similarity},{soft_avg_similarity}\n")
+            f.write(f"{task},{hard_similarity[0]},{soft_similarity}\n")
+        end_time = time.time()
+        time_elapsed = end_time - start_time
+        total_cost = sum(
+            [cost["total"] for cost in cost_summary]
+        )
+        ms_info = [
+            is_correct,
+            is_correct,
+            soft_similarity[0],
+            total_cost,  # Use the extracted total_cost value
+            time_elapsed,
+            score=0, 
+            operation_history
+        ]
+        return ms_info
