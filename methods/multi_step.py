@@ -23,7 +23,7 @@ import os
 import traceback
 from pathlib import Path
 
-def precursor(length, id_, log_dir_, experiment_name,i_):
+def multi_step(length, id_, log_dir_, experiment_name,i_):
     # Initialize required variables
     case_path = f"{length}_{id_}"
     is_correct = False

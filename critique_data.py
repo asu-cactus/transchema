@@ -30,11 +30,10 @@ import traceback
 import argparse
 import json
 
-from methods.multi_step import precursor
+from methods.precursor import precursor
 from methods.critique import critique
 
 from auto.main import Autologtuple,sheet_dir,creds_path, sheets
-
 
 def avg_tup(list_tup):
     avg_cost = 0
