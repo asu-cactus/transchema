@@ -481,7 +481,7 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
             soft_similarity[0],
             total_cost,  # Use the extracted total_cost value
             time_elapsed,
-            score=0, 
+            0, 
             operation_history
         ]
         return ms_info
