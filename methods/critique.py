@@ -14,7 +14,7 @@ from validation.hard_match import compare_lists_matching
 from validation.soft_match import compare_lists_matching_soft
 from log_util.log_util import create_logger
 
-def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
+def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
     file_path = nature
     with open(file_path, mode="r") as f:
         query = f.read()
@@ -59,7 +59,7 @@ def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
         type_ = "NEW_CRITIQUE"
     logger = create_logger(type_, log_dir, len_id, target_id, max_target_id)
 
-    llm_client = LLMClient(model=p.model, tracker=token_tracker, logger=logger)
+    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
 
     # get schema
     (

@@ -1,10 +1,10 @@
 export PYTHONPATH=$(pwd)
 
 python3 critique_data.py \
-  --len-id 5 \
-  --max-len-id 5 \
-  --target-id 12 \
-  --max-target-id 40 \
+  --len-id 6 \
+  --max-len-id 6 \
+  --target-id 28 \
+  --max-target-id 30 \
   --target-per 25 \
   --no-perc \
   --hint-source v3 \

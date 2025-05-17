@@ -39,8 +39,6 @@ from log_util.log_util import create_logger
 
 import pandas as pd
 
-import parameters as p
-
 # decided through parameters
 source_space_name = "source_space"
 
@@ -98,16 +96,16 @@ def get_operation_and_configuration(res):
     return operation, configuration
 
 
-def get_operator(llm_client, operation_history, nth_intermediate_step, p, config):
+def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
 
-    if p.use_old_prompt:
+    if args.use_old_prompt:
         # Overwrite nth_intermediate_step=0 to use the old prompt, i.e., no intermediate materialization
         nth_intermediate_step = 0
 
     prompt = get_prompt(
         prompt_type="get_next_operator",
-        max_tokens=p.token_limit,
-        model=p.model,
+        max_tokens=args.token_limit,
+        model=args.model,
         allowed_operation_list=allowed_operation_list,
         operation_history=operation_history,
         target_data_name=config["target_data_name"],
@@ -118,20 +116,20 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, p, config
         source_data_schema_list=config["source_data_schema_list"],
         directory=config["source_space_dir"],
         len_idx_target_idx=config["len_idx_target_idx"],
-        target_perc=p.target_per,
-        is_perc=p.is_perc,
-        target_length=p.target_length,
-        source_length=p.source_length,
-        fd_flag=p.fd_flag,
-        hint_source=p.hint_source,
+        target_perc=args.target_per,
+        is_perc=args.is_perc,
+        target_length=args.target_length,
+        source_length=args.source_length,
+        fd_flag=args.fd_flag,
+        hint_source=args.hint_source,
         nth_intermediate_step=nth_intermediate_step,
-        combine_ask_and_configure=p.combine_ask_and_configure,
-        no_thinking=p.no_thinking,
+        combine_ask_and_configure=args.combine_ask_and_configure,
+        no_thinking=args.no_thinking,
     )
 
     res = query_gpt(
         llm_client,
-        p.model,
+        args.model,
         prompt,
         config["q_count"],
         config["logger"],
@@ -140,7 +138,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, p, config
         type="Ask For Operator",
     )[0]
 
-    if p.use_old_prompt or not  p.combine_ask_and_configure:
+    if args.use_old_prompt or not  args.combine_ask_and_configure:
         operation = get_operation(res)
         assert operation in allowed_operation_list
         return operation, None
@@ -156,7 +154,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, p, config
         return operation, configuration
 
 
-def configure_operator(llm_client, operation, operation_history, nth_intermediate_step, config):
+def configure_operator(llm_client, operation, operation_history, nth_intermediate_step, args, config):
     if operation in ["JOIN", "UNION", "GROUP_BY/AGGREGATE"]:
         prompt_type_mapping = {
             "JOIN": "join",
@@ -171,8 +169,8 @@ def configure_operator(llm_client, operation, operation_history, nth_intermediat
 
         prompt = get_prompt(
             prompt_type=prompt_type_mapping[operation],
-            max_tokens=p.token_limit,
-            model=p.model,
+            max_tokens=args.token_limit,
+            model=args.model,
             allowed_operation_list=allowed_operation_list,
             operation_history=operation_history,
             target_data_name=config["target_data_name"],
@@ -183,19 +181,19 @@ def configure_operator(llm_client, operation, operation_history, nth_intermediat
             source_data_schema_list=config["source_data_schema_list"],
             directory=config["source_space_dir"],
             len_idx_target_idx=config["len_idx_target_idx"],
-            target_perc=p.target_per,
-            is_perc=p.is_perc,
-            target_length=p.target_length,
-            join_flag=p.join_flag,
-            join_hints_truncate=p.join_hints_truncate,
-            fd_flag=p.fd_flag,
-            hint_source=p.hint_source,
+            target_perc=args.target_per,
+            is_perc=args.is_perc,
+            target_length=args.target_length,
+            join_flag=args.join_flag,
+            join_hints_truncate=args.join_hints_truncate,
+            fd_flag=args.fd_flag,
+            hint_source=args.hint_source,
             nth_intermediate_step=nth_intermediate_step,
         )
 
         res = query_gpt(
             config["llm_client"],
-            p.model,
+            args.model,
             prompt,
             config["q_count"],
             config["logger"],
@@ -220,15 +218,15 @@ def configure_operator(llm_client, operation, operation_history, nth_intermediat
 
 
 
-def materialize_chatgpt(llm_client, operation_history, save_path, nth_intermediate_step, config):
+def materialize_chatgpt(llm_client, operation_history, save_path, nth_intermediate_step,args, config):
     n_trails = 5
     error_str = ""
 
     for script_cnt in range(n_trails):
         prompt = get_prompt(
             prompt_type="python_script",
-            max_tokens=p.token_limit,
-            model=p.model,
+            max_tokens=args.token_limit,
+            model=args.model,
             allowed_operation_list=allowed_operation_list,
             operation_history=operation_history,
             target_data_name=config["target_data_name"],
@@ -239,19 +237,19 @@ def materialize_chatgpt(llm_client, operation_history, save_path, nth_intermedia
             source_data_schema_list=config["source_data_schema_list"],
             directory=config["source_space_dir"],
             len_idx_target_idx=config["len_idx_target_idx"],
-            target_perc=p.target_per,
-            is_perc=p.is_perc,
-            target_length=p.target_length,
+            target_perc=args.target_per,
+            is_perc=args.is_perc,
+            target_length=args.target_length,
             error_string=error_str,
-            fd_flag=p.fd_flag,
-            hint_source=p.hint_source,
+            fd_flag=args.fd_flag,
+            hint_source=args.hint_source,
             save_path=save_path,
             nth_intermediate_step=nth_intermediate_step,
         )
 
         res = query_gpt(
             config["llm_client"],
-            p.model,
+            args.model,
             prompt,
             config["q_count"],
             config["logger"],
@@ -260,7 +258,9 @@ def materialize_chatgpt(llm_client, operation_history, save_path, nth_intermedia
             type="Get Python Script",
         )[0]
 
-        script = res.split("```Python")[1].split("```")[0].strip()
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res)
+        script = match.group(1).strip()
 
         response = execute_python(script)
         print(f"Python execution: {response}")
@@ -312,13 +312,13 @@ def verify_result(target_file_location, ground_truth_location, config):
 
 #################################################################################################################################
 
-def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
+def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_):
     start_time = time.time()
     len_id = length
     max_len_id = length
     target_id = id_
     max_target_id = id_
-    use_old_prompt = p.use_old_prompt
+    use_old_prompt = args.use_old_prompt
     log_dir = log_dir_
 
     main_folder = "autopipeline-benchmarks/github-pipelines"
@@ -372,7 +372,7 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
         anon_flag=0,
     )
 
-    llm_client = LLMClient(model=p.model, tracker=token_tracker, logger=logger)
+    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
 
     # configure all the remaining parameters used by later functions
     config = {}
@@ -400,7 +400,7 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
 
         # Get the operation
         operation, configuration = get_operator(
-            llm_client, operation_history, nth_intermediate_step,  p, config
+            llm_client, operation_history, nth_intermediate_step,  args, config
         )
 
         if operation == "NO_MORE_OPERATION":
@@ -417,6 +417,7 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
                 operation,
                 operation_history,
                 nth_intermediate_step,
+                args,
                 config
             )
         print(operation_history)
@@ -431,19 +432,32 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
             operation_history,
             save_path,
             nth_intermediate_step,
+            args,
             config
         )
         if not use_old_prompt:
             source_data_name_list.append(intermediate_filename)
 
-        is_correct, _, _ = verify_result(
+        is_correct, hard_match_, soft_match_ = verify_result(
             save_path,
             f"{main_folder}/length{len_idx_target_idx}/target.csv",
             config,
         )
         if is_correct:
+            end_time = time.time()
+            ms_info = (
+                is_correct, 
+                is_correct,
+                soft_match_[0],
+                token_tracker.cost_summary().get('total_cost', 0.0),  # Use the extracted total_cost value
+                end_time - start_time,
+                0, 
+                str(operation_history)
+            )
             print("Successful transformation")
-            break
+            return ms_info
+
+    print(nth_intermediate_step)
 
     if nth_intermediate_step > 1:
         # Do the final verification
@@ -455,12 +469,12 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
         # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
         result_dir = Path("results")
         result_dir.mkdir(exist_ok=True, parents=True)
-        if  p.use_old_prompt:
+        if  args.use_old_prompt:
             file_name = "old_prompt.csv"
-        elif  p.combine_ask_and_configure:
+        elif  args.combine_ask_and_configure:
             # With "combine ask for and configure", thinking is enable.
             file_name = "combine_ask_and_configure.csv"
-        elif  p.no_thinking:
+        elif  args.no_thinking:
             # With no thinking, "Ask for operation" and "Configure operation" are seperated
             file_name = "no_thinking.csv"
         else:
@@ -484,6 +498,6 @@ def intermediate_materialization(length, id_, log_dir_, experiment_name,i_):
             total_cost,  # Use the extracted total_cost value
             time_elapsed,
             0, 
-            operation_history
+            str(operation_history)
         )
         return ms_info

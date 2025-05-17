@@ -37,15 +37,15 @@ def avg_tup_(list_tup):
     avg = (list_tup[0][1], avg_score,avg_cost, avg_lat)
     return avg
 
-def ms(length, id, log_dir,experiment_name):
+def ms(args,length, id, log_dir,experiment_name):
     results = [] 
     true_tup = []
     false_tup = []
     true_tup_ = []
     false_tup_ = []
-    for i in range(0,p.no_of_runs):
+    for i in range(0,args.no_of_runs):
         try:
-            ms_info = precursor(length, id, log_dir,experiment_name,i)
+            ms_info = precursor(args,length, id, log_dir,experiment_name,i)
         except Exception as e:
             print("".join(traceback.format_exc()))
             ms_info = ("precursor error " + str(e))
@@ -73,21 +73,21 @@ def ms(length, id, log_dir,experiment_name):
             false_tup.append(tup)
     
     
-    if len(true_tup_) >= p.majority_voting:
+    if len(true_tup_) >= args.majority_voting:
         print(f"avging {true_tup_}")
         avged_tup_ = avg_tup_(true_tup_)
     else: 
         print(f"avging {false_tup_}")
         avged_tup_ = avg_tup_(false_tup_)
         
-    if len(true_tup) >= p.majority_voting:
+    if len(true_tup) >= args.majority_voting:
         avged_tup = avg_tup(true_tup)
     else:
         avged_tup = avg_tup(false_tup)     
     #
     return avged_tup + avged_tup_
 
-def crit(length, id_, experiment_name):
+def crit(args,length, id_, experiment_name):
     a_results = []
     ab_results = []
     abc_results = []
@@ -108,13 +108,13 @@ def crit(length, id_, experiment_name):
     abc_true_ = []
     abc_false_ = []
     
-    for i in range(0,p.no_of_runs):
+    for i in range(0,args.no_of_runs):
         # def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
-        abl_a = critique(length, id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,0,0],0,i, experiment_name)
+        abl_a = critique(args,length, id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,0,0],0,i, experiment_name)
         
-        abl_ab = critique(length, id_, "prompts/soft_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,0],1,i, experiment_name)
+        abl_ab = critique(args,length, id_, "prompts/soft_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,0],1,i, experiment_name)
         
-        abl_abc = critique(length, id_, "prompts/soft_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,1],1,i, experiment_name)
+        abl_abc = critique(args,length, id_, "prompts/soft_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,1],1,i, experiment_name)
 
         a_results.append(abl_a)
         ab_results.append(abl_ab)
@@ -163,29 +163,29 @@ def crit(length, id_, experiment_name):
         else:
             abc_false.append(tup)
     
-    if len(a_true) >= p.majority_voting:
+    if len(a_true) >= args.majority_voting:
         avg_a  = avg_tup(a_true)
     else:
         avg_a = avg_tup(a_false)
-    if len(a_true_) >= p.majority_voting:
+    if len(a_true_) >= args.majority_voting:
         avg_a_ = avg_tup_(a_true_)
     else:
         avg_a_ = avg_tup_(a_false_)
     
-    if len(ab_true) >= p.majority_voting:
+    if len(ab_true) >= args.majority_voting:
         avg_ab  = avg_tup(ab_true)
     else:
         avg_ab = avg_tup(ab_false)
-    if len(ab_true_) >= p.majority_voting:
+    if len(ab_true_) >= args.majority_voting:
         avg_ab_ = avg_tup_(ab_true_)
     else:
         avg_ab_ = avg_tup_(ab_false_)
         
-    if len(abc_true) >= p.majority_voting:
+    if len(abc_true) >= args.majority_voting:
         avg_abc  = avg_tup(abc_true)
     else:
         avg_abc = avg_tup(abc_false)
-    if len(abc_true_) >= p.majority_voting:
+    if len(abc_true_) >= args.majority_voting:
         avg_abc_ = avg_tup_(abc_true_)
     else:
         avg_abc_ = avg_tup_(abc_false_)
@@ -284,42 +284,42 @@ def main():
     args = get_parser().parse_args()
 
     # Unpack parameters
-    p.len_id = args.len_id
-    p.max_len_id = args.max_len_id
-    p.target_id = args.target_id
-    p.max_target_id = args.max_target_id
-    p.target_per = args.target_per
-    p.is_perc = args.is_perc
-    p.hint_source = args.hint_source
-    p.anon_flag = args.anon_flag
-    p.target_length = args.target_length
-    p.source_length = args.source_length
-    p.join_flag = args.join_flag
-    p.aggregate_flag = args.aggregate_flag
-    p.fd_flag = args.fd_flag
-    p.join_hints_truncate = args.join_hints_truncate
-    p.aggregate_hints_truncate = args.aggregate_hints_truncate
-    p.token_limit = args.token_limit
-    p.model = args.model
-    p.log_dir = args.log_dir
-    p.experiment_name = args.experiment_name
-    p.no_of_runs = args.no_of_runs
-    p.majority_voting = p.no_of_runs // 2 + 1
-    p.hints_v3_truncates = args.hints_v3_truncates
-    p.intermediate_materialization_flag = args.intermediate_materialization_flag
-    p.use_old_prompt = args.use_old_prompt
-    p.combine_ask_and_configure = args.combine_ask_and_configure
-    p.no_thinking = args.no_thinking
+    # p.len_id = args.len_id
+    # p.max_len_id = args.max_len_id
+    # p.target_id = args.target_id
+    # p.max_target_id = args.max_target_id
+    # p.target_per = args.target_per
+    # p.is_perc = args.is_perc
+    # p.hint_source = args.hint_source
+    # p.anon_flag = args.anon_flag
+    # p.target_length = args.target_length
+    # p.source_length = args.source_length
+    # p.join_flag = args.join_flag
+    # p.aggregate_flag = args.aggregate_flag
+    # p.fd_flag = args.fd_flag
+    # p.join_hints_truncate = args.join_hints_truncate
+    # p.aggregate_hints_truncate = args.aggregate_hints_truncate
+    # p.token_limit = args.token_limit
+    # p.model = args.model
+    # p.log_dir = args.log_dir
+    # p.experiment_name = args.experiment_name
+    # p.no_of_runs = args.no_of_runs
+    args.majority_voting = args.no_of_runs // 2 + 1
+    # p.hints_v3_truncates = args.hints_v3_truncates
+    # p.intermediate_materialization_flag = args.intermediate_materialization_flag
+    # p.use_old_prompt = args.use_old_prompt
+    # p.combine_ask_and_configure = args.combine_ask_and_configure
+    # p.no_thinking = args.no_thinking
 
-    length = p.len_id
-    start = p.target_id
-    end = p.max_target_id + 1
+    length = args.len_id
+    start = args.target_id
+    end = args.max_target_id + 1
     Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
                 creds_file=creds_path )
 
     cases = list(range(start,end))
 
-    experiment_name = p.experiment_name
+    experiment_name = args.experiment_name
 
     # lengths = [
     #   "Target3_11", 
@@ -342,7 +342,7 @@ def main():
       
         try:
             #compute multisource
-            ms_info = ms(length, case, log_dir, experiment_name)
+            ms_info = ms(args,length, case, log_dir, experiment_name)
             
             # Format as a single row with consistent columns
             #print(f"case_path: {case_path} + ms_info: {ms_info}")
@@ -357,16 +357,16 @@ def main():
             
             # critique iff ms is wrong
             # critique not supported yet for intermediate materialization
-            if not result[1] and not p.intermediate_materialization_flag:
-                crit_info = crit(length, case, experiment_name)
+            # if not result[1] and not args.intermediate_materialization_flag:
+            #     crit_info = crit(args,length, case, experiment_name)
 
-                for crit_ in crit_info:
-                    Autologtuple(
-                        (case_path, ) + crit_ ,
-                        sheet_dir["sheet_1"],
-                        worksheet_name=sheets["ac"],
-                        creds_file=creds_path
-                    )
+            #     for crit_ in crit_info:
+            #         Autologtuple(
+            #             (case_path, ) + crit_ ,
+            #             sheet_dir["sheet_1"],
+            #             worksheet_name=sheets["ac"],
+            #             creds_file=creds_path
+            #         )
             
         except Exception as e:
             print("".join(traceback.format_exc()))

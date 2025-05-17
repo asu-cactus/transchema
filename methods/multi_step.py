@@ -14,14 +14,14 @@ from auto_suggest_llm_util import (
 )
 
 from log_util.log_util import create_logger
-import parameters as p
+# import parameters as p
 import re 
 import pandas as pd
 import os
 import traceback
 from pathlib import Path
 
-def multi_step(length, id_, log_dir_, experiment_name,i_):
+def multi_step(args,length, id_, log_dir_, experiment_name,i_):
     # Initialize required variables
     case_path = f"{length}_{id_}"
     is_correct = False
@@ -34,25 +34,25 @@ def multi_step(length, id_, log_dir_, experiment_name,i_):
     token_tracker = TokenUsageTracker()
     script = ""
     op_hist_ = ""
-    hint_source = p.hint_source
+    hint_source = args.hint_source
     len_id = length
     max_len_id = length
     target_id = id_  
     max_target_id = id_
-    target_per = p.target_per
-    is_perc = p.is_perc
-    anon_flag = p.anon_flag
-    target_length = p.target_length 
-    source_length = p.source_length
-    join_flag = p.join_flag
-    aggregate_flag = p.aggregate_flag
-    join_hints_truncate = p.join_hints_truncate
-    aggregate_hints_truncate = p.aggregate_hints_truncate
+    target_per = args.target_per
+    is_perc = args.is_perc
+    anon_flag = args.anon_flag
+    target_length = args.target_length 
+    source_length = args.source_length
+    join_flag = args.join_flag
+    aggregate_flag = args.aggregate_flag
+    join_hints_truncate = args.join_hints_truncate
+    aggregate_hints_truncate = args.aggregate_hints_truncate
 
 
-    fd_flag = p.fd_flag
-    token_limit = p.token_limit
-    model = p.model
+    fd_flag = args.fd_flag
+    token_limit = args.token_limit
+    model = args.model
     path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
@@ -246,7 +246,6 @@ def multi_step(length, id_, log_dir_, experiment_name,i_):
                     main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
                 )
             )
-            Path(target_file_location).touch()
             # put this in a loop
             script_cnt = 0
             error_str = ""
@@ -273,7 +272,9 @@ def multi_step(length, id_, log_dir_, experiment_name,i_):
                     token_tracker,
                     type="Get Python Script",
                 )
-                script = res[0].split("```Python")[1].split("```")[0].strip()
+                pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+                match = pattern.search(res[0])
+                script = match.group(1).strip()
                 # #print(script)
                 response = execute_python(script)
                 #print(response)
