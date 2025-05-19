@@ -119,6 +119,7 @@ Initializes a structured logging directory system for experiment results, creati
 ```text
 [log_dir]/
 └── [experiment_name]_[YYYYMMDD]_[HHMMSS]/
+    ├── args.log               # For logging all the arguments of this experiment
     ├── logs/                  # For raw log files
     └── results/               # For processed results
         ├── multi_step.csv          # Individual multi-step results

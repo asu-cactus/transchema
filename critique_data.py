@@ -302,7 +302,7 @@ def main():
 
     # set up logging 
     print(args)
-    experiment_log_directory, log_directory, results_directory = setup_logging(args.log_dir, args.experiment_name)
+    experiment_log_directory, log_directory, results_directory = setup_logging(args, args.log_dir, args.experiment_name)
     args.log_directory = log_directory
     args.result_directory = results_directory
     # sys.exit()
@@ -310,8 +310,8 @@ def main():
     length = args.len_id
     start = args.target_id
     end = args.max_target_id + 1
-    Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
-                creds_file=creds_path )
+    # Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
+    #             creds_file=creds_path )
 
     cases = list(range(start,end))
 

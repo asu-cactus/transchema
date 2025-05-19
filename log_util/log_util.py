@@ -30,7 +30,7 @@ def create_logger(
 import os
 from datetime import datetime
 
-def setup_logging(log_dir, experiment_name):
+def setup_logging(args, log_dir, experiment_name):
     # Check if the log directory exists, create it if it does not
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -39,6 +39,12 @@ def setup_logging(log_dir, experiment_name):
     experiment_date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     experiment_date_time = os.path.join(log_dir, experiment_name + "_" + experiment_date_time)
     os.makedirs(experiment_date_time)
+
+    # create a log file to log all the arguments
+    log_file = os.path.join(experiment_date_time, "args.log")
+    with open(log_file, 'w') as f:
+        for arg in vars(args):
+            f.write(f"{arg}: {getattr(args, arg)}\n")
 
     # create a log directory inside the experiment_date_time directory
     log_dir = os.path.join(experiment_date_time, "logs")
