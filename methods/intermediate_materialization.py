@@ -268,6 +268,10 @@ def materialize_chatgpt(llm_client, operation_history, save_path, nth_intermedia
         error_str += response + "\n"
 
         if response == "Success":
+            # Save the result to the python_recovered.py from where it will be picked up for critique
+            save_path = config["path_to_files"] + "/python_recovered.py"
+            with open(save_path, "w") as f:
+                f.write(script)
             return
 
     raise Exception(f"Exceed {n_trails} trails, Materialization Failed")
@@ -391,6 +395,7 @@ def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_)
     config["source_data_schema_list"] = source_data_schema_list
     config["source_samples_list"] = source_samples_list
     config["main_folder"] = main_folder
+    config["path_to_files"] = path_to_files
     config["task"] = task
 
     # materialization_criteria = MaterializationCriteria()

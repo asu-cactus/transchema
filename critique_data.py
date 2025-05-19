@@ -1,7 +1,7 @@
-import parameters as p
 import traceback
 import argparse
 import json
+import sys
 
 from methods.precursor import precursor
 from methods.critique import critique
@@ -107,91 +107,92 @@ def crit(args,length, id_, experiment_name):
     ab_false_ = []
     abc_true_ = []
     abc_false_ = []
+
+    avg_results = []
     
     for i in range(0,args.no_of_runs):
-        # def critique(length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
-        abl_a = critique(args,length, id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,0,0],0,i, experiment_name)
-        
-        abl_ab = critique(args,length, id_, "prompts/soft_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,0],1,i, experiment_name)
-        
-        abl_abc = critique(args,length, id_, "prompts/soft_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,1],1,i, experiment_name)
+        if("fd" in args.critique_setting) :
+            abl_a = critique(args,length, id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,0,0],0,i, experiment_name)
+            a_results.append(abl_a)
+            for tup in a_results:
+                Autologtuple((f"{length}_{id_}",) + tup,
+                            sheet_dir["sheet_2"],
+                            worksheet_name=sheets["sc"],
+                            creds_file=creds_path
+                            )
+                if tup[1] == True:
+                    a_true_.append(tup)
+                else:
+                    a_false_.append(tup)
+                if tup[0] == True:
+                    a_true.append(tup)
+                else:
+                    a_false.append(tup)
+                if len(a_true) >= args.majority_voting:
+                    avg_a  = avg_tup(a_true)
+                else:
+                    avg_a = avg_tup(a_false)
+                if len(a_true_) >= args.majority_voting:
+                    avg_a_ = avg_tup_(a_true_)
+                else:
+                    avg_a_ = avg_tup_(a_false_)
+            avg_results.append(avg_a + avg_a_)
 
-        a_results.append(abl_a)
-        ab_results.append(abl_ab)
-        abc_results.append(abl_abc)
+        if("metadata" in args.critique_setting) :
+            abl_ab = critique(args,length,id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,0],0,i, experiment_name)
+            ab_results.append(abl_ab)
+            for tup in ab_results:
+                Autologtuple((f"{length}_{id_}",) + tup,
+                            sheet_dir["sheet_2"],
+                            worksheet_name=sheets["sc"],
+                            creds_file=creds_path
+                            )
+                if tup[1] == True:
+                    ab_true_.append(tup)
+                else:
+                    ab_false_.append(tup)
+                if tup[0] == True:
+                    ab_true.append(tup)
+                else:
+                    ab_false.append(tup)
+                if len(ab_true) >= args.majority_voting:
+                    avg_ab  = avg_tup(ab_true)
+                else:
+                    avg_ab = avg_tup(ab_false)
+                if len(ab_true_) >= args.majority_voting:
+                    avg_ab_ = avg_tup_(ab_true_)
+                else:
+                    avg_ab_ = avg_tup_(ab_false_)
+            avg_results.append(avg_ab + avg_ab_)
+        if("annonymization" in args.critique_setting) :
+            abl_abc = critique(args,length, id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,1],0,i, experiment_name)
+            abc_results.append(abl_abc)
+            for tup in abc_results:
+                Autologtuple((f"{length}_{id_}",) + tup,
+                            sheet_dir["sheet_2"],
+                            worksheet_name=sheets["sc"],
+                            creds_file=creds_path
+                            )
+                if tup[1] == True:
+                    abc_true_.append(tup)
+                else:
+                    abc_false_.append(tup)
+                if tup[0] == True:
+                    abc_true.append(tup)
+                else:
+                    abc_false.append(tup)
+                if len(abc_true) >= args.majority_voting:
+                    avg_abc  = avg_tup(abc_true)
+                else:
+                    avg_abc = avg_tup(abc_false)
+                if len(abc_true_) >= args.majority_voting:
+                    avg_abc_ = avg_tup_(abc_true_)
+                else:
+                    avg_abc_ = avg_tup_(abc_false_)
+
+            avg_results.append(avg_abc + avg_abc_)
     
-    for tup in a_results:
-        Autologtuple((f"{length}_{id_}",) + tup,
-                     sheet_dir["sheet_2"],
-                     worksheet_name=sheets["sc"],
-                     creds_file=creds_path
-                    )
-        if tup[1] == True:
-            a_true_.append(tup)
-        else:
-            a_false_.append(tup)
-        if tup[0] == True:
-            a_true.append(tup)
-        else:
-            a_false.append(tup)
-    for tup in ab_results:
-        Autologtuple((f"{length}_{id_}",) + tup,
-                     sheet_dir["sheet_2"],
-                     worksheet_name=sheets["sc"],
-                     creds_file=creds_path
-                    )
-        if tup[1] == True:
-            ab_true_.append(tup)
-        else:
-            ab_false_.append(tup)
-        if tup[0] == True:
-            ab_true.append(tup)
-        else:
-            ab_false.append(tup)
-    for tup in abc_results:
-        Autologtuple((f"{length}_{id_}",) + tup,
-                     sheet_dir["sheet_2"],
-                     worksheet_name=sheets["sc"],
-                     creds_file=creds_path
-                    )
-        if tup[1] == True:
-            abc_true_.append(tup)
-        else:
-            abc_false_.append(tup)
-        if tup[0] == True:
-            abc_true.append(tup)
-        else:
-            abc_false.append(tup)
-    
-    if len(a_true) >= args.majority_voting:
-        avg_a  = avg_tup(a_true)
-    else:
-        avg_a = avg_tup(a_false)
-    if len(a_true_) >= args.majority_voting:
-        avg_a_ = avg_tup_(a_true_)
-    else:
-        avg_a_ = avg_tup_(a_false_)
-    
-    if len(ab_true) >= args.majority_voting:
-        avg_ab  = avg_tup(ab_true)
-    else:
-        avg_ab = avg_tup(ab_false)
-    if len(ab_true_) >= args.majority_voting:
-        avg_ab_ = avg_tup_(ab_true_)
-    else:
-        avg_ab_ = avg_tup_(ab_false_)
-        
-    if len(abc_true) >= args.majority_voting:
-        avg_abc  = avg_tup(abc_true)
-    else:
-        avg_abc = avg_tup(abc_false)
-    if len(abc_true_) >= args.majority_voting:
-        avg_abc_ = avg_tup_(abc_true_)
-    else:
-        avg_abc_ = avg_tup_(abc_false_)
-    
-    
-    avg_results = [avg_a + avg_a_, avg_ab + avg_ab_, avg_abc + avg_abc_]
+    # avg_results = [avg_a + avg_a_, avg_ab + avg_ab_, avg_abc + avg_abc_]
     print("CRITIQUE FINAL RESULTS:")
     print(avg_results)
     print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
@@ -251,6 +252,10 @@ def get_parser():
                         default=[0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1],
                         help='Aggregate hints truncate thresholds')
 
+    parser.add_argument('--critique_setting', type=str, nargs='+',
+                        default=["fd"],
+                        help='Critique settings (e.g., fd, metadata, annonymization). You can add more by separating with space')
+
     # Other parameters
     parser.add_argument('--token-limit', type=int, default=120000, help='Token limit')
     parser.add_argument('--model', type=str, default='gpt-4.1-mini', help='Model name')
@@ -282,35 +287,10 @@ def get_parser():
 def main():
 
     args = get_parser().parse_args()
-
-    # Unpack parameters
-    # p.len_id = args.len_id
-    # p.max_len_id = args.max_len_id
-    # p.target_id = args.target_id
-    # p.max_target_id = args.max_target_id
-    # p.target_per = args.target_per
-    # p.is_perc = args.is_perc
-    # p.hint_source = args.hint_source
-    # p.anon_flag = args.anon_flag
-    # p.target_length = args.target_length
-    # p.source_length = args.source_length
-    # p.join_flag = args.join_flag
-    # p.aggregate_flag = args.aggregate_flag
-    # p.fd_flag = args.fd_flag
-    # p.join_hints_truncate = args.join_hints_truncate
-    # p.aggregate_hints_truncate = args.aggregate_hints_truncate
-    # p.token_limit = args.token_limit
-    # p.model = args.model
-    # p.log_dir = args.log_dir
-    # p.experiment_name = args.experiment_name
-    # p.no_of_runs = args.no_of_runs
     args.majority_voting = args.no_of_runs // 2 + 1
-    # p.hints_v3_truncates = args.hints_v3_truncates
-    # p.intermediate_materialization_flag = args.intermediate_materialization_flag
-    # p.use_old_prompt = args.use_old_prompt
-    # p.combine_ask_and_configure = args.combine_ask_and_configure
-    # p.no_thinking = args.no_thinking
-
+    # print(args)
+    # sys.exit()
+    
     length = args.len_id
     start = args.target_id
     end = args.max_target_id + 1
