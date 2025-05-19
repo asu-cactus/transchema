@@ -16,7 +16,7 @@ python3 critique_data.py \
   --fd-flag 0 \
   --join-hints-truncate 0.027387593197926163 0.8763891522960383 0.6923226156693141 0.8946066635038473 0.14038693859523377 0.8007445686755367 \
   --aggregate-hints-truncate 0.9 0.1 0.9 0.1 0.9 0.1 0.9 0.1 0.9 0.1 \
-  --critique_setting "fd" "metadata" \
+  --critique_setting fd metadata \
   --token-limit 120000 \
   --model gpt-4.1-mini \
   --log-dir logs \

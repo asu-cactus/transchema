@@ -10,7 +10,7 @@ This repository contains Python scripts designed to automate the generation of S
 
 - [Installation](#installation)
 - [Usage](#usage)
-- [Scripts](#scripts)
+- [Logging](#logging)
 - [Contributing](#contributing)
 
 ---
@@ -88,9 +88,17 @@ This repository contains Python scripts designed to automate the generation of S
         '{"t1":0.7,"t2":0.7,"t3":0.7,"t4":10,"t5":0.1,"t6":0.8,"t7":0.4,"t8":0.3,"t9":0.2,"t10":0.3,"t11":0.5,"t12":0.7,"t13":0.2}' \
         # JSON mapping for v3 text-hint truncation parameters  
 
+   # ─── Critique settings ────────────────────────────────────────────────────
+    --critique-setting fd metadata \        # critique settings (e.g., fd, metadata, anonymization)
+
     # ─── Prompt & model configuration ──────────────────────────────────────────
     --token-limit 120000 \                  # max tokens per prompt (affects context size)  
-    --model gpt-4-turbo \                   # model to use: gpt-4-turbo or gpt-4.1-mini  
+    --model gpt-4.1-mini \                   # model to use: gpt-4-turbo or gpt-4.1-mini  
+    --intermediate-materialization-flag 1 \ # enable (1) or disable (0) intermediate materialization
+    --use-old-prompt 0 \                    # use old prompt version (1) or new (0)
+    --combine-ask-and-configure 0 \         # combine ask and configure steps (1) or keep separate (0)
+    --no-thinking 0 \                       # disable (1) or enable (0) model's thinking step
+
 
     # ─── Logging & experiment metadata ────────────────────────────────────────
     --log-dir logs-auto-suggest-llm-21-04 \ # where to write logs  
@@ -102,6 +110,34 @@ This repository contains Python scripts designed to automate the generation of S
     ```bash
     experiment_multistep.sh
     ```
+
+## Logging
+
+Initializes a structured logging directory system for experiment results, creating necessary directories and CSV files with predefined headers for storing different types of experimental metrics.
+
+### Directory Structure
+```text
+[log_dir]/
+└── [experiment_name]_[YYYYMMDD]_[HHMMSS]/
+    ├── logs/                  # For raw log files
+    └── results/               # For processed results
+        ├── multi_step.csv          # Individual multi-step results
+        ├── average_multi_step.csv  # Aggregated multi-step metrics  
+        ├── critique.csv            # Individual critique results
+        └── average_critique.csv    # Aggregated critique metrics
+```
+
+### CSV Files Created
+
+#### multi_step.csv
+```Length, Hard Match, Soft Match, Soft Acc, Cost, Latency, Score```
+#### average_multi_step.csv
+```Length, Hard Match, Cost, Latency, Soft Match, Soft Acc, Cost_, Latency_```
+#### critique.csv
+```Length, Critique Type, Hard Match, Soft Match, Soft Acc, Cost, Latency, Score```
+#### average_critique.csv
+```Length, Critique Type, Hard Match, Cost, Latency, Soft Match, Soft Acc, Cost_, Latency_, max```
+
 
 ## Contributing
 

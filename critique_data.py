@@ -2,11 +2,14 @@ import traceback
 import argparse
 import json
 import sys
+import csv
 
 from methods.precursor import precursor
 from methods.critique import critique
 
 from auto.main import Autologtuple,sheet_dir,creds_path, sheets
+
+from log_util.log_util import setup_logging
 
 def avg_tup(list_tup):
     avg_cost = 0
@@ -53,11 +56,15 @@ def ms(args,length, id, log_dir,experiment_name):
         results.append(ms_info)
     
     for tup in results:
-        Autologtuple((f"{length}_{id}",) + tup,
-                     sheet_dir["sheet_2"],
-                     worksheet_name=sheets["sm"],
-                     creds_file=creds_path
-                    )
+        multistep_path = f"{args.result_directory}/multi_step.csv"
+        with open(multistep_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow((f"{length}_{id}",) + tup)
+        # Autologtuple((f"{length}_{id}",) + tup,
+        #              sheet_dir["sheet_2"],
+        #              worksheet_name=sheets["sm"],
+        #              creds_file=creds_path
+        #             )
         if tup[1] == True:
             true_tup_.append(tup)
             #print(f"{tup} in true tup")
@@ -87,7 +94,7 @@ def ms(args,length, id, log_dir,experiment_name):
     #
     return avged_tup + avged_tup_
 
-def crit(args,length, id_, experiment_name):
+def crit(args, length, id_, experiment_name):
     a_results = []
     ab_results = []
     abc_results = []
@@ -109,17 +116,22 @@ def crit(args,length, id_, experiment_name):
     abc_false_ = []
 
     avg_results = []
+    critique_path = f"{args.result_directory}/critique.csv"
     
-    for i in range(0,args.no_of_runs):
-        if("fd" in args.critique_setting) :
-            abl_a = critique(args,length, id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,0,0],0,i, experiment_name)
+    for i in range(0, args.no_of_runs):
+        if "fd" in args.critique_setting:
+            abl_a = critique(args, length, id_, "prompts/hard_critique.txt", args.log_directory, [1,0,0], 0, i, experiment_name)
             a_results.append(abl_a)
             for tup in a_results:
-                Autologtuple((f"{length}_{id_}",) + tup,
-                            sheet_dir["sheet_2"],
-                            worksheet_name=sheets["sc"],
-                            creds_file=creds_path
-                            )
+                # Add critique_type when logging
+                # Autologtuple((f"{length}_{id_}", "fd") + tup,
+                #             sheet_dir["sheet_2"],
+                #             worksheet_name=sheets["sc"],
+                #             creds_file=creds_path
+                #             )
+                with open(critique_path, 'a', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow((f"{length}_{id_}", "fd") + tup)
                 if tup[1] == True:
                     a_true_.append(tup)
                 else:
@@ -129,24 +141,23 @@ def crit(args,length, id_, experiment_name):
                 else:
                     a_false.append(tup)
                 if len(a_true) >= args.majority_voting:
-                    avg_a  = avg_tup(a_true)
+                    avg_a = avg_tup(a_true)
                 else:
                     avg_a = avg_tup(a_false)
                 if len(a_true_) >= args.majority_voting:
                     avg_a_ = avg_tup_(a_true_)
                 else:
                     avg_a_ = avg_tup_(a_false_)
-            avg_results.append(avg_a + avg_a_)
+            avg_results.append(("fd",) + avg_a + avg_a_)
 
-        if("metadata" in args.critique_setting) :
-            abl_ab = critique(args,length,id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,0],0,i, experiment_name)
+        if "metadata" in args.critique_setting:
+            abl_ab = critique(args, length, id_, "prompts/hard_critique.txt", args.log_directory, [1,1,0], 0, i, experiment_name)
             ab_results.append(abl_ab)
             for tup in ab_results:
-                Autologtuple((f"{length}_{id_}",) + tup,
-                            sheet_dir["sheet_2"],
-                            worksheet_name=sheets["sc"],
-                            creds_file=creds_path
-                            )
+                # Add critique_type when logging
+                with open(critique_path, 'a', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow((f"{length}_{id_}", "metadata") + tup)
                 if tup[1] == True:
                     ab_true_.append(tup)
                 else:
@@ -156,23 +167,23 @@ def crit(args,length, id_, experiment_name):
                 else:
                     ab_false.append(tup)
                 if len(ab_true) >= args.majority_voting:
-                    avg_ab  = avg_tup(ab_true)
+                    avg_ab = avg_tup(ab_true)
                 else:
                     avg_ab = avg_tup(ab_false)
                 if len(ab_true_) >= args.majority_voting:
                     avg_ab_ = avg_tup_(ab_true_)
                 else:
                     avg_ab_ = avg_tup_(ab_false_)
-            avg_results.append(avg_ab + avg_ab_)
-        if("annonymization" in args.critique_setting) :
-            abl_abc = critique(args,length, id_, "prompts/hard_critique.txt", f"crit_logs/{length}_{id_}/", [1,1,1],0,i, experiment_name)
+            avg_results.append(("metadata",) + avg_ab + avg_ab_)
+
+        if "annonymization" in args.critique_setting:
+            abl_abc = critique(args, length, id_, "prompts/hard_critique.txt", args.log_directory, [1,1,1], 0, i, experiment_name)
             abc_results.append(abl_abc)
             for tup in abc_results:
-                Autologtuple((f"{length}_{id_}",) + tup,
-                            sheet_dir["sheet_2"],
-                            worksheet_name=sheets["sc"],
-                            creds_file=creds_path
-                            )
+                # Add critique_type when logging
+                with open(critique_path, 'a', newline='') as f:
+                        writer = csv.writer(f)
+                        writer.writerow((f"{length}_{id_}", "annonymization") + tup)
                 if tup[1] == True:
                     abc_true_.append(tup)
                 else:
@@ -182,30 +193,30 @@ def crit(args,length, id_, experiment_name):
                 else:
                     abc_false.append(tup)
                 if len(abc_true) >= args.majority_voting:
-                    avg_abc  = avg_tup(abc_true)
+                    avg_abc = avg_tup(abc_true)
                 else:
                     avg_abc = avg_tup(abc_false)
                 if len(abc_true_) >= args.majority_voting:
                     avg_abc_ = avg_tup_(abc_true_)
                 else:
                     avg_abc_ = avg_tup_(abc_false_)
-
-            avg_results.append(avg_abc + avg_abc_)
+            avg_results.append(("annonymization",) + avg_abc + avg_abc_)
     
-    # avg_results = [avg_a + avg_a_, avg_ab + avg_ab_, avg_abc + avg_abc_]
     print("CRITIQUE FINAL RESULTS:")
     print(avg_results)
     print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+    
     max_val = -1
     max_ind = 0
-    i = 0
     
     for i, result in enumerate(avg_results):
-        if result[4] > max_val:
+        if result[4] > max_val:  # index 4 because critique_type is at 0
             max_val = result[4]
             max_ind = i
             
-    avg_results[max_ind] += ('MAX',)
+    # Add 'MAX' marker while preserving critique_type
+    avg_results[max_ind] = avg_results[max_ind][:len(avg_results[max_ind])-1] + ('MAX',)
+    
     return avg_results
 
 def get_parser():
@@ -288,7 +299,12 @@ def main():
 
     args = get_parser().parse_args()
     args.majority_voting = args.no_of_runs // 2 + 1
-    # print(args)
+
+    # set up logging 
+    print(args)
+    experiment_log_directory, log_directory, results_directory = setup_logging(args.log_dir, args.experiment_name)
+    args.log_directory = log_directory
+    args.result_directory = results_directory
     # sys.exit()
     
     length = args.len_id
@@ -301,57 +317,43 @@ def main():
 
     experiment_name = args.experiment_name
 
-    # lengths = [
-    #   "Target3_11", 
-    # ]
-
-
-
-    # Get the path to credentials.json relative to the autologger package
-    
-    # for leng in lengths:
-    #     length = int(leng[6])
-    #     case = int(leng[8:])
-    #     case_path = f"{length}_{case}"
-    #     log_dir = f"crit_logs/{case_path}"
-
     for case in cases : 
 
         case_path = f"{length}_{case}"
-        log_dir = f"crit_logs/{case_path}"
+        # log_dir = f"crit_logs/{case_path}"
       
         try:
             #compute multisource
-            ms_info = ms(args,length, case, log_dir, experiment_name)
+            ms_info = ms(args,length, case, args.log_directory, experiment_name)
             
             # Format as a single row with consistent columns
-            #print(f"case_path: {case_path} + ms_info: {ms_info}")
+            # print(f"case_path: {case_path} + ms_info: {ms_info}")
             result = (case_path,) + ms_info 
             
-            Autologtuple(
-                result,
-                sheet_dir["sheet_1"],
-                worksheet_name=sheets["am"],
-                creds_file=creds_path
-            )
+            # Fill the average result sheets
+            average_multistep_path = f"{args.result_directory}/average_multi_step.csv"
+            with open(average_multistep_path, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(result)
             
             # critique iff ms is wrong
             # critique not supported yet for intermediate materialization
-            if not result[1] and not args.intermediate_materialization_flag:
+            if not result[1] : 
                 crit_info = crit(args,length, case, experiment_name)
-
+                average_crit_path = f"{args.result_directory}/average_critique.csv"
                 for crit_ in crit_info:
-                    Autologtuple(
-                        (case_path, ) + crit_ ,
-                        sheet_dir["sheet_1"],
-                        worksheet_name=sheets["ac"],
-                        creds_file=creds_path
-                    )
+                    crit_res = (case_path,) + crit_
+                    with open(average_crit_path, 'a', newline='') as f:
+                        writer = csv.writer(f)
+                        writer.writerow(crit_res)
+
+                    
             
         except Exception as e:
             print("".join(traceback.format_exc()))
             print(f"Error processing case {case_path}: {str(e)}")
 
 if __name__ == "__main__":
-    # Let's make it parameterized 
+    # Let's make it parameterized
+    
     main()
