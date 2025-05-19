@@ -253,7 +253,7 @@ def get_parser():
 
     # Other parameters
     parser.add_argument('--token-limit', type=int, default=120000, help='Token limit')
-    parser.add_argument('--model', type=str, default='gpt-4-turbo', help='Model name')
+    parser.add_argument('--model', type=str, default='gpt-4.1-mini', help='Model name')
     parser.add_argument('--log-dir', type=str, default='logs-auto-suggest-llm-21-04', help='Log directory')
     parser.add_argument('--experiment-name', type=str, default='feature_v3_2', help='Experiment name')
     parser.add_argument('--no-of-runs', type=int, default=1, help='Number of runs')
@@ -357,16 +357,16 @@ def main():
             
             # critique iff ms is wrong
             # critique not supported yet for intermediate materialization
-            # if not result[1] and not args.intermediate_materialization_flag:
-            #     crit_info = crit(args,length, case, experiment_name)
+            if not result[1] and not args.intermediate_materialization_flag:
+                crit_info = crit(args,length, case, experiment_name)
 
-            #     for crit_ in crit_info:
-            #         Autologtuple(
-            #             (case_path, ) + crit_ ,
-            #             sheet_dir["sheet_1"],
-            #             worksheet_name=sheets["ac"],
-            #             creds_file=creds_path
-            #         )
+                for crit_ in crit_info:
+                    Autologtuple(
+                        (case_path, ) + crit_ ,
+                        sheet_dir["sheet_1"],
+                        worksheet_name=sheets["ac"],
+                        creds_file=creds_path
+                    )
             
         except Exception as e:
             print("".join(traceback.format_exc()))

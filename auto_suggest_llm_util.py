@@ -47,7 +47,7 @@ def get_prompt(
     join_hints_truncate=[],
     aggregate_hints_truncate=[],
     fd_flag=0,
-    model="gpt-4-turbo",
+    model="gpt-4.1-mini",
     hint_source="v1",
     save_path="",
     nth_intermediate_step=0,
