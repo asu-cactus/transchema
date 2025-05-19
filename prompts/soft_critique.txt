@@ -1,0 +1,19 @@
+You are generating a data-pipeline to transform multiple source tables to target table. Upto this point, an LLM agent has created a Python Code based on Source Information, Target Information. The python script generated didn't work properly. You will be given Target Data Examples and Functional Dependencies discovered in the Target Table. If you had to add a group by operation to this how would you configure it based on Target Data.
+
+Hint :  You will be adding a "Group By" with first preference to aggregation "COUNT".
+So figure out those Group By column/columns, aggregation column/columns and aggregation function/functions. 
+Columns with same values in each row can be part of aggregation column.
+Columns with different values in each row can be part of group by column.
+
+Target Data Information : 
+Schema :  $SCHEMA$
+Examples : $EXAMPLES$
+
+$FD_HINT$
+
+- Solely use the target examples, functional dependencies and hints to figure out the Group by Columns and Aggregation Columns.
+- Prioritize the initial functional dependencies over the ones that come later.
+- Do not use column names as they can be misleading.
+- Each column should be in Group by or Aggregation. Explicitely mention for each column where it should go, either in Group by set or Aggregation Set. 
+- Do not leave out any column in your response.
+- Just provide the group by columns, aggregation columns and aggregation functions. No need to provide the pseudocode.

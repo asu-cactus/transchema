@@ -1,10 +1,10 @@
-from hint_v2 import generate_transformation_hints
-import hint_v1 as h
+from hints.hint_v2 import generate_transformation_hints
+import hints.hint_v1 as h
 import summary
 from model.aggregation.pwr import load_trained_model, predict_columns
 from model.join.pwr import predict_join_columns
 from sklearn.preprocessing import LabelEncoder
-import hint_v3 as h3
+import hints.hint_v3 as h3
 
 def get_hints(prompt_type, hint_source,target_data_schema, file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, hint_flag, hints_truncate) :
     hints = []
@@ -15,8 +15,8 @@ def get_hints(prompt_type, hint_source,target_data_schema, file_count,source_dat
             hints = h.get_groupby_aggregate_hints(hint_source,file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, hint_flag, hints_truncate)
         if(prompt_type == "get_next_operator") :
             table_matching = h.get_table_matching(source_data_schema_list, source_data_name_list, target_data_schema)
-            column_table_mapping = h.get_column_table_mapping(target_data_schema, source_data_schema_list, source_data_name_list)
-            hints = [table_matching + "\n\n" + column_table_mapping]
+            # column_table_mapping = h.get_column_table_mapping(target_data_schema, source_data_schema_list, source_data_name_list)
+            hints = [table_matching]
     elif(hint_source == "v2") : 
         tables = summary.load_tables(directory + "/length" + len_idx_target_idx)
         # Load the models
