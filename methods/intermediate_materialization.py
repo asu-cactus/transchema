@@ -51,6 +51,7 @@ allowed_operation_list = [
     "NO_MORE_OPERATION",
 ]
 
+
 def create_source_space(main_folder, len_id, target_id):
     # create source space
     source_space_dir = f"{main_folder}/{source_space_name}"
@@ -89,7 +90,7 @@ def get_operation_and_configuration(res):
         configuration = match.group(2)
     else:
         print(f"Last line:\n{last_line}")
-        pdb.set_trace()
+        return None, "none"
     assert (
         operation in allowed_operation_list
     ), f"Operation not in allowed list: {operation}"
@@ -127,34 +128,41 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         no_thinking=args.no_thinking,
     )
 
-    res = query_gpt(
-        llm_client,
-        args.model,
-        prompt,
-        config["q_count"],
-        config["logger"],
-        config["cost_summary"],
-        config["token_tracker"],
-        type="Ask For Operator",
-    )[0]
+    operation = None
+    max_tries = 5
+    while operation is None and max_tries > 0:
+        max_tries -= 1
 
-    if args.use_old_prompt or not  args.combine_ask_and_configure:
-        operation = get_operation(res)
-        assert operation in allowed_operation_list
-        return operation, None
-    else:
-        try:
+        res = query_gpt(
+            llm_client,
+            args.model,
+            prompt,
+            config["q_count"],
+            config["logger"],
+            config["cost_summary"],
+            config["token_tracker"],
+            type="Ask For Operator",
+        )[0]
+
+        if args.use_old_prompt or not args.combine_ask_and_configure:
+            operation = get_operation(res)
+            assert operation in allowed_operation_list
+            return operation, None
+        else:
             operation, configuration = get_operation_and_configuration(res)
-        except Exception as e:
-            print(res)
-            pdb.set_trace()
+            if operation is None:
+                continue
 
-        if configuration.lower() == "none":
-            configuration = None
-        return operation, configuration
+            if configuration.lower() == "none":
+                configuration = None
+            return operation, configuration
+    if max_tries == 0:
+        raise Exception(f"Failed to get operation after 5 tries. Last response:\n{res}")
 
 
-def configure_operator(llm_client, operation, operation_history, nth_intermediate_step, args, config):
+def configure_operator(
+    llm_client, operation, operation_history, nth_intermediate_step, args, config
+):
     if operation in ["JOIN", "UNION", "GROUP_BY/AGGREGATE"]:
         prompt_type_mapping = {
             "JOIN": "join",
@@ -217,8 +225,9 @@ def configure_operator(llm_client, operation, operation_history, nth_intermediat
         operation_history.append(operation)
 
 
-
-def materialize_chatgpt(llm_client, operation_history, save_path, nth_intermediate_step,args, config):
+def materialize_chatgpt(
+    llm_client, operation_history, save_path, nth_intermediate_step, args, config
+):
     n_trails = 5
     error_str = ""
 
@@ -277,8 +286,7 @@ def materialize_chatgpt(llm_client, operation_history, save_path, nth_intermedia
     raise Exception(f"Exceed {n_trails} trails, Materialization Failed")
 
 
-
-def get_task(logger,json_file_path, len_id, max_len_id, target_id, max_target_id):
+def get_task(logger, json_file_path, len_id, max_len_id, target_id, max_target_id):
     task_list = get_test_cases_ids(
         json_file_path, len_id, max_len_id, target_id, max_target_id
     )
@@ -293,30 +301,34 @@ def verify_result(target_file_location, ground_truth_location, config):
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-    hard_avg_similarity, hard_is_correct, hard_similarity_scores, hard_validation_error = (
-        compare_lists_matching(df_our_response, df_ground_truth)
-    )
+    (
+        hard_avg_similarity,
+        hard_is_correct,
+        hard_similarity_scores,
+        hard_validation_error,
+    ) = compare_lists_matching(df_our_response, df_ground_truth)
     log_str = f"Hard comparison, {config["task"]=}, {hard_avg_similarity=},  {hard_is_correct=}, {hard_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
     # logger.info(validation_error)
-    soft_avg_similarity, soft_is_correct, soft_similarity_scores = compare_lists_matching_soft(
-        df_our_response, df_ground_truth
+    soft_avg_similarity, soft_is_correct, soft_similarity_scores = (
+        compare_lists_matching_soft(df_our_response, df_ground_truth)
     )
     log_str = f"Soft comparison, {config["task"]=}, {soft_avg_similarity=},  {soft_is_correct=}, {soft_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
 
     return (
-        soft_is_correct, # only considers soft match's similarity
-        [hard_avg_similarity,hard_is_correct, hard_similarity_scores],
-        [soft_avg_similarity,soft_is_correct, soft_similarity_scores]
+        soft_is_correct,  # only considers soft match's similarity
+        [hard_avg_similarity, hard_is_correct, hard_similarity_scores],
+        [soft_avg_similarity, soft_is_correct, soft_similarity_scores],
     )
 
 
 #################################################################################################################################
 
-def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_):
+
+def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i_):
     start_time = time.time()
     len_id = length
     max_len_id = length
@@ -335,19 +347,21 @@ def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_)
         for file in files
         if file.startswith("test")
     )
-    
-    #print(file_count)
+
+    # print(file_count)
 
     if file_count > 1:
         json_file_path = "data/chatgpt_github_ms.json"
-    else:            
+    else:
         json_file_path = "data/chatgpt_github_ss.json"
 
     source_space_dir = create_source_space(main_folder, len_id, target_id)
 
     # logging
     logger = create_logger("materialization", log_dir, len_id, target_id, max_target_id)
-    task = get_task(logger,json_file_path, len_id, max_len_id, target_id, max_target_id)
+    task = get_task(
+        logger, json_file_path, len_id, max_len_id, target_id, max_target_id
+    )
 
     q_count = {"total": 0, "in_task": 0}
 
@@ -405,7 +419,7 @@ def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_)
 
         # Get the operation
         operation, configuration = get_operator(
-            llm_client, operation_history, nth_intermediate_step,  args, config
+            llm_client, operation_history, nth_intermediate_step, args, config
         )
 
         if operation == "NO_MORE_OPERATION":
@@ -423,7 +437,7 @@ def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_)
                 operation_history,
                 nth_intermediate_step,
                 args,
-                config
+                config,
             )
         print(operation_history)
 
@@ -438,7 +452,7 @@ def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_)
             save_path,
             nth_intermediate_step,
             args,
-            config
+            config,
         )
         if not use_old_prompt:
             source_data_name_list.append(intermediate_filename)
@@ -451,35 +465,33 @@ def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_)
         if is_correct:
             end_time = time.time()
             ms_info = (
-                is_correct, 
+                is_correct,
                 is_correct,
                 soft_match_[0],
-                token_tracker.cost_summary().get('total_cost', 0.0),  # Use the extracted total_cost value
+                token_tracker.cost_summary().get(
+                    "total_cost", 0.0
+                ),  # Use the extracted total_cost value
                 end_time - start_time,
-                0, 
-                str(operation_history)
+                0,
+                str(operation_history),
             )
             print("Successful transformation")
             return ms_info
 
-    print(nth_intermediate_step)
-
     if nth_intermediate_step > 1:
         # Do the final verification
         is_correct, hard_similarity, soft_similarity = verify_result(
-            save_path,
-            f"{main_folder}/length{len_idx_target_idx}/target.csv",
-            config
+            save_path, f"{main_folder}/length{len_idx_target_idx}/target.csv", config
         )
         # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
         result_dir = Path("results")
         result_dir.mkdir(exist_ok=True, parents=True)
-        if  args.use_old_prompt:
+        if args.use_old_prompt:
             file_name = "old_prompt.csv"
-        elif  args.combine_ask_and_configure:
+        elif args.combine_ask_and_configure:
             # With "combine ask for and configure", thinking is enable.
             file_name = "combine_ask_and_configure.csv"
-        elif  args.no_thinking:
+        elif args.no_thinking:
             # With no thinking, "Ask for operation" and "Configure operation" are seperated
             file_name = "no_thinking.csv"
         else:
@@ -495,14 +507,14 @@ def intermediate_materialization(args,length, id_, log_dir_, experiment_name,i_)
         end_time = time.time()
         time_elapsed = end_time - start_time
         cost_data = token_tracker.cost_summary()  # This returns a dictionary
-        total_cost = cost_data.get('total_cost', 0.0)
+        total_cost = cost_data.get("total_cost", 0.0)
         ms_info = (
-            is_correct, 
+            is_correct,
             is_correct,
             soft_similarity[0],
             total_cost,  # Use the extracted total_cost value
             time_elapsed,
-            0, 
-            str(operation_history)
+            0,
+            str(operation_history),
         )
         return ms_info
