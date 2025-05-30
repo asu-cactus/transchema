@@ -1,15 +1,13 @@
 import traceback
 import argparse
 import json
-import sys
 import csv
 
 from methods.precursor import precursor
 from methods.critique import critique
 
-from auto.main import Autologtuple,sheet_dir,creds_path, sheets
-
 from log_util.log_util import setup_logging
+
 
 def avg_tup(list_tup):
     avg_cost = 0
@@ -17,11 +15,12 @@ def avg_tup(list_tup):
     for tup in list_tup:
         avg_cost += tup[3]
         avg_lat += tup[4]
-    avg_cost = avg_cost/len(list_tup)
-    avg_lat = avg_lat/len(list_tup)
-    
+    avg_cost = avg_cost / len(list_tup)
+    avg_lat = avg_lat / len(list_tup)
+
     avg = (list_tup[0][0], avg_cost, avg_lat)
     return avg
+
 
 def avg_tup_(list_tup):
     print("_________________________")
@@ -33,31 +32,32 @@ def avg_tup_(list_tup):
         avg_cost += tup[3]
         avg_lat += tup[4]
         avg_score += tup[2]
-    avg_cost = avg_cost/len(list_tup)
-    avg_lat = avg_lat/len(list_tup)
-    avg_score = avg_score/len(list_tup)
-    #here
-    avg = (list_tup[0][1], avg_score,avg_cost, avg_lat)
+    avg_cost = avg_cost / len(list_tup)
+    avg_lat = avg_lat / len(list_tup)
+    avg_score = avg_score / len(list_tup)
+    # here
+    avg = (list_tup[0][1], avg_score, avg_cost, avg_lat)
     return avg
 
-def ms(args,length, id, log_dir,experiment_name):
-    results = [] 
+
+def ms(args, length, id, log_dir, experiment_name):
+    results = []
     true_tup = []
     false_tup = []
     true_tup_ = []
     false_tup_ = []
-    for i in range(0,args.no_of_runs):
+    for i in range(0, args.no_of_runs):
         try:
-            ms_info = precursor(args,length, id, log_dir,experiment_name,i)
+            ms_info = precursor(args, length, id, log_dir, experiment_name, i)
         except Exception as e:
             print("".join(traceback.format_exc()))
-            ms_info = ("precursor error " + str(e))
-        #print(ms_info)
+            ms_info = "precursor error " + str(e)
+        # print(ms_info)
         results.append(ms_info)
-    
+
     for tup in results:
         multistep_path = f"{args.result_directory}/multi_step.csv"
-        with open(multistep_path, 'a', newline='') as f:
+        with open(multistep_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id}",) + tup)
         # Autologtuple((f"{length}_{id}",) + tup,
@@ -67,47 +67,47 @@ def ms(args,length, id, log_dir,experiment_name):
         #             )
         if tup[1] == True:
             true_tup_.append(tup)
-            #print(f"{tup} in true tup")
+            # print(f"{tup} in true tup")
         else:
-            #print(f"{tup} in false tup")
+            # print(f"{tup} in false tup")
             false_tup_.append(tup)
-            
+
         if tup[0] == True:
             true_tup.append(tup)
-            #print(f"{tup} in true tup")
+            # print(f"{tup} in true tup")
         else:
-            #print(f"{tup} in false tup")
+            # print(f"{tup} in false tup")
             false_tup.append(tup)
-    
-    
+
     if len(true_tup_) >= args.majority_voting:
         print(f"avging {true_tup_}")
         avged_tup_ = avg_tup_(true_tup_)
-    else: 
+    else:
         print(f"avging {false_tup_}")
         avged_tup_ = avg_tup_(false_tup_)
-        
+
     if len(true_tup) >= args.majority_voting:
         avged_tup = avg_tup(true_tup)
     else:
-        avged_tup = avg_tup(false_tup)     
+        avged_tup = avg_tup(false_tup)
     #
     return avged_tup + avged_tup_
+
 
 def crit(args, length, id_, experiment_name):
     a_results = []
     ab_results = []
     abc_results = []
-    
-    #for strict match
+
+    # for strict match
     a_true = []
     a_false = []
     ab_true = []
     ab_false = []
     abc_true = []
     abc_false = []
-    
-    #for soft match
+
+    # for soft match
     a_true_ = []
     a_false_ = []
     ab_true_ = []
@@ -117,10 +117,20 @@ def crit(args, length, id_, experiment_name):
 
     avg_results = []
     critique_path = f"{args.result_directory}/critique.csv"
-    
+
     for i in range(0, args.no_of_runs):
         if "fd" in args.critique_setting:
-            abl_a = critique(args, length, id_, "prompts/hard_critique.txt", args.log_directory, [1,0,0], 0, i, experiment_name)
+            abl_a = critique(
+                args,
+                length,
+                id_,
+                "prompts/hard_critique.txt",
+                args.log_directory,
+                [1, 0, 0],
+                0,
+                i,
+                experiment_name,
+            )
             a_results.append(abl_a)
             for tup in a_results:
                 # Add critique_type when logging
@@ -129,7 +139,7 @@ def crit(args, length, id_, experiment_name):
                 #             worksheet_name=sheets["sc"],
                 #             creds_file=creds_path
                 #             )
-                with open(critique_path, 'a', newline='') as f:
+                with open(critique_path, "a", newline="") as f:
                     writer = csv.writer(f)
                     writer.writerow((f"{length}_{id_}", "fd") + tup)
                 if tup[1] == True:
@@ -151,11 +161,21 @@ def crit(args, length, id_, experiment_name):
             avg_results.append(("fd",) + avg_a + avg_a_)
 
         if "metadata" in args.critique_setting:
-            abl_ab = critique(args, length, id_, "prompts/hard_critique.txt", args.log_directory, [1,1,0], 0, i, experiment_name)
+            abl_ab = critique(
+                args,
+                length,
+                id_,
+                "prompts/hard_critique.txt",
+                args.log_directory,
+                [1, 1, 0],
+                0,
+                i,
+                experiment_name,
+            )
             ab_results.append(abl_ab)
             for tup in ab_results:
                 # Add critique_type when logging
-                with open(critique_path, 'a', newline='') as f:
+                with open(critique_path, "a", newline="") as f:
                     writer = csv.writer(f)
                     writer.writerow((f"{length}_{id_}", "metadata") + tup)
                 if tup[1] == True:
@@ -177,13 +197,23 @@ def crit(args, length, id_, experiment_name):
             avg_results.append(("metadata",) + avg_ab + avg_ab_)
 
         if "annonymization" in args.critique_setting:
-            abl_abc = critique(args, length, id_, "prompts/hard_critique.txt", args.log_directory, [1,1,1], 0, i, experiment_name)
+            abl_abc = critique(
+                args,
+                length,
+                id_,
+                "prompts/hard_critique.txt",
+                args.log_directory,
+                [1, 1, 1],
+                0,
+                i,
+                experiment_name,
+            )
             abc_results.append(abl_abc)
             for tup in abc_results:
                 # Add critique_type when logging
-                with open(critique_path, 'a', newline='') as f:
-                        writer = csv.writer(f)
-                        writer.writerow((f"{length}_{id_}", "annonymization") + tup)
+                with open(critique_path, "a", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerow((f"{length}_{id_}", "annonymization") + tup)
                 if tup[1] == True:
                     abc_true_.append(tup)
                 else:
@@ -201,159 +231,236 @@ def crit(args, length, id_, experiment_name):
                 else:
                     avg_abc_ = avg_tup_(abc_false_)
             avg_results.append(("annonymization",) + avg_abc + avg_abc_)
-    
+
     print("CRITIQUE FINAL RESULTS:")
     print(avg_results)
-    print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-    
+    print("=" * 30)
+
     max_val = -1
     max_ind = 0
-    
+
     for i, result in enumerate(avg_results):
         if result[4] > max_val:  # index 4 because critique_type is at 0
             max_val = result[4]
             max_ind = i
-            
+
     # Add 'MAX' marker while preserving critique_type
-    avg_results[max_ind] = avg_results[max_ind][:len(avg_results[max_ind])-1] + ('MAX',)
-    
+    avg_results[max_ind] = avg_results[max_ind][: len(avg_results[max_ind]) - 1] + (
+        "MAX",
+    )
+
     return avg_results
 
+
 def get_parser():
-    parser = argparse.ArgumentParser(description='Critique Data Script Parameterization')
+    parser = argparse.ArgumentParser(
+        description="Critique Data Script Parameterization"
+    )
 
     # Scalar integer parameters
-    parser.add_argument('--len-id', type=int, default=5, help='Len ID')
-    parser.add_argument('--max-len-id', type=int, default=5, help='Max Len ID')
-    parser.add_argument('--target-id', type=int, default=12, help='Target ID')
-    parser.add_argument('--max-target-id', type=int, default=40, help='Max Target ID')
-    parser.add_argument('--target-per', type=int, default=25, help='Target Percentage')
+    parser.add_argument("--len-id", type=int, default=5, help="Len ID")
+    parser.add_argument("--max-len-id", type=int, default=5, help="Max Len ID")
+    parser.add_argument("--target-id", type=int, default=12, help="Target ID")
+    parser.add_argument("--max-target-id", type=int, default=40, help="Max Target ID")
+    parser.add_argument("--target-per", type=int, default=25, help="Target Percentage")
 
     # Boolean flags
-    parser.add_argument('--is-perc', action='store_true', help='Set is_perc to True')
-    parser.add_argument('--no-perc', dest='is_perc', action='store_false', help='Set is_perc to False')
+    parser.add_argument("--is-perc", action="store_true", help="Set is_perc to True")
+    parser.add_argument(
+        "--no-perc", dest="is_perc", action="store_false", help="Set is_perc to False"
+    )
     parser.set_defaults(is_perc=False)
 
-    parser.add_argument('--hint-source', type=str, default='v3',
-                        choices=['v1_kv', 'v1_text', 'v2', 'v3'],
-                        help='Hint source selection')
-    parser.add_argument('--anon-flag', action='store_true', help='Set anon_flag to True')
-    parser.add_argument('--no-anon', dest='anon_flag', action='store_false', help='Set anon_flag to False')
+    parser.add_argument(
+        "--hint-source",
+        type=str,
+        default="v3",
+        choices=["v1_kv", "v1_text", "v2", "v3"],
+        help="Hint source selection",
+    )
+    parser.add_argument(
+        "--anon-flag", action="store_true", help="Set anon_flag to True"
+    )
+    parser.add_argument(
+        "--no-anon",
+        dest="anon_flag",
+        action="store_false",
+        help="Set anon_flag to False",
+    )
     parser.set_defaults(anon_flag=False)
 
     # Computed lengths (override if desired)
-    parser.add_argument('--target-length', type=int,
-                        default=int(max(3, 10 * 0.31342417815924284)),
-                        help='Computed target length')
-    parser.add_argument('--source-length', type=int,
-                        default=int(max(3, 10 * 0.9682615757193975)),
-                        help='Computed source length')
+    parser.add_argument(
+        "--target-length",
+        type=int,
+        default=int(max(3, 10 * 0.31342417815924284)),
+        help="Computed target length",
+    )
+    parser.add_argument(
+        "--source-length",
+        type=int,
+        default=int(max(3, 10 * 0.9682615757193975)),
+        help="Computed source length",
+    )
 
     # Flow control flags
-    parser.add_argument('--join-flag', type=int, default=0, help='Join flag')
-    parser.add_argument('--aggregate-flag', type=int, default=0, help='Aggregate flag')
-    parser.add_argument('--fd-flag', type=int, default=0, help='Functional dependency flag')
+    parser.add_argument("--join-flag", type=int, default=0, help="Join flag")
+    parser.add_argument("--aggregate-flag", type=int, default=0, help="Aggregate flag")
+    parser.add_argument(
+        "--fd-flag", type=int, default=0, help="Functional dependency flag"
+    )
 
     # Lists of floats
-    parser.add_argument('--join-hints-truncate', type=float, nargs='+',
-                        default=[0.027387593197926163, 0.8763891522960383, 0.6923226156693141,
-                                 0.8946066635038473, 0.14038693859523377, 0.8007445686755367],
-                        help='Join hints truncate thresholds')
-    parser.add_argument('--aggregate-hints-truncate', type=float, nargs='+',
-                        default=[0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1],
-                        help='Aggregate hints truncate thresholds')
+    parser.add_argument(
+        "--join-hints-truncate",
+        type=float,
+        nargs="+",
+        default=[
+            0.027387593197926163,
+            0.8763891522960383,
+            0.6923226156693141,
+            0.8946066635038473,
+            0.14038693859523377,
+            0.8007445686755367,
+        ],
+        help="Join hints truncate thresholds",
+    )
+    parser.add_argument(
+        "--aggregate-hints-truncate",
+        type=float,
+        nargs="+",
+        default=[0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1],
+        help="Aggregate hints truncate thresholds",
+    )
 
-    parser.add_argument('--critique_setting', type=str, nargs='+',
-                        default=["fd"],
-                        help='Critique settings (e.g., fd, metadata, annonymization). You can add more by separating with space')
+    parser.add_argument(
+        "--critique_setting",
+        type=str,
+        nargs="+",
+        default=["fd"],
+        help="Critique settings (e.g., fd, metadata, annonymization). You can add more by separating with space",
+    )
 
     # Other parameters
-    parser.add_argument('--token-limit', type=int, default=120000, help='Token limit')
-    parser.add_argument('--model', type=str, default='gpt-4.1-mini', help='Model name')
-    parser.add_argument('--log-dir', type=str, default='logs-auto-suggest-llm-21-04', help='Log directory')
-    parser.add_argument('--experiment-name', type=str, default='feature_v3_2', help='Experiment name')
-    parser.add_argument('--no-of-runs', type=int, default=1, help='Number of runs')
+    parser.add_argument("--token-limit", type=int, default=120000, help="Token limit")
+    parser.add_argument("--model", type=str, default="gpt-4.1-mini", help="Model name")
+    parser.add_argument(
+        "--log-dir",
+        type=str,
+        default="logs-auto-suggest-llm-21-04",
+        help="Log directory",
+    )
+    parser.add_argument(
+        "--experiment-name", type=str, default="feature_v3_2", help="Experiment name"
+    )
+    parser.add_argument("--no-of-runs", type=int, default=1, help="Number of runs")
 
     # Complex dict via JSON
     default_hints = {
-        't1': 0.7, 't2': 0.7, 't3': 0.7, 't4': 10,
-        't5': 0.1, 't6': 0.8, 't7': 0.4,
-        't8': 0.3, 't9': 0.2, 't10': 0.3, 't11': 0.5, 't12': 0.7, 't13': 0.2
+        "t1": 0.7,
+        "t2": 0.7,
+        "t3": 0.7,
+        "t4": 10,
+        "t5": 0.1,
+        "t6": 0.8,
+        "t7": 0.4,
+        "t8": 0.3,
+        "t9": 0.2,
+        "t10": 0.3,
+        "t11": 0.5,
+        "t12": 0.7,
+        "t13": 0.2,
     }
-    parser.add_argument('--hints-v3-truncates', type=json.loads, default=default_hints,
-                        help='JSON string for hints_v3_truncates dict')
-    
-    parser.add_argument('--intermediate-materialization-flag', type=int, default=0,
-                        help='Intermediate materialization flag')
+    parser.add_argument(
+        "--hints-v3-truncates",
+        type=json.loads,
+        default=default_hints,
+        help="JSON string for hints_v3_truncates dict",
+    )
 
-    parser.add_argument('--use-old-prompt', type=int, default=0,
-                        help='Use old prompt flag (0 or 1)')
-    parser.add_argument('--combine-ask-and-configure', type=int, default=0,
-                        help='Combine ask and configure flag (0 or 1)')
-    parser.add_argument('--no-thinking', type=int, default=0,
-                        help='No think flag (0 or 1)')
+    parser.add_argument(
+        "--intermediate-materialization-flag",
+        type=int,
+        default=0,
+        help="Intermediate materialization flag",
+    )
+
+    parser.add_argument(
+        "--use-old-prompt", type=int, default=0, help="Use old prompt flag (0 or 1)"
+    )
+    parser.add_argument(
+        "--combine-ask-and-configure",
+        type=int,
+        default=0,
+        help="Combine ask and configure flag (0 or 1)",
+    )
+    parser.add_argument(
+        "--no-thinking", type=int, default=0, help="No think flag (0 or 1)"
+    )
 
     return parser
+
 
 def main():
 
     args = get_parser().parse_args()
     args.majority_voting = args.no_of_runs // 2 + 1
 
-    # set up logging 
+    # set up logging
     print(args)
-    experiment_log_directory, log_directory, results_directory = setup_logging(args, args.log_dir, args.experiment_name)
+    experiment_log_directory, log_directory, results_directory = setup_logging(
+        args, args.log_dir, args.experiment_name
+    )
     args.log_directory = log_directory
     args.result_directory = results_directory
     # sys.exit()
-    
+
     length = args.len_id
     start = args.target_id
     end = args.max_target_id + 1
     # Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
     #             creds_file=creds_path )
 
-    cases = list(range(start,end))
+    cases = list(range(start, end))
 
     experiment_name = args.experiment_name
 
-    for case in cases : 
+    for case in cases:
 
         case_path = f"{length}_{case}"
         # log_dir = f"crit_logs/{case_path}"
-      
+
         try:
-            #compute multisource
-            ms_info = ms(args,length, case, args.log_directory, experiment_name)
-            
+            # compute multisource
+            ms_info = ms(args, length, case, args.log_directory, experiment_name)
+
             # Format as a single row with consistent columns
             # print(f"case_path: {case_path} + ms_info: {ms_info}")
-            result = (case_path,) + ms_info 
-            
+            result = (case_path,) + ms_info
+
             # Fill the average result sheets
             average_multistep_path = f"{args.result_directory}/average_multi_step.csv"
-            with open(average_multistep_path, 'a', newline='') as f:
+            with open(average_multistep_path, "a", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(result)
-            
+
             # critique iff ms is wrong
             # critique not supported yet for intermediate materialization
-            if not result[1] : 
-                crit_info = crit(args,length, case, experiment_name)
+            if not result[1]:
+                crit_info = crit(args, length, case, experiment_name)
                 average_crit_path = f"{args.result_directory}/average_critique.csv"
                 for crit_ in crit_info:
                     crit_res = (case_path,) + crit_
-                    with open(average_crit_path, 'a', newline='') as f:
+                    with open(average_crit_path, "a", newline="") as f:
                         writer = csv.writer(f)
                         writer.writerow(crit_res)
 
-                    
-            
         except Exception as e:
             print("".join(traceback.format_exc()))
             print(f"Error processing case {case_path}: {str(e)}")
 
+
 if __name__ == "__main__":
     # Let's make it parameterized
-    
+
     main()

@@ -301,28 +301,54 @@ def verify_result(target_file_location, ground_truth_location, config):
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-    (
-        hard_avg_similarity,
-        hard_is_correct,
-        hard_similarity_scores,
-        hard_validation_error,
-    ) = compare_lists_matching(df_our_response, df_ground_truth)
+    try:
+        (
+            hard_avg_similarity,
+            hard_is_correct,
+            hard_similarity_scores,
+            _,
+        ) = compare_lists_matching(df_our_response, df_ground_truth)
+
+    except Exception as e:
+        hard_avg_similarity = 0.0
+        hard_is_correct = False
+        hard_similarity_scores = []
+
+        log_str = "Hard comparison failed, " + str(e)
+        print(log_str)
+        logger.info(log_str)
+
     log_str = f"Hard comparison, {config["task"]=}, {hard_avg_similarity=},  {hard_is_correct=}, {hard_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
-    # logger.info(validation_error)
-    soft_avg_similarity, soft_is_correct, soft_similarity_scores = (
-        compare_lists_matching_soft(df_our_response, df_ground_truth)
-    )
+
+    try:
+        soft_avg_similarity, soft_is_correct, soft_similarity_scores = (
+            compare_lists_matching_soft(df_our_response, df_ground_truth)
+        )
+    except Exception as e:
+        soft_avg_similarity = 0.0
+        soft_is_correct = False
+        soft_similarity_scores = []
+
+        log_str = "Soft comparison failed, " + str(e)
+        print(log_str)
+        logger.info(log_str)
     log_str = f"Soft comparison, {config["task"]=}, {soft_avg_similarity=},  {soft_is_correct=}, {soft_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
 
-    return (
-        soft_is_correct,  # only considers soft match's similarity
-        [hard_avg_similarity, hard_is_correct, hard_similarity_scores],
-        [soft_avg_similarity, soft_is_correct, soft_similarity_scores],
-    )
+    hard_match_result = {
+        "avg_similarity": hard_avg_similarity,
+        "is_correct": hard_is_correct,
+        "similarity_scores": hard_similarity_scores,
+    }
+    soft_match_result = {
+        "avg_similarity": soft_avg_similarity,
+        "is_correct": soft_is_correct,
+        "similarity_scores": soft_similarity_scores,
+    }
+    return hard_match_result, soft_match_result
 
 
 #################################################################################################################################
@@ -457,17 +483,17 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         if not use_old_prompt:
             source_data_name_list.append(intermediate_filename)
 
-        is_correct, hard_match_, soft_match_ = verify_result(
+        hard_match_result, soft_match_result = verify_result(
             save_path,
             f"{main_folder}/length{len_idx_target_idx}/target.csv",
             config,
         )
-        if is_correct:
+        if hard_match_result["is_correct"]:
             end_time = time.time()
             ms_info = (
-                is_correct,
-                is_correct,
-                soft_match_[0],
+                hard_match_result["is_correct"],
+                soft_match_result["is_correct"],
+                soft_match_result["avg_similarity"],
                 token_tracker.cost_summary().get(
                     "total_cost", 0.0
                 ),  # Use the extracted total_cost value
@@ -480,38 +506,38 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     if nth_intermediate_step > 1:
         # Do the final verification
-        is_correct, hard_similarity, soft_similarity = verify_result(
+        hard_match_result, soft_match_result = verify_result(
             save_path, f"{main_folder}/length{len_idx_target_idx}/target.csv", config
         )
         # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
-        result_dir = Path("results")
-        result_dir.mkdir(exist_ok=True, parents=True)
-        if args.use_old_prompt:
-            file_name = "old_prompt.csv"
-        elif args.combine_ask_and_configure:
-            # With "combine ask for and configure", thinking is enable.
-            file_name = "combine_ask_and_configure.csv"
-        elif args.no_thinking:
-            # With no thinking, "Ask for operation" and "Configure operation" are seperated
-            file_name = "no_thinking.csv"
-        else:
-            # Default setting is not combining ask for and configure, and thinking is enable.
-            file_name = "default.csv"
+        # result_dir = Path("results")
+        # result_dir.mkdir(exist_ok=True, parents=True)
+        # if args.use_old_prompt:
+        #     file_name = "old_prompt.csv"
+        # elif args.combine_ask_and_configure:
+        #     # With "combine ask for and configure", thinking is enable.
+        #     file_name = "combine_ask_and_configure.csv"
+        # elif args.no_thinking:
+        #     # With no thinking, "Ask for operation" and "Configure operation" are seperated
+        #     file_name = "no_thinking.csv"
+        # else:
+        #     # Default setting is not combining ask for and configure, and thinking is enable.
+        #     file_name = "default.csv"
 
-        result_file = result_dir / file_name
-        if not result_file.exists():
-            with open(result_file, "w") as f:
-                f.write("task,hard_avg_similarity,soft_avg_similarity\n")
-        with open(result_file, "a") as f:
-            f.write(f"{task},{hard_similarity[0]},{soft_similarity}\n")
+        # result_file = result_dir / file_name
+        # if not result_file.exists():
+        #     with open(result_file, "w") as f:
+        #         f.write("task,hard_avg_similarity,soft_avg_similarity\n")
+        # with open(result_file, "a") as f:
+        #     f.write(f"{task},{hard_similarity[0]},{soft_similarity}\n")
         end_time = time.time()
         time_elapsed = end_time - start_time
         cost_data = token_tracker.cost_summary()  # This returns a dictionary
         total_cost = cost_data.get("total_cost", 0.0)
         ms_info = (
-            is_correct,
-            is_correct,
-            soft_similarity[0],
+            hard_match_result["is_correct"],
+            soft_match_result["is_correct"],
+            soft_match_result["avg_similarity"],
             total_cost,  # Use the extracted total_cost value
             time_elapsed,
             0,
