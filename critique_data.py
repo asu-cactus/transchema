@@ -2,6 +2,7 @@ import traceback
 import argparse
 import json
 import csv
+import pdb
 
 from methods.precursor import precursor
 from methods.critique import critique
@@ -51,7 +52,7 @@ def ms(args, length, id, log_dir, experiment_name):
             ms_info = precursor(args, length, id, log_dir, experiment_name, i)
         except Exception as e:
             print("".join(traceback.format_exc()))
-            ms_info = "precursor error " + str(e)
+            ms_info = ("precursor error " + str(e),)
         # print(ms_info)
         results.append(ms_info)
 
@@ -90,11 +91,12 @@ def ms(args, length, id, log_dir, experiment_name):
         avged_tup = avg_tup(true_tup)
     else:
         avged_tup = avg_tup(false_tup)
-    #
-    return avged_tup + avged_tup_
+    # Return the operation_history of the last ms_info for now
+
+    return (avged_tup + avged_tup_,), ms_info[-1]
 
 
-def crit(args, length, id_, experiment_name):
+def crit(args, length, id_, operation_history):
     a_results = []
     ab_results = []
     abc_results = []
@@ -121,15 +123,7 @@ def crit(args, length, id_, experiment_name):
     for i in range(0, args.no_of_runs):
         if "fd" in args.critique_setting:
             abl_a = critique(
-                args,
-                length,
-                id_,
-                "prompts/hard_critique.txt",
-                args.log_directory,
-                [1, 0, 0],
-                0,
-                i,
-                experiment_name,
+                args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history
             )
             a_results.append(abl_a)
             for tup in a_results:
@@ -162,15 +156,7 @@ def crit(args, length, id_, experiment_name):
 
         if "metadata" in args.critique_setting:
             abl_ab = critique(
-                args,
-                length,
-                id_,
-                "prompts/hard_critique.txt",
-                args.log_directory,
-                [1, 1, 0],
-                0,
-                i,
-                experiment_name,
+                args, length, id_, args.log_directory, [1, 1, 0], 0, operation_history
             )
             ab_results.append(abl_ab)
             for tup in ab_results:
@@ -198,15 +184,7 @@ def crit(args, length, id_, experiment_name):
 
         if "annonymization" in args.critique_setting:
             abl_abc = critique(
-                args,
-                length,
-                id_,
-                "prompts/hard_critique.txt",
-                args.log_directory,
-                [1, 1, 1],
-                0,
-                i,
-                experiment_name,
+                args, length, id_, args.log_directory, [1, 1, 1], 0, operation_history
             )
             abc_results.append(abl_abc)
             for tup in abc_results:
@@ -258,10 +236,10 @@ def get_parser():
     )
 
     # Scalar integer parameters
-    parser.add_argument("--len-id", type=int, default=5, help="Len ID")
-    parser.add_argument("--max-len-id", type=int, default=5, help="Max Len ID")
-    parser.add_argument("--target-id", type=int, default=12, help="Target ID")
-    parser.add_argument("--max-target-id", type=int, default=40, help="Max Target ID")
+    parser.add_argument("--len_id", type=int, default=5, help="Len ID")
+    parser.add_argument("--max_len_id", type=int, default=5, help="Max Len ID")
+    parser.add_argument("--target_id", type=int, default=12, help="Target ID")
+    parser.add_argument("--max-target_id", type=int, default=40, help="Max Target ID")
     parser.add_argument("--target-per", type=int, default=25, help="Target Percentage")
 
     # Boolean flags
@@ -340,6 +318,13 @@ def get_parser():
         default=["fd"],
         help="Critique settings (e.g., fd, metadata, annonymization). You can add more by separating with space",
     )
+    parser.add_argument(
+        "--critique_type",
+        type=str,
+        default="history",
+        choices=["hard", "soft", "history"],
+        help="Type of critique to perform, the actual effect is to load prompt file from prompts/{critique_type}_critique.txt",
+    )
 
     # Other parameters
     parser.add_argument("--token-limit", type=int, default=120000, help="Token limit")
@@ -379,23 +364,23 @@ def get_parser():
     )
 
     parser.add_argument(
-        "--intermediate-materialization-flag",
+        "--intermediate_materialization_flag",
         type=int,
         default=0,
         help="Intermediate materialization flag",
     )
 
     parser.add_argument(
-        "--use-old-prompt", type=int, default=0, help="Use old prompt flag (0 or 1)"
+        "--use_old_prompt", type=int, default=0, help="Use old prompt flag (0 or 1)"
     )
     parser.add_argument(
-        "--combine-ask-and-configure",
+        "--combine_ask_and_configure",
         type=int,
         default=0,
         help="Combine ask and configure flag (0 or 1)",
     )
     parser.add_argument(
-        "--no-thinking", type=int, default=0, help="No think flag (0 or 1)"
+        "--no_thinking", type=int, default=0, help="No think flag (0 or 1)"
     )
 
     return parser
@@ -423,8 +408,6 @@ def main():
 
     cases = list(range(start, end))
 
-    experiment_name = args.experiment_name
-
     for case in cases:
 
         case_path = f"{length}_{case}"
@@ -432,7 +415,9 @@ def main():
 
         try:
             # compute multisource
-            ms_info = ms(args, length, case, args.log_directory, experiment_name)
+            ms_info, operation_history = ms(
+                args, length, case, args.log_directory, args.experiment_name
+            )
 
             # Format as a single row with consistent columns
             # print(f"case_path: {case_path} + ms_info: {ms_info}")
@@ -447,7 +432,8 @@ def main():
             # critique iff ms is wrong
             # critique not supported yet for intermediate materialization
             if not result[1]:
-                crit_info = crit(args, length, case, experiment_name)
+
+                crit_info = crit(args, length, case, operation_history)
                 average_crit_path = f"{args.result_directory}/average_critique.csv"
                 for crit_ in crit_info:
                     crit_res = (case_path,) + crit_

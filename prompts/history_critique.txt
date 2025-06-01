@@ -5,11 +5,20 @@ So figure out those Group By column/columns, aggregation column/columns and aggr
 Columns with same values in each row can be part of aggregation column.
 Columns with different values in each row can be part of group by column.
 
+Source Data Information: $SRC_INFO$
 Target Data Information : 
 Schema :  $SCHEMA$
 Examples : $EXAMPLES$
 
 $FD_HINT$
+
+$METADATA$
+
+The failed Python script follow the following operations: $OPERATIONS$
+After these operations, the resulting table that doesn't match target data has schema and examples as follows:
+Schema : $RES_SCHEMA$
+Examples : $RES_EXAMPLES$
+
 
 - Solely use the target examples, functional dependencies and hints to figure out the Group by Columns and Aggregation Columns.
 - Prioritize the initial functional dependencies over the ones that come later.
