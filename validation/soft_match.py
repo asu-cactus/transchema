@@ -2,6 +2,7 @@ from padding_match import pad_comp
 from util.utils import are_elements_equal
 from collections import Counter
 import bisect
+import pandas as pd
 
 def find_best_matching_column(pred_col, ground_truth_df):
     max_matches = -1
@@ -18,7 +19,7 @@ def find_best_matching_column(pred_col, ground_truth_df):
     return best_col
 
 
-def compare_columns_1(pred_column, gold_column, tol=1e-2):
+def compare_columns_1(pred_column, gold_column, tol=0.01):
     # --- 1) Split into numeric vs “everything else” ---
     pred_non = []
     pred_nums = []
@@ -52,11 +53,15 @@ def compare_columns_1(pred_column, gold_column, tol=1e-2):
     pred_nums.sort()
     matched_nums = 0
     for g in gold_nums:
-        i = bisect.bisect_left(pred_nums, g - tol)
+        i = bisect.bisect_left(pred_nums, g)
         if i < len(pred_nums) and abs(pred_nums[i] - g) <= tol:
             matched_nums += 1
             pred_nums.pop(i)   # consume that prediction
-
+        # else : 
+        #     print(f"Failed to match {g} in {pred_nums} with tolerance {tol}")
+    
+    # print(pred_nums, matched_nums)
+    
     # --- 4) Combine and return recall over all gold values ---
     total_gold   = len(gold_column)
     total_matched = matched_non + matched_nums
@@ -123,3 +128,10 @@ def compare_lists_matching_soft(ground_truth_df, generated_sql_df, padding_added
     res = average_similarity == 1
 
     return average_similarity, res, similarities
+
+if __name__ == "__main__":
+    gt_df = pd.read_csv("autopipeline-benchmarks/github-pipelines/length3_6/target.csv")
+    gen_df = pd.read_csv("autopipeline-benchmarks/github-pipelines/length3_6/target_multisource.csv")
+    avg_sim, is_exact, sim_list = compare_lists_matching_soft(gt_df, gen_df)
+    print(f"Average Similarity: {avg_sim}")
+    print(f"Is Exact Match: {is_exact}")

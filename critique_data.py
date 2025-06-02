@@ -309,13 +309,46 @@ def main():
     
     length = args.len_id
     start = args.target_id
-    end = args.max_target_id + 1
+    end = args.max_target_id
     # Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
     #             creds_file=creds_path )
 
     cases = list(range(start,end))
 
     experiment_name = args.experiment_name
+
+    # lengths = [f"length{length}" for length in ["5_47", "5_79", "4_43", "5_49", "1_2", "1_49", "4_70", "5_19", "5_31", "5_33", "5_41", "5_7", "5_48", "9_5", "9_58", "4_27", "5_11", "5_15", "5_20", "5_25"]]
+    # lengths = [
+    # "length1_59",
+    # "length5_12",
+    # "length5_18",
+    # "length5_71",
+    # "length5_13",
+    # "length5_43",
+    # "length5_44",
+    # "length1_65",
+    # "length2_2",
+    # "length2_7",
+    # "length5_36",
+    # "length1_90",
+    # "length1_86",
+    # "length3_35",
+    # "length3_84",
+    # "length3_83",
+    # "length1_70",
+    # "length3_93",
+    # "length1_6",
+    # "length1_61"
+    # ]
+
+
+    # for l in lengths : 
+    #     length = int(l[6:].split("_")[0])
+    #     start = int(l[6:].split("_")[1])
+    #     end = start
+    #     case = start
+
+        
 
     for case in cases : 
 
