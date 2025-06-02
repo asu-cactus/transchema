@@ -375,9 +375,8 @@ def get_parser():
     )
     parser.add_argument(
         "--combine_ask_and_configure",
-        type=int,
-        default=0,
-        help="Combine ask and configure flag (0 or 1)",
+        action="store_true",
+        help="Allow combining ask and configure into one step",
     )
     parser.add_argument(
         "--no_thinking", type=int, default=0, help="No think flag (0 or 1)"

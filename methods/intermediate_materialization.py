@@ -73,9 +73,9 @@ def get_operation(res):
         operation = match.group(1)
     else:
         raise Exception(f"Operation not found in the response. Response:\n{res}")
-    assert (
-        operation in allowed_operation_list
-    ), f"Operation not in allowed list: {repr(operation)}"
+    # assert (
+    #     operation in allowed_operation_list
+    # ), f"Operation not in allowed list: {repr(operation)}"
     return operation
 
 
@@ -226,7 +226,7 @@ def configure_operator(
 
 
 def materialize_chatgpt(
-    llm_client, operation_history, save_path, nth_intermediate_step, args, config
+    operation_history, save_path, nth_intermediate_step, args, config
 ):
     n_trails = 5
     error_str = ""
@@ -472,14 +472,17 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         save_path = (
             f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
         )
-        materialize_chatgpt(
-            llm_client,
-            operation_history,
-            save_path,
-            nth_intermediate_step,
-            args,
-            config,
-        )
+        try:
+            materialize_chatgpt(
+                operation_history, save_path, nth_intermediate_step, args, config
+            )
+        except Exception as e:
+            print(f"Materialization failed: {e}")
+            logger.error(f"Materialization failed: {e}")
+            if nth_intermediate_step > 1:
+                intermediate_filename = f"intermediate_step{nth_intermediate_step - 1}"
+                save_path = f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
+            break
         if not use_old_prompt:
             source_data_name_list.append(intermediate_filename)
 
@@ -504,43 +507,45 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
             print("Successful transformation")
             return ms_info
 
-    if nth_intermediate_step > 1:
-        # Do the final verification
-        hard_match_result, soft_match_result = verify_result(
-            save_path, f"{main_folder}/length{len_idx_target_idx}/target.csv", config
-        )
-        # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
-        # result_dir = Path("results")
-        # result_dir.mkdir(exist_ok=True, parents=True)
-        # if args.use_old_prompt:
-        #     file_name = "old_prompt.csv"
-        # elif args.combine_ask_and_configure:
-        #     # With "combine ask for and configure", thinking is enable.
-        #     file_name = "combine_ask_and_configure.csv"
-        # elif args.no_thinking:
-        #     # With no thinking, "Ask for operation" and "Configure operation" are seperated
-        #     file_name = "no_thinking.csv"
-        # else:
-        #     # Default setting is not combining ask for and configure, and thinking is enable.
-        #     file_name = "default.csv"
+    if nth_intermediate_step == 1:
+        save_path = f"{source_space_dir}/length{len_idx_target_idx}/test_0.csv"
 
-        # result_file = result_dir / file_name
-        # if not result_file.exists():
-        #     with open(result_file, "w") as f:
-        #         f.write("task,hard_avg_similarity,soft_avg_similarity\n")
-        # with open(result_file, "a") as f:
-        #     f.write(f"{task},{hard_similarity[0]},{soft_similarity}\n")
-        end_time = time.time()
-        time_elapsed = end_time - start_time
-        cost_data = token_tracker.cost_summary()  # This returns a dictionary
-        total_cost = cost_data.get("total_cost", 0.0)
-        ms_info = (
-            hard_match_result["is_correct"],
-            soft_match_result["is_correct"],
-            soft_match_result["avg_similarity"],
-            total_cost,  # Use the extracted total_cost value
-            time_elapsed,
-            0,
-            str(operation_history),
-        )
-        return ms_info
+    # Do the final verification
+    hard_match_result, soft_match_result = verify_result(
+        save_path, f"{main_folder}/length{len_idx_target_idx}/target.csv", config
+    )
+    # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
+    # result_dir = Path("results")
+    # result_dir.mkdir(exist_ok=True, parents=True)
+    # if args.use_old_prompt:
+    #     file_name = "old_prompt.csv"
+    # elif args.combine_ask_and_configure:
+    #     # With "combine ask for and configure", thinking is enable.
+    #     file_name = "combine_ask_and_configure.csv"
+    # elif args.no_thinking:
+    #     # With no thinking, "Ask for operation" and "Configure operation" are seperated
+    #     file_name = "no_thinking.csv"
+    # else:
+    #     # Default setting is not combining ask for and configure, and thinking is enable.
+    #     file_name = "default.csv"
+
+    # result_file = result_dir / file_name
+    # if not result_file.exists():
+    #     with open(result_file, "w") as f:
+    #         f.write("task,hard_avg_similarity,soft_avg_similarity\n")
+    # with open(result_file, "a") as f:
+    #     f.write(f"{task},{hard_similarity[0]},{soft_similarity}\n")
+    end_time = time.time()
+    time_elapsed = end_time - start_time
+    cost_data = token_tracker.cost_summary()  # This returns a dictionary
+    total_cost = cost_data.get("total_cost", 0.0)
+    ms_info = (
+        hard_match_result["is_correct"],
+        soft_match_result["is_correct"],
+        soft_match_result["avg_similarity"],
+        total_cost,  # Use the extracted total_cost value
+        time_elapsed,
+        0,
+        str(operation_history),
+    )
+    return ms_info

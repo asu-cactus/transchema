@@ -388,7 +388,7 @@ def replace_history_info(query, operation_history):
 def get_result_path(args, main_folder, len_idx_target_idx):
 
     if args.intermediate_materialization_flag:
-        result_path = f"{main_folder}/source_space/length{len_idx_target_idx}"
+        result_path = f"{main_folder}/source_space/length{len_idx_target_idx}/"
         # Iterate through the intermediate files in the source_space folder and get their names
         max_step = 0
         for f in os.listdir(result_path):
