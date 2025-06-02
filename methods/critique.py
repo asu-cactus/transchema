@@ -382,7 +382,7 @@ Source {i} Examples: {source_samples}
 
 
 def replace_history_info(query, operation_history):
-    return query.replace("$HISTORY_INFO$", operation_history)
+    return query.replace("$OPERATIONS$", operation_history)
 
 
 def get_result_path(args, main_folder, len_idx_target_idx):

@@ -429,9 +429,7 @@ def main():
                 writer = csv.writer(f)
                 writer.writerow(result)
 
-            pdb.set_trace()
             # critique iff ms is wrong
-            # critique not supported yet for intermediate materialization
             if not result[1]:
 
                 crit_info = crit(args, length, case, operation_history)
