@@ -93,7 +93,7 @@ def ms(args, length, id, log_dir, experiment_name):
         avged_tup = avg_tup(false_tup)
     # Return the operation_history of the last ms_info for now
 
-    return (avged_tup + avged_tup_,), ms_info[-1]
+    return avged_tup + avged_tup_, ms_info[-1]
 
 
 def crit(args, length, id_, operation_history):
@@ -429,6 +429,7 @@ def main():
                 writer = csv.writer(f)
                 writer.writerow(result)
 
+            pdb.set_trace()
             # critique iff ms is wrong
             # critique not supported yet for intermediate materialization
             if not result[1]:
