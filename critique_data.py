@@ -239,7 +239,7 @@ def get_parser():
     parser.add_argument("--len_id", type=int, default=5, help="Len ID")
     parser.add_argument("--max_len_id", type=int, default=5, help="Max Len ID")
     parser.add_argument("--target_id", type=int, default=12, help="Target ID")
-    parser.add_argument("--max-target_id", type=int, default=40, help="Max Target ID")
+    parser.add_argument("--max_target_id", type=int, default=40, help="Max Target ID")
     parser.add_argument("--target-per", type=int, default=25, help="Target Percentage")
 
     # Boolean flags
@@ -401,7 +401,7 @@ def main():
 
     length = args.len_id
     start = args.target_id
-    end = args.max_target_id + 1
+    end = args.max_target_id
     # Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
     #             creds_file=creds_path )
 
