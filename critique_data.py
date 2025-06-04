@@ -317,40 +317,22 @@ def main():
 
     experiment_name = args.experiment_name
 
-    # lengths = [f"length{length}" for length in ["5_47", "5_79", "4_43", "5_49", "1_2", "1_49", "4_70", "5_19", "5_31", "5_33", "5_41", "5_7", "5_48", "9_5", "9_58", "4_27", "5_11", "5_15", "5_20", "5_25"]]
-    # lengths = [
-    # "length1_59",
-    # "length5_12",
-    # "length5_18",
-    # "length5_71",
-    # "length5_13",
-    # "length5_43",
-    # "length5_44",
-    # "length1_65",
-    # "length2_2",
-    # "length2_7",
-    # "length5_36",
-    # "length1_90",
-    # "length1_86",
-    # "length3_35",
-    # "length3_84",
-    # "length3_83",
-    # "length1_70",
-    # "length3_93",
-    # "length1_6",
-    # "length1_61"
-    # ]
+    lengths = [f"length{length}" for length in [ "5_45", 
+                                                #"5_53", 
+                                                #"5_59", "5_60", "5_80", "5_82", "5_84"
+    ]]
+    # lengths = ['length5_12', 'length5_13', 'length5_14', 'length5_18', 'length5_21', 'length5_26', 'length5_35', 'length5_39', 'length5_40', 'length5_43', 'length5_44', 'length5_46', 'length5_48', 'length5_50', 'length5_51', 'length5_63', 'length5_64', 'length5_65', 'length5_67', 'length5_69', 'length5_7', 'length5_71', 'length5_74', 'length5_75', 'length5_78', 'length5_81', 'length5_83', 'length5_85', 'length5_86', 'length5_87', 'length5_88', 'length5_89', 'length5_96']
 
 
-    # for l in lengths : 
-    #     length = int(l[6:].split("_")[0])
-    #     start = int(l[6:].split("_")[1])
-    #     end = start
-    #     case = start
+    for l in lengths : 
+        length = int(l[6:].split("_")[0])
+        start = int(l[6:].split("_")[1])
+        end = start
+        case = start
 
         
 
-    for case in cases : 
+    # for case in cases : 
 
         case_path = f"{length}_{case}"
         # log_dir = f"crit_logs/{case_path}"
@@ -370,7 +352,6 @@ def main():
                 writer.writerow(result)
             
             # critique iff ms is wrong
-            # critique not supported yet for intermediate materialization
             if not result[1] : 
                 crit_info = crit(args,length, case, experiment_name)
                 average_crit_path = f"{args.result_directory}/average_critique.csv"

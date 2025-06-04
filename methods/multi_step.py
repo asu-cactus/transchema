@@ -20,6 +20,7 @@ import pandas as pd
 import os
 import traceback
 from pathlib import Path
+import sys
 
 def multi_step(args,length, id_, log_dir_, experiment_name,i_):
     # Initialize required variables
@@ -275,12 +276,13 @@ def multi_step(args,length, id_, log_dir_, experiment_name,i_):
                 pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
                 match = pattern.search(res[0])
                 script = match.group(1).strip()
-                # #print(script)
+                print(script)
                 response = execute_python(script)
-                #print(response)
+                print(response)
                 error_str = error_str + response + "\n"
                 # #print(error_str)
                 if response == "Success":
+                    # sys.exit()
                     break
                 script_cnt += 1
 

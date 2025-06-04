@@ -20,7 +20,7 @@ python3 critique_data.py \
   --token-limit 120000 \
   --model gpt-4.1-mini \
   --log-dir logs \
-  --experiment-name feature_v3_4_bad \
+  --experiment-name fewshot_experiments_l5 \
   --no-of-runs 1 \
   --hints-v3-truncates '{"t1":0.3,"t2":0.3,"t3":0.3,"t4":10,"t5":0.1,"t6":0.4,"t7":0.8,"t8":0.7,"t9":0.3,"t10":0.5,"t11":0.3,"t12":0.3,"t13":0.2}' \
   --intermediate-materialization-flag 0 \
