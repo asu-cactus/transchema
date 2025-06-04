@@ -5,7 +5,7 @@ import csv
 import pdb
 
 from methods.precursor import precursor
-from methods.critique import critique
+
 
 from log_util.log_util import setup_logging
 
@@ -48,12 +48,7 @@ def ms(args, length, id, log_dir, experiment_name):
     true_tup_ = []
     false_tup_ = []
     for i in range(0, args.no_of_runs):
-        try:
-            ms_info = precursor(args, length, id, log_dir, experiment_name, i)
-        except Exception as e:
-            print("".join(traceback.format_exc()))
-            ms_info = ("precursor error " + str(e),)
-        # print(ms_info)
+        ms_info = precursor(args, length, id, log_dir, experiment_name, i)
         results.append(ms_info)
 
     for tup in results:
@@ -66,6 +61,7 @@ def ms(args, length, id, log_dir, experiment_name):
         #              worksheet_name=sheets["sm"],
         #              creds_file=creds_path
         #             )
+
         if tup[1] == True:
             true_tup_.append(tup)
             # print(f"{tup} in true tup")
@@ -321,8 +317,8 @@ def get_parser():
     parser.add_argument(
         "--critique_type",
         type=str,
-        default="history",
-        choices=["hard", "soft", "history"],
+        default="aggregation",
+        choices=["hard", "soft", "history", "aggregation"],
         help="Type of critique to perform, the actual effect is to load prompt file from prompts/{critique_type}_critique.txt",
     )
 
@@ -338,7 +334,7 @@ def get_parser():
     parser.add_argument(
         "--experiment-name", type=str, default="feature_v3_2", help="Experiment name"
     )
-    parser.add_argument("--no-of-runs", type=int, default=1, help="Number of runs")
+    parser.add_argument("--no_of_runs", type=int, default=1, help="Number of runs")
 
     # Complex dict via JSON
     default_hints = {
@@ -385,10 +381,14 @@ def get_parser():
     return parser
 
 
-def main():
+if __name__ == "__main__":
 
     args = get_parser().parse_args()
     args.majority_voting = args.no_of_runs // 2 + 1
+    if args.critique_type != "aggregation":
+        from methods.critique import critique
+    else:
+        from methods.aggregation_critique import critique
 
     # set up logging
     print(args)
@@ -442,9 +442,3 @@ def main():
         except Exception as e:
             print("".join(traceback.format_exc()))
             print(f"Error processing case {case_path}: {str(e)}")
-
-
-if __name__ == "__main__":
-    # Let's make it parameterized
-
-    main()
