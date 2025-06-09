@@ -3,24 +3,23 @@ import os
 import pandas as pd
 import re
 import traceback
-from auto_suggest_llm_util import (
-    get_filtered_functional_dependency,
-    calculate_score)
+import pdb
 
+from auto_suggest_llm_util import get_filtered_functional_dependency, calculate_score
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
-import parameters as p
 from validation.hard_match import compare_lists_matching
 from validation.soft_match import compare_lists_matching_soft
 from log_util.log_util import create_logger
 
-def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_name):
-    file_path = nature
-    with open(file_path, mode="r") as f:
+
+def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
+    prompt_file = f"prompts/{args.critique_type}_critique.txt"
+    with open(prompt_file, mode="r") as f:
         query = f.read()
 
     log_dir = log_dir_
-    
+
     path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
@@ -29,17 +28,13 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
         for file in files
         if file.startswith("test")
     )
-    
-    ##print(file_count)
-    
 
     ##print(file_count)
-    if(file_count > 1):
+    if file_count > 1:
         json_file_path = "data/chatgpt_github_ms.json"
-    else:        
+    else:
         json_file_path = "data/chatgpt_github_ss.json"
 
-        
     len_id = length
     target_id = id_
     max_target_id = id_
@@ -50,10 +45,10 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
     len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
     token_tracker = TokenUsageTracker()
-    
+
     start_time = time.time()
-    
-    if(is_def == 1):
+
+    if is_def == 1:
         type_ = "DEF_CRITIQUE"
     else:
         type_ = "NEW_CRITIQUE"
@@ -88,12 +83,12 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
     # #print(target_samples)
     target_samples = target_samples.replace(" ,", " , ")
     target_samples = target_samples.replace("],", "],\n")
-    
-    '''
+
+    """
     #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
     #print(target_data_schema)
     #print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-    '''
+    """
     query = query.replace("$SCHEMA$", target_data_schema)
     query = query.replace("$EXAMPLES$", target_samples)
     if fd == 1:
@@ -106,12 +101,24 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
         fd_hints = "Keys : " + str(key) + "\n"
         fd_hints += "Functional Dependencies : " + str(fd__)
         query = query.replace("$FD_HINT$", fd_hints)
-    else: 
-        query = query.replace("$FD_HINTS$", "")
+    else:
+        query = query.replace("$FD_HINT$", "")
 
+    if args.critique_type == "history":
+        query = replace_source_info(
+            query,
+            source_data_name_list,
+            source_data_schema_list,
+            source_samples_list,
+        )
+        query = replace_history_info(query, operation_history)
+        result_path = get_result_path(args, main_folder, len_idx_target_idx)
+        query = replace_result_info(query, result_path)
 
     # Check cardinality of the target table vs. source files
-    target_cardinality = df_ground_truth.nunique().max()  # Maximum distinct values in the target table
+    target_cardinality = (
+        df_ground_truth.nunique().max()
+    )  # Maximum distinct values in the target table
     group_by_hint = None  # Default: no hint
 
     source_cardinality_map = {}  # Track cardinalities in source files
@@ -121,14 +128,18 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
     test_file_idx = 0
 
     while True:
-        test_file_path = '{main_folder}/length{len_idx_target_idx}/test_{idx}.csv'.format(
-            main_folder=main_folder, len_idx_target_idx=len_idx_target_idx, idx=test_file_idx
+        test_file_path = (
+            "{main_folder}/length{len_idx_target_idx}/test_{idx}.csv".format(
+                main_folder=main_folder,
+                len_idx_target_idx=len_idx_target_idx,
+                idx=test_file_idx,
+            )
         )
         if not os.path.exists(test_file_path):
             break  # Stop if no more test files
         df_source = pd.read_csv(test_file_path, low_memory=False)
 
-        i = 0 
+        i = 0
         for col in df_source.columns:
             i += 1
             if i != 1:
@@ -151,7 +162,9 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
                     source_max_map[col_max] = [(test_file_path, col)]
 
                 if col_cardinality in source_cardinality_map:
-                    source_cardinality_map[col_cardinality].append((test_file_path, col))
+                    source_cardinality_map[col_cardinality].append(
+                        (test_file_path, col)
+                    )
                 else:
                     source_cardinality_map[col_cardinality] = [(test_file_path, col)]
 
@@ -165,15 +178,17 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
             group_by_hint = f"Group by the column `{column_name}` in the source file `{os.path.basename(source_file)}`."
         else:
             # Find the next largest cardinality
-            larger_cardinalities = [key for key in source_cardinality_map if key > target_cardinality]
+            larger_cardinalities = [
+                key for key in source_cardinality_map if key > target_cardinality
+            ]
             if larger_cardinalities:
                 next_largest_cardinality = min(larger_cardinalities)
                 matching_columns = source_cardinality_map[next_largest_cardinality]
                 if matching_columns:
-                    source_file, column_name = matching_columns[0]  # Pick the first match
-                    group_by_hint = (
-                        f"Group by the column `{column_name}` in the source file `{os.path.basename(source_file)}`."
-                    )
+                    source_file, column_name = matching_columns[
+                        0
+                    ]  # Pick the first match
+                    group_by_hint = f"Group by the column `{column_name}` in the source file `{os.path.basename(source_file)}`."
     else:
         # Handle the case where no exact or larger match exists
         group_by_hint = "No suitable group-by column identified."
@@ -184,7 +199,6 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
     else:
         query += ""
 
-        
     # to decide agg func we need to first calculate relative cardinality
     # rc = (cardinality(col in TS))/(size(col in TS))
     # Extract metadata
@@ -195,7 +209,7 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
         if size == 1:
             if col[0] in source_min_map:
                 return "min"
-            elif col[0] in source_max_map :
+            elif col[0] in source_max_map:
                 return "max"
             else:
                 return "count"
@@ -209,7 +223,7 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
 
     metadata = []
     i = -1
-    
+
     if metadata_flag == 1:
         for col in df_ground_truth.columns:
             i += 1
@@ -219,16 +233,16 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
             else:
                 col_info["Column Name"] = col
             col_info["Data Type"] = str(df_ground_truth[col].dtype)
-            
+
             col_info["Recommended Aggregate Function"] = aggfunc(
                 query, df_ground_truth[col], col_info["Data Type"]
             )
 
             if pd.api.types.is_numeric_dtype(df_ground_truth[col]):
-                col_info['Size'] = len(df_ground_truth[col])
-                #col_info["Min Value"] = df_ground_truth[col].min()
-                #col_info["Max Value"] = df_ground_truth[col].max()
-                #col_info["Median Value"] = df_ground_truth[col].median()
+                col_info["Size"] = len(df_ground_truth[col])
+                # col_info["Min Value"] = df_ground_truth[col].min()
+                # col_info["Max Value"] = df_ground_truth[col].max()
+                # col_info["Median Value"] = df_ground_truth[col].median()
             metadata.append(col_info)
 
         # Format metadata as a string
@@ -240,9 +254,9 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
             if "Min Value" in col_info:
                 metadata_str += f"  Size: {col_info['Size']}\n"
 
-                #metadata_str += f"  Min Value: {col_info['Min Value']}\n"
-                #metadata_str += f"  Max Value: {col_info['Max Value']}\n"
-                #metadata_str += f"  Median Value: {col_info['Median Value']}\n"
+                # metadata_str += f"  Min Value: {col_info['Min Value']}\n"
+                # metadata_str += f"  Max Value: {col_info['Max Value']}\n"
+                # metadata_str += f"  Median Value: {col_info['Median Value']}\n"
             metadata_str += "\n"
 
     # Replace $METADATA$ in the query
@@ -259,7 +273,6 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
     logger.info(cost)
 
     # #print(res[0])
-    secret = nature[:2]
     with open(
         main_folder + "/length" + len_idx_target_idx + "/python_recovered.py", mode="r"
     ) as f:
@@ -269,7 +282,7 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
         + "/length"
         + len_idx_target_idx
         + "/target_multisource_critique_"
-        + secret
+        + args.critique_type
         + ".csv"
     )
     query_generator = """Based on the Critisizer Response, can you add the response in the python code.
@@ -306,7 +319,7 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
     ##print(script)
     response = execute_python(script)
     logger.info(response)
-    
+
     try:
         df_critique = pd.read_csv(target_location_critique, low_memory=False)
         (
@@ -314,29 +327,87 @@ def critique(args, length, id_, nature, log_dir_, flags, is_def, i_, experiment_
             is_correct,
             similarity_scores,
             validation_error,
-        ) = compare_lists_matching(df_ground_truth,df_critique)
+        ) = compare_lists_matching(df_ground_truth, df_critique)
         # need to change the definition, the sequence in the definition is incorrect
         (
-        case_accuracy_,
-        is_correct_,
-        similarity_scores_,
+            case_accuracy_,
+            is_correct_,
+            similarity_scores_,
         ) = compare_lists_matching_soft(df_critique, df_ground_truth)
         ##print("ACCURATCY CBELOW ")
         eps = 0.1
         if case_accuracy_ < eps:
             case_accuracy_ = 0
-        #print(f"{case_accuracy}, {is_correct}")
+        # print(f"{case_accuracy}, {is_correct}")
         logger.info(is_correct)
 
-        score = calculate_score(df_ground_truth,df_critique)
-        
+        score = calculate_score(df_ground_truth, df_critique)
+
     except Exception as e:
         is_correct = False
         is_correct_ = False
         case_accuracy_ = 0
         score = 0
         print("".join(traceback.format_exc()))
-        #print("YOU ARE NOT VERY GOOD AT THIS LOL")
-    
-    crit_info = (is_correct,is_correct_, case_accuracy_,cost.get('total_cost', 0.0),time_elapsed,score)
-    return crit_info 
+        # print("YOU ARE NOT VERY GOOD AT THIS LOL")
+
+    crit_info = (
+        is_correct,
+        is_correct_,
+        case_accuracy_,
+        cost.get("total_cost", 0.0),
+        time_elapsed,
+        score,
+    )
+    return crit_info
+
+
+def replace_source_info(
+    query,
+    source_data_name_list,
+    source_data_schema_list,
+    source_samples_list,
+):
+    src_schema_str = ""
+    for i, (source_data_name, source_data_schema, source_samples) in enumerate(
+        zip(source_data_name_list, source_data_schema_list, source_samples_list)
+    ):
+        src_schema_str += f"""
+Source {i} Name: {source_data_name}
+Source {i} Schema: {source_data_schema}
+Source {i} Examples: {source_samples}
+
+"""
+    return query.replace("$SRC_INFO$", src_schema_str)
+
+
+def replace_history_info(query, operation_history):
+    return query.replace("$OPERATIONS$", operation_history)
+
+
+def get_result_path(args, main_folder, len_idx_target_idx):
+
+    if args.intermediate_materialization_flag:
+        result_path = f"{main_folder}/source_space/length{len_idx_target_idx}/"
+        # Iterate through the intermediate files in the source_space folder and get their names
+        max_step = 0
+        for f in os.listdir(result_path):
+            if f.startswith("intermediate"):
+                step = f.lstrip("intermediate_step").rstrip(".csv")
+                max_step = max(max_step, int(step))
+        result_path += f"intermediate_step{max_step}.csv"
+    else:
+        result_path = f"{main_folder}/length{len_idx_target_idx}/target_multisource.csv"
+
+    return result_path
+
+
+def replace_result_info(query, result_path):
+    # Read result file as a DataFrame and get column names to replace $RES_SCHEMA$ in the query;
+    # Get first 5 rows as examples to replace $RES_EXAMPLES$ in the query
+    df_result = pd.read_csv(result_path, low_memory=False)
+    res_schema = ", ".join(df_result.columns)
+    res_examples = df_result.head(5).to_string(index=False)
+    query = query.replace("$RES_SCHEMA$", res_schema)
+    query = query.replace("$RES_EXAMPLES$", res_examples)
+    return query

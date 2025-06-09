@@ -9,7 +9,6 @@ def create_logger(
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Create the log file name with the current time
-    # change here 
     log_file = (
         f"{pipeline_len_start_idx}_target{target_start_idx}_{type_}_{current_time}.log"
     )
@@ -18,14 +17,25 @@ def create_logger(
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    # Setup logging
-    logging.basicConfig(
-        filename=os.path.join(log_dir, log_file),
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        filemode="a+",
-    )
-    return logging.getLogger()
+    # Create a new logger instance
+    logger = logging.getLogger(log_file)  # Unique name for each logger
+    
+    # Only add handlers if this logger doesn't have any yet
+    if not logger.handlers:
+        logger.setLevel(logging.INFO)
+        
+        # Create file handler
+        file_handler = logging.FileHandler(os.path.join(log_dir, log_file), mode='a+')
+        file_handler.setLevel(logging.INFO)
+        
+        # Create formatter and add it to the handler
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        file_handler.setFormatter(formatter)
+        
+        # Add the handler to the logger
+        logger.addHandler(file_handler)
+    
+    return logger
 
 import os
 from datetime import datetime
