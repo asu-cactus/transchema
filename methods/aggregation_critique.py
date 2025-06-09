@@ -59,7 +59,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     query_generator = f"""
 The following is the operation history of a data transformation pipeline which produce the incorrect output: {operation_history}.
 Check if the last operation involves a groupby/aggregation operation, and if so, generate a python code to aggregate using all other aggregation functions.
-We consider five aggregation functions: sum, mean, cout, max, and min. 
+We consider five aggregation functions: sum, mean, count, max, and min. 
 You should generate a python code that applies these aggregation functions to the last operation in the operation history.
 You can skip the operation that is in the current operation history, so you will run the rest of the five aggregation functions.
 If the last operation in the operation history is not aggregation, just reply "NOT GROUPBY/AGGREGATION" without any further explanation.

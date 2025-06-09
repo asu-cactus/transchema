@@ -311,13 +311,13 @@ def get_parser():
         "--critique_setting",
         type=str,
         nargs="+",
-        default=["fd"],
+        default=["fd", "metadata"],
         help="Critique settings (e.g., fd, metadata, annonymization). You can add more by separating with space",
     )
     parser.add_argument(
         "--critique_type",
         type=str,
-        default="aggregation",
+        default="history",
         choices=["hard", "soft", "history", "aggregation"],
         help="Type of critique to perform, the actual effect is to load prompt file from prompts/{critique_type}_critique.txt",
     )
@@ -366,9 +366,6 @@ def get_parser():
         help="Intermediate materialization flag",
     )
 
-    parser.add_argument(
-        "--use_old_prompt", type=int, default=0, help="Use old prompt flag (0 or 1)"
-    )
     parser.add_argument(
         "--combine_ask_and_configure",
         action="store_true",

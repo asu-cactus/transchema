@@ -99,10 +99,6 @@ def get_operation_and_configuration(res):
 
 def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
 
-    if args.use_old_prompt:
-        # Overwrite nth_intermediate_step=0 to use the old prompt, i.e., no intermediate materialization
-        nth_intermediate_step = 0
-
     prompt = get_prompt(
         prompt_type="get_next_operator",
         max_tokens=args.token_limit,
@@ -144,7 +140,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             type="Ask For Operator",
         )[0]
 
-        if args.use_old_prompt or not args.combine_ask_and_configure:
+        if not args.combine_ask_and_configure:
             operation = get_operation(res)
             assert operation in allowed_operation_list
             return operation, None
@@ -360,7 +356,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     max_len_id = length
     target_id = id_
     max_target_id = id_
-    use_old_prompt = args.use_old_prompt
     log_dir = log_dir_
 
     main_folder = "autopipeline-benchmarks/github-pipelines"
@@ -483,8 +478,8 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
                 intermediate_filename = f"intermediate_step{nth_intermediate_step - 1}"
                 save_path = f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
             break
-        if not use_old_prompt:
-            source_data_name_list.append(intermediate_filename)
+
+        source_data_name_list.append(intermediate_filename)
 
         hard_match_result, soft_match_result = verify_result(
             save_path,
@@ -514,27 +509,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     hard_match_result, soft_match_result = verify_result(
         save_path, f"{main_folder}/length{len_idx_target_idx}/target.csv", config
     )
-    # Append hard_avg_similarity and soft_avg_similarity to a csv file "results/materialization.csv"
-    # result_dir = Path("results")
-    # result_dir.mkdir(exist_ok=True, parents=True)
-    # if args.use_old_prompt:
-    #     file_name = "old_prompt.csv"
-    # elif args.combine_ask_and_configure:
-    #     # With "combine ask for and configure", thinking is enable.
-    #     file_name = "combine_ask_and_configure.csv"
-    # elif args.no_thinking:
-    #     # With no thinking, "Ask for operation" and "Configure operation" are seperated
-    #     file_name = "no_thinking.csv"
-    # else:
-    #     # Default setting is not combining ask for and configure, and thinking is enable.
-    #     file_name = "default.csv"
 
-    # result_file = result_dir / file_name
-    # if not result_file.exists():
-    #     with open(result_file, "w") as f:
-    #         f.write("task,hard_avg_similarity,soft_avg_similarity\n")
-    # with open(result_file, "a") as f:
-    #     f.write(f"{task},{hard_similarity[0]},{soft_similarity}\n")
     end_time = time.time()
     time_elapsed = end_time - start_time
     cost_data = token_tracker.cost_summary()  # This returns a dictionary
