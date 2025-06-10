@@ -21,11 +21,11 @@ Type 2 quality checks are performed by the following functions:
 
 
 """
+
 import itertools
 import re
 import ast
 from validation.hard_match import compare_lists_matching
-from validation.soft_match import compare_lists_matching_soft
 import sqlparse
 from sqlparse.sql import Identifier, IdentifierList
 from sqlparse.tokens import DML
@@ -35,26 +35,42 @@ from util.FDTool.fdtool.modules import GetFDs, Apriori_Gen, binaryRepr
 import csv
 import pandas as pd
 import os
-from valentine import valentine_match
-from valentine.algorithms import Coma,Cupid
-import time
-# import timeout_decorator
+
+
+from util.FDTool.fdtool.modules import (
+    Apriori_Gen,
+    binaryRepr,
+    GetFDs,
+    ObtainEquivalences,
+    Prune,
+)
+from decimal import Decimal
+from string import ascii_lowercase
 
 
 def schema_quality(sql_query, **kwargs):
-    source_columns, target_columns = extract_table_schemas(sql_query, kwargs['source_name'], kwargs['target_name'])
+    source_columns, target_columns = extract_table_schemas(
+        sql_query, kwargs["source_name"], kwargs["target_name"]
+    )
     # Clean up column names from the SQL query (removing quotes)
-    target_columns_clean = [x.replace('"', '') for x in target_columns]
-    source_columns_clean = [x.split(" ")[-1].replace('"', '') if " AS " in x else x for x in
-                            source_columns]  # Extract alias if exists
+    target_columns_clean = [x.replace('"', "") for x in target_columns]
+    source_columns_clean = [
+        x.split(" ")[-1].replace('"', "") if " AS " in x else x for x in source_columns
+    ]  # Extract alias if exists
     # Properly parse the schema strings
-    source_data_schema_list = ast.literal_eval(kwargs['source_schema'][0])
-    target_data_schema = ast.literal_eval(kwargs['target_schema'])
+    source_data_schema_list = ast.literal_eval(kwargs["source_schema"][0])
+    target_data_schema = ast.literal_eval(kwargs["target_schema"])
 
-    matching_target_count = len([col for col in target_columns_clean if col in target_data_schema])
-    matching_source_count = len([col for col in source_columns_clean if col in source_data_schema_list])
+    matching_target_count = len(
+        [col for col in target_columns_clean if col in target_data_schema]
+    )
+    matching_source_count = len(
+        [col for col in source_columns_clean if col in source_data_schema_list]
+    )
     mismatch_1 = [col for col in target_columns_clean if col not in target_data_schema]
-    mismatch_2 = [col for col in source_columns_clean if col not in source_data_schema_list]
+    mismatch_2 = [
+        col for col in source_columns_clean if col not in source_data_schema_list
+    ]
 
     if not mismatch_1 and not mismatch_2:
         mismatch_feedback = ""
@@ -65,23 +81,39 @@ def schema_quality(sql_query, **kwargs):
         if mismatch_2:
             mismatch_feedback += "\n Mismatch in Source column: " + str(mismatch_2)
     # Calculate the individual scores
-    score_3_2 = matching_target_count / len(target_data_schema) if len(target_data_schema) != 0 else 0
+    score_3_2 = (
+        matching_target_count / len(target_data_schema)
+        if len(target_data_schema) != 0
+        else 0
+    )
 
     # Calculate the individual scores
-    score_3_1 = matching_source_count / len(source_data_schema_list) if len(source_data_schema_list) != 0 else 0
+    score_3_1 = (
+        matching_source_count / len(source_data_schema_list)
+        if len(source_data_schema_list) != 0
+        else 0
+    )
     quality_score = (score_3_1 + score_3_2) / 2
-    column_mappings, target_handle = perform_column_mapping_analysis(sql_query, target_columns_clean,
-                                                                     source_columns_clean)
-    missing_target_attributes = [col for col in target_data_schema if col not in target_handle]
-   # mismatch_feedback += "\n Missing handle target attributes: " + str(missing_target_attributes)
+    column_mappings, target_handle = perform_column_mapping_analysis(
+        sql_query, target_columns_clean, source_columns_clean
+    )
+    missing_target_attributes = [
+        col for col in target_data_schema if col not in target_handle
+    ]
+    # mismatch_feedback += "\n Missing handle target attributes: " + str(missing_target_attributes)
     # Penalize the quality score based on missing attributes
-    missing_attribute_penalty = len(missing_target_attributes) / len(target_data_schema) if kwargs[
-        'target_schema'] else 0
-    quality_score *= (1 - missing_attribute_penalty)
+    missing_attribute_penalty = (
+        len(missing_target_attributes) / len(target_data_schema)
+        if kwargs["target_schema"]
+        else 0
+    )
+    quality_score *= 1 - missing_attribute_penalty
     return quality_score, mismatch_feedback, column_mappings, target_handle
 
 
-def perform_column_mapping_analysis(gpt_output, target_columns_clean, source_columns_clean):
+def perform_column_mapping_analysis(
+    gpt_output, target_columns_clean, source_columns_clean
+):
     # Parse the SQL query
     parsed_statements = sqlparse.parse(gpt_output)
     column_mappings = []
@@ -98,9 +130,11 @@ def perform_column_mapping_analysis(gpt_output, target_columns_clean, source_col
 
     # Extract the column names from the last 'INSERT INTO' statement
     if last_insert_statement:
-        match = re.search(r'INSERT INTO\s+"?\w+"?\s+\((.*?)\)', last_insert_statement, re.IGNORECASE)
+        match = re.search(
+            r'INSERT INTO\s+"?\w+"?\s+\((.*?)\)', last_insert_statement, re.IGNORECASE
+        )
         if match:
-            columns = match.group(1).split(',')
+            columns = match.group(1).split(",")
             target_handle = [col.strip().strip('"').strip("'") for col in columns]
 
     for statement in parsed_statements:
@@ -108,17 +142,27 @@ def perform_column_mapping_analysis(gpt_output, target_columns_clean, source_col
             for token in statement.tokens:
                 if token.ttype is DML and token.value.upper() == "SELECT":
                     select_part = token.parent
-                    identifiers = [item for item in select_part.tokens if isinstance(item, IdentifierList)]
+                    identifiers = [
+                        item
+                        for item in select_part.tokens
+                        if isinstance(item, IdentifierList)
+                    ]
                     if identifiers:
                         identifier_list = identifiers[0].get_identifiers()
                         for idx, identifier in enumerate(identifier_list):
-                            if idx < len(target_columns_clean):  # Check if idx is within the range
+                            if idx < len(
+                                target_columns_clean
+                            ):  # Check if idx is within the range
                                 target_col = target_columns_clean[idx]
-                                extracted_columns = extract_source_column_from_token(identifier, source_columns_clean)
+                                extracted_columns = extract_source_column_from_token(
+                                    identifier, source_columns_clean
+                                )
                                 for col in extracted_columns:
                                     column_mappings.append((col, target_col))
                             else:
-                                print(f"Index {idx} is out of range for target columns.")
+                                print(
+                                    f"Index {idx} is out of range for target columns."
+                                )
     seen = set()
     unique_mappings = []
     for mapping in column_mappings:
@@ -134,9 +178,11 @@ def extract_source_column_from_token(token, source_columns_clean):
     extracted_columns = []
     if isinstance(token, Identifier) and token.get_real_name() in source_columns_clean:
         extracted_columns.append(token.get_real_name())
-    elif hasattr(token, 'tokens'):
+    elif hasattr(token, "tokens"):
         for subtoken in token.tokens:
-            extracted_columns.extend(extract_source_column_from_token(subtoken, source_columns_clean))
+            extracted_columns.extend(
+                extract_source_column_from_token(subtoken, source_columns_clean)
+            )
     return extracted_columns
 
 
@@ -145,25 +191,35 @@ def extract_table_schemas(sql_query, source_data_name_to_find, target_data_name)
     target_schema = {}
 
     # Remove lines that are comments
-    sql_query = '\n'.join([line for line in sql_query.split('\n') if not line.strip().startswith('--')]).strip()
+    sql_query = "\n".join(
+        [line for line in sql_query.split("\n") if not line.strip().startswith("--")]
+    ).strip()
 
     # Split SQL queries based on semicolon and filter out empty strings
     queries = [q.strip() for q in sql_query.split(";") if q.strip()]
 
     # Improved regex pattern to match column names and types correctly
     # Including those with type definitions containing parentheses
-    column_pattern = r'(?:(`[^`]+`)|"([^"]+)"|(\[\^,\]+)|(\w+))\s+([\w()]+(?:\(\d+(?:,\d+)?\))?)'
+    column_pattern = (
+        r'(?:(`[^`]+`)|"([^"]+)"|(\[\^,\]+)|(\w+))\s+([\w()]+(?:\(\d+(?:,\d+)?\))?)'
+    )
 
     for query in queries:
         # Match CREATE TABLE statements more accurately
-        match = re.match(r"CREATE TABLE \"?(\w+)\"? \((.*)\)", query, re.IGNORECASE | re.DOTALL)
+        match = re.match(
+            r"CREATE TABLE \"?(\w+)\"? \((.*)\)", query, re.IGNORECASE | re.DOTALL
+        )
         if match:
             table_name, columns_str = match.groups()
             # Adjusted to use the improved regex for column matching
             columns_list = re.findall(column_pattern, columns_str)
 
             # Process matched columns to build the schema dictionary
-            column_schema = {col[1] or col[2] or col[3]: col[4].upper() for col in columns_list if col}
+            column_schema = {
+                col[1] or col[2] or col[3]: col[4].upper()
+                for col in columns_list
+                if col
+            }
 
             # Assign to source or target schema based on the table name
             if table_name == source_data_name_to_find:
@@ -174,19 +230,26 @@ def extract_table_schemas(sql_query, source_data_name_to_find, target_data_name)
     return source_schema, target_schema
 
 
-def data_quality(sql_result, target_handle,whether_multi=False):
+def data_quality(sql_result, target_handle, whether_multi=False):
     if not sql_result or not sql_result[0]:
-        return 0,0  # No data to evaluate
+        return 0, 0  # No data to evaluate
     num_cols = len(sql_result[0])
     num_rows = len(sql_result)
 
     # Initialize counters and holders
     none_counts = [0] * num_cols
     value_counts = [{} for _ in range(num_cols)]
-    max_values = [float('-inf')] * num_cols
-    min_values = [float('inf')] * num_cols
-    column_info = {col: {'none_score': 0, 'diversity_score': 0, 'most_common_value': None, 'most_common_count': 0} for
-                   col in target_handle}
+    max_values = [float("-inf")] * num_cols
+    min_values = [float("inf")] * num_cols
+    column_info = {
+        col: {
+            "none_score": 0,
+            "diversity_score": 0,
+            "most_common_value": None,
+            "most_common_count": 0,
+        }
+        for col in target_handle
+    }
 
     for row in sql_result:
         for idx, value in enumerate(row):
@@ -202,35 +265,49 @@ def data_quality(sql_result, target_handle,whether_multi=False):
                     value_counts[idx][value] = 1
 
                 # Update most common value if this value surpasses the current count
-                if value_counts[idx][value] > column_info[col_name]['most_common_count']:
-                    column_info[col_name]['most_common_value'] = value
-                    column_info[col_name]['most_common_count'] = value_counts[idx][value]
+                if (
+                    value_counts[idx][value]
+                    > column_info[col_name]["most_common_count"]
+                ):
+                    column_info[col_name]["most_common_value"] = value
+                    column_info[col_name]["most_common_count"] = value_counts[idx][
+                        value
+                    ]
 
     # Calculate scores for each aspect
     for idx, col_name in enumerate(target_handle):
         none_score = 1 - none_counts[idx] / num_rows
         diversity_score = len(value_counts[idx].keys()) / num_rows
-        column_info[col_name]['none_score'] = none_score
-        column_info[col_name]['diversity_score'] = diversity_score
+        column_info[col_name]["none_score"] = none_score
+        column_info[col_name]["diversity_score"] = diversity_score
 
     # Combine scores
-    combined_none_score = sum([info['none_score'] for info in column_info.values()]) / num_cols
-    combined_diversity_score = sum([info['diversity_score'] for info in column_info.values()]) / num_cols
+    combined_none_score = (
+        sum([info["none_score"] for info in column_info.values()]) / num_cols
+    )
+    combined_diversity_score = (
+        sum([info["diversity_score"] for info in column_info.values()]) / num_cols
+    )
     combined_score = (combined_none_score + combined_diversity_score) / 2
 
     if whether_multi:
-        high_empty_columns = {col: info for col, info in column_info.items() if info['none_score'] != 1}
+        high_empty_columns = {
+            col: info for col, info in column_info.items() if info["none_score"] != 1
+        }
         if high_empty_columns:
             column_names = list(high_empty_columns.keys())
         else:
-            column_names=None
+            column_names = None
         return combined_none_score, column_names
 
     if not whether_multi:
         # Identify columns with low diversity, defined as most common value occupies more than a threshold of the rows
         threshold = 0.5
-        low_diversity_columns = {col: info for col, info in column_info.items() if
-                                 info['diversity_score'] < threshold}
+        low_diversity_columns = {
+            col: info
+            for col, info in column_info.items()
+            if info["diversity_score"] < threshold
+        }
         if low_diversity_columns:
             # lowest_diversity_column now holds the column name and its info dictionary
             column_names = list(low_diversity_columns.keys())
@@ -239,23 +316,27 @@ def data_quality(sql_result, target_handle,whether_multi=False):
         return combined_score, column_names
 
 
-def fd_quality(sql_query, column_mappings, new_key,**kwargs):
+def fd_quality(sql_query, column_mappings, new_key, **kwargs):
     data_1 = []
     data_2 = []
-    select_columns, target_columns = extract_table_schemas(sql_query, kwargs['source_name'], kwargs['target_name'])
+    select_columns, target_columns = extract_table_schemas(
+        sql_query, kwargs["source_name"], kwargs["target_name"]
+    )
     # Extract the relevant columns from the source based on column mappings
-    relevant_source_columns = [src for src, tgt in column_mappings if src in select_columns]
+    relevant_source_columns = [
+        src for src, tgt in column_mappings if src in select_columns
+    ]
     if len(relevant_source_columns) > 2:
         column_names_1 = list(select_columns.keys())
         column_names_2 = list(target_columns.keys())
-        with open(kwargs['test_0_path'], 'r', encoding="utf-8") as file:
+        with open(kwargs["test_0_path"], "r", encoding="utf-8") as file:
             reader = csv.reader(file)
             header = next(reader)
             for row in reader:
                 data_1.append(tuple(row))
 
         data_1_df = pd.DataFrame(data_1, columns=column_names_1)
-        with open(kwargs['result_path'], 'r', encoding="utf-8") as file:
+        with open(kwargs["result_path"], "r", encoding="utf-8") as file:
             reader = csv.reader(file)
             header = next(reader)
             for row in reader:
@@ -264,15 +345,19 @@ def fd_quality(sql_query, column_mappings, new_key,**kwargs):
         df_1 = data_1_df[relevant_source_columns]
         df_2 = pd.DataFrame(data_2, columns=column_names_2)
         # Use FDTool
-        functional_dependencies_1, keys_1 = analyze_functional_dependencies(df_1,[])
+        functional_dependencies_1, keys_1 = analyze_functional_dependencies(df_1, [])
         # Map source FDs to target FDs
-        mapped_fds = map_source_fds_to_target_fds(functional_dependencies_1, column_mappings)
+        mapped_fds = map_source_fds_to_target_fds(
+            functional_dependencies_1, column_mappings
+        )
         print("mapped_fds", mapped_fds)
-        functional_dependencies_2, keys_2 = analyze_functional_dependencies(df_2,[])
+        functional_dependencies_2, keys_2 = analyze_functional_dependencies(df_2, [])
         # Compare mapped FDs with target FDs
         fd_comparison, fd_score = compare_fds(mapped_fds, functional_dependencies_2)
         # Compare keys_1 and keys_2 for new key detection
-        new_keys_expected = set(keys_2) - set(keys_1)  # Keys that are in keys_2 but not in keys_1
+        new_keys_expected = set(keys_2) - set(
+            keys_1
+        )  # Keys that are in keys_2 but not in keys_1
         if not new_keys_expected:
             fd_feedback = f"New key {new_key} expected to be generated in the target table was not detected. Please recheck and ensure its correct generation."
             # print(fd_feedback)
@@ -285,15 +370,114 @@ def fd_quality(sql_query, column_mappings, new_key,**kwargs):
     else:
         return 1, ""
 
+
 def handler(signum, frame):
     raise TimeoutError("Function execution has timed out.")
 
-def analyze_functional_dependencies(df):
+
+def analyze_functional_dependencies(df, max_k_level=25):
+
+    # Define header; Initialize k;
+    U = list(df.head(0))
+    k = 0
+
+    try:
+        # Create dictionary to convert column names into alphabetical characters
+        Alpha_Dict = {U[i]: ascii_lowercase.upper()[i] for i in range(len(U))}
+    except IndexError:
+        raise Exception("Table exceeds max column count")
+
+    # Initialize lattice with singleton sets at 1-level
+    C = [[[item] for item in U]] + [None for level in range(len(U) - 1)]
+    # Create Generator to find next k-level attribute subsets
+    Subset_Gen = (
+        [x for x in Apriori_Gen.powerset(U) if len(x) == k]
+        for k in range(1, len(max(Apriori_Gen.powerset(U), key=len)) + 1)
+    )
+    # Initialize Closure as Python dict
+    Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in next(Subset_Gen)}
+    # Initialize Cardinality as Python dict
+    Cardinality = {element: None for element in Closure}
+    # Create counter for number of Equivalences and FDs; initialize list to store FDs; list to store equivalences;
+    Counter = [0, 0]
+    FD_Store = []
+    E_Set = []
+
+    while True:
+
+        # Increment k; initialize C_km1
+        k += 1
+        C_km1 = C[k - 1]
+        # Initialize Closure at next next k-level; update dict accordinaly
+        Closure_k = {
+            binaryRepr.toBin(Subset, U): set(Subset) for Subset in next(Subset_Gen)
+        }
+        Closure.update(Closure_k)
+        # Update Cardinality dict with next k-level
+        Cardinality.update({element: None for element in Closure_k})
+
+        if k > 1:
+            # Dereference Closure and Cardinality at (k-2)-level
+            for Subset in C[k - 2]:
+                del (
+                    Closure[binaryRepr.toBin(Subset, U)],
+                    Cardinality[binaryRepr.toBin(Subset, U)],
+                )
+            # Dereference (k-2)-level
+            C[k - 2] = None
+
+        # Run Apriori_Gen to get k-level Candidate row from (k-1)-level Candidate row
+        C_k = Apriori_Gen.oneUp(C_km1)
+        # Run GetFDs to get closure and set of functional dependencies
+        Closure, F, Cardinality = GetFDs.f(C_km1, df, Closure, U, Cardinality)
+        # Run Obtain Equivalences to get set of attribute equivalences
+        E = ObtainEquivalences.f(C_km1, F, Closure, U)
+        # Run Prune to reduce next k-level iterateion and delete equivalences; initialize C_k
+        C_k, Closure, df = Prune.f(C_k, E, Closure, df, U)
+        C[k] = C_k
+        # Increment counter for the number of Equivalences/FDs added at this level
+        Counter[0] += len(E)
+        Counter[1] += len(F)
+        E_Set += E
+
+        # Print out FDs
+        for FunctionalDependency in F:
+            # Store well-formatted FDs in empty list
+            FD_Store.append(
+                [
+                    "".join(sorted([Alpha_Dict[i] for i in FunctionalDependency[0]])),
+                    Alpha_Dict[FunctionalDependency[1]],
+                ]
+            )
+
+        # Break while loop if cardinality of C_k is 0
+        if not len(C_k) > 0:
+            break
+        # Break while loop if k-level reaches level set in config
+        if k is not None and max_k_level == k:
+            break
+
+    filtered_F = []
+    all_keys = set()
+    for fd in F:
+        key, value = fd
+        all_keys.update(key)
+        # Check if key columns are of float type
+        if not isinstance(df[key[0]].iloc[0], Decimal):
+            filtered_F.append(fd)
+    all_keys_sorted = sorted(list(all_keys))
+
+    return filtered_F, all_keys_sorted
+
+
+def analyze_functional_dependencies_deprecated1(df):
 
     # Initial setup based on FDTool logic
     U = list(df.head(0))
     C = [[[item] for item in U]]
-    Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in Apriori_Gen.powerset(U)}
+    Closure = {
+        binaryRepr.toBin(Subset, U): set(Subset) for Subset in Apriori_Gen.powerset(U)
+    }
     Cardinality = {element: None for element in Closure}
 
     # Get functional dependencies
@@ -313,7 +497,8 @@ def analyze_functional_dependencies(df):
 
     return filtered_F, all_keys_sorted
 
-def analyze_functional_dependencies_1(df, candidate_columns):
+
+def analyze_functional_dependencies_deprecated2(df, candidate_columns):
     # Initial setup based on FDTool logic
     U = list(df.columns)  # Keep all columns in U
     C = [[[item] for item in U]]
@@ -323,15 +508,25 @@ def analyze_functional_dependencies_1(df, candidate_columns):
         """Generate all subsets of columns that include at least one candidate column"""
         all_subsets = []
         for num_candidates in range(1, len(candidate_columns) + 1):
-            for candidate_subset in itertools.combinations(candidate_columns, num_candidates):
-                remaining_columns = [col for col in columns if col not in candidate_subset]
+            for candidate_subset in itertools.combinations(
+                candidate_columns, num_candidates
+            ):
+                remaining_columns = [
+                    col for col in columns if col not in candidate_subset
+                ]
                 for num_remaining in range(len(remaining_columns) + 1):
-                    for remaining_subset in itertools.combinations(remaining_columns, num_remaining):
+                    for remaining_subset in itertools.combinations(
+                        remaining_columns, num_remaining
+                    ):
                         all_subsets.append(set(candidate_subset + remaining_subset))
         return all_subsets
+
     s = candidate_powerset(U, candidate_columns)
     # Generate closure only for subsets including candidate columns
-    Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in candidate_powerset(U, candidate_columns)}
+    Closure = {
+        binaryRepr.toBin(Subset, U): set(Subset)
+        for Subset in candidate_powerset(U, candidate_columns)
+    }
     Cardinality = {element: None for element in Closure}
 
     # Get functional dependencies
@@ -360,7 +555,8 @@ def analyze_functional_dependencies_1(df, candidate_columns):
         # Check if key columns are of float type
         if not isinstance(df[key[0]].iloc[0], Decimal):
             filtered_F.append(fd)
-    return filtered_F,all_keys_sorted
+    return filtered_F, all_keys_sorted
+
 
 def map_source_fds_to_target_fds(source_fds, column_mappings):
     mapped_fds = []
@@ -404,17 +600,35 @@ def compare_fds(mapped_fds, target_fds):
 def reverse_quality(conn, **kwargs):
     # Assuming reverse_format_for_agent and other necessary functions are defined elsewhere
     from agent import Agent
+
     while True:
-        source_examples_str, source_schema_str, target_examples_list, target_schema_list = reverse_format_for_agent(
-            kwargs['source_examples'], kwargs['source_schema'], kwargs['target_examples'], kwargs['target_schema']
+        (
+            source_examples_str,
+            source_schema_str,
+            target_examples_list,
+            target_schema_list,
+        ) = reverse_format_for_agent(
+            kwargs["source_examples"],
+            kwargs["source_schema"],
+            kwargs["target_examples"],
+            kwargs["target_schema"],
         )
-        reverse_path = kwargs['result_path'].replace('baseline', 'reverse')
-        agent_reverse = Agent(kwargs['target_name'], kwargs['source_name'], kwargs['result_path'], target_schema_list,
-                              source_schema_str,
-                              target_examples_list, source_examples_str, reverse_path, kwargs['token_tracker'],
-                              kwargs['logger'],
-                              backend=kwargs['backend'],
-                              clarify_on=kwargs['clarify_on'], method='monolithic')
+        reverse_path = kwargs["result_path"].replace("baseline", "reverse")
+        agent_reverse = Agent(
+            kwargs["target_name"],
+            kwargs["source_name"],
+            kwargs["result_path"],
+            target_schema_list,
+            source_schema_str,
+            target_examples_list,
+            source_examples_str,
+            reverse_path,
+            kwargs["token_tracker"],
+            kwargs["logger"],
+            backend=kwargs["backend"],
+            clarify_on=kwargs["clarify_on"],
+            method="monolithic",
+        )
         agent_reverse.prompt += "Please don't comment copy queries (both for source and target), as PostgreSQL supports direct file writes from queries."
         print(f"Reverse prompt: {agent_reverse.prompt}")
         gpt_output = agent_reverse.run_baseline()
@@ -430,15 +644,19 @@ def reverse_quality(conn, **kwargs):
         sql_result_reverse = []
         # Validate the ChatGPT generated SQL script
         # TODO
-        with open(kwargs['test_0_path'], 'r', encoding="utf-8") as file:
+        with open(kwargs["test_0_path"], "r", encoding="utf-8") as file:
             reader = csv.reader(file)
-            header = next(reader)  # Assuming header is used elsewhere or this is for skipping the header
+            header = next(
+                reader
+            )  # Assuming header is used elsewhere or this is for skipping the header
             for row in reader:
                 sql_ini.append(tuple(row))
-        sql_ini_df = pd.DataFrame(sql_ini, columns=header)  # Assuming you want to use the header for column names
+        sql_ini_df = pd.DataFrame(
+            sql_ini, columns=header
+        )  # Assuming you want to use the header for column names
         reverse_path = reverse_path + f"{kwargs['source_name']}_result_baseline.csv"
         if os.path.exists(reverse_path):
-            with open(reverse_path, 'r', encoding="utf-8") as file:
+            with open(reverse_path, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 header = next(reader)  # For column names in DataFrame
                 for row in reader:
@@ -448,20 +666,27 @@ def reverse_quality(conn, **kwargs):
             print(f"File not found: {reverse_path}. Skipping to the next iteration.")
             continue
 
-        case_accuracy, is_correct, similarity_scores, validation_error = compare_lists_matching(sql_result_reverse_df,
-                                                                                                sql_ini_df)
+        case_accuracy, is_correct, similarity_scores, validation_error = (
+            compare_lists_matching(sql_result_reverse_df, sql_ini_df)
+        )
         print(f"validation_error: {validation_error}")
         print(is_correct)
         print(f"reverse_score: {case_accuracy}")
         return case_accuracy
 
 
-def reverse_format_for_agent(source_examples, source_schema, target_examples, target_schema):
+def reverse_format_for_agent(
+    source_examples, source_schema, target_examples, target_schema
+):
     # Convert source examples from list to string format
-    source_examples_str = json.dumps(source_examples)  # Assuming source_examples is already a list
+    source_examples_str = json.dumps(
+        source_examples
+    )  # Assuming source_examples is already a list
 
     # Convert source schema from list to string format
-    source_schema_str = json.dumps(source_schema)  # Assuming source_schema is already a list
+    source_schema_str = json.dumps(
+        source_schema
+    )  # Assuming source_schema is already a list
 
     # Convert target examples from string to list format
     target_examples_list = ast.literal_eval(target_examples)
@@ -469,20 +694,26 @@ def reverse_format_for_agent(source_examples, source_schema, target_examples, ta
     # Convert target schema from string to list format
     target_schema_list = ast.literal_eval(target_schema)
 
-    return source_examples_str, source_schema_str, target_examples_list, target_schema_list
+    return (
+        source_examples_str,
+        source_schema_str,
+        target_examples_list,
+        target_schema_list,
+    )
+
 
 def get_df(**kwargs):
     data_1 = []
     data_2 = []
     data_3 = []
     source_df = []
-    #if dtype(kwargs['test_0_path']) is List:
+    # if dtype(kwargs['test_0_path']) is List:
 
     # Check if test_paths is a list of paths
-    if isinstance(kwargs['test_0_path'], list):
+    if isinstance(kwargs["test_0_path"], list):
         # Iterate over the list of paths and create a dataframe for each
-        for path in kwargs['test_0_path']:
-            with open(path, 'r', encoding="utf-8") as file:
+        for path in kwargs["test_0_path"]:
+            with open(path, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 header = next(reader)
                 data = [tuple(row) for row in reader]
@@ -490,22 +721,23 @@ def get_df(**kwargs):
             source_df.append(df)
     else:
         # Process a single path
-        with open(kwargs['test_0_path'], 'r', encoding="utf-8") as file:
+        with open(kwargs["test_0_path"], "r", encoding="utf-8") as file:
             reader = csv.reader(file)
             header = next(reader)
             data = [tuple(row) for row in reader]
         df = pd.DataFrame(data, columns=header)
         source_df.append(df)
 
-    result_df = pd.DataFrame(data_2,columns=header)
-    with open(kwargs['target_path'], 'r', encoding="utf-8") as file:
+    result_df = pd.DataFrame(data_2, columns=header)
+    with open(kwargs["target_path"], "r", encoding="utf-8") as file:
         reader = csv.reader(file)
         header = next(reader)
         for row in reader:
             data_3.append(tuple(row))
     # Filter df_1 to include only the relevant columns
-    target_df = pd.DataFrame(data_3,columns=header)
-    return source_df[0] if len(source_df) == 1 else source_df,target_df
+    target_df = pd.DataFrame(data_3, columns=header)
+    return source_df[0] if len(source_df) == 1 else source_df, target_df
+
 
 # Single-column:
 # data type:each column’s data type(Pandas)
@@ -517,35 +749,32 @@ def get_df(**kwargs):
 # Length pattern:information about sort of value length
 # Value pattern:information about the sort of value
 # Numerical pattern:The sort of different columns of data, including equal, greater than, and less than(according to value range)
-def data_profiling(df,whether_source=False):
+def data_profiling(df, whether_source=False):
     single_analysis = {}
     for column in df.columns:
         column_summary = {
-            'uniqueness': df[column].nunique() / len(df),
-            'constancy': df[column].value_counts(normalize=True).iloc[0],
-            'data_type': df[column].dtype,
-            'null_percentage': df[column].isnull().mean() * 100,
-            'num_row':len(df)
+            "uniqueness": df[column].nunique() / len(df),
+            "constancy": df[column].value_counts(normalize=True).iloc[0],
+            "data_type": df[column].dtype,
+            "null_percentage": df[column].isnull().mean() * 100,
+            "num_row": len(df),
         }
-        if df[column].dtype in ['int64', 'float64']:
-            column_summary['min'] = df[column].min()
-            column_summary['max'] = df[column].max()
-            column_summary['mean'] = df[column].mean()
-            column_summary['std'] = df[column].std()
-        elif df[column].dtype == 'object':
-            column_summary['shortest_value'] = df[column].astype(str).map(len).min()
-            column_summary['longest_value'] = df[column].astype(str).map(len).max()
-            column_summary['avg_length'] = df[column].astype(str).map(len).mean()
+        if df[column].dtype in ["int64", "float64"]:
+            column_summary["min"] = df[column].min()
+            column_summary["max"] = df[column].max()
+            column_summary["mean"] = df[column].mean()
+            column_summary["std"] = df[column].std()
+        elif df[column].dtype == "object":
+            column_summary["shortest_value"] = df[column].astype(str).map(len).min()
+            column_summary["longest_value"] = df[column].astype(str).map(len).max()
+            column_summary["avg_length"] = df[column].astype(str).map(len).mean()
         single_analysis[column] = column_summary
     # print("single_analysis:",single_analysis)
 
-    multi_analysis = {
-        'value_relationships': {},
-        'length_relationships': {}
-    }
+    multi_analysis = {"value_relationships": {}, "length_relationships": {}}
 
     # Attempt to convert all columns to numeric, to facilitate comparison
-    df_numeric = df.apply(pd.to_numeric, errors='coerce')
+    df_numeric = df.apply(pd.to_numeric, errors="coerce")
 
     # Value Relationships for all columns
     # for col_a in df.columns:
@@ -568,13 +797,9 @@ def data_profiling(df,whether_source=False):
     if whether_source:
         return single_analysis, multi_analysis
 
-
     functional_dependencies, keys = analyze_functional_dependencies(df)
 
-    dependencies = {
-        'dependencies': functional_dependencies,
-        'keys': keys
-    }
+    dependencies = {"dependencies": functional_dependencies, "keys": keys}
     # dependencies = {
     #     'dependencies':[] ,
     #     'keys': []
@@ -582,7 +807,7 @@ def data_profiling(df,whether_source=False):
     return single_analysis, multi_analysis, dependencies
 
 
-def data_summary(single_analysis,multi_analysis,dependencies,whether_source=False):
+def data_summary(single_analysis, multi_analysis, dependencies, whether_source=False):
     null_hints = []
     columns_high = []
     columns_low = []
@@ -595,11 +820,14 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
 
     # Value pattern and schema change hints based on single_analysis
     for column, stats in single_analysis.items():
-        if 'uniqueness' in stats and 'constancy' in stats:
+        if "uniqueness" in stats and "constancy" in stats:
             # Check for columns with high uniqueness or high constancy but low uniqueness
-            if stats['uniqueness'] > high_uniqueness_threshold:
+            if stats["uniqueness"] > high_uniqueness_threshold:
                 columns_high.append(column)
-            elif stats['uniqueness'] < low_uniqueness_threshold and stats['constancy'] > high_constancy_threshold:
+            elif (
+                stats["uniqueness"] < low_uniqueness_threshold
+                and stats["constancy"] > high_constancy_threshold
+            ):
                 columns_low.append(column)
 
         # # Check for columns with high NULL percentage and add to hints
@@ -623,15 +851,17 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
 
     # Generate a single hint for using aggregation functions and group by, if there are any columns for grouping
     if columns_high and columns_low:
-        grouped_columns_high = ', '.join([f'"{col}"' for col in columns_high])
-        grouped_columns_low = ', '.join([f'"{col}"' for col in columns_low])
+        grouped_columns_high = ", ".join([f'"{col}"' for col in columns_high])
+        grouped_columns_low = ", ".join([f'"{col}"' for col in columns_low])
         schema_change_hints = f"{grouped_columns_high} has high uniqueness. {grouped_columns_low} has low uniqueness and high constancy."
     elif columns_high and not columns_low:
-        grouped_columns_high = ', '.join([f'"{col}"' for col in columns_high])
+        grouped_columns_high = ", ".join([f'"{col}"' for col in columns_high])
         schema_change_hints = f"{grouped_columns_high} has high uniqueness."
     elif not columns_high and columns_low:
-        grouped_columns_low = ', '.join([f'"{col}"' for col in columns_low])
-        schema_change_hints = f"{grouped_columns_low} has low uniqueness and high constancy."
+        grouped_columns_low = ", ".join([f'"{col}"' for col in columns_low])
+        schema_change_hints = (
+            f"{grouped_columns_low} has low uniqueness and high constancy."
+        )
     else:
         schema_change_hints = ""
 
@@ -643,15 +873,18 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
 
     # Constructing value pattern based on multi_analysis
     value_relations_summary = []
-    #for col, relationships in multi_analysis['value_relationships'].items():
-        # greater_than_cols = ', '.join(relationships['greater_than'])
-        # equal_to_cols = ', '.join(relationships['equal_to'])
-        # if greater_than_cols:
-        #     value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
-        # if equal_to_cols:
-        #     value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
-    value_pattern_msg = "Value pattern in table: " + '; '.join(
-        value_relations_summary) + '.' if value_relations_summary else ""
+    # for col, relationships in multi_analysis['value_relationships'].items():
+    # greater_than_cols = ', '.join(relationships['greater_than'])
+    # equal_to_cols = ', '.join(relationships['equal_to'])
+    # if greater_than_cols:
+    #     value_relations_summary.append(f"{col} is strictly greater than {greater_than_cols}")
+    # if equal_to_cols:
+    #     value_relations_summary.append(f"{col} is strictly equal to {equal_to_cols}")
+    value_pattern_msg = (
+        "Value pattern in table: " + "; ".join(value_relations_summary) + "."
+        if value_relations_summary
+        else ""
+    )
 
     if whether_source:
         if schema_change_hints:
@@ -662,22 +895,34 @@ def data_summary(single_analysis,multi_analysis,dependencies,whether_source=Fals
 
     # Hints for schema changes from functional dependencies
     fd_hints = []
-    for fd in dependencies.get('dependencies', []):
+    for fd in dependencies.get("dependencies", []):
         key, value = fd[0], fd[1]
-        keys = ', '.join(key) if isinstance(key, (list, tuple)) else key
+        keys = ", ".join(key) if isinstance(key, (list, tuple)) else key
         fd_hints.append(f"{keys} -> {value}")
-    fd_hints_msg = "Functional dependency detected: " + '; '.join(fd_hints) if fd_hints else ""
+    fd_hints_msg = (
+        "Functional dependency detected: " + "; ".join(fd_hints) if fd_hints else ""
+    )
     if schema_change_hints or fd_hints:
         # Combining all messages
-        summary_msg = f"{value_pattern_msg}\n" + schema_change_hints + "\n" + fd_hints_msg
-    else :
+        summary_msg = (
+            f"{value_pattern_msg}\n" + schema_change_hints + "\n" + fd_hints_msg
+        )
+    else:
         summary_msg = None
     return summary_msg
 
 
 ##For data morphing,it should compare target summary with result summary,return hints about whether to group by or aggregate,
 ## the columns to group by or aggregate,which column should be same or different,which column should be greater or less than
-def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma, result_dependencies,whether_multi=False):
+def data_morpher(
+    target_sa,
+    target_ma,
+    target_dependencies,
+    result_sa,
+    result_ma,
+    result_dependencies,
+    whether_multi=False,
+):
     transformation_hints = []
     fd_mismatch_hints = []
     value_pattern_mismatch_hints = []
@@ -685,54 +930,81 @@ def data_morpher(target_sa, target_ma, target_dependencies, result_sa, result_ma
     # Compare single analysis for suggesting group by based on uniqueness and constancy
     for column, target_stats in target_sa.items():
         result_stats = result_sa.get(column, {})
-        if 'uniqueness' in target_stats and 'uniqueness' in result_stats:
-            if target_stats['uniqueness'] > 0.9 and result_stats['uniqueness'] < 0.9:
-                transformation_hints.append(f"\nConsider using 'GROUP BY {column}' due to high uniqueness in target.")
-        if 'constancy' in target_stats and 'constancy' in result_stats:
-            if target_stats['constancy'] > 0.9 and result_stats['constancy'] < 0.9:
+        if "uniqueness" in target_stats and "uniqueness" in result_stats:
+            if target_stats["uniqueness"] > 0.9 and result_stats["uniqueness"] < 0.9:
                 transformation_hints.append(
-                    f"\nAvoid grouping by '{column}' due to its high constancy in target being lost in result.")
-         #Compare null percentage
-        if 'null_percentage' in target_stats and 'null_percentage' in result_stats:
-            if target_stats['null_percentage'] == 0 and result_stats['null_percentage'] != 0:
+                    f"\nConsider using 'GROUP BY {column}' due to high uniqueness in target."
+                )
+        if "constancy" in target_stats and "constancy" in result_stats:
+            if target_stats["constancy"] > 0.9 and result_stats["constancy"] < 0.9:
+                transformation_hints.append(
+                    f"\nAvoid grouping by '{column}' due to its high constancy in target being lost in result."
+                )
+        # Compare null percentage
+        if "null_percentage" in target_stats and "null_percentage" in result_stats:
+            if (
+                target_stats["null_percentage"] == 0
+                and result_stats["null_percentage"] != 0
+            ):
                 null_quality_hints.append(
-                    f"\nPlease use 'WHERE {column} IS NOT NULL' to ensure '{column}' is not NULL in the target table.")
+                    f"\nPlease use 'WHERE {column} IS NOT NULL' to ensure '{column}' is not NULL in the target table."
+                )
     # Combine all hints
-    transformation_hints = transformation_hints+null_quality_hints if whether_multi else transformation_hints
+    transformation_hints = (
+        transformation_hints + null_quality_hints
+        if whether_multi
+        else transformation_hints
+    )
     # Functional dependencies comparison
-    target_fds = set([tuple(fd) for fd in target_dependencies['dependencies']])
-    result_fds = set([tuple(fd) for fd in result_dependencies['dependencies']])
+    target_fds = set([tuple(fd) for fd in target_dependencies["dependencies"]])
+    result_fds = set([tuple(fd) for fd in result_dependencies["dependencies"]])
     missing_fds = target_fds - result_fds
 
     missing_fd_strings = []
     for fd in missing_fds:
         left_hand_side = ", ".join(
-            fd[0])  # This assumes fd[0] is a list or tuple of column names on the left side of FD
-        right_hand_side = fd[1]  # This assumes fd[1] is a single column name on the right side of FD
+            fd[0]
+        )  # This assumes fd[0] is a list or tuple of column names on the left side of FD
+        right_hand_side = fd[
+            1
+        ]  # This assumes fd[1] is a single column name on the right side of FD
         missing_fd_strings.append(f"{left_hand_side} -> {right_hand_side}")
 
     if missing_fd_strings:
         fd_mismatch_hints.append(
-            "\nMissing functional dependencies in result: " + "; ".join(missing_fd_strings))
+            "\nMissing functional dependencies in result: "
+            + "; ".join(missing_fd_strings)
+        )
     # Value pattern comparison for columns with changed relationships
-    for column, target_rel in target_ma['value_relationships'].items():
-        if column in result_ma['value_relationships']:
-            result_rel = result_ma['value_relationships'][column]
+    for column, target_rel in target_ma["value_relationships"].items():
+        if column in result_ma["value_relationships"]:
+            result_rel = result_ma["value_relationships"][column]
             if target_rel != result_rel:
-                target_patterns = f"{column} is greater than: " + ", ".join(target_rel['greater_than']) if target_rel[
-                    'greater_than'] else ""
-                target_patterns += f";{column} is Equal to: " + ", ".join(target_rel['equal_to']) if target_rel['equal_to'] else ""
+                target_patterns = (
+                    f"{column} is greater than: "
+                    + ", ".join(target_rel["greater_than"])
+                    if target_rel["greater_than"]
+                    else ""
+                )
+                target_patterns += (
+                    f";{column} is Equal to: " + ", ".join(target_rel["equal_to"])
+                    if target_rel["equal_to"]
+                    else ""
+                )
                 if target_patterns:
                     value_pattern_mismatch_hints.append(
-                        f"\nValue pattern is wrong for column '{column}' in result. Target pattern was {target_patterns}.")
+                        f"\nValue pattern is wrong for column '{column}' in result. Target pattern was {target_patterns}."
+                    )
         else:
             # Handling missing column in result multi-analysis
             value_pattern_mismatch_hints.append(
-                f"Column '{column}' present in target is missing in result's value relationship analysis.")
+                f"Column '{column}' present in target is missing in result's value relationship analysis."
+            )
 
     # Constructing the final hints message
     hints = transformation_hints + fd_mismatch_hints + value_pattern_mismatch_hints
     return "\n".join(hints) if hints else ""
+
 
 def schema_matching(source_dfs, target_df):
     matches_results = {}
@@ -779,7 +1051,7 @@ def schema_matching(source_dfs, target_df):
 
     # Use alternative method for matching columns with the same name
     for i, df1 in enumerate(source_dfs[:-1]):
-        for j, df2 in enumerate(source_dfs[i + 1:], start=i + 1):
+        for j, df2 in enumerate(source_dfs[i + 1 :], start=i + 1):
             # Find columns with the same name in both data frames
             common_columns = set(df1.columns).intersection(set(df2.columns))
             if common_columns:
@@ -789,6 +1061,3 @@ def schema_matching(source_dfs, target_df):
 
     print("Schema matching hints:", hints)
     return hints
-
-
-
