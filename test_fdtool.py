@@ -2,7 +2,7 @@ import pandas as pd
 import pdb
 import numpy as np
 from quality.quality import (
-    analyze_functional_dependencies_deprecated1,
+    analyze_functional_dependencies_deprecated,
     analyze_functional_dependencies,
 )
 
@@ -35,7 +35,7 @@ def generate_test_data(n_samples=1000):
 
 def test_analyze_functional_dependencies(df):
     # Analyze functional dependencies
-    filtered_fds, all_keys_sorted = analyze_functional_dependencies_deprecated1(df)
+    filtered_fds, all_keys_sorted = analyze_functional_dependencies_deprecated(df)
     print("Functional Dependencies Analysis Result:")
     print(f"Filtered Functional Dependencies: {filtered_fds}")
     print(f"All Keys Sorted: {all_keys_sorted}")

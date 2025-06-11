@@ -360,10 +360,9 @@ def get_parser():
     )
 
     parser.add_argument(
-        "--intermediate_materialization_flag",
-        type=int,
-        default=0,
-        help="Intermediate materialization flag",
+        "--intermediate_materialization",
+        action="store_true",
+        help="Materialize intermediate results",
     )
 
     parser.add_argument(
@@ -372,7 +371,9 @@ def get_parser():
         help="Allow combining ask and configure into one step",
     )
     parser.add_argument(
-        "--no_thinking", type=int, default=0, help="No think flag (0 or 1)"
+        "--no_thinking",
+        action="store_true",
+        help="Disable thinking process when asked for next operator",
     )
 
     return parser

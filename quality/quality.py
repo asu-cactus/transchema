@@ -470,7 +470,7 @@ def analyze_functional_dependencies(df, max_k_level=25):
     return filtered_F, all_keys_sorted
 
 
-def analyze_functional_dependencies_deprecated1(df):
+def analyze_functional_dependencies_deprecated(df):
 
     # Initial setup based on FDTool logic
     U = list(df.head(0))
@@ -498,7 +498,7 @@ def analyze_functional_dependencies_deprecated1(df):
     return filtered_F, all_keys_sorted
 
 
-def analyze_functional_dependencies_deprecated2(df, candidate_columns):
+def analyze_functional_dependencies_1(df, candidate_columns):
     # Initial setup based on FDTool logic
     U = list(df.columns)  # Keep all columns in U
     C = [[[item] for item in U]]
