@@ -222,12 +222,12 @@ def configure_operator(
 
 
 def materialize_chatgpt(
-    operation_history, save_path, nth_intermediate_step, args, config
+    operation_history, save_dir, nth_intermediate_step, args, config
 ):
     n_trails = 5
     error_str = ""
 
-    for script_cnt in range(n_trails):
+    for _ in range(n_trails):
         prompt = get_prompt(
             prompt_type="python_script",
             max_tokens=args.token_limit,
@@ -248,7 +248,7 @@ def materialize_chatgpt(
             error_string=error_str,
             fd_flag=args.fd_flag,
             hint_source=args.hint_source,
-            save_path=save_path,
+            save_path=f"{save_dir}/intermediate_step{nth_intermediate_step}.csv",
             nth_intermediate_step=nth_intermediate_step,
         )
 
@@ -274,7 +274,7 @@ def materialize_chatgpt(
 
         if response == "Success":
             # Save the result to the python_recovered.py from where it will be picked up for critique
-            save_path = config["path_to_files"] + "/python_recovered.py"
+            save_path = f"{save_dir}/python_step{nth_intermediate_step}.py"
             with open(save_path, "w") as f:
                 f.write(script)
             return
@@ -435,7 +435,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     # materialization_criteria = MaterializationCriteria()
 
-    max_operations = 5
+    max_operations = 9
     for nth_intermediate_step in range(1, max_operations + 1):
 
         # Get the operation
@@ -463,18 +463,21 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         print(operation_history)
 
         # Materialize the operation
+        save_dir = f"{source_space_dir}/length{len_idx_target_idx}"
         intermediate_filename = f"intermediate_step{nth_intermediate_step}"
-        save_path = (
-            f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
-        )
+        save_path = f"{save_dir}/{intermediate_filename}.csv"
+
         try:
             materialize_chatgpt(
-                operation_history, save_path, nth_intermediate_step, args, config
+                operation_history, save_dir, nth_intermediate_step, args, config
             )
         except Exception as e:
             print(f"Materialization failed: {e}")
             logger.error(f"Materialization failed: {e}")
-            if nth_intermediate_step > 1:
+            # Use the last intermediate step if available
+            if nth_intermediate_step == 1:
+                save_path = f"{source_space_dir}/length{len_idx_target_idx}/test_0.csv"
+            else:
                 intermediate_filename = f"intermediate_step{nth_intermediate_step - 1}"
                 save_path = f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
             break
@@ -501,9 +504,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
             )
             print("Successful transformation")
             return ms_info
-
-    if nth_intermediate_step == 1:
-        save_path = f"{source_space_dir}/length{len_idx_target_idx}/test_0.csv"
 
     # Do the final verification
     hard_match_result, soft_match_result = verify_result(
