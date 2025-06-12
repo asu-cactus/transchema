@@ -111,6 +111,11 @@ This repository contains Python scripts designed to automate the generation of S
     experiment_multistep.sh
     ```
 
+## Testing
+
+```pytest test.py```
+
+
 ## Logging
 
 Initializes a structured logging directory system for experiment results, creating necessary directories and CSV files with predefined headers for storing different types of experimental metrics.
