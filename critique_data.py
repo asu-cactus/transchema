@@ -400,10 +400,10 @@ if __name__ == "__main__":
     length = args.len_id
     start = args.target_id
     end = args.max_target_id
-    # Autologtuple(("Start", "Test:", f"{length}_{start}",f"{length}_{end}",),sheet_dir["sheet_1"],
-    #             creds_file=creds_path )
 
     cases = list(range(start, end))
+
+    processed_without_exceptions = 0
 
     for case in cases:
 
@@ -437,6 +437,10 @@ if __name__ == "__main__":
                         writer = csv.writer(f)
                         writer.writerow(crit_res)
 
+            processed_without_exceptions += 1
+
         except Exception as e:
             print("".join(traceback.format_exc()))
             print(f"Error processing case {case_path}: {str(e)}")
+
+    print(processed_without_exceptions)
