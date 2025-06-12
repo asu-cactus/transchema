@@ -443,4 +443,4 @@ if __name__ == "__main__":
             print("".join(traceback.format_exc()))
             print(f"Error processing case {case_path}: {str(e)}")
 
-        print(processed_without_exceptions)
+    print(processed_without_exceptions)
