@@ -5,8 +5,7 @@ import csv
 import pdb
 
 from methods.precursor import precursor
-
-
+from methods.critique import critique
 from log_util.log_util import setup_logging
 
 
@@ -318,7 +317,7 @@ def get_parser():
         "--critique_type",
         type=str,
         default="history",
-        choices=["hard", "soft", "history", "aggregation"],
+        choices=["hard", "soft", "history"],
         help="Type of critique to perform, the actual effect is to load prompt file from prompts/{critique_type}_critique.txt",
     )
 
@@ -383,10 +382,6 @@ if __name__ == "__main__":
 
     args = get_parser().parse_args()
     args.majority_voting = args.no_of_runs // 2 + 1
-    if args.critique_type != "aggregation":
-        from methods.critique import critique
-    else:
-        from methods.aggregation_critique import critique
 
     # set up logging
     print(args)
