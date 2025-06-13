@@ -57,7 +57,7 @@ This repository contains Python scripts designed to automate the generation of S
     --len-id 5 \                            # start pipeline length directory (e.g. length5)  
     --max-len-id 5 \                        # end pipeline length directory (inclusive)  
     --target-id 12 \                        # start target table ID for experiment  
-    --max-target-id 40 \                    # end target table ID for experiment  
+    --max-target-id 40 \                    # end target table ID + 1 for experiment  
 
     # ─── Sampling configuration ────────────────────────────────────────────────
     --no-perc \                             # disable percentage-based sampling (use fixed --target-length)  
