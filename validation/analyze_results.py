@@ -141,7 +141,7 @@ def analyze_results(args, results, length, id, experiment_name):
             except Exception as e:
                 print(f"Error reading {file_path}: {e}")
 
-    # Step 1: Schema-based bucketing (ignoring target table)
+    # Step 1: Schema-based bucketing
     schema_buckets = []
 
     for i, df in tables:
