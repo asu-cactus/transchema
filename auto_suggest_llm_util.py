@@ -1,28 +1,114 @@
-import os
 import time
 import re
 from pathlib import Path
 from dataclasses import dataclass
-import pdb
 import pandas as pd
-import logging
-from datetime import datetime
 from util.utils import get_test_info
 from test_scope import get_test_cases_ids
 from hints.hint import get_hints
+import pdb
+
 # import auto_suggest_llm_prompts as prt
 import tiktoken
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms
 
-# import prompts 
+# import prompts
 from prompts.next_operator_prompt import get_next_operator_prompt
 from prompts.next_operator_prompt import get_next_operator_prompt
-from prompts.configuration_prompts import get_join_prompt, get_group_by_aggregate_prompt, get_union_prompt
-from prompts.code_generation_prompt import get_python_script,get_python_script_with_intermediate_materialization
-from prompts.next_operator_prompt_with_intermediate_materialization import (
-    get_next_operator_prompt_with_intermediate_materialization
+from prompts.configuration_prompts import (
+    get_join_prompt,
+    get_group_by_aggregate_prompt,
+    get_union_prompt,
 )
+from prompts.code_generation_prompt import (
+    get_python_script,
+    get_python_script_with_intermediate_materialization,
+)
+from prompts.next_operator_prompt_with_intermediate_materialization import (
+    get_next_operator_prompt_with_intermediate_materialization,
+    get_next_operator_prompt_for_ToT,
+)
+from prompts.prune_prompt import prune_states_prompt
+
+
+def get_encoding(model):
+    if model == "gpt-4.1-mini":
+        # According to https://github.com/openai/tiktoken/issues/395
+        encoding = tiktoken.get_encoding("o200k_base")
+    else:
+        encoding = tiktoken.encoding_for_model(model)
+    return encoding
+
+
+def get_intermediate_results(
+    nth_intermediate_step,
+    directory,
+    len_idx_target_idx,
+    encoding,
+    source_length,
+    state,
+    args,
+):
+    if nth_intermediate_step <= 1:
+        all_intermediate_results = []
+        all_intermediate_files = []
+    elif nth_intermediate_step > 1:
+        # Get the intermediate results only if nth_intermediate_step > 1 because at the 1st step won't
+        # have intermediate results
+        dir_ = f"{directory}/length{len_idx_target_idx}/"
+        if args.tree_of_thoughts:
+            assert state is not None
+            all_intermediate_files = []
+            # Do not include the root node because its default result_csv_path is just test_0.csv
+            while state and state.parent:
+                all_intermediate_files.append(state.result_csv_path)
+                state = state.parent
+        else:
+            all_intermediate_files = [
+                f"{dir_}/intermediate_step{step}.csv"
+                for step in range(1, nth_intermediate_step)
+            ]
+        all_intermediate_results = get_all_intermediate(
+            all_intermediate_files, encoding, source_length
+        )
+    return all_intermediate_results, all_intermediate_files
+
+
+def get_fd_key_col_hints(
+    target_file_location, nth_intermediate_step, all_intermediate_files=None
+):
+    # calculate filtered functional dependency hints
+
+    df = pd.read_csv(target_file_location, low_memory=False)
+    df = df.drop(df.columns[0], axis=1)
+    keys, fds = get_filtered_functional_dependency(df)
+    fd_hints = get_fd_hints(keys, fds)
+
+    if nth_intermediate_step > 1:
+        for file_path in all_intermediate_files:
+            intermediate_df = pd.read_csv(file_path, low_memory=False)
+            # Get functional dependency hints
+            intermediate_keys, intermediate_fds = get_filtered_functional_dependency(
+                intermediate_df
+            )
+            intermediate_fd_hints = get_fd_hints_for_materialization(
+                intermediate_keys, intermediate_fds, step
+            )
+            fd_hints += intermediate_fd_hints
+
+        # Get key column hints
+        fd_hints += "\n\nKey column hints:\n"
+        fd_hints += get_key_column_hints(keys, 0)
+        for step in range(1, nth_intermediate_step):
+            fd_hints += get_key_column_hints(intermediate_keys, step)
+
+        # Get column matching hints
+        fd_hints += "\n\nColumn Matching Hints:\n"
+        for step in range(1, nth_intermediate_step):
+            fd_hints += get_column_matching_hints(intermediate_df, df, step)
+    return fd_hints
+
 
 def get_prompt(
     prompt_type,
@@ -51,8 +137,9 @@ def get_prompt(
     hint_source="v1",
     save_path="",
     nth_intermediate_step=0,
-    combine_ask_and_configure=False,
-    no_thinking=False,
+    args=None,
+    states=None,
+    state=None,
 ):
     """
     Args:
@@ -60,8 +147,8 @@ def get_prompt(
         nth_intermediate_step (int): Current step at which to materialize the intermediate result.
             Show the intermediate results in the steps [1,2,3,...,n-1].
             Default is 0, which means no intermediate materialization.
-        combine_ask_and_configure (bool): Whether try to combine the ask and configure steps.
-        no_thinking (bool): Whether to disable the thinking process.
+        states (list): List of states to be used in the "prune_state" prompt. Used in tree of thoughts.
+        state (State): Contains csv materialziation file path. Used in tree of thoughts.
     """
     # we can generate hints here itself
     # we need these information
@@ -72,21 +159,25 @@ def get_prompt(
     # dynamic : target_examples
     # max_tokens = 128000 # for gpt4turbo
 
-    if model == "gpt-4.1-mini":
-        # According to https://github.com/openai/tiktoken/issues/395
-        encoding = tiktoken.get_encoding("o200k_base")
-    else:
-        encoding = tiktoken.encoding_for_model(model)
+    encoding = get_encoding(model)
 
-    if nth_intermediate_step == 1:
-        all_intermediate_results = []
-    if nth_intermediate_step > 1:
-        # Get the intermediate results only if nth_intermediate_step > 1 because at the 1st step won't
-        # have intermediate results
-        intermediate_dir = f"{directory}/length{len_idx_target_idx}/"
-        all_intermediate_results = get_all_intermediate(
-            intermediate_dir, encoding, source_length, nth_intermediate_step
+    all_intermediate_files = []
+    if (
+        prompt_type in ["get_next_operator", "python_script"]
+        and args
+        and (args.intermediate_materialization or args.tree_of_thoughts)
+    ):
+        all_intermediate_results, all_intermediate_files = get_intermediate_results(
+            nth_intermediate_step,
+            directory,
+            len_idx_target_idx,
+            encoding,
+            source_length,
+            state,
+            args,
         )
+
+    target_file_location = f"{directory}/length{len_idx_target_idx}/target.csv"
 
     source_information = get_source(
         file_count,
@@ -98,41 +189,45 @@ def get_prompt(
         encoding,
     )
 
-    fd_hints = ""
-    if fd_flag == 1:
-        # calculate filtered functional dependency hints
-        target_file_location = f"{directory}/length{len_idx_target_idx}/target.csv"
-        df = pd.read_csv(target_file_location, low_memory=False)
-        df = df.drop(df.columns[0], axis=1)
-        keys, fds = get_filtered_functional_dependency(df)
-        fd_hints = get_fd_hints(keys, fds)
+    fd_hints = (
+        get_fd_key_col_hints(
+            target_file_location, nth_intermediate_step, all_intermediate_files
+        )
+        if fd_flag == 1
+        else ""
+    )
 
-        if nth_intermediate_step > 1:
-            for step in range(1, nth_intermediate_step):
-
-                file_path = f"{intermediate_dir}/intermediate_step{step}.csv"
-                intermediate_df = pd.read_csv(file_path, low_memory=False)
-                # Get functional dependency hints
-                intermediate_keys, intermediate_fds = (
-                    get_filtered_functional_dependency(intermediate_df)
-                )
-                intermediate_fd_hints = get_fd_hints_for_materialization(
-                    intermediate_keys, intermediate_fds, step
-                )
-                fd_hints += intermediate_fd_hints
-
-            # Get key column hints
-            fd_hints += "\n\nKey column hints:\n"
-            fd_hints += get_key_column_hints(keys, 0)
-            for step in range(1, nth_intermediate_step):
-                fd_hints += get_key_column_hints(intermediate_keys, step)
-
-            # Get column matching hints
-            fd_hints += "\n\nColumn Matching Hints:\n"
-            for step in range(1, nth_intermediate_step):
-                fd_hints += get_column_matching_hints(intermediate_df, df, step)
-
-    if prompt_type == "get_next_operator":
+    if prompt_type == "prune_states":
+        static_prompt = prune_states_prompt(
+            states,
+            target_data_name,
+            target_data_schema,
+            target_samples,
+            source_information,
+            fd_hints,
+            args.keepn_every_criterion,
+        )[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(
+            directory,
+            len_idx_target_idx,
+            target_perc,
+            is_perc,
+            target_length,
+            max_tokens,
+            static_prompt_length,
+            encoding,
+        )[0]
+        prompt = prune_states_prompt(
+            states,
+            target_data_name,
+            target_data_schema,
+            target_samples,
+            source_information,
+            fd_hints,
+            args.keepn_every_criterion,
+        )[0]
+    elif prompt_type == "get_next_operator":
         hints = get_hints(
             "get_next_operator",
             hint_source,
@@ -145,7 +240,7 @@ def get_prompt(
             0,
             [],
         )
-        static_prompt =  get_next_operator_prompt(
+        static_prompt = get_next_operator_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -168,23 +263,34 @@ def get_prompt(
             encoding,
         )[0]
 
-        if nth_intermediate_step > 0:
-            prompt =  get_next_operator_prompt_with_intermediate_materialization(
+        if args and args.tree_of_thoughts:
+            prompt = get_next_operator_prompt_for_ToT(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
                 target_data_schema,
                 target_samples,
-                file_count,
                 source_information,
                 fd_hints,
                 hints,
                 all_intermediate_results,
-                combine_ask_and_configure=combine_ask_and_configure,
-                no_thinking=no_thinking,
+                args.branch_factor,
+            )[0]
+        elif nth_intermediate_step > 0:
+            prompt = get_next_operator_prompt_with_intermediate_materialization(
+                allowed_operation_list,
+                operation_history,
+                target_data_name,
+                target_data_schema,
+                target_samples,
+                source_information,
+                fd_hints,
+                hints,
+                all_intermediate_results,
+                combine_ask_and_configure=args.combine_ask_and_configure,
             )[0]
         else:
-            prompt =  get_next_operator_prompt(
+            prompt = get_next_operator_prompt(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
@@ -214,7 +320,7 @@ def get_prompt(
             join_flag,
             join_hints_truncate,
         )
-        static_prompt =  get_join_prompt(
+        static_prompt = get_join_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -236,7 +342,7 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )[0]
-        prompt =  get_join_prompt(
+        prompt = get_join_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -261,7 +367,7 @@ def get_prompt(
             aggregate_flag,
             aggregate_hints_truncate,
         )
-        static_prompt =  get_group_by_aggregate_prompt(
+        static_prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -283,7 +389,7 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )[0]
-        prompt =  get_group_by_aggregate_prompt(
+        prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -296,7 +402,7 @@ def get_prompt(
         )[0]
 
     elif prompt_type == "union":
-        static_prompt =  get_union_prompt(
+        static_prompt = get_union_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -316,7 +422,7 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )[0]
-        prompt =  get_union_prompt(
+        prompt = get_union_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -339,7 +445,7 @@ def get_prompt(
         )
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
         # print(error_string)
-        static_prompt =  get_python_script(
+        static_prompt = get_python_script(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -362,7 +468,7 @@ def get_prompt(
             encoding,
         )[0]
         if nth_intermediate_step > 0:
-            prompt =  get_python_script_with_intermediate_materialization(
+            prompt = get_python_script_with_intermediate_materialization(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
@@ -375,7 +481,7 @@ def get_prompt(
                 all_intermediate_results,
             )[0]
         else:
-            prompt =  get_python_script(
+            prompt = get_python_script(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
@@ -552,9 +658,7 @@ class IntermediateResult:
     file_path: str
 
 
-def get_all_intermediate(
-    intermediate_dir, encoding, sample_length, nth_intermediate_step
-):
+def get_all_intermediate(all_files, encoding, sample_length):
     def get_intermediate(file_path, encoding, sample_length):
         source_df = pd.read_csv(file_path, low_memory=False)
         source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
@@ -565,17 +669,9 @@ def get_all_intermediate(
         schema = source_df.columns.tolist()
         return IntermediateResult(schema, source_samples_string, str(file_path))
 
-    # assert (
-    #     nth_intermediate_step > 0
-    # ), f"current_step should be greater than 1, otherwise no intermediate results are available, got {nth_intermediate_step}"
-    if nth_intermediate_step == 1:
-        return []
-
-    source_dir = Path(intermediate_dir)
     # Find all files matching the pattern "test{integer}.csv" in the source directory
     all_intermediate_results = []
-    for step in range(1, nth_intermediate_step):
-        file_path = source_dir / f"intermediate_step{step}.csv"
+    for file_path in all_files:
         intermediate_result = get_intermediate(file_path, encoding, sample_length)
         all_intermediate_results.append(intermediate_result)
 
@@ -619,6 +715,7 @@ def get_columns_aggr(s):
 
     return res
 
+
 def cost_compare(cost1, cost2, model):
     cost = dict()
     cost["total_cost"] = cost2["total_cost"] - cost1["total_cost"]
@@ -651,7 +748,7 @@ def query_gpt(
     llm_model, model, prompt, q_count, logger, cost_summary, token_tracker, type
 ):
     start_time = time.time()
-    logger.info("Query of Type : {type_}".format(type_=type))
+    logger.info(f"Query of Type : {type}")
     # run the prompt and get the result
     res = llm_model.gpt(prompt)
     # log the prompt
@@ -692,7 +789,11 @@ def get_filtered_functional_dependency(df):
     # take only first 15 columns and 1000 rows to analyse functional dependencies
     df = df.sample(n=min(1000, df.shape[0]), replace=False)
     df = df.iloc[:, :15]
-    filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
+    try:
+        filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
+    except Exception as e:
+        print(f"Error in analyzing functional dependencies:\n{e}")
+        filtered_F, all_keys_sorted = [], {}
 
     if not filtered_F or not all_keys_sorted:
         return [], {}

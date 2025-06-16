@@ -35,7 +35,7 @@ from util.FDTool.fdtool.modules import GetFDs, Apriori_Gen, binaryRepr
 import csv
 import pandas as pd
 import os
-
+import pdb
 
 from util.FDTool.fdtool.modules import (
     Apriori_Gen,
@@ -375,7 +375,7 @@ def handler(signum, frame):
     raise TimeoutError("Function execution has timed out.")
 
 
-def analyze_functional_dependencies(df, max_k_level=25):
+def analyze_functional_dependencies(df, max_k_level=25, filtered=True):
 
     # Define header; Initialize k;
     U = list(df.head(0))
@@ -457,17 +457,27 @@ def analyze_functional_dependencies(df, max_k_level=25):
         if k is not None and max_k_level == k:
             break
 
-    filtered_F = []
-    all_keys = set()
-    for fd in F:
-        key, value = fd
-        all_keys.update(key)
-        # Check if key columns are of float type
-        if not isinstance(df[key[0]].iloc[0], Decimal):
-            filtered_F.append(fd)
-    all_keys_sorted = sorted(list(all_keys))
+    # TODO: keys may not be merged as a set, but a list of list
+    if filtered:
+        filtered_F = []
+        all_keys = set()
+        for fd in F:
+            key, value = fd
+            all_keys.update(key)
+            # Check if key columns are of float type
+            if not isinstance(df[key[0]].iloc[0], Decimal):
+                filtered_F.append(fd)
 
-    return filtered_F, all_keys_sorted
+        all_keys_sorted = sorted(list(all_keys))
+        return filtered_F, all_keys_sorted
+    else:
+        keyss = []
+        fds = []
+        for keys, value in F:
+            sorted_keys = sorted(keys)
+            keyss.append(sorted_keys)
+            fds.append([sorted_keys, value])
+        return fds, keyss
 
 
 def analyze_functional_dependencies_deprecated(df):

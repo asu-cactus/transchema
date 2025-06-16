@@ -273,17 +273,14 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     logger.info(cost)
 
     # #print(res[0])
-    with open(
-        main_folder + "/length" + len_idx_target_idx + "/python_recovered.py", mode="r"
-    ) as f:
+    if args.intermediate_materialization or args.tree_of_thoughts:
+        dir_ = f"{main_folder}/source_space/length{len_idx_target_idx}/"
+    else:
+        dir_ = f"{main_folder}/length{len_idx_target_idx}/"
+    with open(f"{dir_}/python_recovered.py", mode="r") as f:
         python_code = f.read()
     target_location_critique = (
-        main_folder
-        + "/length"
-        + len_idx_target_idx
-        + "/target_multisource_critique_"
-        + args.critique_type
-        + ".csv"
+        f"{dir_}/target_multisource_critique_{args.critique_type}.csv"
     )
     query_generator = """Based on the Critisizer Response, can you add the response in the python code.
     Note : - Make sure to write the final output of the python code to {target_location_critique}
@@ -387,7 +384,7 @@ def replace_history_info(query, operation_history):
 
 def get_result_path(args, main_folder, len_idx_target_idx):
 
-    if args.intermediate_materialization:
+    if args.intermediate_materialization or args.tree_of_thoughts:
         result_path = f"{main_folder}/source_space/length{len_idx_target_idx}/"
         # Iterate through the intermediate files in the source_space folder and get their names
         max_step = 0
