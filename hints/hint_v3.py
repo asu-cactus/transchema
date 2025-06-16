@@ -693,6 +693,7 @@ def get_join_hints(
                 ):
                     hint = f"It is HIGHLY POSSIBLE that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
 
+<<<<<<< HEAD
                 elif join_check_3(
                     table1[col1],
                     table2[col2],
@@ -721,6 +722,19 @@ def get_join_hints(
                     table1[col1], table2[col2], table_name1, table_name2, col1, col2
                 ):
                     hint = f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+=======
+                # elif join_check_3(table1[col1], table2[col2], table_name1, table_name2, col1, col2, columns1.get_loc(col1), columns2.get_loc(col2), total_columns1, total_columns2):
+                #     hint = f"It is probable that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                # elif join_check_4(table1[col1], table2[col2], table_name1, table_name2, col1, col2):
+                #     hint = f"It is probable that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                # elif foreign_key(table1[col1], table2[col2], table_name1, table_name2, col1, col2):
+                #     hint = f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+
+                # elif join_check_1(table1[col1], table2[col2], table_name1, table_name2, col1, col2):
+                #     hint = f"It is possible that {table_name1} JOIN {table_name2} ON {table_name1}.{col1} = {table_name2}.{col2}\n"
+>>>>>>> ece2e4c (saving work before switching branches)
 
                 if (
                     join_check_1(

@@ -75,6 +75,7 @@ Note: The row examples provided are part of the corresponding rows.
 Hint : {hints}
 {fd_hints}
 
+- If a column is part of a group by operation, it is less likely part of an aggregation operation.
 - Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used. 
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.

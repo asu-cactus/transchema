@@ -191,8 +191,15 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
                     group_by_hint = f"Group by the column `{column_name}` in the source file `{os.path.basename(source_file)}`."
     else:
         # Handle the case where no exact or larger match exists
-        group_by_hint = "No suitable group-by column identified."
-
+        group_by_hint = ""
+    # aggregation hint
+    column_set = get_column_equivalence(df_ground_truth)
+    if len(column_set) > 3:
+        group_by_hint += (
+            f"\n Aggregate {', '.join(column_set)}, by counting them if they equal to each other: "
+            + ", ".join([f"Count(Target.{col})" for col in column_set])
+            + "\n"
+        )
     # Append hint to the query
     if group_by_hint and metadata_flag:
         query += f"\n\nHint: {group_by_hint}"
@@ -220,6 +227,74 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             return "sum/avg"
         else:
             return "count"
+
+    def find_best_matching_col_from_source(col_name: str, length: int, id_: int):
+        """
+        Search through the headers of all test CSVs under:
+            autopipeline-benchmarks/github-pipelines/length{length}_{id_}/test_{idx}.csv
+
+        For each file, read only the header (no data) and look for a column name
+        such that either:
+        - col_name is a substring of that column name, or
+        - that column name is a substring of col_name.
+
+        As soon as a match is found, return the matching column name.
+        If no match is found in any file, return None.
+        """
+        main_folder = "autopipeline-benchmarks/github-pipelines"
+        test_file_idx = 0
+
+        while True:
+            test_file_path = os.path.join(
+                main_folder, f"length{length}_{id_}", f"test_{test_file_idx}.csv"
+            )
+
+            if not os.path.exists(test_file_path):
+                # No more files in this directory
+                break
+
+            # Read only the header (no rows) to get the column names
+            df_source = pd.read_csv(test_file_path, low_memory=False)
+
+            # Check each column name in this file’s header
+            for src_col in df_source.columns:
+                if col_name in src_col or src_col in col_name:
+                    return src_col, df_source[src_col]
+
+            test_file_idx += 1
+
+        # If we get here, no matching column was found in any test file
+        return None, None
+
+    def aggfunc1(query, col_name, col, datatype, pos):
+        # find best matching column from source
+        matching_col_name, matching_col = find_best_matching_col_from_source(
+            col_name, length, id_
+        )
+        if datatype == "object" or (datatype == "int64" and pos < 1):
+            return "group_by"
+        if matching_col_name is None:
+            if datatype == "float64":
+                return "sum/avg"
+            elif datatype == "int64":
+                return "count/sum/min/max"
+        else:
+
+            if matching_col.dtype == "object" and datatype == "int64":
+                return "count"
+            elif (
+                matching_col.dtype in ["int64", "float64"]
+                and np.mean(col) / np.mean(matching_col) > 10
+            ):
+                return "sum"
+            elif (
+                matching_col.dtype in ["int64", "float64"]
+                and np.mean(col) / np.mean(matching_col) > 0.5
+                and np.mean(col) / np.mean(matching_col) < 2
+            ):
+                return "count/avg/min/max"
+            else:
+                return "count/sum/avg/min/max"
 
     metadata = []
     i = -1
@@ -250,13 +325,16 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         for col_info in metadata:
             metadata_str += f"Column Name: {col_info['Column Name']}\n"
             metadata_str += f"Data Type: {col_info['Data Type']}\n"
-            metadata_str += f"Recommended Aggregate Function: {col_info['Recommended Aggregate Function']}\n"
-            if "Min Value" in col_info:
-                metadata_str += f"  Size: {col_info['Size']}\n"
+            if col_info["Recommended Aggregate Function"] == "group_by":
+                metadata_str += "Recommended Group By Column\n\n"
+            else:
+                metadata_str += f"Recommended Aggregate Function: {col_info['Recommended Aggregate Function']}\n\n"
+            # if "Min Value" in col_info:
+            #     metadata_str += f"  Size: {col_info['Size']}\n"
 
-                # metadata_str += f"  Min Value: {col_info['Min Value']}\n"
-                # metadata_str += f"  Max Value: {col_info['Max Value']}\n"
-                # metadata_str += f"  Median Value: {col_info['Median Value']}\n"
+            # metadata_str += f"  Min Value: {col_info['Min Value']}\n"
+            # metadata_str += f"  Max Value: {col_info['Max Value']}\n"
+            # metadata_str += f"  Median Value: {col_info['Median Value']}\n"
             metadata_str += "\n"
 
     # Replace $METADATA$ in the query
@@ -264,7 +342,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         query = query.replace("$METADATA$", metadata_str)
     else:
         query = query.replace("$METADATA$", "")
-    ##print("AOUBDISAUJDAOHSDSADSALKNDLKSANDSADOSAIDJSAOIDOIASJDOSA")
+
     res = llm_client.gpt(query)
 
     logger.info(query)
@@ -316,8 +394,10 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     cost = token_tracker.cost_summary()
     end_time = time.time()
     time_elapsed = end_time - start_time
-    ##print(script)
+    print(script)
     response = execute_python(script)
+    print(response)
+    # sys.exit()
     logger.info(response)
 
     try:

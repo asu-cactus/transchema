@@ -30,6 +30,7 @@ def get_python_script(
  - You may use string conversions or date conversions if needed.
  - Make sure that table generated through the script has the same column structure as target.
  - All source files have an index column which is always the first column and it should be ignored in the transformation.
+ - Please add less comments to save tokens.
 
   Python Script:
  - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.

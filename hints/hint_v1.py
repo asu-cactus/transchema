@@ -262,7 +262,11 @@ def get_join_hints(
                 reverse=True,
             ):
                 cnt += 1
+<<<<<<< HEAD
                 hint = f' - {k.replace(" <-> ", " POTENTIAL JOIN ")} ' + " { "
+=======
+                hint = f" - { k.replace(' <-> ', ' POTENTIAL JOIN ') } " + " { "
+>>>>>>> ece2e4c (saving work before switching branches)
 
                 # todo create two functions, one for key-value pair and one for the text representation.
                 t1, c1, t2, c2 = (

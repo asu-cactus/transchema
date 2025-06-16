@@ -10,7 +10,7 @@ python3 critique_data.py \
   --hint-source v3 \
   --no-anon \
   --target-length 3 \
-  --source-length 9 \
+  --source-length 3 \
   --join-flag 0 \
   --aggregate-flag 0 \
   --fd-flag 0 \
