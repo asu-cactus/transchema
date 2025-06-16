@@ -6,6 +6,27 @@ from typing import List, Tuple
 from validation.hard_match import compare_columns
 
 
+def avg_tup_(list_tup):
+    print("_________________________")
+    print(f"averaging {list_tup}")
+    avg_cost = 0
+    avg_lat = 0
+    avg_acc = 0
+    avg_score = 0
+    for tup in list_tup:
+        avg_cost += tup[3]
+        avg_lat += tup[4]
+        avg_acc += tup[2]
+        avg_score += tup[5]
+    avg_cost = avg_cost / len(list_tup)
+    avg_lat = avg_lat / len(list_tup)
+    avg_acc = avg_acc / len(list_tup)
+    avg_score = avg_score / len(list_tup)
+    # here
+    avg = (list_tup[0][0], list_tup[0][1], avg_acc, avg_cost, avg_lat, avg_score)
+    return avg
+
+
 def normalize_column(col: str) -> str:
     """Normalize a column name: lowercase and remove non-alphanumerics."""
     return re.sub(r"[^a-zA-Z0-9]", "", col.strip().lower())
@@ -94,7 +115,7 @@ def refine_by_value_similarity(
     return subgroups
 
 
-def analyze_results(length, id, experiment_name):
+def analyze_results(args, results, length, id, experiment_name):
     base_folder = f"autopipeline-benchmarks/github-pipelines/length{length}_{id}"
     result_folder = os.path.join(base_folder, "result_archive")
 
@@ -153,15 +174,80 @@ def analyze_results(length, id, experiment_name):
         print("Indices:", [i for i, _ in final_majority_group])
     else:
         print(" No valid majority group found.")
+    majority_result = avg_tup_([results[i] for i, _ in final_majority_group])
+    majority_index = final_majority_group[0][0]
 
-    return final_majority_group
+    # score analysis calculation module
+    best_score = float("-inf")
+    score_index = None
+    score_result = None
+
+    for idx, result in enumerate(results):
+        score = result[5]  # 6th element in the tuple
+        if score >= best_score:
+            best_score = score
+            score_index = tables[idx][0]
+            score_result = result
+
+    # clear results directory
+    for filename in all_files:
+        file_path = os.path.join(result_folder, filename)
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            print(f"Error removing {file_path}: {e}")
+
+    print(majority_index, majority_result, score_index, score_result)
+
+    return majority_index, majority_result, score_index, score_result
 
 
 def main():
+    args = None  # No args needed for now
+
+    # Sample results list (already provided by you)
+    results = [
+        (
+            True,
+            True,
+            1.0,
+            0.00642,
+            31.59062671661377,
+            3.0,
+            "[\"JOIN : [['Source3_6_1', 'Source3_6_2'], ['Source3_6_1.movie id', 'Source3_6_2.movie id']]\", '\"group_by\" = [Source3_6_1.movie title], \"aggregations\" = [AVG(Source3_6_2.rating)]']",
+        ),
+        (
+            True,
+            True,
+            1.0,
+            0.0063896000000000005,
+            19.603930234909058,
+            3.0,
+            '[\'JOIN : [["Source3_6_1","Source3_6_2"],["movie id","movie id"]]\', \'"group_by" = [Source3_6_1.movie_title], "aggregations" = [AVG(Source3_6_2.rating)]\']',
+        ),
+        (
+            True,
+            True,
+            1.0,
+            0.006166,
+            13.26430058479309,
+            3.0,
+            '[\'JOIN : [["Source3_6_1","Source3_6_2"],["Source3_6_1.movie id","Source3_6_2.movie id"]]\', \'"group_by" = [Source3_6_1.movie title], "aggregations" = [AVG(Source3_6_2.rating)]\']',
+        ),
+    ]
+
     length = 3
     id = 6
     experiment_name = "feature_v3_4_bad_20250615_211617"
-    analyze_results(length, id, experiment_name)
+
+    majority_index, majority_results, score_index, score_result = analyze_results(
+        args, results, length, id, experiment_name
+    )
+
+    print(f"Majority index: {majority_index}")
+    print(f"Majority results: {majority_results}")
+    print(f"Score index: {score_index}")
+    print(f"Score results: {score_result}")
 
 
 if __name__ == "__main__":
