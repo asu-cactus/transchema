@@ -1,9 +1,11 @@
 import time
 import os
 import pandas as pd
+import numpy as np
 import re
 import traceback
 import pdb
+from hints.hint_v3 import get_column_equivalence
 
 from auto_suggest_llm_util import get_filtered_functional_dependency, calculate_score
 from util.utils import execute_python, get_test_info
@@ -309,8 +311,8 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
                 col_info["Column Name"] = col
             col_info["Data Type"] = str(df_ground_truth[col].dtype)
 
-            col_info["Recommended Aggregate Function"] = aggfunc(
-                query, df_ground_truth[col], col_info["Data Type"]
+            col_info["Recommended Aggregate Function"] = aggfunc1(
+                query, col, df_ground_truth[col], col_info["Data Type"], i
             )
 
             if pd.api.types.is_numeric_dtype(df_ground_truth[col]):

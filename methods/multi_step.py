@@ -391,11 +391,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 script = match.group(1).strip()
                 print(script)
                 response = execute_python(script)
-<<<<<<< HEAD
                 # print(response)
-=======
-                print(response)
->>>>>>> ece2e4c (saving work before switching branches)
                 error_str = error_str + response + "\n"
                 # #print(error_str)
                 if response == "Success":
