@@ -3,10 +3,13 @@ import argparse
 import json
 import csv
 import pdb
+from datetime import datetime
+import sys
 
 from methods.precursor import precursor
 from methods.critique import critique
 from log_util.log_util import setup_logging
+from validation.analyze_results import analyze_results
 
 
 def avg_tup(list_tup):
@@ -41,14 +44,21 @@ def avg_tup_(list_tup):
 
 
 def ms(args, length, id, log_dir, experiment_name):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    experiment_name = f"{experiment_name}_{timestamp}"
+    print(experiment_name)
     results = []
     true_tup = []
     false_tup = []
     true_tup_ = []
     false_tup_ = []
     for i in range(0, args.no_of_runs):
+
         ms_info = precursor(args, length, id, log_dir, experiment_name, i)
         results.append(ms_info)
+
+    analyze_results(args, results, length, id, experiment_name)
+    sys.exit()
 
     for tup in results:
         multistep_path = f"{args.result_directory}/multi_step.csv"
@@ -87,6 +97,8 @@ def ms(args, length, id, log_dir, experiment_name):
     else:
         avged_tup = avg_tup(false_tup)
     # Return the operation_history of the last ms_info for now
+
+    print(avged_tup + avged_tup_, ms_info[-1])
 
     return avged_tup + avged_tup_, ms_info[-1]
 

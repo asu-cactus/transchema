@@ -12,7 +12,7 @@ from auto_suggest_llm_util import (
     get_columns,
     get_columns_join,
 )
-
+import shutil
 from log_util.log_util import create_logger
 
 # import parameters as p
@@ -398,7 +398,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 script_cnt += 1
 
             if response == "Success":
-                # save file here
+                # save code here in code archive
                 # file_name
                 if not os.path.exists(
                     f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
@@ -411,6 +411,18 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     "w",
                 ) as file:
                     file.write(script)
+
+                # save table in data archive for further analysis
+                if not os.path.exists(
+                    f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+                ):
+                    os.makedirs(
+                        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+                    )
+                shutil.copy(
+                    target_file_location,
+                    f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive/{experiment_name}_{i_}_target_multisource.csv",
+                )
 
                 try:
                     # name_of_experiment_pass_1
