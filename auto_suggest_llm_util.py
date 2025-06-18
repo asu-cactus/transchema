@@ -1,6 +1,5 @@
 import time
 import re
-from pathlib import Path
 from dataclasses import dataclass
 import pandas as pd
 from util.utils import get_test_info
@@ -8,13 +7,10 @@ from test_scope import get_test_cases_ids
 from hints.hint import get_hints
 import pdb
 
-# import auto_suggest_llm_prompts as prt
 import tiktoken
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms
 
-# import prompts
-from prompts.next_operator_prompt import get_next_operator_prompt
 from prompts.next_operator_prompt import get_next_operator_prompt
 from prompts.configuration_prompts import (
     get_join_prompt,
@@ -64,6 +60,7 @@ def get_intermediate_results(
             while state and state.parent:
                 all_intermediate_files.append(state.result_csv_path)
                 state = state.parent
+            all_intermediate_files.reverse()  # Reverse to maintain the order of steps
         else:
             all_intermediate_files = [
                 f"{dir_}/intermediate_step{step}.csv"
@@ -75,39 +72,54 @@ def get_intermediate_results(
     return all_intermediate_results, all_intermediate_files
 
 
-def get_fd_key_col_hints(
-    target_file_location, nth_intermediate_step, all_intermediate_files=None
+hint_dict = {}
+
+
+def get_fd_and_col_mapping_hints(
+    target_file_path: str,
+    nth_intermediate_step: int,
+    all_intermediate_files: list[str] = None,
+    fdss: list[list[tuple, str]] = None,
 ):
+    global hint_dict
     # calculate filtered functional dependency hints
+    if target_file_path in hint_dict:
+        target_hint = hint_dict[target_file_path]
+    else:
+        df = pd.read_csv(target_file_path, low_memory=False)
+        df = df.drop(df.columns[0], axis=1)
+        fds = analyze_functional_dependencies(df)
+        target_hint = get_fd_hints(fds)
+        hint_dict[target_file_path] = target_hint
 
-    df = pd.read_csv(target_file_location, low_memory=False)
-    df = df.drop(df.columns[0], axis=1)
-    keys, fds = get_filtered_functional_dependency(df)
-    fd_hints = get_fd_hints(keys, fds)
+    if nth_intermediate_step <= 1:
+        return target_hint
 
-    if nth_intermediate_step > 1:
-        for file_path in all_intermediate_files:
+    hints = []
+    for step, file_path in enumerate(all_intermediate_files, start=1):
+        if file_path in hint_dict:
+            hint = hint_dict[file_path]
+        else:
+            hint = f"Hints after intermediate step {step}:\n"
             intermediate_df = pd.read_csv(file_path, low_memory=False)
             # Get functional dependency hints
-            intermediate_keys, intermediate_fds = get_filtered_functional_dependency(
-                intermediate_df
-            )
-            intermediate_fd_hints = get_fd_hints_for_materialization(
-                intermediate_keys, intermediate_fds, step
-            )
-            fd_hints += intermediate_fd_hints
+            if fdss:
+                intermediate_fds = fdss[step - 1]
+            else:
+                intermediate_fds = analyze_functional_dependencies(intermediate_df)
+            intermediate_fd_hint = get_fd_hints(intermediate_fds, step)
+            hint += intermediate_fd_hint
 
-        # Get key column hints
-        fd_hints += "\n\nKey column hints:\n"
-        fd_hints += get_key_column_hints(keys, 0)
-        for step in range(1, nth_intermediate_step):
-            fd_hints += get_key_column_hints(intermediate_keys, step)
-
-        # Get column matching hints
-        fd_hints += "\n\nColumn Matching Hints:\n"
-        for step in range(1, nth_intermediate_step):
-            fd_hints += get_column_matching_hints(intermediate_df, df, step)
-    return fd_hints
+            # Get column matching hint
+            hint += "\n\nColumn Matching Hints:\n"
+            for step in range(1, nth_intermediate_step):
+                hint += get_column_matching_hints(intermediate_df, df, step)
+            # Store the hint in the dictionary
+            hint_dict[file_path] = hint
+        hints.append(hint)
+    # Combine all hints into a single string
+    combined_hint = target_hint + "\n\n".join(hints)
+    return combined_hint
 
 
 def get_prompt(
@@ -176,6 +188,13 @@ def get_prompt(
             state,
             args,
         )
+    fdss = []
+    if args and args.tree_of_thoughts:
+        while state and state.parent:
+            fdss.append(state.fds)
+            state = state.parent
+        # Reverse to maintain the order of steps
+        fdss.reverse()
 
     target_file_location = f"{directory}/length{len_idx_target_idx}/target.csv"
 
@@ -190,8 +209,8 @@ def get_prompt(
     )
 
     fd_hints = (
-        get_fd_key_col_hints(
-            target_file_location, nth_intermediate_step, all_intermediate_files
+        get_fd_and_col_mapping_hints(
+            target_file_location, nth_intermediate_step, all_intermediate_files, fdss
         )
         if fd_flag == 1
         else ""
@@ -777,112 +796,68 @@ def query_gpt(
     return res
 
 
-def extract_dependencies(fd_dict):
-    dependencies = set()  # Use a set to avoid duplicates
-    for determinant, dependents in fd_dict.items():
-        for dependent in dependents:
-            dependencies.add((determinant, dependent))
-    return dependencies
+# def extract_dependencies(fd_dict):
+#     dependencies = set()  # Use a set to avoid duplicates
+#     for determinant, dependents in fd_dict.items():
+#         for dependent in dependents:
+#             dependencies.add((determinant, dependent))
+#     return dependencies
 
 
-def get_filtered_functional_dependency(df):
-    # take only first 15 columns and 1000 rows to analyse functional dependencies
-    df = df.sample(n=min(1000, df.shape[0]), replace=False)
-    df = df.iloc[:, :15]
-    try:
-        filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
-    except Exception as e:
-        print(f"Error in analyzing functional dependencies:\n{e}")
-        filtered_F, all_keys_sorted = [], {}
+# def get_filtered_functional_dependency(df):
+#     # take only first 15 columns and 1000 rows to analyse functional dependencies
+#     df = df.sample(n=min(1000, df.shape[0]), replace=False)
+#     df = df.iloc[:, :15]
+#     try:
+#         filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
+#     except Exception as e:
+#         print(f"Error in analyzing functional dependencies:\n{e}")
+#         filtered_F, all_keys_sorted = [], {}
 
-    if not filtered_F or not all_keys_sorted:
-        return [], {}
+#     if not filtered_F or not all_keys_sorted:
+#         return [], {}
 
-    # Find the key with the most dependencies
-    key_dependencies = {}
-    for key, value in filtered_F:
-        key = key[0]  # Assuming key is always a single-element tuple
-        if key not in key_dependencies:
-            key_dependencies[key] = set()
-        key_dependencies[key].add(value)
+#     # Find the key with the most dependencies
+#     key_dependencies = {}
+#     for key, value in filtered_F:
+#         key = key[0]  # Assuming key is always a single-element tuple
+#         if key not in key_dependencies:
+#             key_dependencies[key] = set()
+#         key_dependencies[key].add(value)
 
-    # Sort keys by number of dependencies, descending
-    sorted_keys = sorted(
-        key_dependencies.keys(), key=lambda k: len(key_dependencies[k]), reverse=True
-    )
+#     # Sort keys by number of dependencies, descending
+#     sorted_keys = sorted(
+#         key_dependencies.keys(), key=lambda k: len(key_dependencies[k]), reverse=True
+#     )
 
-    # filter key based on rules
-    # If key is first and numerical, it can be a key
-    # If key is string type, it can be a key
-    sorted_filtered_keys = []
-    for key in sorted_keys:
-        if df.columns.get_loc(key) == 0:
-            sorted_filtered_keys.append(key)
-        elif df[key].dtype == "object":
-            sorted_filtered_keys.append(key)
+#     # filter key based on rules
+#     # If key is first and numerical, it can be a key
+#     # If key is string type, it can be a key
+#     sorted_filtered_keys = []
+#     for key in sorted_keys:
+#         if df.columns.get_loc(key) == 0:
+#             sorted_filtered_keys.append(key)
+#         elif df[key].dtype == "object":
+#             sorted_filtered_keys.append(key)
 
-    filtered_fd = {
-        key: key_dependencies[key]
-        for key in sorted_filtered_keys
-        if key in key_dependencies
-    }
+#     filtered_fd = {
+#         key: key_dependencies[key]
+#         for key in sorted_filtered_keys
+#         if key in key_dependencies
+#     }
 
-    return sorted_filtered_keys, filtered_fd
+#     return sorted_filtered_keys, filtered_fd
 
 
-def get_fd_hints(keys, fds):
-    if not keys:
-        return "No Clear Functional Dependencies Found in Target Table.\n\n"
+def get_fd_hints(fds, step=0):
+    table_name = f"intermediate_step{step}" if step > 0 else "Target"
+    if not fds:
+        return f"No Clear Functional Dependencies found in {table_name} Table.\n\n"
 
-    hint = "Functional Dependencies discovered from Target Table:\n"
-    for key in keys:
-        hint += "Functional Dependencies Associated with key " + key + " : "
-        for v in fds[key]:
-            hint += key + " -> " + v + " , "
-        hint += "\n"
+    hint = f"Functional Dependencies discovered from {table_name} Table:\n"
+    hint += "\n".join([f"{key} -> {value}" for key, value in fds])
     hint += "\n"
     return hint
-    # if not sorted_filtered_keys:
-    #     return "No clear functional dependencies found"
-
-    # hint = "Functional Dependencies discovered : \n"
-    # for key in sorted_filtered_keys :
-    #     hint += "Functional Dependencies Associated with key " + key + " : "
-    #     for v in key_dependencies[key] :
-    #         hint += key + " -> " + v + " , "
-    #     hint += "\n"
-    # if(hint == "Functional Dependencies discovered : \n") :
-    #     return ""
-    # else :
-    #     return hint
-
-
-def get_fd_hints_for_materialization(keys, fds, step):
-    if not keys:
-        return f"\n\nNo clear functional dependencies found in the intermediate_step{step} table.\n\n"
-    hint = f"Functional dependencies discovered from the intermediate_step{step} table are :\n"
-    for key in keys:
-        hint += "Functional dependencies associated with key " + key + " : "
-        for v in fds[key]:
-            hint += key + " -> " + v + " , "
-        hint += "\n"
-    return hint
-
-
-def get_key_column_hints(keys, step):
-    if step <= 0:
-        # For target table
-        if not keys:
-            hints = f"No clear key columns found in the target table."
-        else:
-            hints = f"Key columns discovered from the target table: {keys}\n"
-    else:
-        # For intermediate step
-        if not keys:
-            hints = f"No clear key columns found in the intermediate_step{step} table."
-        else:
-            hints = f"Key columns discovered from the intermediate_step{step} table : {keys}\n"
-    return hints
 
 
 def get_column_matching_hints(intermediate_df, target_df, step):
@@ -920,8 +895,11 @@ def calculate_score(gt_df, tgt_df):
     p = 1
 
     # Match Functional Dependencies
-    key_gt, fd_gt = get_filtered_functional_dependency(gt_df)
-    key_tgt, fd_tgt = get_filtered_functional_dependency(tgt_df)
+    fd_gt = analyze_functional_dependencies(gt_df)
+    key_gt = list(set([key for key, _ in fd_gt]))
+
+    fd_tgt = analyze_functional_dependencies(tgt_df)
+    key_tgt = list(set([key for key, _ in fd_tgt]))
 
     print("\n\n\nScore Calculation\n\n\n")
 
@@ -931,8 +909,8 @@ def calculate_score(gt_df, tgt_df):
     print(fd_tgt)
     print(key_tgt)
 
-    dependencies_gt = extract_dependencies(fd_gt)
-    dependencies_tgt = extract_dependencies(fd_tgt)
+    dependencies_gt = set(fd_gt)
+    dependencies_tgt = set(fd_tgt)
 
     overlapping_dependencies = dependencies_gt.intersection(dependencies_tgt)
     overlapping_keys = set(key_gt).intersection(key_tgt)
@@ -974,8 +952,10 @@ def calculate_score_cost(gt_df, tgt_df, cost_):
     p = 1
 
     # Match Functional Dependencies
-    key_gt, fd_gt = get_filtered_functional_dependency(gt_df)
-    key_tgt, fd_tgt = get_filtered_functional_dependency(tgt_df)
+    fd_gt = analyze_functional_dependencies(gt_df)
+    key_gt = list(set(fd_gt.keys()))
+    fd_tgt = analyze_functional_dependencies(tgt_df)
+    key_tgt = list(set(fd_tgt.keys()))
 
     print("\n\n\nScore Calculation\n\n\n")
 
@@ -985,8 +965,8 @@ def calculate_score_cost(gt_df, tgt_df, cost_):
     print(fd_tgt)
     print(key_tgt)
 
-    dependencies_gt = extract_dependencies(fd_gt)
-    dependencies_tgt = extract_dependencies(fd_tgt)
+    dependencies_gt = set(fd_gt)
+    dependencies_tgt = set(fd_tgt)
 
     overlapping_dependencies = dependencies_gt.intersection(dependencies_tgt)
     overlapping_keys = set(key_gt).intersection(key_tgt)

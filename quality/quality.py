@@ -22,6 +22,7 @@ Type 2 quality checks are performed by the following functions:
 
 """
 
+from collections import defaultdict
 import itertools
 import re
 import ast
@@ -31,7 +32,6 @@ from sqlparse.sql import Identifier, IdentifierList
 from sqlparse.tokens import DML
 import json
 from decimal import Decimal
-from util.FDTool.fdtool.modules import GetFDs, Apriori_Gen, binaryRepr
 import csv
 import pandas as pd
 import os
@@ -44,8 +44,6 @@ from util.FDTool.fdtool.modules import (
     ObtainEquivalences,
     Prune,
 )
-from decimal import Decimal
-from string import ascii_lowercase
 
 
 def schema_quality(sql_query, **kwargs):
@@ -375,17 +373,41 @@ def handler(signum, frame):
     raise TimeoutError("Function execution has timed out.")
 
 
-def analyze_functional_dependencies(df, max_k_level=25, filtered=True):
+def analyze_functional_dependencies(df):
+    # To save time, use only a few rows and columns of the dataframe.
+    df = df.sample(n=min(1000, df.shape[0]), replace=False)
+    df = df.iloc[:, :15]
+
+    # Before applying it,  filter the columns with decimal values, as they are not suitable for functional dependency analysis.
+    decimal_columns = df.select_dtypes(exclude=[Decimal]).columns
+    # Rule base: Remove the first column if it is a decimal column
+    if not decimal_columns.empty and df.columns[0] in decimal_columns:
+        decimal_columns = decimal_columns.drop(df.columns[0])
+
+    # IF the number of decimal columns is greater than or equal to the number of columns minus one,
+    # then return an empty list because analysis doesn't work for zero or one column table
+    if len(decimal_columns) >= df.shape[1] - 1:
+        return []
+
+    if not decimal_columns.empty:
+        df = df.drop(columns=decimal_columns)
+    # Analyze functional dependencies using the core function
+    # try:
+    fds = analyze_functional_dependencies_core(df) if not df.empty else []
+    # except Exception as e:
+    #     print(f"Error analyzing functional dependencies: {e}")
+    # pdb.set_trace()
+    return fds
+
+
+def analyze_functional_dependencies_core(df, max_k_level=25):
+    """
+    Modified according to the FDTool example code: https://github.com/USEPA/FDTool/blob/master/fdtool/fdtool.py
+    """
 
     # Define header; Initialize k;
     U = list(df.head(0))
     k = 0
-
-    try:
-        # Create dictionary to convert column names into alphabetical characters
-        Alpha_Dict = {U[i]: ascii_lowercase.upper()[i] for i in range(len(U))}
-    except IndexError:
-        raise Exception("Table exceeds max column count")
 
     # Initialize lattice with singleton sets at 1-level
     C = [[[item] for item in U]] + [None for level in range(len(U) - 1)]
@@ -398,13 +420,8 @@ def analyze_functional_dependencies(df, max_k_level=25, filtered=True):
     Closure = {binaryRepr.toBin(Subset, U): set(Subset) for Subset in next(Subset_Gen)}
     # Initialize Cardinality as Python dict
     Cardinality = {element: None for element in Closure}
-    # Create counter for number of Equivalences and FDs; initialize list to store FDs; list to store equivalences;
-    Counter = [0, 0]
-    FD_Store = []
-    E_Set = []
 
     while True:
-
         # Increment k; initialize C_km1
         k += 1
         C_km1 = C[k - 1]
@@ -435,20 +452,6 @@ def analyze_functional_dependencies(df, max_k_level=25, filtered=True):
         # Run Prune to reduce next k-level iterateion and delete equivalences; initialize C_k
         C_k, Closure, df = Prune.f(C_k, E, Closure, df, U)
         C[k] = C_k
-        # Increment counter for the number of Equivalences/FDs added at this level
-        Counter[0] += len(E)
-        Counter[1] += len(F)
-        E_Set += E
-
-        # Print out FDs
-        for FunctionalDependency in F:
-            # Store well-formatted FDs in empty list
-            FD_Store.append(
-                [
-                    "".join(sorted([Alpha_Dict[i] for i in FunctionalDependency[0]])),
-                    Alpha_Dict[FunctionalDependency[1]],
-                ]
-            )
 
         # Break while loop if cardinality of C_k is 0
         if not len(C_k) > 0:
@@ -457,27 +460,46 @@ def analyze_functional_dependencies(df, max_k_level=25, filtered=True):
         if k is not None and max_k_level == k:
             break
 
-    # TODO: keys may not be merged as a set, but a list of list
-    if filtered:
-        filtered_F = []
-        all_keys = set()
-        for fd in F:
-            key, value = fd
-            all_keys.update(key)
-            # Check if key columns are of float type
-            if not isinstance(df[key[0]].iloc[0], Decimal):
-                filtered_F.append(fd)
+    # Then sort the functional dependencies by the frequency of composite keys
+    fds_dict = defaultdict(set)
+    for keys, value in F:
+        # # Make sure composite keys are sorted by column names so that same composite keys have the same representation
+        # sorted_keys = tuple(sorted(keys))
+        # fds_dict[sorted_keys].add(value)
+        fds_dict[tuple(keys)].add(value)
 
-        all_keys_sorted = sorted(list(all_keys))
-        return filtered_F, all_keys_sorted
-    else:
-        keyss = []
-        fds = []
-        for keys, value in F:
-            sorted_keys = sorted(keys)
-            keyss.append(sorted_keys)
-            fds.append([sorted_keys, value])
-        return fds, keyss
+    sorted_keyss_by_freq = sorted(
+        fds_dict.keys(), key=lambda x: len(fds_dict[x]), reverse=True
+    )
+
+    fds = []
+    for keys in sorted_keyss_by_freq:
+        values = fds_dict[keys]  # value is a set of dependent columns
+        for value in values:
+            fds.append((keys, value))
+    return fds
+
+    # # TODO: keys may not be merged as a set, but a list of list
+    # if filtered:
+    #     filtered_F = []
+    #     all_keys = set()
+    #     for fd in F:
+    #         key, value = fd
+    #         all_keys.update(key)
+    #         # Check if key columns are of float type
+    #         if not isinstance(df[key[0]].iloc[0], Decimal):
+    #             filtered_F.append(fd)
+
+    #     all_keys_sorted = sorted(list(all_keys))
+    #     return filtered_F, all_keys_sorted
+    # else:
+    #     keyss = []
+    #     fds = []
+    #     for keys, value in F:
+    #         sorted_keys = sorted(keys)
+    #         keyss.append(sorted_keys)
+    #         fds.append([sorted_keys, value])
+    #     return fds, keyss
 
 
 def analyze_functional_dependencies_deprecated(df):

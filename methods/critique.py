@@ -5,7 +5,8 @@ import re
 import traceback
 import pdb
 
-from auto_suggest_llm_util import get_filtered_functional_dependency, calculate_score
+from auto_suggest_llm_util import calculate_score
+from quality.quality import analyze_functional_dependencies
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching
@@ -96,10 +97,11 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             n=min(1000, df_ground_truth.shape[0]), replace=False
         )
         df_ground_truth_fd = df_ground_truth_fd.iloc[:, :15]
-        key, fd__ = get_filtered_functional_dependency(df_ground_truth_fd)
+        fds = analyze_functional_dependencies(df_ground_truth_fd)
+        key = set([key for key, _ in fds])
         # fd_hints = get_fd_hints(key,fd__)
         fd_hints = "Keys : " + str(key) + "\n"
-        fd_hints += "Functional Dependencies : " + str(fd__)
+        fd_hints += "Functional Dependencies : " + str(fds)
         query = query.replace("$FD_HINT$", fd_hints)
     else:
         query = query.replace("$FD_HINT$", "")
@@ -383,9 +385,11 @@ def replace_history_info(query, operation_history):
 
 
 def get_result_path(args, main_folder, len_idx_target_idx):
+    if args.tree_of_thoughts or args.intermediate_materialization:
+        main_folder += "/source_space"
 
-    if args.intermediate_materialization or args.tree_of_thoughts:
-        result_path = f"{main_folder}/source_space/length{len_idx_target_idx}/"
+    if args.intermediate_materialization:
+        result_path = f"{main_folder}/length{len_idx_target_idx}/"
         # Iterate through the intermediate files in the source_space folder and get their names
         max_step = 0
         for f in os.listdir(result_path):

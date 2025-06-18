@@ -16,9 +16,8 @@ from util.utils import (
     get_test_info,
     execute_python,
 )
-from auto_suggest_llm_util import query_gpt, get_prompt
+from auto_suggest_llm_util import query_gpt, get_prompt, calculate_score
 from log_util.log_util import create_logger
-from auto_suggest_llm_util import calculate_score
 from quality.quality import analyze_functional_dependencies
 
 
@@ -36,6 +35,7 @@ class State:
     col_mapping_score: float = 0.0
     fd_key_score: float = 0.0
     parent: "State" = None  # Reference to the parent state, if needed
+    fds: tuple = ()  # Functional dependencies of the result CSV
 
     def __str__(self):
         return (
@@ -220,24 +220,14 @@ def materialize_chatgpt(
     )
 
 
-def get_keys_of_df(df: pd.DataFrame) -> list[str]:
-    df = df.sample(n=min(1000, df.shape[0]), replace=False)
-    df = df.iloc[:, :15]
-    try:
-        fds, keyss = analyze_functional_dependencies(df, filtered=False)
-        keyss = [tuple(keys) for keys in keyss]
-    except Exception as e:
-        print(f"Error analyzing functional dependencies: {e}")
-        print("Falling back to empty keys list.")
-        keyss = []
-    return keyss
-
-
-def calculate_fd_key_score(state_df_keys, target_df_keys) -> float:
-    if not target_df_keys:
-        print("No keys in target_df_keys, returning 1.0")
-        return 1.0
+def calculate_fd_key_score(fds, target_fds) -> float:
     """Current implementation use only key matching, not functional dependency matching."""
+    target_df_keys = [key for key, _ in target_fds]
+    state_df_keys = [key for key, _ in fds]
+    if not target_df_keys:
+        # No keys in target_df_keys, returning 1.0
+        return 1.0
+
     state_df_keys = set(state_df_keys)
     target_df_keys = set(target_df_keys)
 
@@ -249,12 +239,13 @@ def calculate_fd_key_score(state_df_keys, target_df_keys) -> float:
 
 
 def generate_next_states(
-    args, state, config, save_dir, i_state, target_df, target_df_keys
+    args, state, config, save_dir, i_state, target_df, target_fds
 ) -> list[State]:
     """
     Generate the next states based on the current state.
     This is a placeholder function and should be implemented based on the specific requirements.
     """
+
     next_states = []
     ops_and_configs = get_operators(state, state.step + 1, args, config)
 
@@ -284,9 +275,10 @@ def generate_next_states(
         result_df = pd.read_csv(result_csv_path)
         col_mapping_score = calculate_score(target_df, result_df)
         # Calculate the functional dependency/key matching score
-        state_df_keys = get_keys_of_df(result_df)
-        fd_key_score = calculate_fd_key_score(state_df_keys, target_df_keys)
+        fds = analyze_functional_dependencies(result_df)
+        fd_key_score = calculate_fd_key_score(fds, target_fds)
 
+        # Get hints for column mapping, functional dependencies, and keys
         next_state = State(
             step=next_step,
             history=tuple(history),
@@ -296,6 +288,7 @@ def generate_next_states(
             col_mapping_score=col_mapping_score,
             fd_key_score=fd_key_score,
             parent=state,
+            fds=tuple(fds),
         )
         next_states.append(next_state)
 
@@ -416,23 +409,30 @@ def prune_states(states, config, args) -> list[State]:
 def get_best_state(states: list[State]) -> int:
     """Get the best state based on the col_mapping_score."""
     index = col_mapping_prune(states, 1)[0]
-    return states[index]
+    # For critique, copy result_csv file to a new file named target_multisource.csv
+    best_state = states[index]
+    df = pd.read_csv(best_state.result_csv_path)
+    target_csv_path = os.path.join(
+        os.path.dirname(best_state.result_csv_path), "target_multisource.csv"
+    )
+    df.to_csv(target_csv_path, index=False)
+    return best_state
 
 
 def BFS(args, save_dir, config):
     terminal_states = []
-
-    initial_state = State(result_csv_path=f"{save_dir}/test_0.csv")
-    states = [initial_state]
-
     target_df = pd.read_csv(f"{save_dir}/target.csv")
-    target_df_keys = get_keys_of_df(target_df)
+    target_fds = analyze_functional_dependencies(target_df)
+    initial_state = State(
+        result_csv_path=f"{save_dir}/test_0.csv", fds=tuple(target_fds)
+    )
+    states = [initial_state]
 
     for step in range(1, args.max_steps + 1):
         states_at_next_step = []
         for i, state in enumerate(states):
             next_states = generate_next_states(
-                args, state, config, save_dir, i, target_df, target_df_keys
+                args, state, config, save_dir, i, target_df, target_fds
             )
             states_at_next_step.extend(next_states)
 

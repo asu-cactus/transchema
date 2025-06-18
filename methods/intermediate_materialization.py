@@ -431,6 +431,7 @@ def intermediate_materialization(args, length, id_, log_dir_):
     config["task"] = task
 
     # materialization_criteria = MaterializationCriteria()
+    save_path = f"{source_space_dir}/length{len_idx_target_idx}/test_0.csv"
     for nth_intermediate_step in range(1, args.max_steps + 1):
 
         # Get the operation
@@ -471,10 +472,10 @@ def intermediate_materialization(args, length, id_, log_dir_):
             logger.error(f"Materialization failed: {e}")
             # Use the last intermediate step if available
             if nth_intermediate_step == 1:
-                save_path = f"{source_space_dir}/length{len_idx_target_idx}/test_0.csv"
+                save_path = f"{save_dir}/test_0.csv"
             else:
                 intermediate_filename = f"intermediate_step{nth_intermediate_step - 1}"
-                save_path = f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
+                save_path = f"{save_dir}/{intermediate_filename}.csv"
             break
 
         source_data_name_list.append(intermediate_filename)

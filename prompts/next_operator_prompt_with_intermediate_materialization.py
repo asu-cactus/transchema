@@ -59,18 +59,19 @@ More Instructions:
 - An example output is: Next operation after operation history is $JOIN$ and configuration is $['table1.join_column_from_table1', 'table2.join_column_from_table2']$.
 - If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
 - You should only answer from allowed operations.
-- If you think no more operation is needed further, please answer with the following: Next operation after operation history is NO_MORE_OPERATION and configuration is None
+- If you think no more operation is needed further, please answer with the following: Next operation after operation history is $NO_MORE_OPERATION$ and configuration is $None$
     """
     else:
         prompt_last = f"""
 {fd_hints}
 Note: The above row examples provided are only part of the corresponding rows.
-
 - Please answer what operation you should perform next.
 - If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
 - Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
 - You should only answer from allowed operations. 
-- If you think no more operation is needed further, please answer with the following: Next operation after operation history is NO_MORE_OPERATION and configuration is None
+- The final answer of OPERATION should be wrapped in two $ signs in the last single line and strictly follow this format: Next operation after operation history is $OPERATOR$
+- An example output is: Next operation after operation history is $JOIN$
+- If you think no more operation is needed further, please answer with the following: Next operation after operation history is $NO_MORE_OPERATION$
 """
     return [f"{prompt_start}{prompt_middle}{prompt_last}"]
 
