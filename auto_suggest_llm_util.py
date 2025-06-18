@@ -764,12 +764,20 @@ def increment_count(q):
 
 # llm_client,model,prompt, q_count, cost_summary, token_tracker, type = "Ask For Operator"
 def query_gpt(
-    llm_model, model, prompt, q_count, logger, cost_summary, token_tracker, type
+    llm_model,
+    model,
+    prompt,
+    q_count,
+    logger,
+    cost_summary,
+    token_tracker,
+    type,
+    temperature=1.0,
 ):
     start_time = time.time()
     logger.info(f"Query of Type : {type}")
     # run the prompt and get the result
-    res = llm_model.gpt(prompt)
+    res = llm_model.gpt(prompt, temperature=temperature)
     # log the prompt
     logger.info("Prompt to ask for operator : {prompt}".format(prompt=prompt))
     # log the result

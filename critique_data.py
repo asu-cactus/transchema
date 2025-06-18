@@ -380,6 +380,13 @@ def get_parser():
         help="Use Tree of Thoughts (ToT) for decision making",
     )
     parser.add_argument(
+        "--tot_branch_method",
+        type=str,
+        default="propose",
+        choices=["propose", "sample"],
+        help="Method for generate multiple next steps in Tree of Thoughts (ToT)",
+    )
+    parser.add_argument(
         "--branch_factor",
         type=int,
         default=3,

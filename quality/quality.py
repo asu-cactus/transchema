@@ -392,11 +392,11 @@ def analyze_functional_dependencies(df):
     if not decimal_columns.empty:
         df = df.drop(columns=decimal_columns)
     # Analyze functional dependencies using the core function
-    # try:
-    fds = analyze_functional_dependencies_core(df) if not df.empty else []
-    # except Exception as e:
-    #     print(f"Error analyzing functional dependencies: {e}")
-    # pdb.set_trace()
+    try:
+        fds = analyze_functional_dependencies_core(df) if not df.empty else []
+    except Exception as e:
+        print(f"Error analyzing functional dependencies: {e}")
+        fds = []
     return fds
 
 

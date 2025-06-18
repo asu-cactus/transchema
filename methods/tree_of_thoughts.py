@@ -12,10 +12,7 @@ from methods.intermediate_materialization import (
     verify_result,
     allowed_operation_list,
 )
-from util.utils import (
-    get_test_info,
-    execute_python,
-)
+from util.utils import get_test_info, execute_python
 from auto_suggest_llm_util import query_gpt, get_prompt, calculate_score
 from log_util.log_util import create_logger
 from quality.quality import analyze_functional_dependencies
