@@ -5,13 +5,14 @@ from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import (
-    calculate_score,
+    # calculate_score,
     get_prompt,
     query_gpt,
     get_operation,
     get_columns,
     get_columns_join,
 )
+from validation.score import calculate_score
 import shutil
 from log_util.log_util import create_logger
 

@@ -6,7 +6,10 @@ import traceback
 import pdb
 import shutil
 
-from auto_suggest_llm_util import get_filtered_functional_dependency, calculate_score
+from auto_suggest_llm_util import (
+    get_filtered_functional_dependency,
+)  # , calculate_score
+from validation.score import calculate_score
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching

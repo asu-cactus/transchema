@@ -82,16 +82,26 @@ def setup_logging(args, log_dir, experiment_name):
     with open(average_multi_step_path, "w") as f:
         f.write("Length,Hard Match,Soft Match,Soft Acc,Cost,Latency,Score\n")
 
+    max_score_multi_step_path = os.path.join(results_dir, "max_score_multi_step.csv")
+    with open(max_score_multi_step_path, "w") as f:
+        f.write("Length,Hard Match,Soft Match,Soft Acc,Cost,Latency,Score\n")
+
     critique_path = os.path.join(results_dir, "critique.csv")
     with open(critique_path, "w") as f:
         f.write(
             "Length,Critique Type,Hard Match,Soft Match,Soft Acc,Cost,Latency,Score\n"
         )
 
-    average_critique_path = os.path.join(results_dir, "average_critique.csv")
+    average_critique_path = os.path.join(results_dir, "majority_voting_critique.csv")
     with open(average_critique_path, "w") as f:
         f.write(
-            "Length,Critique Type,Hard Match,Cost,Latency,Soft Match,Soft Acc,Cost_,Latency_,max\n"
+            "Length,Critique Type,Hard Match,Soft Match,Soft Acc,Cost,Latency,Score\n"
+        )
+
+    max_score_critique_path = os.path.join(results_dir, "max_score_critique.csv")
+    with open(max_score_critique_path, "w") as f:
+        f.write(
+            "Length,Critique Type,Hard Match,Soft Match,Soft Acc,Cost,Latency,Score\n"
         )
 
     # return path of experiment_date_time directory and subdirectories
