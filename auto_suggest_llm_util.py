@@ -283,18 +283,32 @@ def get_prompt(
         )[0]
 
         if args and args.tree_of_thoughts:
-            prompt = get_next_operator_prompt_for_ToT(
-                allowed_operation_list,
-                operation_history,
-                target_data_name,
-                target_data_schema,
-                target_samples,
-                source_information,
-                fd_hints,
-                hints,
-                all_intermediate_results,
-                args.branch_factor,
-            )[0]
+            if args.tot_branch_method == "propose":
+                prompt = get_next_operator_prompt_for_ToT(
+                    allowed_operation_list,
+                    operation_history,
+                    target_data_name,
+                    target_data_schema,
+                    target_samples,
+                    source_information,
+                    fd_hints,
+                    hints,
+                    all_intermediate_results,
+                    args.branch_factor,
+                )[0]
+            else:  # args.tot_branch_method == "sample":
+                prompt = get_next_operator_prompt_with_intermediate_materialization(
+                    allowed_operation_list,
+                    operation_history,
+                    target_data_name,
+                    target_data_schema,
+                    target_samples,
+                    source_information,
+                    fd_hints,
+                    hints,
+                    all_intermediate_results,
+                    combine_ask_and_configure=True,
+                )[0]
         elif nth_intermediate_step > 0:
             prompt = get_next_operator_prompt_with_intermediate_materialization(
                 allowed_operation_list,

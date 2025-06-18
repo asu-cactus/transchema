@@ -77,7 +77,7 @@ def extract_operation(res):
     return operation
 
 
-def extract_operation_and_configuration(res):
+def extract_ops_and_configs(res) -> tuple[str, str]:
     last_line = res.strip().split("\n")[-1]
     match = re.search(
         r"Next operation after operation history is \$(.*?)\$ and configuration is \$(.*?)\$",
@@ -91,7 +91,7 @@ def extract_operation_and_configuration(res):
         operation = None
         configuration = "none"
 
-    return operation, configuration
+    return (operation, configuration)
 
 
 def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
@@ -141,7 +141,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             ), f"Operation {operation} not in allowed operations"
             return operation, None
         else:
-            operation, configuration = extract_operation_and_configuration(res)
+            operation, configuration = extract_ops_and_configs(res)
             if operation is None:
                 continue
 

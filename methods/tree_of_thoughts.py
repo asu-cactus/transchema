@@ -11,11 +11,15 @@ from methods.intermediate_materialization import (
     get_task,
     verify_result,
     allowed_operation_list,
+    extract_ops_and_configs,
 )
 from util.utils import get_test_info, execute_python
 from auto_suggest_llm_util import query_gpt, get_prompt, calculate_score
 from log_util.log_util import create_logger
 from quality.quality import analyze_functional_dependencies
+from prompts.next_operator_prompt_with_intermediate_materialization import (
+    deduplicate_same_operators_prompt,
+)
 
 
 @dataclass
@@ -50,18 +54,27 @@ class State:
 source_space_name = "source_space"
 
 
-def extract_operators_and_configurations(
-    res: str, branch_factor: int
-) -> list[tuple[str, str]]:
+def extract_operators_and_configurations(res: str, args) -> list[tuple[str, str]]:
     """
     Extract the operation and configuration from the LLM response.
     """
-
-    match = re.search(
-        r"Proposed next operators:(.*)",
-        res,
-        re.DOTALL | re.IGNORECASE,
-    )
+    if args.tot_branch_method == "sample":
+        match = re.search(
+            r"Deduplicated operators:(.*)",
+            res,
+            re.DOTALL | re.IGNORECASE,
+        )
+    elif args.tot_branch_method == "propose":
+        match = re.search(
+            r"Proposed next operators:(.*)",
+            res,
+            re.DOTALL | re.IGNORECASE,
+        )
+    else:
+        raise ValueError(
+            f"Unknown tot_branch_method: {args.tot_branch_method}. "
+            "Please choose 'propose' or 'sample'."
+        )
 
     if match:
         string = match.group(1)
@@ -72,7 +85,7 @@ def extract_operators_and_configurations(
             # Extract from "1. operator: configuration_for_operator"
             op_and_config = line.split(":", 1)
             if len(op_and_config) == 2:
-                op, config = op_and_config
+                op, op_config = op_and_config
                 for allow_op in allowed_operation_list:
                     if allow_op.lower() in op.lower():
                         op = allow_op
@@ -81,9 +94,9 @@ def extract_operators_and_configurations(
                     print(f"Skipping unsupported operation: {op}, line: {line}")
                     continue
 
-                config = config.strip()
-                ops_and_configs.append((op, config))
-                if len(ops_and_configs) >= branch_factor:
+                op_config = op_config.strip()
+                ops_and_configs.append((op, op_config))
+                if len(ops_and_configs) >= args.branch_factor:
                     break
             else:
                 print(f"Skipping line due to unexpected format: {line}")
@@ -100,6 +113,103 @@ def get_operators(state, nth_intermediate_step, args, config):
     Get the next operator from the LLM based on the operation history and configuration.
     This implementation has small difference from intermediate_materialization
     """
+    if args.tot_branch_method == "propose":
+        # Use the propose method to get the next operator
+        ops_and_configs = get_operators_with_propose_method(
+            state, nth_intermediate_step, args, config
+        )
+    elif args.tot_branch_method == "sample":
+        ops_and_configs = get_operators_with_sample_method(
+            state, nth_intermediate_step, args, config
+        )
+    else:
+        raise ValueError(
+            f"Unknown tot_branch_method: {args.tot_branch_method}. "
+            "Please choose 'propose' or 'sample'."
+        )
+    return ops_and_configs
+
+
+def get_operators_with_sample_method(
+    state, nth_intermediate_step, args, config, temperature=0.5
+) -> list[tuple[str, str]]:
+    prompt = get_prompt(
+        prompt_type="get_next_operator",
+        max_tokens=args.token_limit,
+        model=args.model,
+        allowed_operation_list=allowed_operation_list,
+        operation_history=state.history,
+        target_data_name=config["target_data_name"],
+        target_data_schema=config["target_data_schema"],
+        target_samples=config["target_samples"],
+        file_count=config["file_count"],
+        source_data_name_list=config["source_data_name_list"],
+        source_data_schema_list=config["source_data_schema_list"],
+        directory=config["source_space_dir"],
+        len_idx_target_idx=config["len_idx_target_idx"],
+        target_perc=args.target_per,
+        is_perc=args.is_perc,
+        target_length=args.target_length,
+        source_length=args.source_length,
+        fd_flag=args.fd_flag,
+        hint_source=args.hint_source,
+        nth_intermediate_step=nth_intermediate_step,
+        state=state,
+        args=args,
+    )
+
+    ops_and_configs = []
+    for _ in range(args.branch_factor):
+        max_tries = 5
+
+        for _ in range(max_tries):
+            res = query_gpt(
+                config["llm_client"],
+                args.model,
+                prompt,
+                config["q_count"],
+                config["logger"],
+                config["cost_summary"],
+                config["token_tracker"],
+                type="Ask For Operator",
+                temperature=temperature,  # Use a lower temperature for sampling
+            )[0]
+
+            op, op_config = extract_ops_and_configs(res)
+            if op is None:
+                # Cannot extract operation from the LLM output, try again
+                continue
+        if op is not None:
+            ops_and_configs.append((op, op_config))
+
+    # Deduplicate some op_config if they are the same
+
+    if len(ops_and_configs) > 1:
+        for _ in range(max_tries):
+            dedup_prompt = deduplicate_same_operators_prompt(ops_and_configs)
+
+            res = query_gpt(
+                config["llm_client"],
+                args.model,
+                dedup_prompt,
+                config["q_count"],
+                config["logger"],
+                config["cost_summary"],
+                config["token_tracker"],
+                type="Deduplicate Same Operators",
+            )[0]
+
+            ops_and_configs_deduped = extract_operators_and_configurations(res, args)
+            if ops_and_configs_deduped:
+                ops_and_configs = ops_and_configs_deduped
+                break
+
+    return ops_and_configs
+
+
+def get_operators_with_propose_method(
+    state, nth_intermediate_step, args, config
+) -> list[tuple[str, str]]:
     prompt = get_prompt(
         prompt_type="get_next_operator",
         max_tokens=args.token_limit,
@@ -139,7 +249,7 @@ def get_operators(state, nth_intermediate_step, args, config):
             type="Ask For Operator",
         )[0]
 
-        ops_and_configs = extract_operators_and_configurations(res, args.branch_factor)
+        ops_and_configs = extract_operators_and_configurations(res, args)
         if ops_and_configs is None:
             # Cannot extract operation from the LLM output, try again
             continue
