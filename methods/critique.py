@@ -332,7 +332,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             case_accuracy_,
             is_correct_,
             similarity_scores_,
-        ) = compare_lists_matching_soft(df_critique, df_ground_truth)
+        ) = compare_lists_matching_soft(df_ground_truth, df_critique)
         ##print("ACCURATCY CBELOW ")
         eps = 0.1
         if case_accuracy_ < eps:

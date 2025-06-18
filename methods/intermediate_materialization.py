@@ -311,13 +311,13 @@ def verify_result(target_file_location, ground_truth_location, config):
         print(log_str)
         logger.info(log_str)
 
-    log_str = f"Hard comparison, {config["task"]=}, {hard_avg_similarity=},  {hard_is_correct=}, {hard_similarity_scores=}"
+    log_str = f"Hard comparison, {config['task']=}, {hard_avg_similarity=},  {hard_is_correct=}, {hard_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
 
     try:
         soft_avg_similarity, soft_is_correct, soft_similarity_scores = (
-            compare_lists_matching_soft(df_our_response, df_ground_truth)
+            compare_lists_matching_soft(df_ground_truth, df_our_response)
         )
     except Exception as e:
         soft_avg_similarity = 0.0
@@ -327,7 +327,7 @@ def verify_result(target_file_location, ground_truth_location, config):
         log_str = "Soft comparison failed, " + str(e)
         print(log_str)
         logger.info(log_str)
-    log_str = f"Soft comparison, {config["task"]=}, {soft_avg_similarity=},  {soft_is_correct=}, {soft_similarity_scores=}"
+    log_str = f"Soft comparison, {config['task']=}, {soft_avg_similarity=},  {soft_is_correct=}, {soft_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
 

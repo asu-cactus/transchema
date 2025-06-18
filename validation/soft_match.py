@@ -4,6 +4,7 @@ from collections import Counter
 import bisect
 import pandas as pd
 
+
 def find_best_matching_column(pred_col, ground_truth_df):
     max_matches = -1
     best_col = None
@@ -19,13 +20,13 @@ def find_best_matching_column(pred_col, ground_truth_df):
     return best_col
 
 
-def compare_columns_1(pred_column, gold_column, tol=0.01):
+def compare_columns_1(pred_column, gold_column, tol=0.001):
     # --- 1) Split into numeric vs “everything else” ---
     pred_non = []
     pred_nums = []
     for x in pred_column:
         if x is None:
-            pred_non.append('')
+            pred_non.append("")
         elif isinstance(x, (int, float)):
             pred_nums.append(float(x))
         else:
@@ -35,7 +36,7 @@ def compare_columns_1(pred_column, gold_column, tol=0.01):
     gold_nums = []
     for x in gold_column:
         if x is None:
-            gold_non.append('')
+            gold_non.append("")
         elif isinstance(x, (int, float)):
             gold_nums.append(float(x))
         else:
@@ -44,40 +45,55 @@ def compare_columns_1(pred_column, gold_column, tol=0.01):
     # --- 2) Exact‐match recall on non‐numeric ---
     pred_non_freq = Counter(pred_non)
     gold_non_freq = Counter(gold_non)
-    matched_non = sum(
-        min(pred_non_freq[v], gold_non_freq[v]) 
-        for v in gold_non_freq
-    )
+    matched_non = sum(min(pred_non_freq[v], gold_non_freq[v]) for v in gold_non_freq)
 
     # --- 3) Approximate‐match recall on numeric (ints+floats) ---
     pred_nums.sort()
     matched_nums = 0
     for g in gold_nums:
         i = bisect.bisect_left(pred_nums, g)
-        if i < len(pred_nums) and abs(pred_nums[i] - g) <= tol:
+
+        # Search nearby values for the closest match within tolerance
+        best_j = -1
+        best_dist = float("inf")
+
+        for j in range(
+            max(0, i - 3), min(len(pred_nums), i + 3)
+        ):  # widen search window if needed
+            dist = abs(pred_nums[j] - g)
+            if dist <= tol and dist < best_dist:
+                best_dist = dist
+                best_j = j
+
+        if best_j != -1:
             matched_nums += 1
-            pred_nums.pop(i)   # consume that prediction
-        # else : 
+            pred_nums.pop(best_j)  # consume matched prediction
+        # else:
         #     print(f"Failed to match {g} in {pred_nums} with tolerance {tol}")
-    
+
     # print(pred_nums, matched_nums)
-    
+
     # --- 4) Combine and return recall over all gold values ---
-    total_gold   = len(gold_column)
+    total_gold = len(gold_column)
     total_matched = matched_non + matched_nums
     return total_matched / total_gold if total_gold > 0 else 0.0
 
 
 def compare_lists_matching_soft(ground_truth_df, generated_sql_df, padding_added=False):
     # Remove duplicate columns and sort
-    generated_sql_df = generated_sql_df.loc[:, ~generated_sql_df.columns.duplicated()].copy()
+    generated_sql_df = generated_sql_df.loc[
+        :, ~generated_sql_df.columns.duplicated()
+    ].copy()
     generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
     ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
-    #print("WOOP WOOP WOOP")
+    # print("WOOP WOOP WOOP")
     # Only pad if we haven't already done so
     if not padding_added:
-        if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0 or \
-           len(generated_sql_df) != len(ground_truth_df):
+        if (
+            len(generated_sql_df.columns) == 0
+            or len(ground_truth_df.columns) == 0
+            or len(generated_sql_df) != len(ground_truth_df)
+        ):
             padded_dfs = pad_comp(ground_truth_df, generated_sql_df)
             return compare_lists_matching_soft(*padded_dfs, padding_added=True)
 
@@ -105,7 +121,7 @@ def compare_lists_matching_soft(ground_truth_df, generated_sql_df, padding_added
 
         # print(pred_column)
         # print(gold_column)
-        
+
         column_similarity = compare_columns_1(pred_column, gold_column)
         similarities.append(column_similarity)
 
@@ -129,9 +145,14 @@ def compare_lists_matching_soft(ground_truth_df, generated_sql_df, padding_added
 
     return average_similarity, res, similarities
 
+
 if __name__ == "__main__":
-    gt_df = pd.read_csv("autopipeline-benchmarks/github-pipelines/length3_6/target.csv")
-    gen_df = pd.read_csv("autopipeline-benchmarks/github-pipelines/length3_6/target_multisource.csv")
+    gt_df = pd.read_csv(
+        "autopipeline-benchmarks/github-pipelines/length2_18/target.csv"
+    )
+    gen_df = pd.read_csv(
+        "autopipeline-benchmarks/github-pipelines/length2_18/target_multisource.csv"
+    )
     avg_sim, is_exact, sim_list = compare_lists_matching_soft(gt_df, gen_df)
     print(f"Average Similarity: {avg_sim}")
     print(f"Is Exact Match: {is_exact}")

@@ -955,8 +955,6 @@ def get_union_hints(
         table2 = tables[table_name2]
         columns1 = table1.columns
         columns2 = table2.columns
-        total_columns1 = len(columns1)
-        total_columns2 = len(columns2)
 
         for col1 in columns1:
             for col2 in columns2:
