@@ -314,7 +314,7 @@ def data_quality(sql_result, target_handle, whether_multi=False):
         return combined_score, column_names
 
 
-def fd_quality(sql_query, column_mappings, new_key, **kwargs):
+def fd_quality(sql_query, column_mappings, new_key, logger, **kwargs):
     data_1 = []
     data_2 = []
     select_columns, target_columns = extract_table_schemas(
@@ -343,13 +343,17 @@ def fd_quality(sql_query, column_mappings, new_key, **kwargs):
         df_1 = data_1_df[relevant_source_columns]
         df_2 = pd.DataFrame(data_2, columns=column_names_2)
         # Use FDTool
-        functional_dependencies_1, keys_1 = analyze_functional_dependencies(df_1, [])
+        functional_dependencies_1, keys_1 = analyze_functional_dependencies(
+            df_1, logger
+        )
         # Map source FDs to target FDs
         mapped_fds = map_source_fds_to_target_fds(
             functional_dependencies_1, column_mappings
         )
         print("mapped_fds", mapped_fds)
-        functional_dependencies_2, keys_2 = analyze_functional_dependencies(df_2, [])
+        functional_dependencies_2, keys_2 = analyze_functional_dependencies(
+            df_2, logger
+        )
         # Compare mapped FDs with target FDs
         fd_comparison, fd_score = compare_fds(mapped_fds, functional_dependencies_2)
         # Compare keys_1 and keys_2 for new key detection
@@ -373,7 +377,7 @@ def handler(signum, frame):
     raise TimeoutError("Function execution has timed out.")
 
 
-def analyze_functional_dependencies(df):
+def analyze_functional_dependencies(df, logger):
     # To save time, use only a few rows and columns of the dataframe.
     df = df.sample(n=min(1000, df.shape[0]), replace=False)
     df = df.iloc[:, :15]
@@ -395,7 +399,9 @@ def analyze_functional_dependencies(df):
     try:
         fds = analyze_functional_dependencies_core(df) if not df.empty else []
     except Exception as e:
-        print(f"Error analyzing functional dependencies: {e}")
+        log_str = f"Error analyzing functional dependencies: {e}"
+        logger.error(log_str)
+        print(log_str)
         fds = []
     return fds
 
@@ -781,7 +787,7 @@ def get_df(**kwargs):
 # Length pattern:information about sort of value length
 # Value pattern:information about the sort of value
 # Numerical pattern:The sort of different columns of data, including equal, greater than, and less than(according to value range)
-def data_profiling(df, whether_source=False):
+def data_profiling(df, logger, whether_source=False):
     single_analysis = {}
     for column in df.columns:
         column_summary = {
@@ -829,7 +835,7 @@ def data_profiling(df, whether_source=False):
     if whether_source:
         return single_analysis, multi_analysis
 
-    functional_dependencies, keys = analyze_functional_dependencies(df)
+    functional_dependencies, keys = analyze_functional_dependencies(df, logger)
 
     dependencies = {"dependencies": functional_dependencies, "keys": keys}
     # dependencies = {

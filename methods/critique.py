@@ -97,7 +97,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             n=min(1000, df_ground_truth.shape[0]), replace=False
         )
         df_ground_truth_fd = df_ground_truth_fd.iloc[:, :15]
-        fds = analyze_functional_dependencies(df_ground_truth_fd)
+        fds = analyze_functional_dependencies(df_ground_truth_fd, logger)
         key = set([key for key, _ in fds])
         # fd_hints = get_fd_hints(key,fd__)
         fd_hints = "Keys : " + str(key) + "\n"
@@ -340,7 +340,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         # print(f"{case_accuracy}, {is_correct}")
         logger.info(is_correct)
 
-        score = calculate_score(df_ground_truth, df_critique)
+        score = calculate_score(df_ground_truth, df_critique, logger)
 
     except Exception as e:
         is_correct = False

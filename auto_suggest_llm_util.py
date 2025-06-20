@@ -78,8 +78,10 @@ hint_dict = {}
 def get_fd_and_col_mapping_hints(
     target_file_path: str,
     nth_intermediate_step: int,
+    logger,
     all_intermediate_files: list[str] = None,
     fdss: list[list[tuple, str]] = None,
+
 ):
     global hint_dict
     # calculate filtered functional dependency hints
@@ -88,7 +90,7 @@ def get_fd_and_col_mapping_hints(
     else:
         df = pd.read_csv(target_file_path, low_memory=False)
         df = df.drop(df.columns[0], axis=1)
-        fds = analyze_functional_dependencies(df)
+        fds = analyze_functional_dependencies(df, logger)
         target_hint = get_fd_hints(fds)
         hint_dict[target_file_path] = target_hint
 
@@ -106,7 +108,7 @@ def get_fd_and_col_mapping_hints(
             if fdss:
                 intermediate_fds = fdss[step - 1]
             else:
-                intermediate_fds = analyze_functional_dependencies(intermediate_df)
+                intermediate_fds = analyze_functional_dependencies(intermediate_df ,logger)
             intermediate_fd_hint = get_fd_hints(intermediate_fds, step)
             hint += intermediate_fd_hint
 
@@ -134,6 +136,7 @@ def get_prompt(
     len_idx_target_idx,
     source_data_name_list,
     source_data_schema_list,
+    logger,
     error_string="",
     max_tokens=128000,
     target_perc=10,
@@ -210,7 +213,7 @@ def get_prompt(
 
     fd_hints = (
         get_fd_and_col_mapping_hints(
-            target_file_location, nth_intermediate_step, all_intermediate_files, fdss
+            target_file_location, nth_intermediate_step, logger, all_intermediate_files, fdss
         )
         if fd_flag == 1
         else ""
@@ -908,7 +911,7 @@ def get_column_matching_hints(intermediate_df, target_df, step):
         return f"\n\nNo matching columns found between intermediate_step{step} table and target tables.\n\n"
 
 
-def calculate_score(gt_df, tgt_df):
+def calculate_score(gt_df, tgt_df, logger):
 
     # parameters
     w1 = 1
@@ -917,10 +920,10 @@ def calculate_score(gt_df, tgt_df):
     p = 1
 
     # Match Functional Dependencies
-    fd_gt = analyze_functional_dependencies(gt_df)
+    fd_gt = analyze_functional_dependencies(gt_df, logger)
     key_gt = list(set([key for key, _ in fd_gt]))
 
-    fd_tgt = analyze_functional_dependencies(tgt_df)
+    fd_tgt = analyze_functional_dependencies(tgt_df, logger)
     key_tgt = list(set([key for key, _ in fd_tgt]))
 
     print("\n\n\nScore Calculation\n\n\n")
@@ -965,7 +968,7 @@ def calculate_score(gt_df, tgt_df):
     return score
 
 
-def calculate_score_cost(gt_df, tgt_df, cost_):
+def calculate_score_cost(gt_df, tgt_df, cost_, logger):
 
     # parameters
     w1 = 1
@@ -974,9 +977,9 @@ def calculate_score_cost(gt_df, tgt_df, cost_):
     p = 1
 
     # Match Functional Dependencies
-    fd_gt = analyze_functional_dependencies(gt_df)
+    fd_gt = analyze_functional_dependencies(gt_df, logger)
     key_gt = list(set(fd_gt.keys()))
-    fd_tgt = analyze_functional_dependencies(tgt_df)
+    fd_tgt = analyze_functional_dependencies(tgt_df, logger)
     key_tgt = list(set(fd_tgt.keys()))
 
     print("\n\n\nScore Calculation\n\n\n")

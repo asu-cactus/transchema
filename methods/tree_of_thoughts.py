@@ -222,6 +222,7 @@ def get_operators_with_propose_method(
         file_count=config["file_count"],
         source_data_name_list=config["source_data_name_list"],
         source_data_schema_list=config["source_data_schema_list"],
+        logger=config["logger"],
         directory=config["source_space_dir"],
         len_idx_target_idx=config["len_idx_target_idx"],
         target_perc=args.target_per,
@@ -281,6 +282,7 @@ def materialize_chatgpt(
             file_count=config["file_count"],
             source_data_name_list=config["source_data_name_list"],
             source_data_schema_list=config["source_data_schema_list"],
+            logger=config["logger"],
             directory=config["source_space_dir"],
             len_idx_target_idx=config["len_idx_target_idx"],
             target_perc=args.target_per,
@@ -380,9 +382,9 @@ def generate_next_states(
 
         # Calculate the column mapping score
         result_df = pd.read_csv(result_csv_path)
-        col_mapping_score = calculate_score(target_df, result_df)
+        col_mapping_score = calculate_score(target_df, result_df, config["logger"])
         # Calculate the functional dependency/key matching score
-        fds = analyze_functional_dependencies(result_df)
+        fds = analyze_functional_dependencies(result_df, config["logger"])
         fd_key_score = calculate_fd_key_score(fds, target_fds)
 
         # Get hints for column mapping, functional dependencies, and keys
@@ -424,6 +426,7 @@ def llm_prune(states, config, args, max_trials=5) -> list[int]:
             file_count=config["file_count"],
             source_data_name_list=config["source_data_name_list"],
             source_data_schema_list=config["source_data_schema_list"],
+            logger=config["logger"],
             directory=config["source_space_dir"],
             len_idx_target_idx=config["len_idx_target_idx"],
             target_perc=args.target_per,
@@ -529,7 +532,7 @@ def get_best_state(states: list[State]) -> int:
 def BFS(args, save_dir, config):
     terminal_states = []
     target_df = pd.read_csv(f"{save_dir}/target.csv")
-    target_fds = analyze_functional_dependencies(target_df)
+    target_fds = analyze_functional_dependencies(target_df, config["logger"])
     initial_state = State(
         result_csv_path=f"{save_dir}/test_0.csv", fds=tuple(target_fds)
     )
