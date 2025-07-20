@@ -66,23 +66,21 @@ def create_source_space(main_folder, len_id, target_id):
     return source_space_dir
 
 
-def get_operation(res):
-    last_line = res.split("\n")[-1]
+def extract_operation(res):
+    last_line = res.strip().split("\n")[-1]
     match = re.search(r"\$(.*?)\$", last_line)
     if match:
         operation = match.group(1)
     else:
-        raise Exception(f"Operation not found in the response. Response:\n{res}")
-    # assert (
-    #     operation in allowed_operation_list
-    # ), f"Operation not in allowed list: {repr(operation)}"
+        print(f"Last line:\n{last_line}")
+        operation = None
     return operation
 
 
-def get_operation_and_configuration(res):
-    last_line = res.split("\n")[-1]
+def extract_ops_and_configs(res) -> tuple[str, str]:
+    last_line = res.strip().split("\n")[-1]
     match = re.search(
-        r"Next operation after operation history is \$(.*)\$ and configuration is \$(.*)\$",
+        r"Next operation after operation history is \$(.*?)\$ and configuration is \$(.*?)\$",
         last_line,
     )
     if match:
@@ -90,11 +88,10 @@ def get_operation_and_configuration(res):
         configuration = match.group(2)
     else:
         print(f"Last line:\n{last_line}")
-        return None, "none"
-    assert (
-        operation in allowed_operation_list
-    ), f"Operation not in allowed list: {operation}"
-    return operation, configuration
+        operation = None
+        configuration = "none"
+
+    return (operation, configuration)
 
 
 def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
@@ -111,6 +108,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         file_count=config["file_count"],
         source_data_name_list=config["source_data_name_list"],
         source_data_schema_list=config["source_data_schema_list"],
+        logger=config["logger"],
         directory=config["source_space_dir"],
         len_idx_target_idx=config["len_idx_target_idx"],
         target_perc=args.target_per,
@@ -120,15 +118,12 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         fd_flag=args.fd_flag,
         hint_source=args.hint_source,
         nth_intermediate_step=nth_intermediate_step,
-        combine_ask_and_configure=args.combine_ask_and_configure,
-        no_thinking=args.no_thinking,
+        args=args,
     )
 
     operation = None
     max_tries = 5
-    while operation is None and max_tries > 0:
-        max_tries -= 1
-
+    for _ in range(max_tries):
         res = query_gpt(
             llm_client,
             args.model,
@@ -141,19 +136,21 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         )[0]
 
         if not args.combine_ask_and_configure:
-            operation = get_operation(res)
-            assert operation in allowed_operation_list
+            operation = extract_operation(res)
+            assert (
+                operation.upper() in allowed_operation_list
+            ), f"Operation {operation} not in allowed operations"
             return operation, None
         else:
-            operation, configuration = get_operation_and_configuration(res)
+            operation, configuration = extract_ops_and_configs(res)
             if operation is None:
                 continue
 
             if configuration.lower() == "none":
                 configuration = None
             return operation, configuration
-    if max_tries == 0:
-        raise Exception(f"Failed to get operation after 5 tries. Last response:\n{res}")
+
+    raise Exception(f"Failed to get operation after 5 tries. Last response:\n{res}")
 
 
 def configure_operator(
@@ -183,6 +180,7 @@ def configure_operator(
             file_count=config["file_count"],
             source_data_name_list=config["source_data_name_list"],
             source_data_schema_list=config["source_data_schema_list"],
+            logger=config["logger"],
             directory=config["source_space_dir"],
             len_idx_target_idx=config["len_idx_target_idx"],
             target_perc=args.target_per,
@@ -240,6 +238,7 @@ def materialize_chatgpt(
             file_count=config["file_count"],
             source_data_name_list=config["source_data_name_list"],
             source_data_schema_list=config["source_data_schema_list"],
+            logger=config["logger"],
             directory=config["source_space_dir"],
             len_idx_target_idx=config["len_idx_target_idx"],
             target_perc=args.target_per,
@@ -250,6 +249,7 @@ def materialize_chatgpt(
             hint_source=args.hint_source,
             save_path=f"{save_dir}/intermediate_step{nth_intermediate_step}.csv",
             nth_intermediate_step=nth_intermediate_step,
+            args=args,
         )
 
         res = query_gpt(
@@ -350,7 +350,7 @@ def verify_result(target_file_location, ground_truth_location, config):
 #################################################################################################################################
 
 
-def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i_):
+def intermediate_materialization(args, length, id_, log_dir_):
     start_time = time.time()
     len_id = length
     max_len_id = length
@@ -434,9 +434,8 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["task"] = task
 
     # materialization_criteria = MaterializationCriteria()
-
-    max_operations = 9
-    for nth_intermediate_step in range(1, max_operations + 1):
+    save_path = f"{source_space_dir}/length{len_idx_target_idx}/test_0.csv"
+    for nth_intermediate_step in range(1, args.max_steps + 1):
 
         # Get the operation
         operation, configuration = get_operator(
@@ -476,10 +475,10 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
             logger.error(f"Materialization failed: {e}")
             # Use the last intermediate step if available
             if nth_intermediate_step == 1:
-                save_path = f"{source_space_dir}/length{len_idx_target_idx}/test_0.csv"
+                save_path = f"{save_dir}/test_0.csv"
             else:
                 intermediate_filename = f"intermediate_step{nth_intermediate_step - 1}"
-                save_path = f"{source_space_dir}/length{len_idx_target_idx}/{intermediate_filename}.csv"
+                save_path = f"{save_dir}/{intermediate_filename}.csv"
             break
 
         source_data_name_list.append(intermediate_filename)

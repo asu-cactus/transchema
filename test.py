@@ -6,7 +6,11 @@ import shlex
 test_cases = [
     ("--len_id 1 --target_id 1 --max_target_id 2 --model gpt-4.1-mini", "1"),
     (
-        "--len_id 2 --target_id 1 --max_target_id 2 --model gpt-4.1-mini --intermediate_materialization",
+        "--len_id 2 --target_id 1 --max_target_id 2 --model gpt-4.1-mini --intermediate_materialization --combine_ask_and_configure",
+        "1",
+    ),
+    (
+        "--len_id 2 --target_id 1 --max_target_id 2 --model gpt-4.1-mini --tree_of_thoughts",
         "1",
     ),
 ]

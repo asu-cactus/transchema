@@ -363,18 +363,41 @@ def get_parser():
         action="store_true",
         help="Materialize intermediate results",
     )
-
     parser.add_argument(
         "--combine_ask_and_configure",
         action="store_true",
         help="Allow combining ask and configure into one step",
     )
     parser.add_argument(
-        "--no_thinking",
-        action="store_true",
-        help="Disable thinking process when asked for next operator",
+        "--max_steps",
+        type=int,
+        default=9,
+        help="Maximum number of steps in pipeline (default: 9)",
     )
-
+    parser.add_argument(
+        "--tree_of_thoughts",
+        action="store_true",
+        help="Use Tree of Thoughts (ToT) for decision making",
+    )
+    parser.add_argument(
+        "--tot_branch_method",
+        type=str,
+        default="propose",
+        choices=["propose", "sample"],
+        help="Method for generate multiple next steps in Tree of Thoughts (ToT)",
+    )
+    parser.add_argument(
+        "--branch_factor",
+        type=int,
+        default=3,
+        help="Branch factor for tree of thoughts",
+    )
+    parser.add_argument(
+        "--keepn_every_criterion",
+        type=int,
+        default=2,
+        help="Keep n thoughts for every criterion (LLM judgement, FD/key, column mapping)) for tree of thoughts",
+    )
     return parser
 
 
@@ -385,11 +408,11 @@ if __name__ == "__main__":
 
     # set up logging
     print(args)
-    experiment_log_directory, log_directory, results_directory = setup_logging(
+    experiment_log_directory, log_directory, result_directory = setup_logging(
         args, args.log_dir, args.experiment_name
     )
     args.log_directory = log_directory
-    args.result_directory = results_directory
+    args.result_directory = result_directory
     # sys.exit()
 
     length = args.len_id

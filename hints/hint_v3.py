@@ -47,7 +47,6 @@ def get_distinct_value_ratio(T1_C1, k):
         dvr = jd.distinct_value_ratio(T1_C1, len(T1_C1))
         column_level_attributes[k]["dvr"] = dvr
         return dvr
-    return 0
 
 
 def get_jaccard_similarity(col1, col2, t1, t2, c1, c2):
@@ -949,15 +948,13 @@ def get_union_hints(
             if coverage > 0.8:
                 union_table_set.append(table)
 
-    hints += f"It is highly probable that {' ,'.join(union_table_set)} should be unioned together to form the target table.\n"
+    hints += f"It is highly probable that {" ,".join(union_table_set)} should be unioned together to form the target table.\n"
 
     for table_name1, table_name2 in combinations(tables, 2):
         table1 = tables[table_name1]
         table2 = tables[table_name2]
         columns1 = table1.columns
         columns2 = table2.columns
-        total_columns1 = len(columns1)
-        total_columns2 = len(columns2)
 
         for col1 in columns1:
             for col2 in columns2:

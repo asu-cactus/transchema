@@ -21,10 +21,10 @@ def generate_test_data(n_samples=1000):
     # Create DataFrame directly from numpy arrays
     df = pd.DataFrame(
         {
-            "StudentID": student_ids,
-            "CourseID": course_ids,
-            "InstructorID": instructor_ids,
-            "Grade": grade_values,
+            "StudentID": [f"S{sid}" for sid in student_ids],
+            "CourseID": [f"C{cid}" for cid in course_ids],
+            "InstructorID": [f"I{iid}" for iid in instructor_ids],
+            "Grade": [f"G{gv}" for gv in grade_values],
         }
     )
 
@@ -41,10 +41,13 @@ def test_analyze_functional_dependencies(df):
     print(f"All Keys Sorted: {all_keys_sorted}")
 
     print("\n\n")
-    filtered_fds, all_keys_sorted = analyze_functional_dependencies(df)
+    fds = analyze_functional_dependencies(df)
     print("Functional Dependencies Analysis Result:")
-    print(f"Filtered Functional Dependencies: {filtered_fds}")
-    print(f"All Keys Sorted: {all_keys_sorted}")
+    print(f"Functional Dependencies:\n{fds}")
+    # filtered_fds, all_keys_sorted = analyze_functional_dependencies(df)
+    # print("Functional Dependencies Analysis Result:")
+    # print(f"Filtered Functional Dependencies: {filtered_fds}")
+    # print(f"All Keys Sorted: {all_keys_sorted}")
 
 
 if __name__ == "__main__":
