@@ -1,345 +1,241 @@
-=== Cluster C104 (58 cases) ===
-Source groups: 4
- I1: 29 cases | cases: ['length1_26', 'length2_10', 'length2_18', 'length2_22', 'length2_23', 'length2_32', 'length2_44', 'length2_56', 'length2_58', 'length2_62', 'length2_72', 'length2_76', 'length2_81', 'length2_89', 'length2_9', 'length2_92', 'length3_44', 'length3_45', 'length3_50', 'length3_51', 'length3_70', 'length3_72', 'length3_74', 'length3_75', 'length3_77', 'length4_72', 'length4_73', 'length4_83', 'length5_90']
+
+
+
+=== Cluster C104 ===
+  cases (58): ['length1_26', 'length1_69', 'length1_7', 'length2_10', 'length2_11', 'length2_13', 'length2_16', 'length2_18', 'length2_22', 'length2_23', 'length2_25', 'length2_30', 'length2_31', 'length2_32', 'length2_34', 'length2_38', 'length2_44', 'length2_5', 'length2_56', 'length2_58', 'length2_62', 'length2_63', 'length2_69', 'length2_72', 'length2_73', 'length2_75', 'length2_76', 'length2_77', 'length2_79', 'length2_81', 'length2_84', 'length2_88', 'length2_89', 'length2_9', 'length2_92', 'length2_98', 'length2_99', 'length3_28', 'length3_29', 'length3_44', 'length3_45', 'length3_46', 'length3_50', 'length3_51', 'length3_69', 'length3_70', 'length3_71', 'length3_72', 'length3_73', 'length3_74', 'length3_75', 'length3_76', 'length3_77', 'length4_72', 'length4_73', 'length4_83', 'length5_90', 'length5_94']
+  summary: corr: 39 (67.2%) | MS-corr: 36 (62.1%) | incorrect: 19 
+
+I1: cases (29): ['length1_26', 'length2_10', 'length2_18', 'length2_22', 'length2_23', 'length2_32', 'length2_44', 'length2_56', 'length2_58', 'length2_62', 'length2_72', 'length2_76', 'length2_81', 'length2_89', 'length2_9', 'length2_92', 'length3_44', 'length3_45', 'length3_50', 'length3_51', 'length3_70', 'length3_72', 'length3_74', 'length3_75', 'length3_77', 'length4_72', 'length4_73', 'length4_83', 'length5_90'] | corr: 21 (72.4%) | MS-corr: 19 (65.5%) | incorrect: 8 
     test_0.csv: ['city', 'date', 'fare', 'ride_id']
     test_1.csv: ['city', 'driver_count', 'type']
-   Target groups: 14
-    T1: 5 cases | schema: ['city', 'fare', 'type'] | cases: ['length3_70', 'length3_72', 'length3_74', 'length3_75', 'length3_77']
-    T2: 4 cases | schema: ['city', 'driver_count'] | cases: ['length2_10', 'length2_62', 'length2_81', 'length2_9']
-    T3: 4 cases | schema: ['Average Fare', 'Ride Count', 'city', 'driver_count', 'type'] | cases: ['length3_44', 'length3_45', 'length3_50', 'length3_51']
-    T4: 3 cases | schema: ['city', 'fare', 'ride_id'] | cases: ['length2_18', 'length2_44', 'length2_76']
-    T5: 2 cases | schema: ['city', 'ride_id'] | cases: ['length2_22', 'length2_32']
-    T6: 2 cases | schema: ['city', 'fare'] | cases: ['length2_56', 'length2_89']
-    T7: 2 cases | schema: ['driver_count', 'fare', 'ride_id', 'type'] | cases: ['length2_58', 'length2_72']
-    T8: 1 cases | schema: ['city', 'date', 'driver_count', 'fare', 'ride_id', 'type'] | cases: ['length1_26']
-    T9: 1 cases | schema: ['city', 'type'] | cases: ['length2_23']
-    T10: 1 cases | schema: ['ride_id', 'type'] | cases: ['length2_92']
-    T11: 1 cases | schema: ['a', 'b', 'city'] | cases: ['length4_72']
-    T12: 1 cases | schema: ['Average Fare ($)', 'City', 'City Type', 'Number of Drivers', 'Number of Rides'] | cases: ['length4_73']
-    T13: 1 cases | schema: ['average_fare', 'city', 'driver_count', 'type'] | cases: ['length4_83']
-    T14: 1 cases | schema: ['Average Fare', 'City', 'City Type', 'Total Number of Drivers', 'Total Number of Rides', 'ride_id'] | cases: ['length5_90']
- I2: 27 cases | cases: ['length1_69', 'length1_7', 'length2_11', 'length2_13', 'length2_16', 'length2_25', 'length2_30', 'length2_34', 'length2_38', 'length2_5', 'length2_63', 'length2_69', 'length2_75', 'length2_77', 'length2_79', 'length2_84', 'length2_88', 'length2_98', 'length2_99', 'length3_28', 'length3_29', 'length3_46', 'length3_69', 'length3_71', 'length3_73', 'length3_76', 'length5_94']
+I2: cases (27): ['length1_69', 'length1_7', 'length2_11', 'length2_13', 'length2_16', 'length2_25', 'length2_30', 'length2_34', 'length2_38', 'length2_5', 'length2_63', 'length2_69', 'length2_75', 'length2_77', 'length2_79', 'length2_84', 'length2_88', 'length2_98', 'length2_99', 'length3_28', 'length3_29', 'length3_46', 'length3_69', 'length3_71', 'length3_73', 'length3_76', 'length5_94'] | corr: 18 (66.7%) | MS-corr: 17 (63.0%) | incorrect: 9 
     test_0.csv: ['city', 'driver_count', 'type']
     test_1.csv: ['city', 'date', 'fare', 'ride_id']
-   Target groups: 12
-    T1: 4 cases | schema: ['city', 'driver_count', 'fare', 'ride_id'] | cases: ['length2_11', 'length2_16', 'length2_25', 'length2_63']
-    T2: 4 cases | schema: ['city', 'fare', 'type'] | cases: ['length3_69', 'length3_71', 'length3_73', 'length3_76']
-    T3: 3 cases | schema: ['city', 'fare'] | cases: ['length2_30', 'length2_79', 'length2_98']
-    T4: 3 cases | schema: ['city', 'ride_id'] | cases: ['length2_34', 'length2_5', 'length2_75']
-    T5: 3 cases | schema: ['city', 'driver_count'] | cases: ['length2_69', 'length2_77', 'length2_99']
-    T6: 3 cases | schema: ['Average Fare', 'Ride Count', 'city', 'driver_count', 'type'] | cases: ['length3_28', 'length3_29', 'length3_46']
-    T7: 2 cases | schema: ['city', 'date', 'driver_count', 'fare', 'ride_id', 'type'] | cases: ['length1_69', 'length1_7']
-    T8: 1 cases | schema: ['driver_count', 'type'] | cases: ['length2_13']
-    T9: 1 cases | schema: ['fare', 'type'] | cases: ['length2_38']
-    T10: 1 cases | schema: ['ride_id', 'type'] | cases: ['length2_84']
-    T11: 1 cases | schema: ['city', 'fare', 'ride_id'] | cases: ['length2_88']
-    T12: 1 cases | schema: ['Average Fare', 'City', 'City Type', 'Total Number of Drivers', 'Total Number of Rides', 'ride_id'] | cases: ['length5_94']
- I3: 1 cases | cases: ['length2_31']
+I3: cases (1): ['length2_31'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['city', 'driver_count', 'right_index', 'type']
     test_1.csv: ['city', 'date', 'fare', 'ride_id']
-   Target groups: 1
-    T1: 1 cases | schema: ['city', 'driver_count', 'fare', 'ride_id', 'type'] | cases: ['length2_31']
- I4: 1 cases | cases: ['length2_73']
+I4: cases (1): ['length2_73'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['city', 'date', 'fare', 'ride_id']
     test_1.csv: ['city', 'driver_count', 'right_index', 'type']
-   Target groups: 1
-    T1: 1 cases | schema: ['city', 'driver_count', 'fare', 'ride_id', 'type'] | cases: ['length2_73']
 
-=== Cluster C75 (35 cases) ===
-Source groups: 32
- I1: 2 cases | cases: ['length5_44', 'length5_63']
+
+
+=== Cluster C75 ===
+  cases (35): ['length2_60', 'length2_78', 'length5_12', 'length5_13', 'length5_14', 'length5_18', 'length5_21', 'length5_26', 'length5_35', 'length5_39', 'length5_40', 'length5_43', 'length5_44', 'length5_46', 'length5_48', 'length5_50', 'length5_51', 'length5_63', 'length5_64', 'length5_65', 'length5_67', 'length5_69', 'length5_7', 'length5_71', 'length5_74', 'length5_75', 'length5_78', 'length5_81', 'length5_83', 'length5_85', 'length5_86', 'length5_87', 'length5_88', 'length5_89', 'length5_96']
+  summary: corr: 14 (40.0%) | MS-corr: 2 (5.7%) | incorrect: 21 
+
+I1: cases (2): ['length5_44', 'length5_63'] | corr: 1 (50.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_1.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_2.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_3.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 2
-    T1: 1 cases | schema: ['Cust_id', 'Customer_Segment', 'Ord_id', 'Prod_id', 'Ship_id'] | cases: ['length5_44']
-    T2: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Prod_id', 'Sales', 'Ship_id'] | cases: ['length5_63']
- I2: 2 cases | cases: ['length5_48', 'length5_51']
+I2: cases (2): ['length5_48', 'length5_51'] | corr: 2 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_1.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 2
-    T1: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Order_Date', 'Prod_id', 'Sales', 'Ship_id'] | cases: ['length5_48']
-    T2: 1 cases | schema: ['Ord_id', 'Prod_id', 'Ship_Mode', 'Ship_id'] | cases: ['length5_51']
- I3: 2 cases | cases: ['length5_74', 'length5_81']
+I3: cases (2): ['length5_74', 'length5_81'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 2 
     test_0.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_1.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_3.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 2
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_74']
-    T2: 1 cases | schema: ['Sales'] | cases: ['length5_81']
- I4: 1 cases | cases: ['length2_60']
+I4: cases (1): ['length2_60'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_2.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Product_Category', 'Product_Sub_Category', 'Profit', 'Province', 'Region', 'Sales', 'Ship_id', 'Shipping_Cost'] | cases: ['length2_60']
- I5: 1 cases | cases: ['length2_78']
+I5: cases (1): ['length2_78'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_1.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Product_Category', 'Product_Sub_Category', 'Profit', 'Province', 'Region', 'Sales', 'Ship_id', 'Shipping_Cost'] | cases: ['length2_78']
- I6: 1 cases | cases: ['length5_12']
+I6: cases (1): ['length5_12'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_1.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Order_Priority', 'Prod_id', 'Sales', 'Ship_Mode', 'Ship_id'] | cases: ['length5_12']
- I7: 1 cases | cases: ['length5_13']
+I7: cases (1): ['length5_13'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_1.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Prod_id', 'Product_Sub_Category', 'Sales', 'Ship_id'] | cases: ['length5_13']
- I8: 1 cases | cases: ['length5_14']
+I8: cases (1): ['length5_14'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Prod_id', 'Ship_id'] | cases: ['length5_14']
- I9: 1 cases | cases: ['length5_18']
+I9: cases (1): ['length5_18'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_1.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_2.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_3.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_4.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Sales', 'Ship_Mode', 'Ship_id'] | cases: ['length5_18']
- I10: 1 cases | cases: ['length5_21']
+I10: cases (1): ['length5_21'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Order_Priority', 'Prod_id', 'Sales', 'Ship_id'] | cases: ['length5_21']
- I11: 1 cases | cases: ['length5_26']
+I11: cases (1): ['length5_26'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_1.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_2.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_3.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_4.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Order_Date', 'Prod_id', 'Product_Sub_Category', 'Sales', 'Ship_id'] | cases: ['length5_26']
- I12: 1 cases | cases: ['length5_35']
+I12: cases (1): ['length5_35'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_1.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_2.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_3.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Prod_id', 'Product_Category', 'Sales', 'Ship_id'] | cases: ['length5_35']
- I13: 1 cases | cases: ['length5_39']
+I13: cases (1): ['length5_39'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_1.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_2.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_3.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_4.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Prod_id', 'Product_Category', 'Ship_id'] | cases: ['length5_39']
- I14: 1 cases | cases: ['length5_40']
+I14: cases (1): ['length5_40'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_2.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Customer_Name', 'Ord_id', 'Prod_id', 'Ship_id'] | cases: ['length5_40']
- I15: 1 cases | cases: ['length5_43']
+I15: cases (1): ['length5_43'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_1.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_2.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Prod_id', 'Sales', 'Ship_Mode', 'Ship_id'] | cases: ['length5_43']
- I16: 1 cases | cases: ['length5_46']
+I16: cases (1): ['length5_46'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Customer_Name', 'Ord_id', 'Prod_id', 'Ship_id'] | cases: ['length5_46']
- I17: 1 cases | cases: ['length5_50']
+I17: cases (1): ['length5_50'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_1.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_2.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_3.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Ord_id', 'Prod_id', 'Ship_Date', 'Ship_id'] | cases: ['length5_50']
- I18: 1 cases | cases: ['length5_64']
+I18: cases (1): ['length5_64'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_4.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
-   Target groups: 1
-    T1: 1 cases | schema: ['Customer_Name', 'Ord_id', 'Prod_id', 'Ship_Date', 'Ship_id'] | cases: ['length5_64']
- I19: 1 cases | cases: ['length5_65']
+I19: cases (1): ['length5_65'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_1.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Order_Priority', 'Prod_id', 'Sales', 'Ship_id'] | cases: ['length5_65']
- I20: 1 cases | cases: ['length5_67']
+I20: cases (1): ['length5_67'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_1.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Prod_id', 'Ship_Date', 'Ship_id'] | cases: ['length5_67']
- I21: 1 cases | cases: ['length5_69']
+I21: cases (1): ['length5_69'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_1.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_3.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_4.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Ord_id', 'Prod_id', 'Ship_Date', 'Ship_id'] | cases: ['length5_69']
- I22: 1 cases | cases: ['length5_7']
+I22: cases (1): ['length5_7'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_1.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_2.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
     test_3.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Sub_Category', 'Sales', 'Ship_id'] | cases: ['length5_7']
- I23: 1 cases | cases: ['length5_71']
+I23: cases (1): ['length5_71'] | corr: 1 (100.0%) | MS-corr: 0 (0.0%) | incorrect: 0 
     test_0.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_1.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_2.csv: ['Ship_Date', 'Ship_Mode', 'Ship_id']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Cust_id', 'Discount', 'Ord_id', 'Order_Priority', 'Prod_id', 'Sales', 'Ship_Mode', 'Ship_id'] | cases: ['length5_71']
- I24: 1 cases | cases: ['length5_75']
+I24: cases (1): ['length5_75'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_1.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_2.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_3.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_4.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_75']
- I25: 1 cases | cases: ['length5_78']
+I25: cases (1): ['length5_78'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_3.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_4.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_78']
- I26: 1 cases | cases: ['length5_83']
+I26: cases (1): ['length5_83'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_2.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_83']
- I27: 1 cases | cases: ['length5_85']
+I27: cases (1): ['length5_85'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_1.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_2.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Sales'] | cases: ['length5_85']
- I28: 1 cases | cases: ['length5_86']
+I28: cases (1): ['length5_86'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_1.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_86']
- I29: 1 cases | cases: ['length5_87']
+I29: cases (1): ['length5_87'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_1.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_4.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_87']
- I30: 1 cases | cases: ['length5_88']
+I30: cases (1): ['length5_88'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_1.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_4.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_88']
- I31: 1 cases | cases: ['length5_89']
+I31: cases (1): ['length5_89'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
     test_1.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_2.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_3.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_4.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_89']
- I32: 1 cases | cases: ['length5_96']
+I32: cases (1): ['length5_96'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['Cust_id', 'Customer_Name', 'Customer_Segment', 'Province', 'Region']
     test_1.csv: ['Order_ID', 'Ship_Date', 'Ship_Mode', 'Ship_id']
     test_2.csv: ['Cust_id', 'Discount', 'Ord_id', 'Order_Quantity', 'Prod_id', 'Product_Base_Margin', 'Profit', 'Sales', 'Ship_id', 'Shipping_Cost']
     test_3.csv: ['Ord_id', 'Order_Date', 'Order_ID', 'Order_Priority']
     test_4.csv: ['Prod_id', 'Product_Category', 'Product_Sub_Category']
-   Target groups: 1
-    T1: 1 cases | schema: ['Profit'] | cases: ['length5_96']
 
-=== Cluster C66 (33 cases) ===
-Source groups: 3
- I1: 19 cases | cases: ['length1_17', 'length1_28', 'length1_32', 'length2_0', 'length2_12', 'length2_66', 'length2_68', 'length2_71', 'length3_41', 'length3_42', 'length3_43', 'length4_68', 'length4_75', 'length5_0', 'length5_22', 'length5_30', 'length5_68', 'length5_76', 'length5_95']
+
+
+=== Cluster C66 ===
+  cases (33): ['length1_1', 'length1_17', 'length1_28', 'length1_32', 'length1_47', 'length1_51', 'length1_76', 'length2_0', 'length2_12', 'length2_27', 'length2_40', 'length2_66', 'length2_68', 'length2_70', 'length2_71', 'length2_95', 'length2_97', 'length3_41', 'length3_42', 'length3_43', 'length4_68', 'length4_75', 'length5_0', 'length5_10', 'length5_22', 'length5_24', 'length5_29', 'length5_30', 'length5_68', 'length5_76', 'length5_77', 'length5_8', 'length5_95']
+  summary: corr: 22 (66.7%) | MS-corr: 19 (57.6%) | incorrect: 11 
+
+I1: cases (19): ['length1_17', 'length1_28', 'length1_32', 'length2_0', 'length2_12', 'length2_66', 'length2_68', 'length2_71', 'length3_41', 'length3_42', 'length3_43', 'length4_68', 'length4_75', 'length5_0', 'length5_22', 'length5_30', 'length5_68', 'length5_76', 'length5_95'] | corr: 12 (63.2%) | MS-corr: 11 (57.9%) | incorrect: 7 
     test_0.csv: ['School ID', 'budget', 'school_name', 'size', 'type']
     test_1.csv: ['Student ID', 'gender', 'grade', 'math_score', 'reading_score', 'school_name', 'student_name']
-   Target groups: 12
-    T1: 4 cases | schema: ['reading_score', 'school_name'] | cases: ['length2_0', 'length2_12', 'length2_66', 'length5_76']
-    T2: 3 cases | schema: ['School ID', 'Student ID', 'budget', 'gender', 'grade', 'math_score', 'reading_score', 'school_name', 'size', 'student_name', 'type'] | cases: ['length1_17', 'length1_28', 'length1_32']
-    T3: 3 cases | schema: ['math_score', 'school_name'] | cases: ['length5_22', 'length5_68', 'length5_95']
-    T4: 1 cases | schema: ['Average Math Score', 'Average Reading Score', 'Total School Budget', 'Total Students', 'school_name', 'type'] | cases: ['length2_68']
-    T5: 1 cases | schema: ['reading_score', 'type'] | cases: ['length2_71']
-    T6: 1 cases | schema: ['Average Math Score', 'Average Reading Score', 'Total School Budget', 'Total Students'] | cases: ['length3_41']
-    T7: 1 cases | schema: ['Average Math Score', 'Average Reading Score', 'School Size', 'Total School Budget', 'Total Students'] | cases: ['length3_42']
-    T8: 1 cases | schema: ['Average Math Score', 'Average Reading Score', 'School Size', 'Total School Budget', 'Total Students', 'type'] | cases: ['length3_43']
-    T9: 1 cases | schema: ['a', 'b', 'c', 'd', 'e', 'school_name'] | cases: ['length4_68']
-    T10: 1 cases | schema: ['a', 'b', 'type'] | cases: ['length4_75']
-    T11: 1 cases | schema: ['Average Math Score', 'Average Reading Score', 'School ID', 'School Name', 'School Type', 'Total Budget', 'Total Passing Math', 'Total Passing Reading', 'Total Students', 'gender', 'grade', 'size', 'student_name'] | cases: ['length5_0']
-    T12: 1 cases | schema: ['Student ID', 'budget', 'math_score', 'reading_score', 'school_name'] | cases: ['length5_30']
- I2: 13 cases | cases: ['length1_1', 'length1_47', 'length1_51', 'length1_76', 'length2_27', 'length2_40', 'length2_70', 'length2_97', 'length5_10', 'length5_24', 'length5_29', 'length5_77', 'length5_8']
+I2: cases (13): ['length1_1', 'length1_47', 'length1_51', 'length1_76', 'length2_27', 'length2_40', 'length2_70', 'length2_97', 'length5_10', 'length5_24', 'length5_29', 'length5_77', 'length5_8'] | corr: 10 (76.9%) | MS-corr: 8 (61.5%) | incorrect: 3 
     test_0.csv: ['Student ID', 'gender', 'grade', 'math_score', 'reading_score', 'school_name', 'student_name']
     test_1.csv: ['School ID', 'budget', 'school_name', 'size', 'type']
-   Target groups: 6
-    T1: 5 cases | schema: ['School ID', 'Student ID', 'budget', 'gender', 'grade', 'math_score', 'reading_score', 'school_name', 'size', 'student_name', 'type'] | cases: ['length1_1', 'length1_47', 'length1_51', 'length1_76', 'length2_27']
-    T2: 3 cases | schema: ['reading_score', 'school_name'] | cases: ['length2_40', 'length5_10', 'length5_77']
-    T3: 2 cases | schema: ['math_score', 'school_name'] | cases: ['length5_29', 'length5_8']
-    T4: 1 cases | schema: ['10th', '11th', '12th', '9th', 'school_name'] | cases: ['length2_70']
-    T5: 1 cases | schema: ['Average Math Score', 'Average Reading Score', 'Total School Budget', 'Total Students', 'school_name', 'type'] | cases: ['length2_97']
-    T6: 1 cases | schema: ['Student ID', 'budget', 'math_score', 'reading_score', 'school_name'] | cases: ['length5_24']
- I3: 1 cases | cases: ['length2_95']
+I3: cases (1): ['length2_95'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['School ID', 'budget', 'name', 'size', 'type']
     test_1.csv: ['Student ID', 'gender', 'grade', 'math_score', 'name', 'reading_score', 'school']
-   Target groups: 1
-    T1: 1 cases | schema: ['Average Student Math Score', 'School Budget', 'School ID', 'School Name', 'School Size', 'Student Grade', 'Student ID', 'Student Reading Score'] | cases: ['length2_95']
 
-=== Cluster C128 (28 cases) ===
-Source groups: 1
- I1: 28 cases | cases: ['length9_10', 'length9_100', 'length9_63', 'length9_64', 'length9_65', 'length9_66', 'length9_7', 'length9_8', 'length9_80', 'length9_81', 'length9_82', 'length9_83', 'length9_84', 'length9_85', 'length9_86', 'length9_87', 'length9_88', 'length9_89', 'length9_9', 'length9_90', 'length9_91', 'length9_92', 'length9_93', 'length9_94', 'length9_95', 'length9_97', 'length9_98', 'length9_99']
+
+
+=== Cluster C128 ===
+  cases (28): ['length9_10', 'length9_100', 'length9_63', 'length9_64', 'length9_65', 'length9_66', 'length9_7', 'length9_8', 'length9_80', 'length9_81', 'length9_82', 'length9_83', 'length9_84', 'length9_85', 'length9_86', 'length9_87', 'length9_88', 'length9_89', 'length9_9', 'length9_90', 'length9_91', 'length9_92', 'length9_93', 'length9_94', 'length9_95', 'length9_97', 'length9_98', 'length9_99']
+  summary: corr: 27 (96.4%) | MS-corr: 27 (96.4%) | incorrect: 1 
+
+I1: cases (28): ['length9_10', 'length9_100', 'length9_63', 'length9_64', 'length9_65', 'length9_66', 'length9_7', 'length9_8', 'length9_80', 'length9_81', 'length9_82', 'length9_83', 'length9_84', 'length9_85', 'length9_86', 'length9_87', 'length9_88', 'length9_89', 'length9_9', 'length9_90', 'length9_91', 'length9_92', 'length9_93', 'length9_94', 'length9_95', 'length9_97', 'length9_98', 'length9_99'] | corr: 27 (96.4%) | MS-corr: 27 (96.4%) | incorrect: 1 
     test_0.csv: ['admit', 'gpa', 'gre', 'prestige']
     test_1.csv: ['admit', 'gpa', 'gre', 'prestige']
     test_2.csv: ['admit', 'gpa', 'gre', 'prestige']
@@ -350,90 +246,65 @@ Source groups: 1
     test_7.csv: ['admit', 'gpa', 'gre', 'prestige']
     test_8.csv: ['admit', 'gpa', 'gre', 'prestige']
     test_9.csv: ['admit', 'gpa', 'gre', 'prestige']
-   Target groups: 1
-    T1: 28 cases | schema: ['admit', 'gpa', 'gre', 'prestige'] | cases: ['length9_10', 'length9_100', 'length9_63', 'length9_64', 'length9_65', 'length9_66', 'length9_7', 'length9_8', 'length9_80', 'length9_81', 'length9_82', 'length9_83', 'length9_84', 'length9_85', 'length9_86', 'length9_87', 'length9_88', 'length9_89', 'length9_9', 'length9_90', 'length9_91', 'length9_92', 'length9_93', 'length9_94', 'length9_95', 'length9_97', 'length9_98', 'length9_99']
 
-=== Cluster C63 (26 cases) ===
-Source groups: 11
- I1: 5 cases | cases: ['length3_18', 'length3_24', 'length3_3', 'length4_11', 'length4_93']
+
+
+=== Cluster C63 ===
+  cases (26): ['length2_59', 'length3_14', 'length3_15', 'length3_16', 'length3_17', 'length3_18', 'length3_19', 'length3_2', 'length3_24', 'length3_25', 'length3_26', 'length3_27', 'length3_3', 'length3_31', 'length3_32', 'length3_33', 'length3_78', 'length3_91', 'length3_92', 'length3_93', 'length3_94', 'length3_95', 'length4_10', 'length4_11', 'length4_92', 'length4_93']
+  summary: corr: 19 (73.1%) | MS-corr: 17 (65.4%) | incorrect: 7 
+
+I1: cases (5): ['length3_18', 'length3_24', 'length3_3', 'length4_11', 'length4_93'] | corr: 2 (40.0%) | MS-corr: 1 (20.0%) | incorrect: 3 
     test_0.csv: ['age', 'gender', 'occupation', 'user_id', 'zip']
     test_1.csv: ['genres', 'movie_id', 'title']
     test_2.csv: ['movie_id', 'rating', 'timestamp', 'user_id']
-   Target groups: 3
-    T1: 2 cases | schema: ['age', 'movie_id', 'occupation', 'rating', 'timestamp', 'title', 'user_id'] | cases: ['length3_18', 'length3_3']
-    T2: 2 cases | schema: ['age', 'gender', 'genres_x', 'genres_y', 'movie_id', 'occupation', 'rating', 'timestamp', 'title_x', 'title_y', 'user_id', 'zip'] | cases: ['length4_11', 'length4_93']
-    T3: 1 cases | schema: ['F', 'M', 'title'] | cases: ['length3_24']
- I2: 4 cases | cases: ['length2_59', 'length3_15', 'length3_31', 'length3_33']
+I2: cases (4): ['length2_59', 'length3_15', 'length3_31', 'length3_33'] | corr: 4 (100.0%) | MS-corr: 4 (100.0%) | incorrect: 0 
     test_0.csv: ['genres', 'movie_id', 'title']
     test_1.csv: ['age', 'gender', 'occupation', 'user_id', 'zip']
     test_2.csv: ['movie_id', 'rating', 'timestamp', 'user_id']
-   Target groups: 3
-    T1: 2 cases | schema: ['F', 'M', 'title'] | cases: ['length3_15', 'length3_31']
-    T2: 1 cases | schema: ['age', 'gender', 'genres', 'movie_id', 'occupation', 'rating', 'timestamp', 'title', 'user_id', 'zip'] | cases: ['length2_59']
-    T3: 1 cases | schema: ['age', 'movie_id', 'occupation', 'rating', 'timestamp', 'title', 'user_id'] | cases: ['length3_33']
- I3: 4 cases | cases: ['length3_16', 'length3_25', 'length3_32', 'length4_92']
+I3: cases (4): ['length3_16', 'length3_25', 'length3_32', 'length4_92'] | corr: 2 (50.0%) | MS-corr: 2 (50.0%) | incorrect: 2 
     test_0.csv: ['age', 'gender', 'occupation', 'user_id', 'zip']
     test_1.csv: ['movie_id', 'rating', 'timestamp', 'user_id']
     test_2.csv: ['genres', 'movie_id', 'title']
-   Target groups: 3
-    T1: 2 cases | schema: ['age', 'movie_id', 'occupation', 'rating', 'timestamp', 'title', 'user_id'] | cases: ['length3_25', 'length3_32']
-    T2: 1 cases | schema: ['F', 'M', 'title'] | cases: ['length3_16']
-    T3: 1 cases | schema: ['age', 'gender', 'genres_x', 'genres_y', 'movie_id_x', 'movie_id_y', 'occupation', 'rating', 'timestamp', 'title', 'user_id', 'zip'] | cases: ['length4_92']
- I4: 3 cases | cases: ['length3_17', 'length3_2', 'length3_26']
+I4: cases (3): ['length3_17', 'length3_2', 'length3_26'] | corr: 2 (66.7%) | MS-corr: 1 (33.3%) | incorrect: 1 
     test_0.csv: ['movie_id', 'rating', 'timestamp', 'user_id']
     test_1.csv: ['genres', 'movie_id', 'title']
     test_2.csv: ['age', 'gender', 'occupation', 'user_id', 'zip']
-   Target groups: 3
-    T1: 1 cases | schema: ['F', 'M', 'title'] | cases: ['length3_17']
-    T2: 1 cases | schema: ['age', 'movie_id', 'occupation', 'rating', 'timestamp', 'title', 'user_id'] | cases: ['length3_2']
-    T3: 1 cases | schema: ['0', 'title'] | cases: ['length3_26']
- I5: 3 cases | cases: ['length3_91', 'length3_94', 'length3_95']
+I5: cases (3): ['length3_91', 'length3_94', 'length3_95'] | corr: 3 (100.0%) | MS-corr: 3 (100.0%) | incorrect: 0 
     test_0.csv: ['imdb_url', 'movie_id', 'release_date', 'title', 'video_release_date']
     test_1.csv: ['movie_id', 'rating', 'unix_timestamp', 'user_id']
     test_2.csv: ['age', 'occupation', 'sex', 'user_id', 'zip_code']
-   Target groups: 2
-    T1: 2 cases | schema: ['F', 'M', 'movie_id', 'title'] | cases: ['length3_94', 'length3_95']
-    T2: 1 cases | schema: ['age', 'movie_id', 'rating', 'title', 'unix_timestamp', 'user_id', 'video_release_date'] | cases: ['length3_91']
- I6: 2 cases | cases: ['length3_14', 'length3_19']
+I6: cases (2): ['length3_14', 'length3_19'] | corr: 2 (100.0%) | MS-corr: 2 (100.0%) | incorrect: 0 
     test_0.csv: ['genres', 'movie_id', 'title']
     test_1.csv: ['movie_id', 'rating', 'timestamp', 'user_id']
     test_2.csv: ['age', 'gender', 'occupation', 'user_id', 'zip']
-   Target groups: 1
-    T1: 2 cases | schema: ['age', 'movie_id', 'occupation', 'rating', 'timestamp', 'title', 'user_id'] | cases: ['length3_14', 'length3_19']
- I7: 1 cases | cases: ['length3_27']
+I7: cases (1): ['length3_27'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['movie_id', 'rating', 'timestamp', 'user_id']
     test_1.csv: ['age', 'gender', 'occupation', 'user_id', 'zip']
     test_2.csv: ['genres', 'movie_id', 'title']
-   Target groups: 1
-    T1: 1 cases | schema: ['age', 'movie_id', 'occupation', 'rating', 'timestamp', 'title', 'user_id'] | cases: ['length3_27']
- I8: 1 cases | cases: ['length3_78']
+I8: cases (1): ['length3_78'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['movie_id', 'rating', 'unix_timestamp', 'user_id']
     test_1.csv: ['age', 'occupation', 'sex', 'user_id', 'zip_code']
     test_2.csv: ['imdb_url', 'movie_id', 'release_date', 'title', 'video_release_date']
-   Target groups: 1
-    T1: 1 cases | schema: ['F', 'M', 'movie_id', 'title'] | cases: ['length3_78']
- I9: 1 cases | cases: ['length3_92']
+I9: cases (1): ['length3_92'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['imdb_url', 'movie_id', 'release_date', 'title', 'video_release_date']
     test_1.csv: ['age', 'occupation', 'sex', 'user_id', 'zip_code']
     test_2.csv: ['movie_id', 'rating', 'unix_timestamp', 'user_id']
-   Target groups: 1
-    T1: 1 cases | schema: ['age', 'movie_id', 'rating', 'title', 'unix_timestamp', 'user_id', 'video_release_date'] | cases: ['length3_92']
- I10: 1 cases | cases: ['length3_93']
+I10: cases (1): ['length3_93'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['age', 'occupation', 'sex', 'user_id', 'zip_code']
     test_1.csv: ['movie_id', 'rating', 'unix_timestamp', 'user_id']
     test_2.csv: ['imdb_url', 'movie_id', 'release_date', 'title', 'video_release_date']
-   Target groups: 1
-    T1: 1 cases | schema: ['0', 'movie_id'] | cases: ['length3_93']
- I11: 1 cases | cases: ['length4_10']
+I11: cases (1): ['length4_10'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['age', 'gender', 'occupation', 'user_id', 'zip']
     test_1.csv: ['movie_id', 'rating', 'timestamp', 'user_id']
     test_2.csv: ['movie_id', 'movie_title', 'year']
-   Target groups: 1
-    T1: 1 cases | schema: ['age', 'gender', 'movie_id', 'movie_title_x', 'movie_title_y', 'occupation', 'rating', 'timestamp', 'user_id', 'year_x', 'year_y', 'zip'] | cases: ['length4_10']
 
-=== Cluster C122 (19 cases) ===
-Source groups: 1
- I1: 19 cases | cases: ['length6_0', 'length6_13', 'length6_16', 'length6_21', 'length6_29', 'length6_43', 'length6_44', 'length6_50', 'length6_65', 'length6_74', 'length6_75', 'length6_78', 'length6_81', 'length6_86', 'length6_88', 'length6_90', 'length6_92', 'length6_93', 'length6_94']
+
+
+=== Cluster C122 ===
+  cases (19): ['length6_0', 'length6_13', 'length6_16', 'length6_21', 'length6_29', 'length6_43', 'length6_44', 'length6_50', 'length6_65', 'length6_74', 'length6_75', 'length6_78', 'length6_81', 'length6_86', 'length6_88', 'length6_90', 'length6_92', 'length6_93', 'length6_94']
+  summary: corr: 19 (100.0%) | MS-corr: 19 (100.0%) | incorrect: 0 
+
+I1: cases (19): ['length6_0', 'length6_13', 'length6_16', 'length6_21', 'length6_29', 'length6_43', 'length6_44', 'length6_50', 'length6_65', 'length6_74', 'length6_75', 'length6_78', 'length6_81', 'length6_86', 'length6_88', 'length6_90', 'length6_92', 'length6_93', 'length6_94'] | corr: 19 (100.0%) | MS-corr: 19 (100.0%) | incorrect: 0 
     test_0.csv: ['movie_acting_role_display_name', 'movie_annual_summary_tickets_sold', 'movie_creative_type_display_name', 'movie_display_name', 'movie_financial_summary_international_box_office', 'movie_financial_summary_production_budget', 'movie_genre_display_name', 'movie_production_company_display_name', 'movie_production_method_display_name', 'movie_production_year', 'movie_running_time', 'movie_sequel', 'movie_source_display_name', 'movie_technical_role_display_name', 'movie_theatrical_release_release_date', 'movie_video_summary_domestic_dvd_units']
     test_1.csv: ['movie_acting_role_display_name', 'movie_annual_summary_tickets_sold', 'movie_creative_type_display_name', 'movie_display_name', 'movie_financial_summary_international_box_office', 'movie_financial_summary_production_budget', 'movie_genre_display_name', 'movie_production_company_display_name', 'movie_production_method_display_name', 'movie_production_year', 'movie_running_time', 'movie_sequel', 'movie_source_display_name', 'movie_technical_role_display_name', 'movie_theatrical_release_release_date', 'movie_video_summary_domestic_dvd_units']
     test_2.csv: ['movie_acting_role_display_name', 'movie_annual_summary_tickets_sold', 'movie_creative_type_display_name', 'movie_display_name', 'movie_financial_summary_international_box_office', 'movie_financial_summary_production_budget', 'movie_genre_display_name', 'movie_production_company_display_name', 'movie_production_method_display_name', 'movie_production_year', 'movie_running_time', 'movie_sequel', 'movie_source_display_name', 'movie_technical_role_display_name', 'movie_theatrical_release_release_date', 'movie_video_summary_domestic_dvd_units']
@@ -442,12 +313,14 @@ Source groups: 1
     test_5.csv: ['movie_acting_role_display_name', 'movie_annual_summary_tickets_sold', 'movie_creative_type_display_name', 'movie_display_name', 'movie_financial_summary_international_box_office', 'movie_financial_summary_production_budget', 'movie_genre_display_name', 'movie_production_company_display_name', 'movie_production_method_display_name', 'movie_production_year', 'movie_running_time', 'movie_sequel', 'movie_source_display_name', 'movie_technical_role_display_name', 'movie_theatrical_release_release_date', 'movie_video_summary_domestic_dvd_units']
     test_6.csv: ['movie_acting_role_display_name', 'movie_annual_summary_tickets_sold', 'movie_creative_type_display_name', 'movie_display_name', 'movie_financial_summary_international_box_office', 'movie_financial_summary_production_budget', 'movie_genre_display_name', 'movie_production_company_display_name', 'movie_production_method_display_name', 'movie_production_year', 'movie_running_time', 'movie_sequel', 'movie_source_display_name', 'movie_technical_role_display_name', 'movie_theatrical_release_release_date', 'movie_video_summary_domestic_dvd_units']
     test_7.csv: ['movie_acting_role_display_name', 'movie_annual_summary_tickets_sold', 'movie_creative_type_display_name', 'movie_display_name', 'movie_financial_summary_international_box_office', 'movie_financial_summary_production_budget', 'movie_genre_display_name', 'movie_production_company_display_name', 'movie_production_method_display_name', 'movie_production_year', 'movie_running_time', 'movie_sequel', 'movie_source_display_name', 'movie_technical_role_display_name', 'movie_theatrical_release_release_date', 'movie_video_summary_domestic_dvd_units']
-   Target groups: 1
-    T1: 19 cases | schema: ['movie_acting_role_display_name', 'movie_annual_summary_tickets_sold', 'movie_creative_type_display_name', 'movie_display_name', 'movie_financial_summary_international_box_office', 'movie_financial_summary_production_budget', 'movie_genre_display_name', 'movie_production_company_display_name', 'movie_production_method_display_name', 'movie_production_year', 'movie_running_time', 'movie_sequel', 'movie_source_display_name', 'movie_technical_role_display_name', 'movie_theatrical_release_release_date', 'movie_video_summary_domestic_dvd_units'] | cases: ['length6_0', 'length6_13', 'length6_16', 'length6_21', 'length6_29', 'length6_43', 'length6_44', 'length6_50', 'length6_65', 'length6_74', 'length6_75', 'length6_78', 'length6_81', 'length6_86', 'length6_88', 'length6_90', 'length6_92', 'length6_93', 'length6_94']
 
-=== Cluster C129 (17 cases) ===
-Source groups: 17
- I1: 1 cases | cases: ['length9_22']
+
+
+=== Cluster C129 ===
+  cases (17): ['length9_22', 'length9_23', 'length9_24', 'length9_25', 'length9_26', 'length9_27', 'length9_28', 'length9_29', 'length9_30', 'length9_31', 'length9_32', 'length9_33', 'length9_34', 'length9_35', 'length9_67', 'length9_68', 'length9_69']
+  summary: corr: 2 (11.8%) | MS-corr: 2 (11.8%) | incorrect: 15 
+
+I1: cases (1): ['length9_22'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['KEYWORDS_NUM', 'ROW_WID']
     test_1.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_2.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
@@ -458,9 +331,7 @@ Source groups: 17
     test_7.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_8.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_9.csv: ['ROW_WID', 'VISITS_NUM']
-   Target groups: 1
-    T1: 1 cases | schema: ['INBOUND_CALLS_NUM'] | cases: ['length9_22']
- I2: 1 cases | cases: ['length9_23']
+I2: cases (1): ['length9_23'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_1.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -471,9 +342,7 @@ Source groups: 17
     test_7.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_8.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_9.csv: ['INTERACTIONS_NUM', 'ROW_WID']
-   Target groups: 1
-    T1: 1 cases | schema: ['MONTHS_AGE'] | cases: ['length9_23']
- I3: 1 cases | cases: ['length9_24']
+I3: cases (1): ['length9_24'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_1.csv: ['KEYWORDS_NUM', 'ROW_WID']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -484,9 +353,7 @@ Source groups: 17
     test_7.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_8.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_9.csv: ['INTERACTIONS_NUM', 'ROW_WID']
-   Target groups: 1
-    T1: 1 cases | schema: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'COLLECTION_EVENTS_NUM', 'CUST_SINCE_DT', 'HOME_PASSED', 'INBOUND_CALLS_NUM', 'INTERACTIONS_NUM', 'KEYWORDS_NUM', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES', 'TECHSUPPORT_NUM', 'VISITS_NUM'] | cases: ['length9_24']
- I4: 1 cases | cases: ['length9_25']
+I4: cases (1): ['length9_25'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_1.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_2.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
@@ -497,9 +364,7 @@ Source groups: 17
     test_7.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_8.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_9.csv: ['ROW_WID', 'VISITS_NUM']
-   Target groups: 1
-    T1: 1 cases | schema: ['CANCEL_DT'] | cases: ['length9_25']
- I5: 1 cases | cases: ['length9_26']
+I5: cases (1): ['length9_26'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ROW_WID', 'VISITS_NUM']
     test_1.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -510,9 +375,7 @@ Source groups: 17
     test_7.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_8.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_9.csv: ['INTERACTIONS_NUM', 'ROW_WID']
-   Target groups: 1
-    T1: 1 cases | schema: ['CANCEL_DT'] | cases: ['length9_26']
- I6: 1 cases | cases: ['length9_27']
+I6: cases (1): ['length9_27'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_1.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -523,9 +386,7 @@ Source groups: 17
     test_7.csv: ['KEYWORDS_NUM', 'ROW_WID']
     test_8.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_9.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
-   Target groups: 1
-    T1: 1 cases | schema: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'COLLECTION_EVENTS_NUM', 'CUST_SINCE_DT', 'HOME_PASSED', 'INBOUND_CALLS_NUM', 'INTERACTIONS_NUM', 'KEYWORDS_NUM', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES', 'TECHSUPPORT_NUM', 'VISITS_NUM'] | cases: ['length9_27']
- I7: 1 cases | cases: ['length9_28']
+I7: cases (1): ['length9_28'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['KEYWORDS_NUM', 'ROW_WID']
     test_1.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_2.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
@@ -536,9 +397,7 @@ Source groups: 17
     test_7.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_8.csv: ['INTERACTIONS_NUM', 'ROW_WID']
     test_9.csv: ['ROW_WID', 'VISITS_NUM']
-   Target groups: 1
-    T1: 1 cases | schema: ['ARPU'] | cases: ['length9_28']
- I8: 1 cases | cases: ['length9_29']
+I8: cases (1): ['length9_29'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_1.csv: ['ROW_WID', 'VISITS_NUM']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -549,9 +408,7 @@ Source groups: 17
     test_7.csv: ['INTERACTIONS_NUM', 'ROW_WID']
     test_8.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_9.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
-   Target groups: 1
-    T1: 1 cases | schema: ['COLLECTION_EVENTS_NUM'] | cases: ['length9_29']
- I9: 1 cases | cases: ['length9_30']
+I9: cases (1): ['length9_30'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_1.csv: ['ROW_WID', 'VISITS_NUM']
     test_2.csv: ['KEYWORDS_NUM', 'ROW_WID']
@@ -562,9 +419,7 @@ Source groups: 17
     test_7.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_8.csv: ['INTERACTIONS_NUM', 'ROW_WID']
     test_9.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
-   Target groups: 1
-    T1: 1 cases | schema: ['ARPU'] | cases: ['length9_30']
- I10: 1 cases | cases: ['length9_31']
+I10: cases (1): ['length9_31'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_1.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_2.csv: ['INTERACTIONS_NUM', 'ROW_WID']
@@ -575,9 +430,7 @@ Source groups: 17
     test_7.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_8.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_9.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
-   Target groups: 1
-    T1: 1 cases | schema: ['HOME_PASSED'] | cases: ['length9_31']
- I11: 1 cases | cases: ['length9_32']
+I11: cases (1): ['length9_32'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_1.csv: ['ROW_WID', 'VISITS_NUM']
     test_2.csv: ['KEYWORDS_NUM', 'ROW_WID']
@@ -588,9 +441,7 @@ Source groups: 17
     test_7.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_8.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_9.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
-   Target groups: 1
-    T1: 1 cases | schema: ['VISITS_NUM'] | cases: ['length9_32']
- I12: 1 cases | cases: ['length9_33']
+I12: cases (1): ['length9_33'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ROW_WID', 'VISITS_NUM']
     test_1.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_2.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
@@ -601,9 +452,7 @@ Source groups: 17
     test_7.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_8.csv: ['INTERACTIONS_NUM', 'ROW_WID']
     test_9.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
-   Target groups: 1
-    T1: 1 cases | schema: ['INTERACTIONS_NUM'] | cases: ['length9_33']
- I13: 1 cases | cases: ['length9_34']
+I13: cases (1): ['length9_34'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_1.csv: ['INTERACTIONS_NUM', 'ROW_WID']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -614,9 +463,7 @@ Source groups: 17
     test_7.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_8.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_9.csv: ['KEYWORDS_NUM', 'ROW_WID']
-   Target groups: 1
-    T1: 1 cases | schema: ['KEYWORDS_NUM'] | cases: ['length9_34']
- I14: 1 cases | cases: ['length9_35']
+I14: cases (1): ['length9_35'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_1.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_2.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
@@ -627,9 +474,7 @@ Source groups: 17
     test_7.csv: ['ROW_WID', 'VISITS_NUM']
     test_8.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_9.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
-   Target groups: 1
-    T1: 1 cases | schema: ['TECHSUPPORT_NUM'] | cases: ['length9_35']
- I15: 1 cases | cases: ['length9_67']
+I15: cases (1): ['length9_67'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_1.csv: ['INTERACTIONS_NUM', 'ROW_WID']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -640,9 +485,7 @@ Source groups: 17
     test_7.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_8.csv: ['ROW_WID', 'VISITS_NUM']
     test_9.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
-   Target groups: 1
-    T1: 1 cases | schema: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'COLLECTION_EVENTS_NUM', 'CUST_SINCE_DT', 'HOME_PASSED', 'INBOUND_CALLS_NUM', 'INTERACTIONS_NUM', 'KEYWORDS_NUM', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES', 'TECHSUPPORT_NUM', 'VISITS_NUM'] | cases: ['length9_67']
- I16: 1 cases | cases: ['length9_68']
+I16: cases (1): ['length9_68'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_1.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
     test_2.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
@@ -653,9 +496,7 @@ Source groups: 17
     test_7.csv: ['INTERACTIONS_NUM', 'ROW_WID']
     test_8.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_9.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
-   Target groups: 1
-    T1: 1 cases | schema: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'COLLECTION_EVENTS_NUM', 'CUST_SINCE_DT', 'HOME_PASSED', 'INBOUND_CALLS_NUM', 'INTERACTIONS_NUM', 'KEYWORDS_NUM', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES', 'TECHSUPPORT_NUM', 'VISITS_NUM'] | cases: ['length9_68']
- I17: 1 cases | cases: ['length9_69']
+I17: cases (1): ['length9_69'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_1.csv: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'CUST_SINCE_DT', 'HOME_PASSED', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES']
     test_2.csv: ['KEYWORDS_NUM', 'ROW_WID']
@@ -666,97 +507,76 @@ Source groups: 17
     test_7.csv: ['COLLECTION_EVENTS_NUM', 'ROW_WID']
     test_8.csv: ['INBOUND_CALLS_NUM', 'ROW_WID']
     test_9.csv: ['ROW_WID', 'TECHSUPPORT_NUM']
-   Target groups: 1
-    T1: 1 cases | schema: ['ACCNT_LOC', 'ARPU', 'CANCELED', 'CANCEL_DT', 'CITY', 'COLLECTION_EVENTS_NUM', 'CUST_SINCE_DT', 'HOME_PASSED', 'INBOUND_CALLS_NUM', 'INTERACTIONS_NUM', 'KEYWORDS_NUM', 'MONTHS_AGE', 'POP', 'ROW_WID', 'SES', 'TECHSUPPORT_NUM', 'VISITS_NUM'] | cases: ['length9_69']
 
-=== Cluster C154 (16 cases) ===
-Source groups: 11
- I1: 3 cases | cases: ['length4_14', 'length4_15', 'length4_4']
+
+
+=== Cluster C154 ===
+  cases (16): ['length4_0', 'length4_1', 'length4_12', 'length4_13', 'length4_14', 'length4_15', 'length4_16', 'length4_17', 'length4_2', 'length4_3', 'length4_4', 'length4_5', 'length4_6', 'length4_7', 'length4_8', 'length4_9']
+  summary: corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 16 
+
+I1: cases (3): ['length4_14', 'length4_15', 'length4_4'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 3 
     test_0.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
     test_1.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
     test_2.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_3.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
-   Target groups: 3
-    T1: 1 cases | schema: ['COD_EDAD', 'COD_INTERV', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli'] | cases: ['length4_14']
-    T2: 1 cases | schema: ['COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'estado_cli'] | cases: ['length4_15']
-    T3: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_IDCONTRA', 'COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_PERSONA_x', 'COD_PERSONA_y', 'COD_SEGLOBAL', 'COD_TERRIT', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN', 'QNU_ORDTIT', 'XTI_ESTADO', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_4']
- I2: 2 cases | cases: ['length4_0', 'length4_17']
+I2: cases (2): ['length4_0', 'length4_17'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 2 
     test_0.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_1.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
     test_2.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
     test_3.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
-   Target groups: 2
-    T1: 1 cases | schema: ['des_territ'] | cases: ['length4_0']
-    T2: 1 cases | schema: ['COD_INTERV', 'COD_TERRIT', 'cod_cbc', 'cod_zona', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_17']
- I3: 2 cases | cases: ['length4_2', 'length4_8']
+I3: cases (2): ['length4_2', 'length4_8'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 2 
     test_0.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_1.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_2.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
     test_3.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
-   Target groups: 2
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_IDCONTRA', 'COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_PERSONA_x', 'COD_PERSONA_y', 'COD_SEGLOBAL', 'COD_TERRIT', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN', 'QNU_ORDTIT', 'XTI_ESTADO', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_2']
-    T2: 1 cases | schema: ['COD_AREANEGO', 'COD_PERSONA_x', 'des_zona'] | cases: ['length4_8']
- I4: 2 cases | cases: ['length4_6', 'length4_9']
+I4: cases (2): ['length4_6', 'length4_9'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 2 
     test_0.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_1.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
     test_2.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_3.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
-   Target groups: 2
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_IDCONTRA', 'COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_PERSONA_x', 'COD_PERSONA_y', 'COD_SEGLOBAL', 'COD_TERRIT', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN', 'QNU_ORDTIT', 'XTI_ESTADO', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_6']
-    T2: 1 cases | schema: ['COD_AREANEGO', 'COD_PERSONA_x', 'des_zona'] | cases: ['length4_9']
- I5: 1 cases | cases: ['length4_1']
+I5: cases (1): ['length4_1'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_1.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_2.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
     test_3.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
-   Target groups: 1
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_IDCONTRA', 'COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_PERSONA_x', 'COD_PERSONA_y', 'COD_SEGLOBAL', 'COD_TERRIT', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN', 'QNU_ORDTIT', 'XTI_ESTADO', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_1']
- I6: 1 cases | cases: ['length4_12']
+I6: cases (1): ['length4_12'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_1.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_2.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
     test_3.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
-   Target groups: 1
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_IDCONTRA', 'COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_PERSONA_x', 'COD_PERSONA_y', 'COD_SEGLOBAL', 'COD_TERRIT', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN', 'QNU_ORDTIT', 'XTI_ESTADO', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_12']
- I7: 1 cases | cases: ['length4_13']
+I7: cases (1): ['length4_13'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
     test_1.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_2.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_3.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
-   Target groups: 1
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_INTERV', 'COD_PERSONA', 'estado_cli'] | cases: ['length4_13']
- I8: 1 cases | cases: ['length4_16']
+I8: cases (1): ['length4_16'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
     test_1.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
     test_2.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_3.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
-   Target groups: 1
-    T1: 1 cases | schema: ['COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli'] | cases: ['length4_16']
- I9: 1 cases | cases: ['length4_3']
+I9: cases (1): ['length4_3'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_1.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
     test_2.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_3.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
-   Target groups: 1
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_IDCONTRA', 'COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_PERSONA_x', 'COD_PERSONA_y', 'COD_SEGLOBAL', 'COD_TERRIT', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN', 'QNU_ORDTIT', 'XTI_ESTADO', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_3']
- I10: 1 cases | cases: ['length4_5']
+I10: cases (1): ['length4_5'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
     test_1.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_2.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_3.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
-   Target groups: 1
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_EDAD', 'COD_IDCONTRA', 'COD_INTERV', 'COD_NIVELOFIC', 'COD_OFICI', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_PERSONA_x', 'COD_PERSONA_y', 'COD_SEGLOBAL', 'COD_TERRIT', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN', 'QNU_ORDTIT', 'XTI_ESTADO', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona', 'estado_cli'] | cases: ['length4_5']
- I11: 1 cases | cases: ['length4_7']
+I11: cases (1): ['length4_7'] | corr: 0 (0.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['COD_IDCONTRA', 'COD_INTERV', 'COD_PERSONA', 'QNU_ORDTIT', 'XTI_ESTADO']
     test_1.csv: ['COD_NIVELOFIC', 'COD_OFICI', 'COD_TERRIT', 'cod_areanego', 'cod_cbc', 'cod_zona', 'des_areanego', 'des_cbc', 'des_ofici', 'des_territ', 'des_zona']
     test_2.csv: ['COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_PERSONA', 'COD_SEGLOBAL', 'estado_cli']
     test_3.csv: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
-   Target groups: 1
-    T1: 1 cases | schema: ['COD_AREANEGO', 'COD_PERSONA_x', 'des_zona'] | cases: ['length4_7']
 
-=== Cluster C21 (13 cases) ===
-Source groups: 12
- I1: 2 cases | cases: ['length9_4', 'length9_46']
+
+
+=== Cluster C21 ===
+  cases (13): ['length9_4', 'length9_46', 'length9_47', 'length9_48', 'length9_49', 'length9_50', 'length9_51', 'length9_52', 'length9_53', 'length9_54', 'length9_55', 'length9_56', 'length9_57']
+  summary: corr: 12 (92.3%) | MS-corr: 11 (84.6%) | incorrect: 1 
+
+I1: cases (2): ['length9_4', 'length9_46'] | corr: 1 (50.0%) | MS-corr: 0 (0.0%) | incorrect: 1 
     test_0.csv: ['purpose']
     test_1.csv: ['purpose']
     test_10.csv: ['purpose']
@@ -772,9 +592,7 @@ Source groups: 12
     test_7.csv: ['purpose']
     test_8.csv: ['purpose']
     test_9.csv: ['purpose']
-   Target groups: 1
-    T1: 2 cases | schema: ['purpose'] | cases: ['length9_4', 'length9_46']
- I2: 1 cases | cases: ['length9_47']
+I2: cases (1): ['length9_47'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['int_rate']
     test_1.csv: ['int_rate']
     test_10.csv: ['int_rate']
@@ -790,9 +608,7 @@ Source groups: 12
     test_7.csv: ['int_rate']
     test_8.csv: ['int_rate']
     test_9.csv: ['int_rate']
-   Target groups: 1
-    T1: 1 cases | schema: ['int_rate'] | cases: ['length9_47']
- I3: 1 cases | cases: ['length9_48']
+I3: cases (1): ['length9_48'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['sub_grade']
     test_1.csv: ['sub_grade']
     test_10.csv: ['sub_grade']
@@ -808,9 +624,7 @@ Source groups: 12
     test_7.csv: ['sub_grade']
     test_8.csv: ['sub_grade']
     test_9.csv: ['sub_grade']
-   Target groups: 1
-    T1: 1 cases | schema: ['sub_grade'] | cases: ['length9_48']
- I4: 1 cases | cases: ['length9_49']
+I4: cases (1): ['length9_49'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['emp_title']
     test_1.csv: ['emp_title']
     test_10.csv: ['emp_title']
@@ -826,9 +640,7 @@ Source groups: 12
     test_7.csv: ['emp_title']
     test_8.csv: ['emp_title']
     test_9.csv: ['emp_title']
-   Target groups: 1
-    T1: 1 cases | schema: ['emp_title'] | cases: ['length9_49']
- I5: 1 cases | cases: ['length9_50']
+I5: cases (1): ['length9_50'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['emp_length']
     test_1.csv: ['emp_length']
     test_10.csv: ['emp_length']
@@ -844,9 +656,7 @@ Source groups: 12
     test_7.csv: ['emp_length']
     test_8.csv: ['emp_length']
     test_9.csv: ['emp_length']
-   Target groups: 1
-    T1: 1 cases | schema: ['emp_length'] | cases: ['length9_50']
- I6: 1 cases | cases: ['length9_51']
+I6: cases (1): ['length9_51'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['title']
     test_1.csv: ['title']
     test_10.csv: ['title']
@@ -862,9 +672,7 @@ Source groups: 12
     test_7.csv: ['title']
     test_8.csv: ['title']
     test_9.csv: ['title']
-   Target groups: 1
-    T1: 1 cases | schema: ['title'] | cases: ['length9_51']
- I7: 1 cases | cases: ['length9_52']
+I7: cases (1): ['length9_52'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['zip_code']
     test_1.csv: ['zip_code']
     test_10.csv: ['zip_code']
@@ -880,9 +688,7 @@ Source groups: 12
     test_7.csv: ['zip_code']
     test_8.csv: ['zip_code']
     test_9.csv: ['zip_code']
-   Target groups: 1
-    T1: 1 cases | schema: ['zip_code'] | cases: ['length9_52']
- I8: 1 cases | cases: ['length9_53']
+I8: cases (1): ['length9_53'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['addr_state']
     test_1.csv: ['addr_state']
     test_10.csv: ['addr_state']
@@ -898,9 +704,7 @@ Source groups: 12
     test_7.csv: ['addr_state']
     test_8.csv: ['addr_state']
     test_9.csv: ['addr_state']
-   Target groups: 1
-    T1: 1 cases | schema: ['addr_state'] | cases: ['length9_53']
- I9: 1 cases | cases: ['length9_54']
+I9: cases (1): ['length9_54'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['earliest_cr_line']
     test_1.csv: ['earliest_cr_line']
     test_10.csv: ['earliest_cr_line']
@@ -916,9 +720,7 @@ Source groups: 12
     test_7.csv: ['earliest_cr_line']
     test_8.csv: ['earliest_cr_line']
     test_9.csv: ['earliest_cr_line']
-   Target groups: 1
-    T1: 1 cases | schema: ['earliest_cr_line'] | cases: ['length9_54']
- I10: 1 cases | cases: ['length9_55']
+I10: cases (1): ['length9_55'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['revol_util']
     test_1.csv: ['revol_util']
     test_10.csv: ['revol_util']
@@ -934,9 +736,7 @@ Source groups: 12
     test_7.csv: ['revol_util']
     test_8.csv: ['revol_util']
     test_9.csv: ['revol_util']
-   Target groups: 1
-    T1: 1 cases | schema: ['revol_util'] | cases: ['length9_55']
- I11: 1 cases | cases: ['length9_56']
+I11: cases (1): ['length9_56'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['last_pymnt_d']
     test_1.csv: ['last_pymnt_d']
     test_10.csv: ['last_pymnt_d']
@@ -952,9 +752,7 @@ Source groups: 12
     test_7.csv: ['last_pymnt_d']
     test_8.csv: ['last_pymnt_d']
     test_9.csv: ['last_pymnt_d']
-   Target groups: 1
-    T1: 1 cases | schema: ['last_pymnt_d'] | cases: ['length9_56']
- I12: 1 cases | cases: ['length9_57']
+I12: cases (1): ['length9_57'] | corr: 1 (100.0%) | MS-corr: 1 (100.0%) | incorrect: 0 
     test_0.csv: ['last_credit_pull_d']
     test_1.csv: ['last_credit_pull_d']
     test_10.csv: ['last_credit_pull_d']
@@ -970,39 +768,40 @@ Source groups: 12
     test_7.csv: ['last_credit_pull_d']
     test_8.csv: ['last_credit_pull_d']
     test_9.csv: ['last_credit_pull_d']
-   Target groups: 1
-    T1: 1 cases | schema: ['last_credit_pull_d'] | cases: ['length9_57']
 
-=== Cluster C93 (12 cases) ===
-Source groups: 2
- I1: 6 cases | cases: ['length2_20', 'length2_51', 'length2_8', 'length2_85', 'length2_93', 'length4_80']
+
+
+=== Cluster C93 ===
+  cases (12): ['length2_20', 'length2_39', 'length2_41', 'length2_48', 'length2_51', 'length2_64', 'length2_74', 'length2_8', 'length2_85', 'length2_93', 'length4_80', 'length4_81']
+  summary: corr: 3 (25.0%) | MS-corr: 1 (8.3%) | incorrect: 9 
+
+I1: cases (6): ['length2_20', 'length2_51', 'length2_8', 'length2_85', 'length2_93', 'length4_80'] | corr: 2 (33.3%) | MS-corr: 0 (0.0%) | incorrect: 4 
     test_0.csv: ['Metastatic Sites', 'Mouse ID', 'Timepoint', 'Tumor Volume (mm3)']
     test_1.csv: ['Drug', 'Mouse ID']
-   Target groups: 2
-    T1: 5 cases | schema: ['Drug', 'Mouse ID', 'Timepoint'] | cases: ['length2_20', 'length2_51', 'length2_8', 'length2_85', 'length2_93']
-    T2: 1 cases | schema: ['Drug', 'Mean of Tumor Volume (mm3)', 'Metastatic Sites', 'Mouse ID', 'SEM of Tumor Volume (mm3)', 'Timepoint'] | cases: ['length4_80']
- I2: 6 cases | cases: ['length2_39', 'length2_41', 'length2_48', 'length2_64', 'length2_74', 'length4_81']
+I2: cases (6): ['length2_39', 'length2_41', 'length2_48', 'length2_64', 'length2_74', 'length4_81'] | corr: 1 (16.7%) | MS-corr: 1 (16.7%) | incorrect: 5 
     test_0.csv: ['Drug', 'Mouse ID']
     test_1.csv: ['Metastatic Sites', 'Mouse ID', 'Timepoint', 'Tumor Volume (mm3)']
-   Target groups: 3
-    T1: 4 cases | schema: ['Drug', 'Mouse ID', 'Timepoint'] | cases: ['length2_39', 'length2_48', 'length2_64', 'length2_74']
-    T2: 1 cases | schema: ['Drug', 'Metastatic Sites', 'Timepoint'] | cases: ['length2_41']
-    T3: 1 cases | schema: ['Drug', 'Mean of Metastatic Sites', 'Mouse ID', 'SEM of Metastatic Sites', 'Timepoint', 'Tumor Volume (mm3)'] | cases: ['length4_81']
 
-=== Cluster C44 (11 cases) ===
-Source groups: 1
- I1: 11 cases | cases: ['length5_11', 'length5_15', 'length5_20', 'length5_25', 'length5_38', 'length5_42', 'length5_55', 'length5_57', 'length5_72', 'length5_91', 'length5_97']
+
+
+=== Cluster C44 ===
+  cases (11): ['length5_11', 'length5_15', 'length5_20', 'length5_25', 'length5_38', 'length5_42', 'length5_55', 'length5_57', 'length5_72', 'length5_91', 'length5_97']
+  summary: corr: 8 (72.7%) | MS-corr: 0 (0.0%) | incorrect: 3 
+
+I1: cases (11): ['length5_11', 'length5_15', 'length5_20', 'length5_25', 'length5_38', 'length5_42', 'length5_55', 'length5_57', 'length5_72', 'length5_91', 'length5_97'] | corr: 8 (72.7%) | MS-corr: 0 (0.0%) | incorrect: 3 
     test_0.csv: ['latitude', 'longitude', 'missing_count', 'state']
     test_1.csv: ['latitude', 'longitude', 'missing_count', 'state']
     test_2.csv: ['latitude', 'longitude', 'missing_count', 'state']
     test_3.csv: ['latitude', 'longitude', 'missing_count', 'state']
     test_4.csv: ['latitude', 'longitude', 'missing_count', 'state']
-   Target groups: 1
-    T1: 11 cases | schema: ['latitude', 'longitude', 'missing_count', 'state'] | cases: ['length5_11', 'length5_15', 'length5_20', 'length5_25', 'length5_38', 'length5_42', 'length5_55', 'length5_57', 'length5_72', 'length5_91', 'length5_97']
 
-=== Cluster C43 (10 cases) ===
-Source groups: 1
- I1: 10 cases | cases: ['length6_41', 'length6_47', 'length6_48', 'length6_49', 'length6_5', 'length6_53', 'length6_60', 'length6_63', 'length6_68', 'length6_84']
+
+
+=== Cluster C43 ===
+  cases (10): ['length6_41', 'length6_47', 'length6_48', 'length6_49', 'length6_5', 'length6_53', 'length6_60', 'length6_63', 'length6_68', 'length6_84']
+  summary: corr: 10 (100.0%) | MS-corr: 10 (100.0%) | incorrect: 0 
+
+I1: cases (10): ['length6_41', 'length6_47', 'length6_48', 'length6_49', 'length6_5', 'length6_53', 'length6_60', 'length6_63', 'length6_68', 'length6_84'] | corr: 10 (100.0%) | MS-corr: 10 (100.0%) | incorrect: 0 
     test_0.csv: ['año', 'n_aprobados', 'n_concursados', 'nombre']
     test_1.csv: ['año', 'n_aprobados', 'n_concursados', 'nombre']
     test_2.csv: ['año', 'n_aprobados', 'n_concursados', 'nombre']
@@ -1010,6 +809,3 @@ Source groups: 1
     test_4.csv: ['año', 'n_aprobados', 'n_concursados', 'nombre']
     test_5.csv: ['año', 'n_aprobados', 'n_concursados', 'nombre']
     test_6.csv: ['año', 'n_aprobados', 'n_concursados', 'nombre']
-   Target groups: 1
-    T1: 10 cases | schema: ['año', 'n_aprobados', 'n_concursados', 'nombre'] | cases: ['length6_41', 'length6_47', 'length6_48', 'length6_49', 'length6_5', 'length6_53', 'length6_60', 'length6_63', 'length6_68', 'length6_84']
-
