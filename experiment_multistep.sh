@@ -1,10 +1,10 @@
 export PYTHONPATH=$(pwd)
 
 python3 critique_data.py \
-  --len_id 3 \
-  --max_len_id 3 \
-  --target_id 6 \
-  --max_target_id 7 \
+  --len_id 1 \
+  --max_len_id 1 \
+  --target_id 23 \
+  --max_target_id 24 \
   --target-per 25 \
   --no-perc \
   --hint-source v3 \
@@ -22,9 +22,9 @@ python3 critique_data.py \
   --model gpt-4.1-mini \
   --log-dir logs \
   --experiment-name majority_voting_check \
-  --no_of_runs 1 \
+  --no_of_runs 3 \
   --hints-v3-truncates '{"t1":0.3,"t2":0.3,"t3":0.3,"t4":10,"t5":0.1,"t6":0.4,"t7":0.8,"t8":0.7,"t9":0.3,"t10":0.5,"t11":0.3,"t12":0.3,"t13":0.2}' \
-  # --intermediate_materialization
+  --intermediate_materialization
   # #--use_old_prompt 
   # --combine_ask_and_configure \
   # --no_thinking \

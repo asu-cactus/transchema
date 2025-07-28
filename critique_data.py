@@ -53,23 +53,26 @@ def ms(args, length, id, log_dir, experiment_name):
     false_tup = []
     true_tup_ = []
     false_tup_ = []
-    for i in range(0, args.no_of_runs):
+    for run in range(0, args.no_of_runs):
 
-        ms_info = precursor(args, length, id, log_dir, experiment_name, i)
+        ms_info = precursor(args, length, id, log_dir, experiment_name, run)
         results.append(ms_info)
 
-    if not args.intermediate_materialization:
-        majority_index, majority_result, score_index, score_result = analyze_results(
-            args, results, length, id, experiment_name
-        )
-        majority_voted_code = f"autopipeline-benchmarks/github-pipelines/length{length}_{id}/script_archive/{experiment_name}_{majority_index}.py"
-        dst = f"autopipeline-benchmarks/github-pipelines/length{length}_{id}/python_recovered.py"
-        shutil.copy(majority_voted_code, dst)
-    else:
-        majority_index = 0
-        majority_result = results[0]
-        score_index = 0
-        score_result = results[0]
+    im = ""
+    if args.intermediate_materialization:
+        im = "_intermediate_materialization"
+    
+    majority_index, majority_result, score_index, score_result = analyze_results(
+        args, results, length, id, experiment_name
+    )
+    majority_voted_code = f"autopipeline-benchmarks/github-pipelines/length{length}_{id}/script_archive/{experiment_name}_{majority_index}{im}.py"
+    dst = f"autopipeline-benchmarks/github-pipelines/length{length}_{id}/python_recovered.py"
+    shutil.copy(majority_voted_code, dst)
+    # else:
+    #     majority_index = 0
+    #     majority_result = results[0]
+    #     score_index = 0
+    #     score_result = results[0]
     # sys.exit()
 
     for tup in results:
@@ -288,11 +291,11 @@ def get_parser():
     parser.add_argument(
         "--log-dir",
         type=str,
-        default="logs-auto-suggest-llm-21-04",
+        default="logs-test",
         help="Log directory",
     )
     parser.add_argument(
-        "--experiment-name", type=str, default="feature_v3_2", help="Experiment name"
+        "--experiment-name", type=str, default="check", help="Experiment name"
     )
     parser.add_argument("--no_of_runs", type=int, default=1, help="Number of runs")
 
@@ -402,7 +405,7 @@ if __name__ == "__main__":
             # critique iff ms is wrong [i.e. score < 3.0]
             if (
                 result_majority_voting[6] < 3.0
-                and not args.intermediate_materialization
+                # and not args.intermediate_materialization
             ):
 
                 majority_crit_result, max_score_crit_result = crit(

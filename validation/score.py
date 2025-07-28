@@ -103,11 +103,11 @@ if __name__ == "__main__":
     import pandas as pd
 
     gt_df = pd.read_csv(
-        "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/target.csv",
+        "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_23/target.csv",
     )
     gt_df = gt_df.drop(columns=["Unnamed: 0"], errors="ignore")
     tgt_df = pd.read_csv(
-        "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv",
+        "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_critique_soft.csv",
     )
 
     print(gt_df, tgt_df)

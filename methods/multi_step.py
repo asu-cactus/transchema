@@ -61,7 +61,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         1
         for _, _, files in os.walk(path_to_files)
         for file in files
-        if file.startswith("test")
+        if file.startswith("test_")
     )
 
     # print(file_count)

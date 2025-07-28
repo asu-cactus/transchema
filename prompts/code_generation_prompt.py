@@ -33,6 +33,7 @@ def get_python_script(
 
   Python Script:
  - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
+ - Please do not use too many comments in the code to save the output tokens.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
  Please quote the Python script between one single "```Python" and "```".
 
