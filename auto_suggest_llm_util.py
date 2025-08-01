@@ -62,6 +62,7 @@ def get_prompt(
     nth_intermediate_step=0,
     combine_ask_and_configure=False,
     no_thinking=False,
+    few_shot=False,
 ):
     """
     Args:
@@ -106,6 +107,13 @@ def get_prompt(
         source_length,
         encoding,
     )
+
+    # read few shot examples
+    few_shot_examples = [""]
+    if few_shot == 1:
+        with open("few_shot_examples.txt", "r") as f:
+            few_shot_example = f.read()
+        few_shot_examples = [few_shot_example]
 
     fd_hints = ""
     if fd_flag == 1:
@@ -164,6 +172,7 @@ def get_prompt(
             source_information,
             fd_hints,
             hints,
+            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -203,6 +212,7 @@ def get_prompt(
                 source_information,
                 fd_hints,
                 hints,
+                few_shot_examples=few_shot_examples,
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -233,6 +243,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -255,6 +266,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
 
     elif prompt_type == "group_by_aggregate":
@@ -280,6 +292,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -302,6 +315,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
 
     elif prompt_type == "union":

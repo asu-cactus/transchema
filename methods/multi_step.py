@@ -22,6 +22,7 @@ import pandas as pd
 import os
 import traceback
 from pathlib import Path
+import sys
 
 
 def multi_step(args, length, id_, log_dir_, experiment_name, i_):
@@ -51,6 +52,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     aggregate_flag = args.aggregate_flag
     join_hints_truncate = args.join_hints_truncate
     aggregate_hints_truncate = args.aggregate_hints_truncate
+    few_shot = args.few_shot
 
     fd_flag = args.fd_flag
     token_limit = args.token_limit
@@ -157,6 +159,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 target_length=target_length,
                 source_length=source_length,
                 hint_source=hint_source,
+                few_shot=few_shot,
             )
             if prompt[0] == "-1":
                 logger.info("Token Limit Exceeded")
@@ -201,6 +204,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     join_flag=join_flag,
                     join_hints_truncate=join_hints_truncate,
                     hint_source=hint_source,
+                    few_shot=few_shot,
                 )
                 # sys.exit()
                 if prompt[0] == "-1":
@@ -250,6 +254,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     aggregate_flag=aggregate_flag,
                     aggregate_hints_truncate=aggregate_hints_truncate,
                     hint_source=hint_source,
+                    few_shot=few_shot,
                 )
                 # sys.exit()
                 if prompt[0] == "-1":
@@ -296,6 +301,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     is_perc=is_perc,
                     target_length=target_length,
                     hint_source=hint_source,
+                    few_shot=few_shot,
                 )
 
                 if prompt[0] == "-1":
@@ -390,12 +396,13 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
                 match = pattern.search(res[0])
                 script = match.group(1).strip()
-                # #print(script)
+                print(script)
                 response = execute_python(script)
                 # print(response)
                 error_str = error_str + response + "\n"
                 # #print(error_str)
                 if response == "Success":
+                    # sys.exit()
                     break
                 script_cnt += 1
 

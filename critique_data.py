@@ -329,10 +329,17 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--few_shot",
+        action="store_true",
+        help="Add Few Shot Examples",
+    )
+
+    parser.add_argument(
         "--combine_ask_and_configure",
         action="store_true",
         help="Allow combining ask and configure into one step",
     )
+
     parser.add_argument(
         "--no_thinking",
         action="store_true",

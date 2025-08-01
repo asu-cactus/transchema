@@ -8,23 +8,28 @@ def get_next_operator_prompt(
     source_information,
     fd_hints,
     hints,
+    few_shot_examples=[],
 ):
     prompt = """
     query1
-    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history" and scource, target table schema and examples.
+    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history" and scource, target table schema and examples and few-shot examples.
 Allowed Operations: {allowed_operation_list}.
-Operation History: {operation_history}
+
+{few_shot_examples}
 
 1. Target Table Name: {target_data_name}
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
 4. Multi Source Information: {source_information}
+5. Operation History: {operation_history}
 {fd_hints}
 
 {hints}
 
 Note: The row examples provided are part of the corresponding rows.
 
+- The few shot examples have the examples with similar schema and how their cases were handled with some explanations. 
+    Few Shot Examples include Target Schema, Target Examples, Source Schema, Source Examples, and corresponding CORRECT OPERATION HISTORY used to convert Source Tables to Target. Use them in your decision process as well. Learn from the target patterns and operation history of the few shot examples and make right decisions for given question.
 - Please answer what operation you should perform next based on "operation history", "source" and "target" information ("schema" as well as the "examples")  in one word.
 - You may deduce the type of columns in 'Target Table' from the 'Target Examples'. Strictly make sure that the operations in 'Operation History' lead to 'Target Table' with those same type.
 - If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
@@ -40,6 +45,7 @@ Note: The row examples provided are part of the corresponding rows.
         target_samples=target_samples,
         source_information=source_information,
         fd_hints=fd_hints,
-        hints=hints[0],
+        hints="",
+        few_shot_examples=few_shot_examples[0],
     )
     return [prompt]
