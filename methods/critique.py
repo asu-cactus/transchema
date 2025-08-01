@@ -14,7 +14,7 @@ from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching
 from validation.soft_match import compare_lists_matching_soft
-from log_util.log_util import create_logger
+from log_util.log_util import create_logger, shutdown_logger
 
 
 def critique(
@@ -396,6 +396,9 @@ def critique(
         time_elapsed,
         score,
     )
+
+    shutdown_logger(logger)  # Ensure all logs are flushed before exiting
+
     return crit_info
 
 

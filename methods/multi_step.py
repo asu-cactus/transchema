@@ -14,7 +14,7 @@ from auto_suggest_llm_util import (
 )
 from validation.score import calculate_score
 import shutil
-from log_util.log_util import create_logger
+from log_util.log_util import create_logger, shutdown_logger
 
 # import parameters as p
 import re
@@ -89,6 +89,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     )
 
     logger = create_logger("AUTOSUGGEST", log_dir, len_id, target_id, max_target_id)
+    print(f"Logger created: {logger.name}")
 
     q_count = {"total": 0, "in_task": 0}
 
@@ -494,5 +495,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     )
     print(f"ms_info: {ms_info}")
     logger.info("Total Queries Made : {q}".format(q=q_count["total"]))
+
+    shutdown_logger(logger)  # Ensure all logs are flushed before exiting
 
     return ms_info

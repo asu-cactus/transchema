@@ -106,3 +106,14 @@ def setup_logging(args, log_dir, experiment_name):
 
     # return path of experiment_date_time directory and subdirectories
     return experiment_date_time, log_dir, results_dir
+
+
+def shutdown_logger(logger):
+    handlers = logger.handlers[:]
+    for handler in handlers:
+        try:
+            handler.flush()
+            handler.close()
+        except Exception:
+            pass
+        logger.removeHandler(handler)
