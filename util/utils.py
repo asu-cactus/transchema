@@ -129,6 +129,7 @@ def execute_python(gpt_response):
         exec(gpt_response)
         return "Success"
     except Exception as e:
+        print(e)
         return f"Error: {e}"
 
 

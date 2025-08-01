@@ -1,0 +1,148 @@
+Few Shot Examples : 
+Example 1 : 
+Target Table Name : target
+Target Schema : [
+    "COD_PERSONA", "XTI_ESTADO", "QNU_ORDTIT", "COD_INTERV", "COD_IDCONTRA",
+    "COD_PERSONA_y", "FAP_CONTR", "IMP_CAPDIS", "IMP_CAPINI", "IMP_CAPPEN",
+    "COD_OFICI", "COD_NIVELOFIC", "des_ofici", "cod_cbc", "des_cbc",
+    "cod_zona", "des_zona", "COD_TERRIT", "des_territ", "cod_areanego",
+    "des_areanego", "COD_AREANEGO", "COD_EDAD", "COD_OFICIPAL",
+    "COD_SEGLOBAL", "estado_cli"
+]
+Target Examples : [
+    [364, "A", 1, "TIT", "100000000001233010688", 26640545, "31MAY2016", 7000.0, 7000.0, 5995.08, 9275, 10, "L'HOSPITALET-N.SRA. BELLVITGE", 9655.0, "CBC-L'HOSPITALET-CENTRO", 8963.0, "Z. L'HOSPITALET", 8302, "DT. BARCELONA", 13.0, "BANCA COMERCIAL", 13, 52, 9275, 24.0, "A"],
+    [3421041, "A", 1, "TIT", "100000000001233010688", 26640545, "31MAY2016", 7000.0, 7000.0, 5995.08, 2100, 10, "CORDOBA-GRAN CAPITAN", 8929.0, "CBC-CORDOBA-GRAN CAPITAN", 9820.0, "Z.CORDOBA-JAEN", 72, "D.T.SUR", 13.0, "BANCA COMERCIAL", 13, 54, 2100, 24.0, "A"],
+    [5636425, "A", 1, "TIT", "100000000001233010688", 26640545, "31MAY2016", 7000.0, 7000.0, 5995.08, 8132, 10, "LLEIDA - AV. CATALUNYA", 9645.0, "CBC LLEIDA BALMES", 9916.0, "Z.LLEIDA", 8941, "DT. CATALUNYA", 13.0, "BANCA COMERCIAL", 13, 67, 8132, 23.0, "A"],
+    [5636425, "A", 1, "TIT", "19704843", 5636425, "17JAN2002", 102172.06, 102172.06, 30525.99, 8132, 10, "LLEIDA - AV. CATALUNYA", 9645.0, "CBC LLEIDA BALMES", 9916.0, "Z.LLEIDA", 8941, "DT. CATALUNYA", 13.0, "BANCA COMERCIAL", 13, 67, 8132, 23.0, "A"],
+    [5636425, "A", 1, "TIT", "283358878", 5636425, "30JUN2005", 82000.0, 82000.0, 49574.87, 8132, 10, "LLEIDA - AV. CATALUNYA", 9645.0, "CBC LLEIDA BALMES", 9916.0, "Z.LLEIDA", 8941, "DT. CATALUNYA", 13.0, "BANCA COMERCIAL", 13, 67, 8132, 23.0, "A"]
+]
+Multi Source Information : 
+Source 0:
+   Source 0 Name: source_0
+   Source 0 Schema: ['COD_OFICI', 'COD_NIVELOFIC', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ', 'cod_areanego', 'des_areanego']
+   Source 0 Examples: [[1, 70, 'BANCO BILBAO VIZCAYA ARGENTARIA', nan, nan, nan, nan, 0, nan, nan, nan], [2004, 40, 'AGREGADO FICT. CARTERA DE TITULOS', nan, nan, nan, nan, 0, nan, nan, nan], [2221, 40, 'FRANCIA (R)', nan, nan, nan, nan, 0, nan, nan, nan]]
+   Source 1:
+   Source 1 Name: source_1
+   Source 1 Schema: ['COD_PERSONA', 'COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli']
+   Source 1 Examples: [[364, 13, 52, 9275, 24.0, 'A'], [672, 13, 40, 6130, 24.0, 'R'], [728, 6057, 68, 8248, 23.0, 'I']]
+   Source 2:
+   Source 2 Name: source_2
+   Source 2 Schema: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
+   Source 2 Examples: [['24873185', 8644, '31JUL1999', 35361.97, 35361.97, 15891.81], ['366059069', 9066, '21DEC2016', 341936.7, 341936.7, 339935.22], ['250661304', 9507, '30JAN2015', 15000.0, 15000.0, 2125.34]]
+   Source 3:
+   Source 3 Name: source_3
+   Source 3 Schema: ['COD_PERSONA', 'XTI_ESTADO', 'QNU_ORDTIT', 'COD_INTERV', 'COD_IDCONTRA']
+   Source 3 Examples: [[364, 'A', 1, 'TIT', '7667157'], [364, 'A', 1, 'TIT', '44521392'], [364, 'A', 1, 'TIT', '44521393']]
+Operation History for this example : [JOIN : [source_2, Source_3, [COD_IDCONTRA, COD_IDCONTRA] Reason For this inner join : "Filter out some of the results"], 
+ JOIN : [source_1, Source_0, [COD_OFICI, COD_OFICIPAL]],
+ JOIN : [joined1, joined2, [COD_PERSONA, COD_PERSONA]]]
+
+Example 2 : 
+Target Table Name : target
+Target Schema : [
+    "FAP_CONTR", "COD_PERSONA", "COD_AREANEGO", "COD_EDAD", "COD_OFICIPAL", "COD_SEGLOBAL", "estado_cli",
+    "COD_OFICI", "COD_NIVELOFIC", "des_ofici", "cod_cbc", "des_cbc", "cod_zona", "des_zona",
+    "COD_TERRIT", "des_territ", "cod_areanego", "des_areanego", "COD_IDCONTRA", "COD_PERSONA_x",
+    "IMP_CAPDIS", "IMP_CAPINI", "IMP_CAPPEN", "COD_PERSONA_y", "XTI_ESTADO", "QNU_ORDTIT", "COD_INTERV"
+]
+Target Examples : [
+    ["01APR1984", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ["01APR1986", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ["01APR2004", 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ["01APR2005", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+]
+Multi Source Information : 
+Source 0:
+   Source 0 Name: source_0
+   Source 0 Schema: ['COD_OFICI', 'COD_NIVELOFIC', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ', 'cod_areanego', 'des_areanego']
+   Source 0 Examples: [[1, 70, 'BANCO BILBAO VIZCAYA ARGENTARIA', nan, nan, nan, nan, 0, nan, nan, nan], [2004, 40, 'AGREGADO FICT. CARTERA DE TITULOS', nan, nan, nan, nan, 0, nan, nan, nan], [2221, 40, 'FRANCIA (R)', nan, nan, nan, nan, 0, nan, nan, nan]]
+   Source 1:
+   Source 1 Name: source_1
+   Source 1 Schema: ['COD_PERSONA', 'COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli']
+   Source 1 Examples: [[364, 13, 52, 9275, 24.0, 'A'], [672, 13, 40, 6130, 24.0, 'R'], [728, 6057, 68, 8248, 23.0, 'I']]
+   Source 2:
+   Source 2 Name: source_2
+   Source 2 Schema: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
+   Source 2 Examples: [['24873185', 8644, '31JUL1999', 35361.97, 35361.97, 15891.81], ['366059069', 9066, '21DEC2016', 341936.7, 341936.7, 339935.22], ['250661304', 9507, '30JAN2015', 15000.0, 15000.0, 2125.34]]
+   Source 3:
+   Source 3 Name: source_3
+   Source 3 Schema: ['COD_PERSONA', 'XTI_ESTADO', 'QNU_ORDTIT', 'COD_INTERV', 'COD_IDCONTRA']
+   Source 3 Examples: [[364, 'A', 1, 'TIT', '7667157'], [364, 'A', 1, 'TIT', '44521392'], [364, 'A', 1, 'TIT', '44521393']]
+Operation History for this example : [JOIN : [source_2, Source_3, [COD_IDCONTRA, COD_IDCONTRA] Reason For this inner join : "Filter out some of the results"], 
+ JOIN : [source_1, Source_0, [COD_OFICI, COD_OFICIPAL]],
+ JOIN : [joined1, joined2, [COD_PERSONA, COD_PERSONA]]]
+ Group_By : [FAP_CONTR], Aggregation : Count(Rest of the columns in target)
+
+ Example 3 : 
+Target Table Name : target
+Target Schema : [
+     "COD_INTERV", "estado_cli", "COD_PERSONA", "COD_AREANEGO", "COD_EDAD", "COD_OFICIPAL", "COD_SEGLOBAL",
+    "COD_OFICI", "COD_NIVELOFIC", "des_ofici", "cod_cbc", "des_cbc", "cod_zona", "des_zona",
+    "COD_TERRIT", "des_territ", "cod_areanego", "des_areanego", "COD_IDCONTRA", "COD_PERSONA_x",
+    "FAP_CONTR", "IMP_CAPDIS", "IMP_CAPINI", "IMP_CAPPEN", "COD_PERSONA_y", "XTI_ESTADO", "QNU_ORDTIT"
+]
+Target Examples : [
+    ["ASE", "A", 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 152],
+    ["BEN", "A", 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
+    ["GAR", "A", 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 164, 158, 164],
+    ["GRE", "A", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    ["PAU", "A", 147, 147, 147, 147, 147, 147, 147, 147, 146, 146, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147]
+]
+
+Multi Source Information : 
+Source 0:
+   Source 0 Name: source_0
+   Source 0 Schema: ['COD_OFICI', 'COD_NIVELOFIC', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ', 'cod_areanego', 'des_areanego']
+   Source 0 Examples: [[1, 70, 'BANCO BILBAO VIZCAYA ARGENTARIA', nan, nan, nan, nan, 0, nan, nan, nan], [2004, 40, 'AGREGADO FICT. CARTERA DE TITULOS', nan, nan, nan, nan, 0, nan, nan, nan], [2221, 40, 'FRANCIA (R)', nan, nan, nan, nan, 0, nan, nan, nan]]
+   Source 1:
+   Source 1 Name: source_1
+   Source 1 Schema: ['COD_PERSONA', 'COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli']
+   Source 1 Examples: [[364, 13, 52, 9275, 24.0, 'A'], [672, 13, 40, 6130, 24.0, 'R'], [728, 6057, 68, 8248, 23.0, 'I']]
+   Source 2:
+   Source 2 Name: source_2
+   Source 2 Schema: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
+   Source 2 Examples: [['24873185', 8644, '31JUL1999', 35361.97, 35361.97, 15891.81], ['366059069', 9066, '21DEC2016', 341936.7, 341936.7, 339935.22], ['250661304', 9507, '30JAN2015', 15000.0, 15000.0, 2125.34]]
+   Source 3:
+   Source 3 Name: source_3
+   Source 3 Schema: ['COD_PERSONA', 'XTI_ESTADO', 'QNU_ORDTIT', 'COD_INTERV', 'COD_IDCONTRA']
+   Source 3 Examples: [[364, 'A', 1, 'TIT', '7667157'], [364, 'A', 1, 'TIT', '44521392'], [364, 'A', 1, 'TIT', '44521393']]
+Operation History for this example : [JOIN : [source_2, Source_3, [COD_IDCONTRA, COD_IDCONTRA] Reason For this inner join : "Filter out some of the results"], 
+ JOIN : [source_1, Source_0, [COD_OFICI, COD_OFICIPAL]],
+ JOIN : [joined1, joined2, [COD_PERSONA, COD_PERSONA]]]
+ Group_By : ["COD_INTERV", "estado_cli"], Aggregation : Count(Rest of the columns in target)
+
+Example 4 : 
+Target Table Name : target
+Target Schema : [
+    "FAP_CONTR", "COD_PERSONA", "COD_AREANEGO", "COD_EDAD", "COD_OFICIPAL", "COD_SEGLOBAL", "estado_cli",
+    "COD_OFICI", "COD_NIVELOFIC", "des_ofici", "cod_cbc", "des_cbc", "cod_zona", "des_zona",
+    "COD_TERRIT", "des_territ", "cod_areanego", "des_areanego", "COD_IDCONTRA", "COD_PERSONA_x",
+    "IMP_CAPDIS", "IMP_CAPINI", "IMP_CAPPEN", "COD_PERSONA_y", "XTI_ESTADO", "QNU_ORDTIT", "COD_INTERV"
+]
+Target Examples : [
+    ["01APR1984", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ["01APR1986", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ["01APR2004", 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ["01APR2005", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+]
+Multi Source Information : 
+Source 0:
+   Source 0 Name: source_0
+   Source 0 Schema: ['COD_OFICI', 'COD_NIVELOFIC', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ', 'cod_areanego', 'des_areanego']
+   Source 0 Examples: [[1, 70, 'BANCO BILBAO VIZCAYA ARGENTARIA', nan, nan, nan, nan, 0, nan, nan, nan], [2004, 40, 'AGREGADO FICT. CARTERA DE TITULOS', nan, nan, nan, nan, 0, nan, nan, nan], [2221, 40, 'FRANCIA (R)', nan, nan, nan, nan, 0, nan, nan, nan]]
+   Source 1:
+   Source 1 Name: source_1
+   Source 1 Schema: ['COD_PERSONA', 'COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli']
+   Source 1 Examples: [[364, 13, 52, 9275, 24.0, 'A'], [672, 13, 40, 6130, 24.0, 'R'], [728, 6057, 68, 8248, 23.0, 'I']]
+   Source 2:
+   Source 2 Name: source_2
+   Source 2 Schema: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
+   Source 2 Examples: [['24873185', 8644, '31JUL1999', 35361.97, 35361.97, 15891.81], ['366059069', 9066, '21DEC2016', 341936.7, 341936.7, 339935.22], ['250661304', 9507, '30JAN2015', 15000.0, 15000.0, 2125.34]]
+   Source 3:
+   Source 3 Name: source_3
+   Source 3 Schema: ['COD_PERSONA', 'XTI_ESTADO', 'QNU_ORDTIT', 'COD_INTERV', 'COD_IDCONTRA']
+   Source 3 Examples: [[364, 'A', 1, 'TIT', '7667157'], [364, 'A', 1, 'TIT', '44521392'], [364, 'A', 1, 'TIT', '44521393']]
+Operation History for this example : [JOIN : [source_2, Source_3, [COD_IDCONTRA, COD_IDCONTRA] Reason For this inner join : "Filter out some of the results"], 
+ JOIN : [source_1, Source_0, [COD_OFICI, COD_OFICIPAL]],
+ JOIN : [joined1, joined2, [COD_PERSONA, COD_PERSONA]]],
+ Group_By : [FAP_CONTR], Aggregation : Count(Rest of the columns in target)

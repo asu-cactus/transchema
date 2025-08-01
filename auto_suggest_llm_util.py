@@ -10,19 +10,28 @@ from datetime import datetime
 from util.utils import get_test_info
 from test_scope import get_test_cases_ids
 from hints.hint import get_hints
+
 # import auto_suggest_llm_prompts as prt
 import tiktoken
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms
 
-# import prompts 
+# import prompts
 from prompts.next_operator_prompt import get_next_operator_prompt
 from prompts.next_operator_prompt import get_next_operator_prompt
-from prompts.configuration_prompts import get_join_prompt, get_group_by_aggregate_prompt, get_union_prompt
-from prompts.code_generation_prompt import get_python_script,get_python_script_with_intermediate_materialization
-from prompts.next_operator_prompt_with_intermediate_materialization import (
-    get_next_operator_prompt_with_intermediate_materialization
+from prompts.configuration_prompts import (
+    get_join_prompt,
+    get_group_by_aggregate_prompt,
+    get_union_prompt,
 )
+from prompts.code_generation_prompt import (
+    get_python_script,
+    get_python_script_with_intermediate_materialization,
+)
+from prompts.next_operator_prompt_with_intermediate_materialization import (
+    get_next_operator_prompt_with_intermediate_materialization,
+)
+
 
 def get_prompt(
     prompt_type,
@@ -53,6 +62,7 @@ def get_prompt(
     nth_intermediate_step=0,
     combine_ask_and_configure=False,
     no_thinking=False,
+    few_shot=False,
 ):
     """
     Args:
@@ -97,6 +107,13 @@ def get_prompt(
         source_length,
         encoding,
     )
+
+    # read few shot examples
+    few_shot_examples = [""]
+    if few_shot == 1:
+        with open("few_shot_examples.txt", "r") as f:
+            few_shot_example = f.read()
+        few_shot_examples = [few_shot_example]
 
     fd_hints = ""
     if fd_flag == 1:
@@ -145,7 +162,7 @@ def get_prompt(
             0,
             [],
         )
-        static_prompt =  get_next_operator_prompt(
+        static_prompt = get_next_operator_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -155,6 +172,7 @@ def get_prompt(
             source_information,
             fd_hints,
             hints,
+            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -169,7 +187,7 @@ def get_prompt(
         )[0]
 
         if nth_intermediate_step > 0:
-            prompt =  get_next_operator_prompt_with_intermediate_materialization(
+            prompt = get_next_operator_prompt_with_intermediate_materialization(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
@@ -184,7 +202,7 @@ def get_prompt(
                 no_thinking=no_thinking,
             )[0]
         else:
-            prompt =  get_next_operator_prompt(
+            prompt = get_next_operator_prompt(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
@@ -194,6 +212,7 @@ def get_prompt(
                 source_information,
                 fd_hints,
                 hints,
+                few_shot_examples=few_shot_examples,
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -214,7 +233,7 @@ def get_prompt(
             join_flag,
             join_hints_truncate,
         )
-        static_prompt =  get_join_prompt(
+        static_prompt = get_join_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -224,6 +243,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -236,7 +256,7 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )[0]
-        prompt =  get_join_prompt(
+        prompt = get_join_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -246,6 +266,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
 
     elif prompt_type == "group_by_aggregate":
@@ -261,7 +282,7 @@ def get_prompt(
             aggregate_flag,
             aggregate_hints_truncate,
         )
-        static_prompt =  get_group_by_aggregate_prompt(
+        static_prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -271,6 +292,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -283,7 +305,7 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )[0]
-        prompt =  get_group_by_aggregate_prompt(
+        prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -293,10 +315,11 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            few_shot_examples=few_shot_examples,
         )[0]
 
     elif prompt_type == "union":
-        static_prompt =  get_union_prompt(
+        static_prompt = get_union_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -316,7 +339,7 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )[0]
-        prompt =  get_union_prompt(
+        prompt = get_union_prompt(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -339,7 +362,7 @@ def get_prompt(
         )
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
         # print(error_string)
-        static_prompt =  get_python_script(
+        static_prompt = get_python_script(
             allowed_operation_list,
             operation_history,
             target_data_name,
@@ -362,7 +385,7 @@ def get_prompt(
             encoding,
         )[0]
         if nth_intermediate_step > 0:
-            prompt =  get_python_script_with_intermediate_materialization(
+            prompt = get_python_script_with_intermediate_materialization(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
@@ -375,7 +398,7 @@ def get_prompt(
                 all_intermediate_results,
             )[0]
         else:
-            prompt =  get_python_script(
+            prompt = get_python_script(
                 allowed_operation_list,
                 operation_history,
                 target_data_name,
@@ -618,6 +641,7 @@ def get_columns_aggr(s):
     res = [elements[:-2], elements[-2], elements[-1]]
 
     return res
+
 
 def cost_compare(cost1, cost2, model):
     cost = dict()
