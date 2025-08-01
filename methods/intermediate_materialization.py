@@ -16,6 +16,7 @@ import shutil
 import pdb
 import os
 import time
+from validation.score import calculate_score
 
 from test_scope import get_test_cases_ids
 from llm.llm_models import TokenUsageTracker, LLMClient
@@ -273,12 +274,12 @@ def materialize_chatgpt(
         error_str += response + "\n"
 
         if response == "Success":
-            # Save the result to the python_recovered.py from where it will be picked up for critique
+            
             save_path = f"{save_dir}/python_step{nth_intermediate_step}.py"
             with open(save_path, "w") as f:
                 f.write(script)
             return
-
+        
     raise Exception(f"Exceed {n_trails} trails, Materialization Failed")
 
 
@@ -334,6 +335,16 @@ def verify_result(target_file_location, ground_truth_location, config):
     print(log_str)
     logger.info(log_str)
 
+    try : 
+        score = calculate_score(
+            df_ground_truth, df_our_response
+        )
+    except Exception as e:
+        score = 0.0
+        log_str = "Score calculation failed, " + str(e)
+        print(log_str)
+        logger.info(log_str)
+
     hard_match_result = {
         "avg_similarity": hard_avg_similarity,
         "is_correct": hard_is_correct,
@@ -344,7 +355,7 @@ def verify_result(target_file_location, ground_truth_location, config):
         "is_correct": soft_is_correct,
         "similarity_scores": soft_similarity_scores,
     }
-    return hard_match_result, soft_match_result
+    return hard_match_result, soft_match_result,score
 
 
 #################################################################################################################################
@@ -432,12 +443,14 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["main_folder"] = main_folder
     config["path_to_files"] = path_to_files
     config["task"] = task
+    # save_path = ""
 
     # materialization_criteria = MaterializationCriteria()
 
     max_operations = 9
+    step = 0
     for nth_intermediate_step in range(1, max_operations + 1):
-
+        step = nth_intermediate_step
         # Get the operation
         operation, configuration = get_operator(
             llm_client, operation_history, nth_intermediate_step, args, config
@@ -484,7 +497,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
         source_data_name_list.append(intermediate_filename)
 
-        hard_match_result, soft_match_result = verify_result(
+        hard_match_result, soft_match_result, score = verify_result(
             save_path,
             f"{main_folder}/length{len_idx_target_idx}/target.csv",
             config,
@@ -502,15 +515,41 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
                 0,
                 str(operation_history),
             )
-            print("Successful transformation")
-            return ms_info
+            print("Successful transformation at step", nth_intermediate_step)
+            break
+            # return ms_info
 
     # Do the final verification
-    hard_match_result, soft_match_result = verify_result(
+    hard_match_result, soft_match_result, score = verify_result(
         save_path, f"{main_folder}/length{len_idx_target_idx}/target.csv", config
     )
 
     end_time = time.time()
+
+    if not os.path.exists(
+        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+    ):
+        os.makedirs(
+            f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+        )
+    shutil.copy(
+        save_path,
+        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive/{experiment_name}_{i_}_target_multisource.csv",
+    )
+
+    # Save the result to the python_recovered.py from where it will be picked up for critique
+    final_python_file_location = f"{save_dir}/python_step{step}.py"
+    if not os.path.exists(
+        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
+    ):
+        os.makedirs(
+            f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
+        )
+    shutil.copy(
+        final_python_file_location,
+        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive/{experiment_name}_{i_}_intermediate_materialization.py"
+    )
+
     time_elapsed = end_time - start_time
     cost_data = token_tracker.cost_summary()  # This returns a dictionary
     total_cost = cost_data.get("total_cost", 0.0)
@@ -520,7 +559,8 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         soft_match_result["avg_similarity"],
         total_cost,  # Use the extracted total_cost value
         time_elapsed,
-        0,
+        score,
         str(operation_history),
     )
+
     return ms_info

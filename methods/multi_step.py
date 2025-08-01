@@ -5,15 +5,16 @@ from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import (
-    calculate_score,
+    # calculate_score,
     get_prompt,
     query_gpt,
     get_operation,
     get_columns,
     get_columns_join,
 )
-
-from log_util.log_util import create_logger
+from validation.score import calculate_score
+import shutil
+from log_util.log_util import create_logger, shutdown_logger
 
 # import parameters as p
 import re
@@ -62,7 +63,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         1
         for _, _, files in os.walk(path_to_files)
         for file in files
-        if file.startswith("test")
+        if file.startswith("test_")
     )
 
     # print(file_count)
@@ -90,6 +91,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     )
 
     logger = create_logger("AUTOSUGGEST", log_dir, len_id, target_id, max_target_id)
+    print(f"Logger created: {logger.name}")
 
     q_count = {"total": 0, "in_task": 0}
 
@@ -405,7 +407,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 script_cnt += 1
 
             if response == "Success":
-                # save file here
+                # save code here in code archive
                 # file_name
                 if not os.path.exists(
                     f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
@@ -418,6 +420,18 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     "w",
                 ) as file:
                     file.write(script)
+
+                # save table in data archive for further analysis
+                if not os.path.exists(
+                    f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+                ):
+                    os.makedirs(
+                        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+                    )
+                shutil.copy(
+                    target_file_location,
+                    f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive/{experiment_name}_{i_}_target_multisource.csv",
+                )
 
                 try:
                     # name_of_experiment_pass_1
@@ -488,5 +502,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     )
     print(f"ms_info: {ms_info}")
     logger.info("Total Queries Made : {q}".format(q=q_count["total"]))
+
+    shutdown_logger(logger)  # Ensure all logs are flushed before exiting
 
     return ms_info

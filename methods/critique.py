@@ -6,16 +6,31 @@ import re
 import traceback
 import pdb
 from hints.hint_v3 import get_column_equivalence
+import shutil
 
-from auto_suggest_llm_util import get_filtered_functional_dependency, calculate_score
+from auto_suggest_llm_util import (
+    get_filtered_functional_dependency,
+)  # , calculate_score
+from validation.score import calculate_score
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching
 from validation.soft_match import compare_lists_matching_soft
-from log_util.log_util import create_logger
+from log_util.log_util import create_logger, shutdown_logger
 
 
-def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
+def critique(
+    args,
+    length,
+    id_,
+    log_dir_,
+    flags,
+    is_def,
+    operation_history,
+    experiment_name,
+    i_,
+    critique_type,
+):
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
     with open(prompt_file, mode="r") as f:
         query = f.read()
@@ -401,9 +416,31 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     print(response)
     # sys.exit()
     logger.info(response)
-
+    if not os.path.exists(
+        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
+    ):
+        os.makedirs(
+            f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
+        )
+    with open(
+        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive/{experiment_name}_{critique_type}_{i_}.py",
+        "w",
+    ) as file:
+        file.write(script)
     try:
         df_critique = pd.read_csv(target_location_critique, low_memory=False)
+
+        if not os.path.exists(
+            f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+        ):
+            os.makedirs(
+                f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive"
+            )
+        shutil.copy(
+            target_location_critique,
+            f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/result_archive/{experiment_name}_{i_}_target_multisource.csv",
+        )
+
         (
             case_accuracy,
             is_correct,
@@ -441,6 +478,9 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         time_elapsed,
         score,
     )
+
+    shutdown_logger(logger)  # Ensure all logs are flushed before exiting
+
     return crit_info
 
 
