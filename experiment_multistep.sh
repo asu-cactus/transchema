@@ -24,6 +24,7 @@ python3 critique_data.py \
   --experiment-name few_shot_len_4 \
   --no_of_runs 1 \
   --hints-v3-truncates '{"t1":0.3,"t2":0.3,"t3":0.3,"t4":10,"t5":0.1,"t6":0.4,"t7":0.8,"t8":0.7,"t9":0.3,"t10":0.5,"t11":0.3,"t12":0.3,"t13":0.2}' \
+  --few_shot \
   # --intermediate_materialization
   # #--use_old_prompt 
   # --combine_ask_and_configure \

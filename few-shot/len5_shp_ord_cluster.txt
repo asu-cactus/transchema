@@ -1,0 +1,113 @@
+Few Shot Examples : 
+Example 1 : 
+Target Table Name : target
+2. Target Schema: ['Order_Priority', 'Ship_Mode', 'Ord_id', 'Prod_id', 'Ship_id', 'Cust_id', 'Sales', 'Discount']
+3. Target Examples: [['MEDIUM', 'DELIVERY TRUCK', 96, 96, 96, 96, 96, 96], ['CRITICAL', 'EXPRESS AIR', 113, 113, 113, 113, 113, 113], ['HIGH', 'DELIVERY TRUCK', 136, 136, 136, 136, 136, 136]]
+4. Multi Source Information: 
+	Source 0:
+	Source 0 Name: source_0
+	Source 0 Schema: ['Ship_Mode', 'Ship_Date', 'Ship_id']
+	Source 0 Examples: [['REGULAR AIR', '20-10-2010', 'SHP_1'], ['DELIVERY TRUCK', '02-10-2012', 'SHP_2'], ['REGULAR AIR', '03-10-2012', 'SHP_3'], ['REGULAR AIR', '12-07-2011', 'SHP_4'], ['REGULAR AIR', '30-08-2010', 'SHP_5'], ['REGULAR AIR', '17-06-2011', 'SHP_6'], ['REGULAR AIR', '18-06-2011', 'SHP_7'], ['EXPRESS AIR', '25-03-2011', 'SHP_8'], ['REGULAR AIR', '26-02-2010', 'SHP_9']]
+	Source 1:
+	Source 1 Name: source_1
+	Source 1 Schema: ['Order_Date', 'Order_Priority', 'Ord_id']
+	Source 1 Examples: [['13-10-2010', 'LOW', 'Ord_1'], ['01-10-2012', 'HIGH', 'Ord_2'], ['10-07-2011', 'HIGH', 'Ord_3'], ['28-08-2010', 'NOT SPECIFIED', 'Ord_4'], ['17-06-2011', 'HIGH', 'Ord_5'], ['24-03-2011', 'HIGH', 'Ord_6'], ['26-02-2010', 'LOW', 'Ord_7'], ['23-11-2010', 'MEDIUM', 'Ord_8'], ['08-06-2012', 'NOT SPECIFIED', 'Ord_9']]
+	Source 2:
+	Source 2 Name: source_2
+	Source 2 Schema: ['Customer_Name', 'Province', 'Region', 'Customer_Segment', 'Cust_id']
+	Source 2 Examples: [['MUHAMMED MACINTYRE', 'NUNAVUT', 'NUNAVUT', 'SMALL BUSINESS', 'Cust_1'], ['BARRY FRENCH', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_2'], ['CLAY ROZENDAL', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_3'], ['CARLOS SOLTERO', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_4'], ['CARL JACKSON', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_5'], ['MONICA FEDERLE', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_6'], ['DOROTHY BADDERS', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_7'], ['NEOLA SCHNEIDER', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_8'], ['CARLOS DALY', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_9']]
+	Source 3:
+	Source 3 Name: source_3
+	Source 3 Schema: ['Product_Category', 'Product_Sub_Category', 'Prod_id']
+	Source 3 Examples: [['OFFICE SUPPLIES', 'STORAGE & ORGANIZATION', 'Prod_1'], ['OFFICE SUPPLIES', 'APPLIANCES', 'Prod_2'], ['OFFICE SUPPLIES', 'BINDERS AND BINDER ACCESSORIES', 'Prod_3'], ['TECHNOLOGY', 'TELEPHONES AND COMMUNICATION', 'Prod_4'], ['FURNITURE', 'OFFICE FURNISHINGS', 'Prod_5'], ['OFFICE SUPPLIES', 'PAPER', 'Prod_6'], ['OFFICE SUPPLIES', 'RUBBER BANDS', 'Prod_7'], ['TECHNOLOGY', 'COMPUTER PERIPHERALS', 'Prod_8'], ['OFFICE SUPPLIES', 'ENVELOPES', 'Prod_9']]
+	Source 4:
+	Source 4 Name: source_4
+	Source 4 Schema: ['Ord_id', 'Prod_id', 'Ship_id', 'Cust_id', 'Sales', 'Discount', 'Order_Quantity', 'Profit', 'Shipping_Cost', 'Product_Base_Margin']
+	Source 4 Examples: [['Ord_5446', 'Prod_16', 'SHP_7609', 'Cust_1818', 136.81, 0.01, 23, -30.51, 3.6, 0.56], ['Ord_5406', 'Prod_13', 'SHP_7549', 'Cust_1818', 42.27, 0.01, 13, 4.56, 0.93, 0.54], ['Ord_5446', 'Prod_4', 'SHP_7610', 'Cust_1818', 4701.69, 0.0, 26, 1148.9, 2.5, 0.59], ['Ord_5456', 'Prod_6', 'SHP_7625', 'Cust_1818', 2337.89, 0.09, 43, 729.34, 14.3, 0.37], ['Ord_5485', 'Prod_17', 'SHP_7664', 'Cust_1818', 4233.15, 0.08, 35, 1219.87, 26.3, 0.38], ['Ord_5446', 'Prod_6', 'SHP_7608', 'Cust_1818', 164.02, 0.03, 23, -47.64, 6.15, 0.37], ['Ord_31', 'Prod_12', 'SHP_41', 'Cust_26', 14.76, 0.01, 5, 1.32, 0.5, 0.36], ['Ord_4725', 'Prod_4', 'SHP_6593', 'Cust_1641', 3410.1575, 0.1, 48, 1137.91, 0.99, 0.55], ['Ord_4725', 'Prod_13', 'SHP_6593', 'Cust_1641', 162.0, 0.01, 33, 45.84, 0.71, 0.52]]
+Operation History for this example : ['JOIN : [["source_0","source_4"],["Ship_id","Ship_id"]]', 'JOIN : [["source_1","source_4"],["Ord_id","Ord_id"]]', 'JOIN :  [["source_2","source_4"],["Cust_id","Cust_id"]] ',
+                                        'Group By' : ['Order_Priority','Ship_Mode']], 'Aggregate' : [COUNT(Ord_id),COUNT(Prod_id),COUNT(Ship_id),COUNT(Cust_id),COUNT(Sales),COUNT(Discount)] ]
+
+Example 2 : 
+Target Table Name : target
+1. Target Table Name: Target
+2. Target Schema: ['Ship_id', 'Order_Priority', 'Ord_id', 'Prod_id', 'Cust_id', 'Sales', 'Discount']
+3. Target Examples: [['SHP_2553', 'HIGH', 1, 1, 1, 1, 1], ['SHP_2292', 'LOW', 1, 1, 1, 1, 1], ['SHP_5264', 'MEDIUM', 2, 2, 2, 2, 2]]
+4. Multi Source Information: 
+	Source 0:
+	Source 0 Name: Source_0
+	Source 0 Schema: ['Customer_Name', 'Province', 'Region', 'Customer_Segment', 'Cust_id']
+	Source 0 Examples: [['MUHAMMED MACINTYRE', 'NUNAVUT', 'NUNAVUT', 'SMALL BUSINESS', 'Cust_1'], ['BARRY FRENCH', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_2'], ['CLAY ROZENDAL', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_3'], ['CARLOS SOLTERO', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_4'], ['CARL JACKSON', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_5'], ['MONICA FEDERLE', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_6'], ['DOROTHY BADDERS', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_7'], ['NEOLA SCHNEIDER', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_8'], ['CARLOS DALY', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_9']]
+	Source 1:
+	Source 1 Name: Source_1
+	Source 1 Schema: ['Product_Category', 'Product_Sub_Category', 'Prod_id']
+	Source 1 Examples: [['OFFICE SUPPLIES', 'STORAGE & ORGANIZATION', 'Prod_1'], ['OFFICE SUPPLIES', 'APPLIANCES', 'Prod_2'], ['OFFICE SUPPLIES', 'BINDERS AND BINDER ACCESSORIES', 'Prod_3'], ['TECHNOLOGY', 'TELEPHONES AND COMMUNICATION', 'Prod_4'], ['FURNITURE', 'OFFICE FURNISHINGS', 'Prod_5'], ['OFFICE SUPPLIES', 'PAPER', 'Prod_6'], ['OFFICE SUPPLIES', 'RUBBER BANDS', 'Prod_7'], ['TECHNOLOGY', 'COMPUTER PERIPHERALS', 'Prod_8'], ['OFFICE SUPPLIES', 'ENVELOPES', 'Prod_9']]
+	Source 2:
+	Source 2 Name: Source_2
+	Source 2 Schema: ['Ord_id', 'Prod_id', 'Ship_id', 'Cust_id', 'Sales', 'Discount', 'Order_Quantity', 'Profit', 'Shipping_Cost', 'Product_Base_Margin']
+	Source 2 Examples: [['Ord_5446', 'Prod_16', 'SHP_7609', 'Cust_1818', 136.81, 0.01, 23, -30.51, 3.6, 0.56], ['Ord_5406', 'Prod_13', 'SHP_7549', 'Cust_1818', 42.27, 0.01, 13, 4.56, 0.93, 0.54], ['Ord_5446', 'Prod_4', 'SHP_7610', 'Cust_1818', 4701.69, 0.0, 26, 1148.9, 2.5, 0.59], ['Ord_5456', 'Prod_6', 'SHP_7625', 'Cust_1818', 2337.89, 0.09, 43, 729.34, 14.3, 0.37], ['Ord_5485', 'Prod_17', 'SHP_7664', 'Cust_1818', 4233.15, 0.08, 35, 1219.87, 26.3, 0.38], ['Ord_5446', 'Prod_6', 'SHP_7608', 'Cust_1818', 164.02, 0.03, 23, -47.64, 6.15, 0.37], ['Ord_31', 'Prod_12', 'SHP_41', 'Cust_26', 14.76, 0.01, 5, 1.32, 0.5, 0.36], ['Ord_4725', 'Prod_4', 'SHP_6593', 'Cust_1641', 3410.1575, 0.1, 48, 1137.91, 0.99, 0.55], ['Ord_4725', 'Prod_13', 'SHP_6593', 'Cust_1641', 162.0, 0.01, 33, 45.84, 0.71, 0.52]]
+	Source 3:
+	Source 3 Name: Source_3
+	Source 3 Schema: ['Ship_Mode', 'Ship_Date', 'Ship_id']
+	Source 3 Examples: [['REGULAR AIR', '20-10-2010', 'SHP_1'], ['DELIVERY TRUCK', '02-10-2012', 'SHP_2'], ['REGULAR AIR', '03-10-2012', 'SHP_3'], ['REGULAR AIR', '12-07-2011', 'SHP_4'], ['REGULAR AIR', '30-08-2010', 'SHP_5'], ['REGULAR AIR', '17-06-2011', 'SHP_6'], ['REGULAR AIR', '18-06-2011', 'SHP_7'], ['EXPRESS AIR', '25-03-2011', 'SHP_8'], ['REGULAR AIR', '26-02-2010', 'SHP_9']]
+	Source 4:
+	Source 4 Name: Source_4
+	Source 4 Schema: ['Order_Date', 'Order_Priority', 'Ord_id']
+	Source 4 Examples: [['13-10-2010', 'LOW', 'Ord_1'], ['01-10-2012', 'HIGH', 'Ord_2'], ['10-07-2011', 'HIGH', 'Ord_3'], ['28-08-2010', 'NOT SPECIFIED', 'Ord_4'], ['17-06-2011', 'HIGH', 'Ord_5'], ['24-03-2011', 'HIGH', 'Ord_6'], ['26-02-2010', 'LOW', 'Ord_7'], ['23-11-2010', 'MEDIUM', 'Ord_8'], ['08-06-2012', 'NOT SPECIFIED', 'Ord_9']]
+Operation History for this example : ['JOIN : [[""Source_4"", ""Source_2""], [""Source_4.Ord_id"", ""Source_2.Ord_id""]]', 'JOIN : [[""Source_0"",""Source_2""],[""Source_0.Cust_id"",""Source_2.Cust_id""]]', 'JOIN : [[""Source_1"",""Source_2""],[""Source_1.Prod_id"",""Source_2.Prod_id""]]', 'JOIN : [[""Source_4"",""Source_2""],[""Source_4.Ord_id"",""Source_2.Ord_id""]]', 'JOIN : [[""Source_3"", ""Source_2""], [""Source_3.Ship_id"", ""Source_2.Ship_id""]]']
+ Group_By : [Ship_id,Order_Priority], Aggregation : COUNT(Ord_id),COUNT(Prod_id),COUNT(Cust_id),COUNT(Sales),COUNT(Discount)
+
+ Example 3 : 
+1. Target Table Name: Target
+2. Target Schema: ['Product_Category', 'Ord_id', 'Prod_id', 'Ship_id', 'Cust_id']
+3. Target Examples: [['FURNITURE', 'Ord_2298', 1, 1, 1], ['OFFICE SUPPLIES', 'Ord_4272', 2, 2, 2], ['OFFICE SUPPLIES', 'Ord_5255', 1, 1, 1]]
+4. Multi Source Information: 
+	Source 0:
+	Source 0 Name: Source_0
+	Source 0 Schema: ['Ord_id', 'Prod_id', 'Ship_id', 'Cust_id', 'Sales', 'Discount', 'Order_Quantity', 'Profit', 'Shipping_Cost', 'Product_Base_Margin']
+	Source 0 Examples: [['Ord_5446', 'Prod_16', 'SHP_7609', 'Cust_1818', 136.81, 0.01, 23, -30.51, 3.6, 0.56], ['Ord_5406', 'Prod_13', 'SHP_7549', 'Cust_1818', 42.27, 0.01, 13, 4.56, 0.93, 0.54], ['Ord_5446', 'Prod_4', 'SHP_7610', 'Cust_1818', 4701.69, 0.0, 26, 1148.9, 2.5, 0.59], ['Ord_5456', 'Prod_6', 'SHP_7625', 'Cust_1818', 2337.89, 0.09, 43, 729.34, 14.3, 0.37], ['Ord_5485', 'Prod_17', 'SHP_7664', 'Cust_1818', 4233.15, 0.08, 35, 1219.87, 26.3, 0.38], ['Ord_5446', 'Prod_6', 'SHP_7608', 'Cust_1818', 164.02, 0.03, 23, -47.64, 6.15, 0.37], ['Ord_31', 'Prod_12', 'SHP_41', 'Cust_26', 14.76, 0.01, 5, 1.32, 0.5, 0.36], ['Ord_4725', 'Prod_4', 'SHP_6593', 'Cust_1641', 3410.1575, 0.1, 48, 1137.91, 0.99, 0.55], ['Ord_4725', 'Prod_13', 'SHP_6593', 'Cust_1641', 162.0, 0.01, 33, 45.84, 0.71, 0.52]]
+	Source 1:
+	Source 1 Name: Source_1
+	Source 1 Schema: ['Order_Date', 'Order_Priority', 'Ord_id']
+	Source 1 Examples: [['13-10-2010', 'LOW', 'Ord_1'], ['01-10-2012', 'HIGH', 'Ord_2'], ['10-07-2011', 'HIGH', 'Ord_3'], ['28-08-2010', 'NOT SPECIFIED', 'Ord_4'], ['17-06-2011', 'HIGH', 'Ord_5'], ['24-03-2011', 'HIGH', 'Ord_6'], ['26-02-2010', 'LOW', 'Ord_7'], ['23-11-2010', 'MEDIUM', 'Ord_8'], ['08-06-2012', 'NOT SPECIFIED', 'Ord_9']]
+	Source 2:
+	Source 2 Name: Source_2
+	Source 2 Schema: ['Ship_Mode', 'Ship_Date', 'Ship_id']
+	Source 2 Examples: [['REGULAR AIR', '20-10-2010', 'SHP_1'], ['DELIVERY TRUCK', '02-10-2012', 'SHP_2'], ['REGULAR AIR', '03-10-2012', 'SHP_3'], ['REGULAR AIR', '12-07-2011', 'SHP_4'], ['REGULAR AIR', '30-08-2010', 'SHP_5'], ['REGULAR AIR', '17-06-2011', 'SHP_6'], ['REGULAR AIR', '18-06-2011', 'SHP_7'], ['EXPRESS AIR', '25-03-2011', 'SHP_8'], ['REGULAR AIR', '26-02-2010', 'SHP_9']]
+	Source 3:
+	Source 3 Name: Source_3
+	Source 3 Schema: ['Customer_Name', 'Province', 'Region', 'Customer_Segment', 'Cust_id']
+	Source 3 Examples: [['MUHAMMED MACINTYRE', 'NUNAVUT', 'NUNAVUT', 'SMALL BUSINESS', 'Cust_1'], ['BARRY FRENCH', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_2'], ['CLAY ROZENDAL', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_3'], ['CARLOS SOLTERO', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_4'], ['CARL JACKSON', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_5'], ['MONICA FEDERLE', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_6'], ['DOROTHY BADDERS', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_7'], ['NEOLA SCHNEIDER', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_8'], ['CARLOS DALY', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_9']]
+	Source 4:
+	Source 4 Name: Source_4
+	Source 4 Schema: ['Product_Category', 'Product_Sub_Category', 'Prod_id']
+	Source 4 Examples: [['OFFICE SUPPLIES', 'STORAGE & ORGANIZATION', 'Prod_1'], ['OFFICE SUPPLIES', 'APPLIANCES', 'Prod_2'], ['OFFICE SUPPLIES', 'BINDERS AND BINDER ACCESSORIES', 'Prod_3'], ['TECHNOLOGY', 'TELEPHONES AND COMMUNICATION', 'Prod_4'], ['FURNITURE', 'OFFICE FURNISHINGS', 'Prod_5'], ['OFFICE SUPPLIES', 'PAPER', 'Prod_6'], ['OFFICE SUPPLIES', 'RUBBER BANDS', 'Prod_7'], ['TECHNOLOGY', 'COMPUTER PERIPHERALS', 'Prod_8'], ['OFFICE SUPPLIES', 'ENVELOPES', 'Prod_9']]
+Operation History for this example : ['JOIN : [[""Source_0"", ""Source_4""], [""Prod_id"", ""Prod_id""]]', 'JOIN : [[""Source_0"", ""Source_3""], [""Cust_id"", ""Cust_id""]]']
+ Group_By : [Product_Category,Ord_id], Aggregation : Count(Prod_id),COUNT(Ship_id),COUNT(Cust_id)
+
+Example 4 : 
+1. Target Table Name: Target
+2. Target Schema: ['Prod_id', 'Ord_id', 'Ship_id', 'Cust_id', 'Sales', 'Discount']
+3. Target Examples: [['Prod_7', 81, 81, 81, 81, 81], ['Prod_2', 207, 207, 207, 207, 207], ['Prod_11', 199, 199, 199, 199, 199]]
+4. Multi Source Information: 
+	Source 0:
+	Source 0 Name: Source_0
+	Source 0 Schema: ['Order_Date', 'Order_Priority', 'Ord_id']
+	Source 0 Examples: [['13-10-2010', 'LOW', 'Ord_1'], ['01-10-2012', 'HIGH', 'Ord_2'], ['10-07-2011', 'HIGH', 'Ord_3'], ['28-08-2010', 'NOT SPECIFIED', 'Ord_4'], ['17-06-2011', 'HIGH', 'Ord_5'], ['24-03-2011', 'HIGH', 'Ord_6'], ['26-02-2010', 'LOW', 'Ord_7'], ['23-11-2010', 'MEDIUM', 'Ord_8'], ['08-06-2012', 'NOT SPECIFIED', 'Ord_9']]
+	Source 1:
+	Source 1 Name: Source_1
+	Source 1 Schema: ['Customer_Name', 'Province', 'Region', 'Customer_Segment', 'Cust_id']
+	Source 1 Examples: [['MUHAMMED MACINTYRE', 'NUNAVUT', 'NUNAVUT', 'SMALL BUSINESS', 'Cust_1'], ['BARRY FRENCH', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_2'], ['CLAY ROZENDAL', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_3'], ['CARLOS SOLTERO', 'NUNAVUT', 'NUNAVUT', 'CONSUMER', 'Cust_4'], ['CARL JACKSON', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_5'], ['MONICA FEDERLE', 'NUNAVUT', 'NUNAVUT', 'CORPORATE', 'Cust_6'], ['DOROTHY BADDERS', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_7'], ['NEOLA SCHNEIDER', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_8'], ['CARLOS DALY', 'NUNAVUT', 'NUNAVUT', 'HOME OFFICE', 'Cust_9']]
+	Source 2:
+	Source 2 Name: Source_2
+	Source 2 Schema: ['Product_Category', 'Product_Sub_Category', 'Prod_id']
+	Source 2 Examples: [['OFFICE SUPPLIES', 'STORAGE & ORGANIZATION', 'Prod_1'], ['OFFICE SUPPLIES', 'APPLIANCES', 'Prod_2'], ['OFFICE SUPPLIES', 'BINDERS AND BINDER ACCESSORIES', 'Prod_3'], ['TECHNOLOGY', 'TELEPHONES AND COMMUNICATION', 'Prod_4'], ['FURNITURE', 'OFFICE FURNISHINGS', 'Prod_5'], ['OFFICE SUPPLIES', 'PAPER', 'Prod_6'], ['OFFICE SUPPLIES', 'RUBBER BANDS', 'Prod_7'], ['TECHNOLOGY', 'COMPUTER PERIPHERALS', 'Prod_8'], ['OFFICE SUPPLIES', 'ENVELOPES', 'Prod_9']]
+	Source 3:
+	Source 3 Name: Source_3
+	Source 3 Schema: ['Ship_Mode', 'Ship_Date', 'Ship_id']
+	Source 3 Examples: [['REGULAR AIR', '20-10-2010', 'SHP_1'], ['DELIVERY TRUCK', '02-10-2012', 'SHP_2'], ['REGULAR AIR', '03-10-2012', 'SHP_3'], ['REGULAR AIR', '12-07-2011', 'SHP_4'], ['REGULAR AIR', '30-08-2010', 'SHP_5'], ['REGULAR AIR', '17-06-2011', 'SHP_6'], ['REGULAR AIR', '18-06-2011', 'SHP_7'], ['EXPRESS AIR', '25-03-2011', 'SHP_8'], ['REGULAR AIR', '26-02-2010', 'SHP_9']]
+	Source 4:
+	Source 4 Name: Source_4
+	Source 4 Schema: ['Ord_id', 'Prod_id', 'Ship_id', 'Cust_id', 'Sales', 'Discount', 'Order_Quantity', 'Profit', 'Shipping_Cost', 'Product_Base_Margin']
+	Source 4 Examples: [['Ord_5446', 'Prod_16', 'SHP_7609', 'Cust_1818', 136.81, 0.01, 23, -30.51, 3.6, 0.56], ['Ord_5406', 'Prod_13', 'SHP_7549', 'Cust_1818', 42.27, 0.01, 13, 4.56, 0.93, 0.54], ['Ord_5446', 'Prod_4', 'SHP_7610', 'Cust_1818', 4701.69, 0.0, 26, 1148.9, 2.5, 0.59], ['Ord_5456', 'Prod_6', 'SHP_7625', 'Cust_1818', 2337.89, 0.09, 43, 729.34, 14.3, 0.37], ['Ord_5485', 'Prod_17', 'SHP_7664', 'Cust_1818', 4233.15, 0.08, 35, 1219.87, 26.3, 0.38], ['Ord_5446', 'Prod_6', 'SHP_7608', 'Cust_1818', 164.02, 0.03, 23, -47.64, 6.15, 0.37], ['Ord_31', 'Prod_12', 'SHP_41', 'Cust_26', 14.76, 0.01, 5, 1.32, 0.5, 0.36], ['Ord_4725', 'Prod_4', 'SHP_6593', 'Cust_1641', 3410.1575, 0.1, 48, 1137.91, 0.99, 0.55], ['Ord_4725', 'Prod_13', 'SHP_6593', 'Cust_1641', 162.0, 0.01, 33, 45.84, 0.71, 0.52]]
+Operation History for this example : [""JOIN : [['Source_0', 'Source_4'], ['Source_0.Ord_id', 'Source_4.Ord_id']]"", 'JOIN : [[""Source_1"", ""Source_4""], [""Source_1.Cust_id"", ""Source_4.Cust_id""]]', 'JOIN : [[""Source_2"", ""Source_4""], [""Source_2.Prod_id"", ""Source_4.Prod_id""]]']
+ Group_By : [Prod_id], Aggregation : Count(Ord_id),COUNT(Ship_id),COUNT(Cust_id),COUNT(Sales),COUNT(Discount)

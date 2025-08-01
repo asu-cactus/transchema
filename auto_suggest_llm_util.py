@@ -62,6 +62,7 @@ def get_prompt(
     nth_intermediate_step=0,
     combine_ask_and_configure=False,
     no_thinking=False,
+    few_shot=False,
 ):
     """
     Args:
@@ -108,9 +109,11 @@ def get_prompt(
     )
 
     # read few shot examples
-    with open("few_shot_examples.txt", "r") as f:
-        few_shot_examples = f.read()
-    few_shot_examples = [few_shot_examples]
+    few_shot_examples = [""]
+    if few_shot == 1:
+        with open("few_shot_examples.txt", "r") as f:
+            few_shot_example = f.read()
+        few_shot_examples = [few_shot_example]
 
     fd_hints = ""
     if fd_flag == 1:
