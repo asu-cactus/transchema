@@ -75,6 +75,8 @@ def get_prompt(
     if model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
+    elif model == "o4-mini" or model == "o3":
+        encoding = tiktoken.get_encoding("cl100k_base")
     else:
         encoding = tiktoken.encoding_for_model(model)
 
@@ -819,6 +821,9 @@ def calculate_score(gt_df, tgt_df):
     p = 1
 
     # Match Functional Dependencies
+    print(gt_df)
+    print(tgt_df)
+
     key_gt, fd_gt = get_filtered_functional_dependency(gt_df)
     key_tgt, fd_tgt = get_filtered_functional_dependency(tgt_df)
 

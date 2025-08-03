@@ -68,6 +68,8 @@ class LLMClient:
         if model == "gpt-4.1-mini":
             # According to https://github.com/openai/tiktoken/issues/395
             self.encoding = tiktoken.get_encoding("o200k_base")
+        elif model == "o4-mini" or model == "o3":
+            self.encoding = tiktoken.get_encoding("cl100k_base")
         else:
             self.encoding = tiktoken.encoding_for_model(model)
 
@@ -121,17 +123,30 @@ class LLMClient:
             on_giveup=lambda details: self._giveup_handler(details),
         )
         def _request_with_backoff():
-            return self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                # max_completion_tokens=max_tokens,
-                stop=stop,
-                top_p=1,
-                frequency_penalty=0.0,
-                presence_penalty=0.0,
-            )
+
+            if self.model == "o4-mini" or self.model == "o3":
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_completion_tokens=max_tokens,
+                    stop=stop,
+                    top_p=1,
+                    frequency_penalty=0.0,
+                    presence_penalty=0.0,
+                )
+            else:
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    # max_completion_tokens=max_tokens,
+                    stop=stop,
+                    top_p=1,
+                    frequency_penalty=0.0,
+                    presence_penalty=0.0,
+                )
 
         response = _request_with_backoff()
         self.tracker.add_usage(

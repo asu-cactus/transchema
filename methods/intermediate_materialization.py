@@ -142,8 +142,11 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
 
         if not args.combine_ask_and_configure:
             operation = get_operation(res)
-            assert operation in allowed_operation_list
-            return operation, None
+            if operation in allowed_operation_list:
+                return operation, None
+            else:
+                print(operation)
+                return operation, None
         else:
             operation, configuration = get_operation_and_configuration(res)
             if operation is None:

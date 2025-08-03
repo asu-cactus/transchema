@@ -19,14 +19,14 @@ aggregate_hints_truncate = [0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1,0.9,0.1]
 
 
 fd_flag = 0
-token_limit = 120000
-model = 'gpt-4-turbo'
+token_limit = 60000
+model = 'gpt-4o-mini'
 
 log_dir = "logs-auto-suggest-llm-21-04"
 
 experiment_name = "feature_v3_2"
 
-no_of_runs = 1
+no_of_runs = 1 
 majority_voting = no_of_runs // 2 + 1
 
 # BEGIN hints_v3_truncates

@@ -1,4 +1,4 @@
-def get_python_script(
+def get_python_script_deprecated(
     allowed_operation_list,
     operation_history,
     target_data_name,
@@ -50,6 +50,58 @@ def get_python_script(
     )
 
     return [prompt]
+
+
+
+def get_python_script(
+    allowed_operation_list,
+    operation_history,
+    target_data_name,
+    target_data_schema,
+    target_samples,
+    file_count,
+    source_information_with_location,
+    save_path,
+    error_string,
+):
+    prompt = """
+    You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table and STRICTLY follow the sequence of the operations mentioned in 'operation_history' list . The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way.
+
+    Operation History: {operation_history}
+
+    1. Target Table Name: {target_data_name}
+    2. Target Schema: {target_data_schema}
+    3. Target Examples: {target_samples}
+    4. Multi Source Information: {source_information_with_location}
+
+    5. Write the result to this path {save_path}
+
+    Transformation Plan:
+ - You may use string conversions or date conversions if needed.
+ - Make sure that table generated through the script has the same column structure as target.
+ - All source files have an index column which is always the first column and it should be ignored in the transformation.
+
+  Python Script:
+ - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
+ - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
+ Please quote the Python script between one single "```Python" and "```".
+
+ Errors in previous Attempts : {error_string}
+
+    """.format(
+        allowed_operation_list=allowed_operation_list,
+        operation_history=operation_history,
+        target_data_name=target_data_name,
+        target_data_schema=target_data_schema,
+        target_samples=target_samples,
+        source_information_with_location=source_information_with_location,
+        save_path=save_path,
+        error_string=error_string,
+    )
+
+    return [prompt]
+
+
 
 
 def get_python_script_with_intermediate_materialization(

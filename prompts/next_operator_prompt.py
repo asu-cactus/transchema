@@ -11,7 +11,7 @@ def get_next_operator_prompt(
 ):
     prompt = """
     query1
-    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history" and scource, target table schema and examples.
+    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history", the schemas of the source tables and the target table, and the examples.
 Allowed Operations: {allowed_operation_list}.
 Operation History: {operation_history}
 
@@ -32,6 +32,7 @@ Note: The row examples provided are part of the corresponding rows.
 - If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
 - You should only answer from allowed operations.
 - Try not to repeat operation and it's configuration from the operation history.
+- IMPORTANT: If there is only one source table, UNION should not be an option.
 - the final answer should be in $ quotes. i.e. $OPERATOR$""".format(
         allowed_operation_list=allowed_operation_list,
         operation_history=operation_history,

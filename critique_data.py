@@ -323,7 +323,7 @@ def get_parser():
 
     # Other parameters
     parser.add_argument("--token-limit", type=int, default=120000, help="Token limit")
-    parser.add_argument("--model", type=str, default="gpt-4.1-mini", help="Model name")
+    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="Model name")
     parser.add_argument(
         "--log-dir",
         type=str,
@@ -398,9 +398,12 @@ if __name__ == "__main__":
 
     cases = list(range(start, end))
 
+    
     processed_without_exceptions = 0
 
     for case in cases:
+        
+        print("Processing:", case)    
 
         case_path = f"{length}_{case}"
         # log_dir = f"crit_logs/{case_path}"

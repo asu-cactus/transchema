@@ -37,7 +37,7 @@ def parse_args():
     args.add_argument(
         "--backend",
         type=str,
-        choices=["gpt-3.5-turbo-0125", "gpt-4-turbo", "gpt-4.1-mini"],
+        choices=["gpt-3.5-turbo-0125", "gpt-4-turbo", "gpt-4.1-mini", "o4-mini", "o3"],
         default="gpt-4.1-mini",
     )
     args.add_argument("--temperature", type=float, default=0)

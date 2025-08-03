@@ -53,6 +53,7 @@ Note: The above row examples provided are only part of the corresponding rows.
 
 More Instructions:
 - Please answer with the next OPERATION following the operation history, as well as the CONFIGURATION of the next operation. 
+    - If there is only one source table, UNION should not be an option;
     - For Union, it should be a list of table names; 
     - For Join, it should be a list of tables and the columns to join on, the format is [table1.join_column_from_table1, table2.join_column_from_table2]; 
     - For Group By, it should be the table and a list of columns to group by and the aggregation function to use; 
