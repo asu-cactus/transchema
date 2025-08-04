@@ -11,7 +11,7 @@ def get_next_operator_prompt(
 ):
     prompt = """
     query1
-    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history", the schemas of the source tables and the target table, and the examples.
+    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history", the schema of the source, target tables, and examples in the target table.
 Allowed Operations: {allowed_operation_list}.
 Operation History: {operation_history}
 
@@ -25,14 +25,12 @@ Operation History: {operation_history}
 
 Note: The row examples provided are part of the corresponding rows.
 
-- Please answer what operation you should perform next based on "operation history", "source" and "target" information ("schema" as well as the "examples")  in one word.
-- You may deduce the type of columns in 'Target Table' from the 'Target Examples'. Strictly make sure that the operations in 'Operation History' lead to 'Target Table' with those same type.
-- If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
+- Please answer what operation you should perform next based on "operation history", "source tables" and "target tables" information ("schema" as well as the "examples")  in one word.
+- If there are any source tables having similar schemas, give outer Union operation first priority.
 - Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
 - If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
 - You should only answer from allowed operations.
 - Try not to repeat operation and it's configuration from the operation history.
-- IMPORTANT: If there is only one source table, UNION should not be an option.
 - the final answer should be in $ quotes. i.e. $OPERATOR$""".format(
         allowed_operation_list=allowed_operation_list,
         operation_history=operation_history,
