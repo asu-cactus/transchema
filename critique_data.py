@@ -1,4 +1,5 @@
 import traceback
+from methods.critique import critique
 import argparse
 import json
 import csv
@@ -10,6 +11,8 @@ from log_util.log_util import setup_logging
 
 
 def avg_tup(list_tup):
+    if (len(list_tup) == 0):
+       return (0, 0, 0)
     avg_cost = 0
     avg_lat = 0
     for tup in list_tup:
@@ -23,6 +26,8 @@ def avg_tup(list_tup):
 
 
 def avg_tup_(list_tup):
+    if (len(list_tup) == 0):
+       return (0, 0, 0)
     print("_________________________")
     print(f"averaging {list_tup}")
     avg_cost = 0
@@ -92,137 +97,58 @@ def ms(args, length, id, log_dir, experiment_name):
 
 
 def crit(args, length, id_, operation_history):
-    a_results = []
-    ab_results = []
-    abc_results = []
-
-    # for strict match
-    a_true = []
-    a_false = []
-    ab_true = []
-    ab_false = []
-    abc_true = []
-    abc_false = []
-
-    # for soft match
-    a_true_ = []
-    a_false_ = []
-    ab_true_ = []
-    ab_false_ = []
-    abc_true_ = []
-    abc_false_ = []
-
-    avg_results = []
     critique_path = f"{args.result_directory}/critique.csv"
 
-    for i in range(0, args.no_of_runs):
-        if "fd" in args.critique_setting:
-            abl_a = critique(
-                args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history
-            )
-            a_results.append(abl_a)
-            for tup in a_results:
-                # Add critique_type when logging
-                # Autologtuple((f"{length}_{id_}", "fd") + tup,
-                #             sheet_dir["sheet_2"],
-                #             worksheet_name=sheets["sc"],
-                #             creds_file=creds_path
-                #             )
-                with open(critique_path, "a", newline="") as f:
-                    writer = csv.writer(f)
-                    writer.writerow((f"{length}_{id_}", "fd") + tup)
-                if tup[1] == True:
-                    a_true_.append(tup)
-                else:
-                    a_false_.append(tup)
-                if tup[0] == True:
-                    a_true.append(tup)
-                else:
-                    a_false.append(tup)
-                if len(a_true) >= args.majority_voting:
-                    avg_a = avg_tup(a_true)
-                else:
-                    avg_a = avg_tup(a_false)
-                if len(a_true_) >= args.majority_voting:
-                    avg_a_ = avg_tup_(a_true_)
-                else:
-                    avg_a_ = avg_tup_(a_false_)
-            avg_results.append(("fd",) + avg_a + avg_a_)
-
-        if "metadata" in args.critique_setting:
-            abl_ab = critique(
-                args, length, id_, args.log_directory, [1, 1, 0], 0, operation_history
-            )
-            ab_results.append(abl_ab)
-            for tup in ab_results:
-                # Add critique_type when logging
-                with open(critique_path, "a", newline="") as f:
-                    writer = csv.writer(f)
-                    writer.writerow((f"{length}_{id_}", "metadata") + tup)
-                if tup[1] == True:
-                    ab_true_.append(tup)
-                else:
-                    ab_false_.append(tup)
-                if tup[0] == True:
-                    ab_true.append(tup)
-                else:
-                    ab_false.append(tup)
-                if len(ab_true) >= args.majority_voting:
-                    avg_ab = avg_tup(ab_true)
-                else:
-                    avg_ab = avg_tup(ab_false)
-                if len(ab_true_) >= args.majority_voting:
-                    avg_ab_ = avg_tup_(ab_true_)
-                else:
-                    avg_ab_ = avg_tup_(ab_false_)
-            avg_results.append(("metadata",) + avg_ab + avg_ab_)
-
-        if "annonymization" in args.critique_setting:
-            abl_abc = critique(
-                args, length, id_, args.log_directory, [1, 1, 1], 0, operation_history
-            )
-            abc_results.append(abl_abc)
-            for tup in abc_results:
-                # Add critique_type when logging
-                with open(critique_path, "a", newline="") as f:
-                    writer = csv.writer(f)
-                    writer.writerow((f"{length}_{id_}", "annonymization") + tup)
-                if tup[1] == True:
-                    abc_true_.append(tup)
-                else:
-                    abc_false_.append(tup)
-                if tup[0] == True:
-                    abc_true.append(tup)
-                else:
-                    abc_false.append(tup)
-                if len(abc_true) >= args.majority_voting:
-                    avg_abc = avg_tup(abc_true)
-                else:
-                    avg_abc = avg_tup(abc_false)
-                if len(abc_true_) >= args.majority_voting:
-                    avg_abc_ = avg_tup_(abc_true_)
-                else:
-                    avg_abc_ = avg_tup_(abc_false_)
-            avg_results.append(("annonymization",) + avg_abc + avg_abc_)
-
     print("CRITIQUE FINAL RESULTS:")
-    print(avg_results)
-    print("=" * 30)
+    if "fd" in args.critique_setting:
+        abl_a = critique(
+            args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history
+        )
+        with open(critique_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow((f"{length}_{id_}", "fd") + abl_a)
+        if abl_a[0] == True:
+            print("Success!")
+            print(abl_a)
+            return abl_a
+        else:
+            result = abl_a
 
-    max_val = -1
-    max_ind = 0
 
-    for i, result in enumerate(avg_results):
-        if result[4] > max_val:  # index 4 because critique_type is at 0
-            max_val = result[4]
-            max_ind = i
+    if "metadata" in args.critique_setting:
+        abl_ab = critique(
+            args, length, id_, args.log_directory, [1, 1, 0], 0, operation_history
+        )
+        # Add critique_type when logging
+        with open(critique_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow((f"{length}_{id_}", "metadata") + abl_ab)
+        if abl_ab[0] == True:
+            print("Success!")
+            print(abl_ab)
+            return abl_ab
+        else:
+            result = abl_ab
+  
+                
+    if "annonymization" in args.critique_setting:
+        abl_abc = critique(
+            args, length, id_, args.log_directory, [1, 1, 1], 0, operation_history
+        )
+        # Add critique_type when logging
+        with open(critique_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow((f"{length}_{id_}", "annonymization") + abl_abc)
+        if abl_abc[0] == True:
+            print("Success!")
+        else:
+            print("Failed!")
+        print(abl_abc)
+        return abl_abc
 
-    # Add 'MAX' marker while preserving critique_type
-    avg_results[max_ind] = avg_results[max_ind][: len(avg_results[max_ind]) - 1] + (
-        "MAX",
-    )
-
-    return avg_results
+    print("Failed!")
+    print(result)       
+    return result    
 
 
 def get_parser():
@@ -435,12 +361,14 @@ if __name__ == "__main__":
             if not result[1]:
 
                 crit_info = crit(args, length, case, operation_history)
-                average_crit_path = f"{args.result_directory}/average_critique.csv"
-                for crit_ in crit_info:
-                    crit_res = (case_path,) + crit_
-                    with open(average_crit_path, "a", newline="") as f:
-                        writer = csv.writer(f)
-                        writer.writerow(crit_res)
+                average_crit_path = f"{args.result_directory}/final_critique.csv"
+                with open(average_crit_path, "a", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(crit_info)
+
+            else:
+                print("Success!")
+
 
             processed_without_exceptions += 1
 

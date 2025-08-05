@@ -656,7 +656,7 @@ def get_join_hints(
     hints = ""
     tables = load_tables(directory, source_data_name_list, len_idx_target_idx)
     target_file = os.path.join(directory, f"length{len_idx_target_idx}", "target.csv")
-    target_table = pd.read_csv(target_file)
+    target_table = pd.read_csv(target_file, low_memory=False)
     target_table = target_table.drop(target_table.columns[0], axis=1)
 
     for table_name1, table_name2 in combinations(tables, 2):

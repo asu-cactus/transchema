@@ -394,7 +394,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
                 match = pattern.search(res[0])
                 script = match.group(1).strip()
-                print(script)
+                # print(script)
                 response = execute_python(script)
                 # print(response)
                 error_str = error_str + response + "\n"
@@ -461,7 +461,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     case_accuracy_ = 0
                     score = 0
         op_hist_ = str(operation_history)
-        end_time = time.time()
+    end_time = time.time()
 
     # Only try to write the file if script was actually generated
     if script:

@@ -14,6 +14,10 @@ def powerset(s):
 
 
 def oneUp(C_km1):
+
+    if C_km1 is None:
+        return [];
+
     # Flatten list to unique values
     flat_list = list(set([item for sublist in C_km1 for item in sublist]))
 
@@ -25,6 +29,10 @@ def oneUp(C_km1):
 
 
 def oneDown(C_k):
+
+    if C_k is None:
+        return [];
+
     # Flatten list to unique values
     flat_list = list(set([item for sublist in C_k for item in sublist]))
 

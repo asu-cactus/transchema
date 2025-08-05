@@ -272,7 +272,6 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
-            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -295,7 +294,6 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
-            few_shot_examples=few_shot_examples,
         )[0]
 
     elif prompt_type == "group_by_aggregate":
@@ -321,7 +319,6 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
-            few_shot_examples=few_shot_examples,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -344,7 +341,6 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
-            few_shot_examples=few_shot_examples,
         )[0]
 
     elif prompt_type == "union":
@@ -745,10 +741,12 @@ def get_filtered_functional_dependency(df):
     # take only first 15 columns and 1000 rows to analyse functional dependencies
     df = df.sample(n=min(1000, df.shape[0]), replace=False)
     df = df.iloc[:, :15]
-    filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
-
-    if not filtered_F or not all_keys_sorted:
-        return [], {}
+    try:
+        filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
+        if not filtered_F or not all_keys_sorted:
+            return [], {}
+    except Exception as e:
+        return [], {} 
 
     # Find the key with the most dependencies
     key_dependencies = {}

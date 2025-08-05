@@ -409,9 +409,13 @@ def analyze_functional_dependencies(df, max_k_level=25):
         k += 1
         C_km1 = C[k - 1]
         # Initialize Closure at next next k-level; update dict accordinaly
-        Closure_k = {
-            binaryRepr.toBin(Subset, U): set(Subset) for Subset in next(Subset_Gen)
-        }
+
+        try:
+            Closure_k = {
+                binaryRepr.toBin(Subset, U): set(Subset) for Subset in next(Subset_Gen)
+            }
+        except Exception as e:
+            Closure_k = {}
         Closure.update(Closure_k)
         # Update Cardinality dict with next k-level
         Cardinality.update({element: None for element in Closure_k})
@@ -434,11 +438,12 @@ def analyze_functional_dependencies(df, max_k_level=25):
         E = ObtainEquivalences.f(C_km1, F, Closure, U)
         # Run Prune to reduce next k-level iterateion and delete equivalences; initialize C_k
         C_k, Closure, df = Prune.f(C_k, E, Closure, df, U)
-        C[k] = C_k
-        # Increment counter for the number of Equivalences/FDs added at this level
-        Counter[0] += len(E)
-        Counter[1] += len(F)
-        E_Set += E
+        if (k < len(C_k)):
+            C[k] = C_k
+            # Increment counter for the number of Equivalences/FDs added at this level
+            Counter[0] += len(E)
+            Counter[1] += len(F)
+            E_Set += E
 
         # Print out FDs
         for FunctionalDependency in F:

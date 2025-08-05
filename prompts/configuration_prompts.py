@@ -8,7 +8,6 @@ def get_join_prompt(
     source_information,
     hints,
     fd_hints,
-    few_shot_examples=[],
 ):
     prompt = """
     query1
@@ -16,7 +15,6 @@ def get_join_prompt(
 
 Allowed Operations: {allowed_operation_list}.
 
-{few_shot_examples}
 
 1. Target Table Name: {target_data_name}
 2. Target Schema: {target_data_schema}
@@ -50,7 +48,6 @@ Hint : {hints}
         source_information=source_information,
         hints="",
         fd_hints=fd_hints,
-        few_shot_examples=few_shot_examples[0],
     )
     return [prompt]
 
@@ -65,14 +62,12 @@ def get_group_by_aggregate_prompt(
     source_information,
     hints,
     fd_hints,
-    few_shot_examples=[],
 ):
     prompt = """
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "1. Which columns should be used for Group By operation? 2. Which columns should be Aggregated? 3.Which Aggregation functions should be used?". Take this decision based on "Operation History", few-shot-examples, "Source" and "Target" (table schema as well as the examples) information.
 
 Allowed Operations: {allowed_operation_list}.
 
-{few_shot_examples}
 
 1. Target Table Name: {target_data_name}
 2. Target Schema: {target_data_schema}
@@ -103,7 +98,6 @@ Hint : {hints}
         source_information=source_information,
         hints="",
         fd_hints=fd_hints,
-        few_shot_examples=few_shot_examples[0],
     )
     return [prompt]
 
@@ -116,7 +110,6 @@ def get_union_prompt(
     target_samples,
     file_count,
     source_information,
-    few_shot_examples=[],
 ):
     prompt = """
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be Union-ed?". Take this decision based on "Operation History",few shot examples, "Source" and "Target" (table schema as well as the examples) information.
@@ -145,6 +138,5 @@ Note: The row examples provided are part of the corresponding rows.
         target_data_schema=target_data_schema,
         target_samples=target_samples,
         source_information=source_information,
-        few_shot_examples=few_shot_examples[0],
     )
     return [prompt]
