@@ -321,33 +321,13 @@ def verify_result(target_file_location, ground_truth_location, config):
     print(log_str)
     logger.info(log_str)
 
-    try:
-        soft_avg_similarity, soft_is_correct, soft_similarity_scores = (
-            compare_lists_matching_soft(df_ground_truth, df_our_response)
-        )
-    except Exception as e:
-        soft_avg_similarity = 0.0
-        soft_is_correct = False
-        soft_similarity_scores = []
-
-        log_str = "Soft comparison failed, " + str(e)
-        print(log_str)
-        logger.info(log_str)
-    log_str = f"Soft comparison, {config['task']=}, {soft_avg_similarity=},  {soft_is_correct=}, {soft_similarity_scores=}"
-    print(log_str)
-    logger.info(log_str)
 
     hard_match_result = {
         "avg_similarity": hard_avg_similarity,
         "is_correct": hard_is_correct,
         "similarity_scores": hard_similarity_scores,
     }
-    soft_match_result = {
-        "avg_similarity": soft_avg_similarity,
-        "is_correct": soft_is_correct,
-        "similarity_scores": soft_similarity_scores,
-    }
-    return hard_match_result, soft_match_result
+    return hard_match_result
 
 
 #################################################################################################################################
@@ -402,6 +382,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     (
         target_data_name,
         target_data_schema,
+        target_data_schema_with_types,
         target_samples,
         file_count,
         source_data_name_list,
@@ -487,7 +468,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
         source_data_name_list.append(intermediate_filename)
 
-        hard_match_result, soft_match_result = verify_result(
+        hard_match_result = verify_result(
             save_path,
             f"{main_folder}/length{len_idx_target_idx}/target.csv",
             config,
@@ -496,8 +477,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
             end_time = time.time()
             ms_info = (
                 hard_match_result["is_correct"],
-                soft_match_result["is_correct"],
-                soft_match_result["avg_similarity"],
                 token_tracker.cost_summary().get(
                     "total_cost", 0.0
                 ),  # Use the extracted total_cost value
@@ -509,7 +488,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
             return ms_info
 
     # Do the final verification
-    hard_match_result, soft_match_result = verify_result(
+    hard_match_result = verify_result(
         save_path, f"{main_folder}/length{len_idx_target_idx}/target.csv", config
     )
 
@@ -519,8 +498,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     total_cost = cost_data.get("total_cost", 0.0)
     ms_info = (
         hard_match_result["is_correct"],
-        soft_match_result["is_correct"],
-        soft_match_result["avg_similarity"],
         total_cost,  # Use the extracted total_cost value
         time_elapsed,
         0,

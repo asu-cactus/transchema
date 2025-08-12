@@ -22,12 +22,12 @@ def compare_columns(pred_column, gold_column):
     print("num matches:", matches)
     total = len(pred_column)
     print("total:", total)
-    print("non-matching tuples:")
-    for p, g in zip(pred_column, gold_column):
-        if are_elements_equal(p, g) == False:
-           print(p)
-           print(g)
-           print("\n")
+    #print("non-matching tuples:")
+    #for p, g in zip(pred_column, gold_column):
+        #if are_elements_equal(p, g) == False:
+         #  print(p)
+          # print(g)
+           #print("\n")
     return matches / total if total > 0 else 0
 
 
@@ -41,16 +41,16 @@ def compare_numerical_columns(pred_column, gold_column):
     gold_column.sort()
     
     # Count matches
-    matches = sum(1 for p, g in zip(pred_column, gold_column) if p-g<0.1 or (math.isnan(p) == True and math.isnan(g) == True))
+    matches = sum(1 for p, g in zip(pred_column, gold_column) if p - g < 0.01 or (math.isnan(p) == True and math.isnan(g) == True))
     print("num matches:", matches)
     total = len(pred_column)
     print("total:", total)
     #print("non-matching tuples:")
-    for p, g in zip(pred_column, gold_column):
-        if p-g >= 0.1:
-           print(p)
-           print(g)
-           print("\n")
+    #for p, g in zip(pred_column, gold_column):
+     #   if p - g >= 0.01:
+      #     print(p)
+       #    print(g)
+        #   print("\n")
     return matches / total if total > 0 else 0
 
 
@@ -81,13 +81,17 @@ def is_column_numerically_dominant(column):
 
 def compare_lists_matching(generated_sql_df, ground_truth_df):
     #print("Sorting")
-
-    generated_sql_df = generated_sql_df.loc[
-        :, ~generated_sql_df.columns.duplicated()
-    ].copy()
+    #generated_sql_df = generated_sql_df.loc[
+     #   :, ~generated_sql_df.columns.duplicated()
+    #].copy()
+    generated_duplicate_cols = generated_sql_df.columns[generated_sql_df.columns.duplicated()]
+    generated_sql_df = generated_sql_df.drop(columns=generated_duplicate_cols)
     generated_sql_df = generated_sql_df.sort_values(by=list(generated_sql_df.columns))
+    generated_sql_df = generated_sql_df.drop_duplicates()
+    ground_truth_duplicate_cols = ground_truth_df.columns[ground_truth_df.columns.duplicated()]
+    ground_truth_df = ground_truth_df.drop(columns=ground_truth_duplicate_cols)
     ground_truth_df = ground_truth_df.sort_values(by=list(ground_truth_df.columns))
-
+    ground_truth_df = ground_truth_df.drop_duplicates()
     #print("Comparing column lengths")
 
     if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
@@ -111,7 +115,7 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         )
 
     similarities = []
-    all_mismatches = []
+    all_matches = []
 
     num_cols = len(generated_sql_df.columns)
 
@@ -137,9 +141,6 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         is_numerical = is_generated_numerical and is_gold_numerical
         print(is_numerical)
 
-        #print(pred_column)
-
-        #print(gold_column)
 
         # Use the updated compare_columns function
 
@@ -148,22 +149,19 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         else:
             column_similarity = compare_columns(pred_column, gold_column)
 
+        
+        if (column_similarity == 1):
+            all_matches.append(col)    
+
+
         similarities.append(column_similarity)
 
-        #if column_similarity < 1:
-         #   mismatches = [
-          #      {
-           #         "<col, row>": "<" + str(col) + ", " + str(i) + ">",
-            #        "pred": pred_column[i],
-             #       "gold": gold_column[i],
-              #  }
-               # for i in range(len(pred_column))
-                #if not are_elements_equal(pred_column[i], gold_column[i])
-            #]
-            #all_mismatches.append((col, mismatches))
+
     print("COLUMN SIMILARITY:")
     print(similarities)
     average_similarity = sum(similarities) / num_cols
     res = average_similarity == 1
+
     print("AVERAGE COLUMN SIMILARITY:", str(average_similarity))
-    return average_similarity, res, similarities, all_mismatches
+    return average_similarity, res, similarities, all_matches
+

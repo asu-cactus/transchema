@@ -68,10 +68,11 @@ More Instructions:
     else:
         prompt_last = f"""
 {fd_hints}
-Note: The above row examples provided are only part of the corresponding rows.
 
-- Please answer what operation you should perform next.
-- If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
+- Please answer what operation you should perform next based on "operation history", "source tables" and "target tables" information ("schema" as well as the "examples")  in one word.
+- If there are two source tables having exact same columns, give outer Union operation first priority.
+- If there are two source tables share one or a few columns, give Join operation first priority.
+- If the target examples contain two columns, with each similar to a column in a different source table. Consider using JOIN to merge these two source tables followed by projections on needed columns.
 - Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
 - You should only answer from allowed operations. 
 - If you think no more operation is needed further, please return 'NO_MORE_OPERATION'. Note that NO_MORE_OPERATION is NOT allowed when operation history is empty.

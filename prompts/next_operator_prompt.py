@@ -23,10 +23,13 @@ Operation History: {operation_history}
 
 {hints}
 
-Note: The row examples provided are part of the corresponding rows.
 
 - Please answer what operation you should perform next based on "operation history", "source tables" and "target tables" information ("schema" as well as the "examples")  in one word.
-- If there are any source tables having similar schemas, give outer Union operation first priority.
+- If any two source tables have different columns, DO NOT give the UNION operation.
+- If there are multiple source tables and the target table having exactly same columns, give Union operation first priority .
+- If there are two source tables with different schemas that share one or a few common columns, which exist in the target data, give Join operation first priority. 
+- If multiple source tables share the same schema while the target table (i.e., target examples) also share the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
+- Many data transformation pipelines contain a GROUP BY operator at the very end.
 - Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
 - If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
 - You should only answer from allowed operations.

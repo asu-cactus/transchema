@@ -119,6 +119,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         (
             target_data_name,
             target_data_schema,
+            target_data_schema_with_types,
             target_samples,
             file_count,
             source_data_name_list,
@@ -136,6 +137,8 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
         break_flag = 1
 
+
+
         while break_flag:
 
             prompt = get_prompt(
@@ -147,6 +150,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 target_data_name=target_data_name,
                 target_data_schema=target_data_schema,
                 target_samples=target_samples,
+                target_data_schema_with_types = target_data_schema_with_types,
                 file_count=file_count,
                 source_data_name_list=source_data_name_list,
                 source_data_schema_list=source_data_schema_list,
@@ -190,6 +194,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     operation_history=operation_history,
                     target_data_name=target_data_name,
                     target_data_schema=target_data_schema,
+                    target_data_schema_with_types = target_data_schema_with_types,
                     target_samples=target_samples,
                     file_count=file_count,
                     source_data_name_list=source_data_name_list,
@@ -240,6 +245,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     operation_history=operation_history,
                     target_data_name=target_data_name,
                     target_data_schema=target_data_schema,
+                    target_data_schema_with_types = target_data_schema_with_types,
                     target_samples=target_samples,
                     file_count=file_count,
                     source_data_name_list=source_data_name_list,
@@ -289,6 +295,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     operation_history=operation_history,
                     target_data_name=target_data_name,
                     target_data_schema=target_data_schema,
+                    target_data_schema_with_types = target_data_schema_with_types,
                     target_samples=target_samples,
                     file_count=file_count,
                     source_data_name_list=source_data_name_list,
@@ -362,6 +369,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     operation_history=operation_history,
                     target_data_name=target_data_name,
                     target_data_schema=target_data_schema,
+                    target_data_schema_with_types = target_data_schema_with_types,
                     target_samples=target_samples,
                     file_count=file_count,
                     source_data_name_list=source_data_name_list,
@@ -393,17 +401,19 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 )
                 pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
                 match = pattern.search(res[0])
-                script = match.group(1).strip()
-                # print(script)
-                response = execute_python(script)
-                # print(response)
-                error_str = error_str + response + "\n"
-                # #print(error_str)
-                if response == "Success":
-                    # sys.exit()
-                    break
+                try:
+                    script = match.group(1).strip()
+                    # print(script)
+                    response = execute_python(script)
+                    # print(response)
+                    error_str = error_str + response + "\n"
+                    if response == "Success":
+                       # sys.exit()
+                       break
+                except Exception as e: 
+                    print("".join(traceback.format_exc()))
+                    error_str = error_str + "No valid response from LLM.\n"       
                 script_cnt += 1
-
             if response == "Success":
                 # save file here
                 # file_name
@@ -430,35 +440,53 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     df_ground_truth.drop(
                         columns=df_ground_truth.columns[0], axis=1, inplace=True
                     )
-                    (case_accuracy_, is_correct_, similarity_scores_) = (
-                        compare_lists_matching_soft(df_ground_truth, df_our_response)
-                    )
-                    eps = 0.1
-                    if case_accuracy_ < eps:
-                        case_accuracy_ = 0
                     try:
                         (
                             case_accuracy,
                             is_correct,
                             similarity_scores,
-                            validation_error,
+                            shared_columns,
                         ) = compare_lists_matching(df_our_response, df_ground_truth)
                         """
                         print(
-                            case_accuracy, is_correct, similarity_scores, validation_error
+                            case_accuracy, is_correct, similarity_scores, shared_columns
                         )
                         """
+                        if (is_correct==False and len(shared_columns)>0 and len(df_our_response)==len(df_ground_truth)):
+                            print("TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:") 
+                            sorted_df_our_response = df_our_response.sort_values(by=shared_columns[0])
+                            sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns[0])
+                            new_header_our_response = []
+                            for col in sorted_df_our_response.columns: 
+                                first_three_values = sorted_df_our_response[col].head(3).astype(str)
+                                concatenated_header = "-".join(first_three_values)
+                                new_header_our_response.append(concatenated_header)
+                            sorted_df_our_response.columns=new_header_our_response
+                            new_header_ground_truth = []
+                            for col in sorted_df_ground_truth.columns:           
+                                first_three_values = sorted_df_ground_truth[col].head(3).astype(str)
+                                concatenated_header = "-".join(first_three_values)
+                                new_header_ground_truth.append(concatenated_header)
+                            sorted_df_ground_truth.columns=new_header_ground_truth
+                            print("OUR RESPONSE:")
+                            print(sorted_df_our_response)
+                            print("GROUND TRUTH:")
+                            print(sorted_df_ground_truth) 
+                            (
+                                case_accuracy,
+                                is_correct,
+                                similarity_scores,
+                                shared_columns,
+                            ) = compare_lists_matching(sorted_df_our_response, sorted_df_ground_truth)
+                        else:
+                            score = calculate_score(df_ground_truth, df_our_response)    
                     except Exception as e:
                         print("".join(traceback.format_exc()))
                         is_correct = False
-                    # calculate score
-                    score = calculate_score(df_ground_truth, df_our_response)
                 except Exception as e:
                     print("".join(traceback.format_exc()))
                     case_accuracy = 0
                     is_correct = False
-                    is_correct_ = False
-                    case_accuracy_ = 0
                     score = 0
         op_hist_ = str(operation_history)
     end_time = time.time()
@@ -474,13 +502,8 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     cost_data = token_tracker.cost_summary()  # This returns a dictionary
     total_cost = cost_data.get("total_cost", 0.0)  # Safely get total_cost with default
     time_elapsed = end_time - start_time
-    # print("++++++++++++++++++++++++++++++++++++")
-    # print(cost_data)
-    # print("++++++++++++++++++++++++++++++++++++")
     ms_info = (
         is_correct,
-        is_correct_,
-        case_accuracy_,
         total_cost,  # Use the extracted total_cost value
         time_elapsed,
         score,

@@ -289,10 +289,6 @@ def anonymize_target_data_schema(target_data_schema):
 
 def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag):
 
-    #print(json_file_path)
-
-    #print(len_id_target_id)
-
     # Read the JSON file once
     with open(json_file_path, "r") as file:
         data_list = json.load(file)
@@ -321,8 +317,9 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
     # Find and store the required data
     source_data_name_list = []
     source_data_schema_list = []
+    source_num_tuples = []
     source_samples_list = []
-    target_data_name, target_data_schema, target_samples = None, None, None
+    target_data_name, target_data_schema, target_data_schema_with_types, target_samples = None, None, None, None
 
     #print(f"FILE COUNT: {file_count}")
     for i in range(file_count):
@@ -336,6 +333,8 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
             ):  # Assuming all target data names and schemas are the same
                 target_data_name = data["Target Data Name"]
                 target_data_schema = data["Target Data Schema"]
+                if "Target Data Schema with Types" in data:
+                    target_data_schema_with_types = data["Target Data Schema with Types"]
                 #print("target_data_schema")
                 #print(target_data_schema)
                 #print("--------------------------------")
@@ -352,6 +351,7 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
     return (
         target_data_name,
         target_data_schema,
+        target_data_schema_with_types,
         target_samples,
         file_count,
         source_data_name_list,

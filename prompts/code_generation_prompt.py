@@ -18,7 +18,6 @@ def get_python_script_deprecated(
     2. Target Schema: {target_data_schema}
     3. Target Examples: {target_samples}
     4. Multi Source Information: {source_information_with_location}
-
     5. Write the result to this path {save_path}
 
     Transformation Plan:
@@ -82,6 +81,12 @@ def get_python_script(
  - You may use string conversions or date conversions if needed.
  - Make sure that table generated through the script has the same column structure as target.
  - All source files have an index column which is always the first column and it should be ignored in the transformation.
+ - Please answer what operation you should perform next based on "operation history", "source tables" and "target tables" information ("schema" as well as the "examples")  in one word.
+ - If two source tables have different columns, DO NOT give the UNION operation.
+ - If there are multiple source tables and the target table having exactly same columns, give Union operation first priority .
+ - If there are two source tables with different schemas that share one or a few common columns, which exist in the target data, give Join operation first priority.
+ - If multiple source tables share the same schema while the target table (i.e., target examples) also share the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
+ - Many data transformation pipelines contain a GROUP BY operator at the very end. GROUP BY attribute(s) are usually NOT of float types and it/they often correspond(s) to the columns that have all distinct (unique) values in the target examples. These columns are usually at the leftmost part of the target schema.
 
   Python Script:
  - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
@@ -153,7 +158,8 @@ The intermediate results of the past operations are saved in the following locat
  - You may use string conversions or date conversions if needed.
  - Make sure that table generated through the script has the same column structure as target.
  - All source files have an index column which is always the first column and it should be ignored in the transformation.
-
+ - NEVER UNION (concat) two source tables that do not have exactly the same schemas.
+ - Only concat two source tables that have exactly the same schemas without renaming any columns.
 
   Python Script:
  - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.

@@ -29,11 +29,11 @@ Hint : {hints}
 {fd_hints}
 
 
-- The few shot examples have the examples with similar schema and how their cases were handled with some explanations. 
-    Few Shot Examples include Target Schema, Target Examples, Source Schema, Source Examples, and corresponding CORRECT OPERATION HISTORY used to convert Source Tables to Target. Use them in your decision process as well. Learn from the target patterns and operation history of the few shot examples and make right decisions for given question.
 - Please answer which tables should be joined and at which columns that hasn't appeared yet in "operation history".
+- Usually tables will be joined on shared columns. In some popular cases, the shared column(s) is/are the primary key of each table to be joined. In some other popular cases, the shared column(s) is/are the primary key of one table to be joined and the foreign key of the other table to be joined.
 - You should only answer from available columns of the source tables.
 - Only return two tables that should be joined and on which columns.
+- Choose tables that contain columns similar to columns in the target tables to be joined.
 - The final answer should be in format of list.
 - The first element of list should be the list of two tables that should be joined.
 - The next elements should be list of two columns on which the join should be perfomed.
@@ -81,10 +81,10 @@ Note: The row examples provided are part of the corresponding rows.
 Hint : {hints}
 {fd_hints}
 
-- The few shot examples have the examples with similar schema and how their cases were handled with some explanations. 
-    Few Shot Examples include Target Schema, Target Examples, Source Schema, Source Examples, and corresponding CORRECT OPERATION HISTORY used to convert Source Tables to Target. Use them in your decision process as well. Learn from the target patterns and operation history of the few shot examples and make right decisions for given question.
-- If a column is part of a group by operation, it is less likely part of an aggregation operation.
+- If a column is part of a group by operation, it will NOT be part of an aggregation operation.
 - Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used. 
+- Group By columns are never float types. These Group By columns correspond to columns that are UNIQUE and non-float in the target examples, which are usually at the leftmost part of the columns of target examples.
+- For Aggregate, give the aggregation function and aggregation column. Aggregation columns must not be included in group by columns. If many columns in the target table have similar integer values, it probably suggests a count aggregation should be used. If a column (such as X) has float values (such as 1211.2234 or 33.17) in the given target examples, while having integer values (such as 1001 or 35) in the given source tables, it suggests that an "average" aggregation should be applied to X, no matter how X is named. Importantly, this column X MUST BE EXCLUDED from the group by columns.
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.
 - The final answer should be in the following format. lists where first list should be group by columns, next list should cover aggregation function and on which columns aggregations should be performed.
@@ -124,9 +124,9 @@ Allowed Operations: {allowed_operation_list}.
 
 Note: The row examples provided are part of the corresponding rows.
 
-- The few shot examples have the examples with similar schema and how their cases were handled with some explanations. 
-    Few Shot Examples include Target Schema, Target Examples, Source Schema, Source Examples, and corresponding CORRECT OPERATION HISTORY used to convert Source Tables to Target. Use them in your decision process as well. Learn from the target patterns and operation history of the few shot examples and make right decisions for given question.
 - Please answer which tables should be unioned.
+- Apply UNION to tables that have exactly the same schema without renaming columns.
+- Choose tables having exactly the same schema to union.
 - Try not to repeat operation and it's configuration. i.e. Union on tables should only appear once in "Operation History".
 - You should only answer from available tables of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.
