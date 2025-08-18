@@ -123,7 +123,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
            result_path = get_result_path(args, main_folder, len_idx_target_idx)
            query = replace_result_info(query, num_target_samples, result_path)
     except Exception as e:
-       query = query.replace("$NUM_TUPLES$", 0)
+       query = query.replace("$NUM_TUPLES$", "Last python script failed to produce any output.")
 
     if fd == 1:
         df_ground_truth_fd = df_ground_truth.sample(

@@ -91,14 +91,15 @@ def get_operation_and_configuration(res):
     else:
         print(f"Last line:\n{last_line}")
         return None, "none"
-    assert (
-        operation in allowed_operation_list
-    ), f"Operation not in allowed list: {operation}"
+    #assert (
+     #   operation in allowed_operation_list
+    #), f"Operation not in allowed list: {operation}"
     return operation, configuration
 
 
 def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
 
+    #print("Get Operator-"+str(nth_intermediate_step))
     prompt = get_prompt(
         prompt_type="get_next_operator",
         max_tokens=args.token_limit,
@@ -106,7 +107,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         allowed_operation_list=allowed_operation_list,
         operation_history=operation_history,
         target_data_name=config["target_data_name"],
-        target_data_schema=config["target_data_schema"],
+        target_data_schema=config["target_data_schema_with_types"],
         target_samples=config["target_samples"],
         file_count=config["file_count"],
         source_data_name_list=config["source_data_name_list"],
@@ -124,10 +125,14 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         no_thinking=args.no_thinking,
     )
 
+
+    #print("Prompt is" + prompt)
+
     operation = None
     max_tries = 5
     while operation is None and max_tries > 0:
         max_tries -= 1
+
 
         res = query_gpt(
             llm_client,
@@ -140,12 +145,15 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             type="Ask For Operator",
         )[0]
 
+        #print("Response is"+res)
+
         if not args.combine_ask_and_configure:
             operation = get_operation(res)
+            print(operation)
             if operation in allowed_operation_list:
                 return operation, None
             else:
-                print(operation)
+                #print(operation)
                 return operation, None
         else:
             operation, configuration = get_operation_and_configuration(res)
@@ -155,6 +163,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             if configuration.lower() == "none":
                 configuration = None
             return operation, configuration
+
     if max_tries == 0:
         raise Exception(f"Failed to get operation after 5 tries. Last response:\n{res}")
 
@@ -173,7 +182,7 @@ def configure_operator(
             "UNION": "Configure Union",
             "GROUP_BY/AGGREGATE": "Configure Group by/Aggergate",
         }
-
+        print("To configure operator")
         prompt = get_prompt(
             prompt_type=prompt_type_mapping[operation],
             max_tokens=args.token_limit,
@@ -181,7 +190,7 @@ def configure_operator(
             allowed_operation_list=allowed_operation_list,
             operation_history=operation_history,
             target_data_name=config["target_data_name"],
-            target_data_schema=config["target_data_schema"],
+            target_data_schema=config["target_data_schema_with_types"],
             target_samples=config["target_samples"],
             file_count=config["file_count"],
             source_data_name_list=config["source_data_name_list"],
@@ -191,12 +200,15 @@ def configure_operator(
             target_perc=args.target_per,
             is_perc=args.is_perc,
             target_length=args.target_length,
+            source_length=args.source_length,
             join_flag=args.join_flag,
             join_hints_truncate=args.join_hints_truncate,
             fd_flag=args.fd_flag,
             hint_source=args.hint_source,
             nth_intermediate_step=nth_intermediate_step,
         )
+
+        print("To query GPT")
 
         res = query_gpt(
             config["llm_client"],
@@ -208,10 +220,14 @@ def configure_operator(
             config["token_tracker"],
             type=query_gpt_type_mappping[operation],
         )
+
+        print(res)
+
     else:
         return
 
     if operation == "JOIN":
+        print("get_columns_join")
         joined_columns = get_columns_join(res[0])
         operation_history.append(f"{operation} : {joined_columns}")
     elif operation == "GROUP_BY/AGGREGATE":
@@ -238,7 +254,7 @@ def materialize_chatgpt(
             allowed_operation_list=allowed_operation_list,
             operation_history=operation_history,
             target_data_name=config["target_data_name"],
-            target_data_schema=config["target_data_schema"],
+            target_data_schema=config["target_data_schema_with_types"],
             target_samples=config["target_samples"],
             file_count=config["file_count"],
             source_data_name_list=config["source_data_name_list"],
@@ -248,6 +264,7 @@ def materialize_chatgpt(
             target_perc=args.target_per,
             is_perc=args.is_perc,
             target_length=args.target_length,
+            source_length=args.source_length,
             error_string=error_str,
             fd_flag=args.fd_flag,
             hint_source=args.hint_source,
@@ -266,6 +283,10 @@ def materialize_chatgpt(
             type="Get Python Script",
         )[0]
 
+        #print(res)
+        #res = res[0]
+        #print("+++")
+        #print(res)
         pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
         match = pattern.search(res)
         script = match.group(1).strip()
@@ -408,12 +429,17 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["len_idx_target_idx"] = len_idx_target_idx
     config["target_data_name"] = target_data_name
     config["target_data_schema"] = target_data_schema
+    if (target_data_schema_with_types):
+        config["target_data_schema_with_types"] = target_data_schema_with_types
+    else:
+        config["target_data_schema_with_types"] = target_data_schema
     config["target_samples"] = target_samples
     config["file_count"] = file_count
     config["source_data_name_list"] = source_data_name_list
     config["source_data_schema_list"] = source_data_schema_list
     config["source_samples_list"] = source_samples_list
     config["main_folder"] = main_folder
+    config["source_space_dir"] = source_space_dir
     config["path_to_files"] = path_to_files
     config["task"] = task
 
@@ -421,37 +447,39 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     max_operations = 9
     for nth_intermediate_step in range(1, max_operations + 1):
-
-        # Get the operation
-        operation, configuration = get_operator(
-            llm_client, operation_history, nth_intermediate_step, args, config
-        )
-
-        if operation == "NO_MORE_OPERATION":
-            print("No More Operation")
-            logger.info("No More Operation")
-            break
-
-        # Configure the operation
-        if configuration is not None:
-            operation_history.append(f"{operation} : {configuration}")
-        else:
-            configure_operator(
-                llm_client,
-                operation,
-                operation_history,
-                nth_intermediate_step,
-                args,
-                config,
-            )
-        print(operation_history)
-
-        # Materialize the operation
-        save_dir = f"{source_space_dir}/length{len_idx_target_idx}"
-        intermediate_filename = f"intermediate_step{nth_intermediate_step}"
-        save_path = f"{save_dir}/{intermediate_filename}.csv"
-
+        #print("**Step-" + str(nth_intermediate_step))
         try:
+            # Get the operation
+            operation, configuration = get_operator(
+                llm_client, operation_history, nth_intermediate_step, args, config
+            )
+
+            #print("Next Operator:"+operation)
+
+            if operation == "NO_MORE_OPERATION":
+                #print("No More Operation")
+                logger.info("No More Operation")
+                break
+
+            # Configure the operation
+            if configuration is not None:
+                operation_history.append(f"{operation} : {configuration}")
+            else:
+                configure_operator(
+                    llm_client,
+                    operation,
+                    operation_history,
+                    nth_intermediate_step,
+                    args,
+                    config,
+                )
+            print(operation_history)
+
+            # Materialize the operation
+            save_dir = f"{source_space_dir}/length{len_idx_target_idx}"
+            intermediate_filename = f"intermediate_step{nth_intermediate_step}"
+            save_path = f"{save_dir}/{intermediate_filename}.csv"
+
             materialize_chatgpt(
                 operation_history, save_dir, nth_intermediate_step, args, config
             )

@@ -18,7 +18,7 @@ Operation History: {operation_history}
 1. Target Table Name: {target_data_name}
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
-4. Multi Source Information: {source_information}
+4. Source Information: {source_information}
 {fd_hints}
 
 {hints}

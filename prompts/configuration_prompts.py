@@ -11,7 +11,7 @@ def get_join_prompt(
 ):
     prompt = """
     query1
-    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be joined and at which columns?". Take this decision based on "Operation History", few-shot examples, "Source" and "Target" (table schema as well as the examples) information.
+    You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be joined and at which columns?". Take this decision based on "Operation History", "Source" and "Target" (table schema as well as the examples) information.
 
 Allowed Operations: {allowed_operation_list}.
 
@@ -22,7 +22,6 @@ Allowed Operations: {allowed_operation_list}.
 4. Multi Source Information: {source_information}
 5. Operation History: {operation_history}
 
-Note: The row examples provided are part of the corresponding rows.
 
 -You may use the hint in your decision making process.
 Hint : {hints}
@@ -75,16 +74,16 @@ Allowed Operations: {allowed_operation_list}.
 4. Multi Source Information: {source_information}
 5. Operation History: {operation_history}
 
-Note: The row examples provided are part of the corresponding rows.
 
 -You may use the hint in your decision making process.
 Hint : {hints}
 {fd_hints}
 
-- If a column is part of a group by operation, it will NOT be part of an aggregation operation.
 - Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used. 
-- Group By columns are never float types. These Group By columns correspond to columns that are UNIQUE and non-float in the target examples, which are usually at the leftmost part of the columns of target examples.
-- For Aggregate, give the aggregation function and aggregation column. Aggregation columns must not be included in group by columns. If many columns in the target table have similar integer values, it probably suggests a count aggregation should be used. If a column (such as X) has float values (such as 1211.2234 or 33.17) in the given target examples, while having integer values (such as 1001 or 35) in the given source tables, it suggests that an "average" aggregation should be applied to X, no matter how X is named. Importantly, this column X MUST BE EXCLUDED from the group by columns.
+- GroupBy columns should NEVER have float types in the given target examples. These GroupBy columns always contain UNIQUE and integer or string values in the given target examples. GroupBy columns are usually at the leftmost part of the columns of target examples.
+- If a column is part of a group by operation, it will NOT be part of an aggregation operation.
+- If many columns in the target table have similar integer values, it probably suggests a count aggregation should be used. 
+- If a column (such as user_id or age) has float values (such as 1211.2234 or 33.17) in the given target examples, while having integer values (such as 1001 or 35) in the given source tables, it suggests that an "average" aggregation should be applied to the column, no matter whether the column sounds like an ID. Importantly, this column MUST BE EXCLUDED from the GroupBy columns.
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.
 - The final answer should be in the following format. lists where first list should be group by columns, next list should cover aggregation function and on which columns aggregations should be performed.
@@ -122,7 +121,6 @@ Allowed Operations: {allowed_operation_list}.
 4. Multi Source Information: {source_information}
 5. Operation History: {operation_history}
 
-Note: The row examples provided are part of the corresponding rows.
 
 - Please answer which tables should be unioned.
 - Apply UNION to tables that have exactly the same schema without renaming columns.

@@ -28,7 +28,6 @@ def get_python_script_deprecated(
  - You may use more operations, but the ones in "Operations History" should always be covered and in that sequence.
  - You may use string conversions or date conversions if needed.
  - Make sure that table generated through the script has the same column structure as target.
- - All source files have an index column which is always the first column and it should be ignored in the transformation.
  - Please add less comments to save tokens.
 
   Python Script:
@@ -73,24 +72,27 @@ def get_python_script(
     1. Target Table Name: {target_data_name}
     2. Target Schema: {target_data_schema}
     3. Target Examples: {target_samples}
-    4. Multi Source Information: {source_information_with_location}
+    4. Source Information: {source_information_with_location}
 
     5. Write the result to this path {save_path}
 
     Transformation Plan:
  - You may use string conversions or date conversions if needed.
  - Make sure that table generated through the script has the same column structure as target.
- - All source files have an index column which is always the first column and it should be ignored in the transformation.
  - Please answer what operation you should perform next based on "operation history", "source tables" and "target tables" information ("schema" as well as the "examples")  in one word.
  - If two source tables have different columns, DO NOT give the UNION operation.
  - If there are multiple source tables and the target table having exactly same columns, give Union operation first priority .
  - If there are two source tables with different schemas that share one or a few common columns, which exist in the target data, give Join operation first priority.
  - If multiple source tables share the same schema while the target table (i.e., target examples) also share the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
- - Many data transformation pipelines contain a GROUP BY operator at the very end. GROUP BY attribute(s) are usually NOT of float types and it/they often correspond(s) to the columns that have all distinct (unique) values in the target examples. These columns are usually at the leftmost part of the target schema.
+ - Many data transformation pipelines contain a GROUP BY operator at the very end. GROUP BY attribute(s) is(are) never of float types and it(they) often correspond(s) to the column(s) that has (have) all distinct/unique values in the target examples. These columns are usually at the leftmost part of the target schema. If you found a column in the target examples contain float values, do not include the column as GROUP BY attribute.
+ - If a column is of the integer type in one of the source tables, but the same column has float values in the target tables, an average aggregation should be applied to the column and the column should NOT be considered as GROUP BY attribute. 
+ - All source files have an index column which is always the first column and it should be ignored in the transformation.
+ - Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
 
   Python Script:
- - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
+ - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that will be used.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
+ - Please do not use source files that are not mentioned in this prompt.
  Please quote the Python script between one single "```Python" and "```".
 
  Errors in previous Attempts : {error_string}
@@ -123,9 +125,9 @@ def get_python_script_with_intermediate_materialization(
     error_string,
     all_intermediate_results,
 ):
-    assert len(all_intermediate_results) + 1 == len(
-        operation_history
-    ), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
+    #assert len(all_intermediate_results) + 1 == len(
+     #   operation_history
+    #), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
     past_operations = operation_history[:-1] if len(operation_history) > 1 else []
     next_operation = operation_history[-1]
 
@@ -135,18 +137,20 @@ The code should immediately executable in a correct way, which means it should N
     1. Target Table Name: {target_data_name}
     2. Target Schema: {target_data_schema}
     3. Target Examples: {target_samples}
-    4. Multi Source Information: {source_information_with_location}
+    4. Source Information: {source_information_with_location}
     5. Write the result to this path {save_path}
 
 Past operations: {past_operations}
 Next Operation : {next_operation}
 
-The intermediate results of the past operations are saved in the following locations:
-"""
+The intermediate results of the past operations are as follows:
 
+"""
     subprompts_middle = [
-        f"{op}. File location: {res.file_path}"
-        for op, res in zip(past_operations, all_intermediate_results)
+        f"After the {i}st/nd/rd/th operation {op}, the intermediate table 'intermediate_step{i}' is stored in {interm.file_path}.\nThe intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}"
+        for i, (interm, op) in enumerate(
+            zip(all_intermediate_results, operation_history), start=1
+        )
     ]
     prompt_middle = "\n".join(subprompts_middle)
 
@@ -157,13 +161,20 @@ The intermediate results of the past operations are saved in the following locat
  - You should use the intermediate results of the past operations as the source tables whenever it is possible.
  - You may use string conversions or date conversions if needed.
  - Make sure that table generated through the script has the same column structure as target.
- - All source files have an index column which is always the first column and it should be ignored in the transformation.
- - NEVER UNION (concat) two source tables that do not have exactly the same schemas.
- - Only concat two source tables that have exactly the same schemas without renaming any columns.
+ - If two source tables have different columns, DO NOT give the UNION operation.
+ - If there are multiple source tables and the target table having exactly same columns, give Union operation first priority .
+ - If there are two source tables with different schemas that share one or a few common columns, which exist in the target data, give Join operation first priority.
+ - If multiple source tables share the same schema while the target table (i.e., target examples) also share the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
+ - Many data transformation pipelines contain a GROUP BY operator at the very end. GROUP BY attribute(s) is(are) never of float types and it(they) often correspond(s) to the column(s) that has (have) all distinct/unique values in the target examples. These columns are usually at the leftmost part of the target schema. If you found a column in the target examples contain float values,
+do not include the column as GROUP BY attribute.
+ - If a column is of the integer type in one of the source tables, but the same column has float values in the target tables, an average aggregation should be applied to the column and the column should NOT be considered as GROUP BY attribute.
+ - All source files (excluding intermediate files) have an index column which is always the first column and it should be ignored in the transformation.
+ - Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples. 
 
   Python Script:
- - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
+ - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that should be used.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
+ - Please do not use source files that are not mentioned in this prompt.
  Please quote the Python script between one single "```Python" and "```".
 
   Errors in previous Attempts : {error_string}

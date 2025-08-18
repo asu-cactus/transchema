@@ -97,6 +97,7 @@ def get_prompt(
         # Get the intermediate results only if nth_intermediate_step > 1 because at the 1st step won't
         # have intermediate results
         intermediate_dir = f"{directory}/length{len_idx_target_idx}/"
+        #print(intermediate_dir)
         all_intermediate_results = get_all_intermediate(
             intermediate_dir, encoding, source_length, nth_intermediate_step
         )
@@ -111,6 +112,8 @@ def get_prompt(
         max_tokens,
         encoding,
     )
+
+    #print("source_information: "+source_information)
 
     # read few shot examples
     few_shot_examples = [""]
@@ -157,22 +160,29 @@ def get_prompt(
 
 
     if prompt_type == "get_next_operator":
-        hints = get_hints(
-            "get_next_operator",
-            hint_source,
-            target_data_schema,
-            file_count,
-            source_data_name_list,
-            source_data_schema_list,
-            directory,
-            len_idx_target_idx,
-            0,
-            [],
-        )
+ 
+        #print("To get hints")
+
+        #hints = get_hints(
+         #   "get_next_operator",
+          #  hint_source,
+          # target_data_schema,
+          #  file_count,
+          #  source_data_name_list,
+          #  source_data_schema_list,
+          #  directory,
+          #  len_idx_target_idx,
+          #  0,
+          #  [],
+        #)
+
+        #print("Hints received")
+
+        hints = [""]
 
         if target_data_schema_with_types:
              target_data_schema = target_data_schema_with_types;
-             print(target_data_schema)
+             #print(target_data_schema)
 
 
         if few_shot == 1:
@@ -212,6 +222,8 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )
+
+        #print("Target Examples: "+target_samples)
 
         if nth_intermediate_step > 0:
             prompt = get_next_operator_prompt_with_intermediate_materialization(
@@ -260,18 +272,20 @@ def get_prompt(
         # print(str(len(encoding.encode(prompt))))
 
     elif prompt_type == "join":
-        hints = get_hints(
-            "join",
-            hint_source,
-            target_data_schema,
-            file_count,
-            source_data_name_list,
-            source_data_schema_list,
-            directory,
-            len_idx_target_idx,
-            join_flag,
-            join_hints_truncate,
-        )
+        print("get hints")
+        hints = ""
+#get_hints(
+ #           "join",
+  #          hint_source,
+   #         target_data_schema,
+    #        file_count,
+     #       source_data_name_list,
+      #      source_data_schema_list,
+       #     directory,
+        #    len_idx_target_idx,
+         #   join_flag,
+          #  join_hints_truncate,
+        #)
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types;
@@ -327,7 +341,7 @@ def get_prompt(
 
         if target_data_schema_with_types:
              target_data_schema = target_data_schema_with_types;
-             print(target_data_schema)
+             #print(target_data_schema)
 
         static_prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
@@ -367,7 +381,7 @@ def get_prompt(
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types;
-            print(target_data_schema)
+            #print(target_data_schema)
 
         static_prompt = get_union_prompt(
             allowed_operation_list,
@@ -644,13 +658,13 @@ class IntermediateResult:
 def get_all_intermediate(
     intermediate_dir, encoding, sample_length, nth_intermediate_step
 ):
-    def get_intermediate(file_path, numTokens, encoding, sample_length):
+    def get_intermediate(file_path, encoding, sample_length):
         source_df = pd.read_csv(file_path, low_memory=False)
         source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
-        source_samples_string = get_target_string(
-            source_df_sampled, numTokens, encoding
-        )  # -1000 buffer for good measures # for now no limit on max_tokens for source
-
+        #source_samples_string = get_target_string(
+         #   source_df_sampled, numTokens, encoding
+        #)  i# -1000 buffer for good measures # for now no limit on max_tokens for source
+        source_samples_string = str(source_df_sampled)
         schema = source_df.columns.tolist()
         return IntermediateResult(schema, source_samples_string, str(file_path))
 
