@@ -17,39 +17,43 @@ def convert_excel_to_json(excel_file_path, json_file_path):
     columns_to_include = [
         "Target Data Name",
         "Target Data Schema",
+        "Target Data Schema with Types",
         "Target Data Sample",
         "Source Data Name",
         "Source Data Schema",
-        "3 Samples of Source Data"
+        "Source Data Schema with Types",
+        "3 Samples of Source Data",
     ]
 
-    # Read the specified columns from the first sheet
-    data_to_convert = pd.read_excel(xls, sheet_name='Non_Join', usecols=columns_to_include)
+    # Read the specified columns from the Non_Join sheet
+    data_to_convert = pd.read_excel(xls, sheet_name="Join", usecols=columns_to_include)
 
-    # Fill missing values in the specified columns by forward filling
-    columns_to_fill = ["Target Data Name", "Target Data Schema", "Target Data Sample"]
+    # Fill missing values for target-related columns
+    columns_to_fill = [
+        "Target Data Name",
+        "Target Data Schema",
+        "Target Data Schema with Types",
+        "Target Data Sample",
+    ]
     data_to_convert[columns_to_fill] = data_to_convert[columns_to_fill].ffill()
 
-    # Create a list to store the dictionaries
-    json_data = []
+    # Convert rows to dict
+    json_data = [row.to_dict() for _, row in data_to_convert.iterrows()]
 
-    # Iterate through each row and append to the list
-    for _, row in data_to_convert.iterrows():
-        json_data.append(row.to_dict())
+    # Save to JSON
+    with open(json_file_path, "w", encoding="utf-8") as json_file:
+        json.dump(
+            json_data, json_file, indent=4, default=convert_datetime, ensure_ascii=False
+        )
 
-    # Open the JSON file for writing
-    with open(json_file_path, 'w') as json_file:
-        json_data = [row.to_dict() for _, row in data_to_convert.iterrows()]
-        json_file.write(json.dumps(json_data, indent=4, default=convert_datetime))
-
-    print(f"JSON file has been saved to {json_file_path}")
+    print(f"✅ JSON file has been saved to {json_file_path}")
 
 
 # Path to the Excel file
-excel_file_path = 'D:/transchema\github-pipelines\output.xlsx'
+excel_file_path = r"/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/output.xlsx"
 
 # Path to save the JSON file
-json_file_path = '../data/chatgpt_github_ss.json'
+json_file_path = "/home/local/ASUAD/jrtandel/transchema/data/chatgpt_github_ms.json"
 
-# Call the function to perform the conversion
+# Run conversion
 convert_excel_to_json(excel_file_path, json_file_path)
