@@ -320,6 +320,7 @@ def verify_result(target_file_location, ground_truth_location, config):
     logger = config["logger"]
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
+    #if (is_column_numerical(df_ground_truth.columns[0])):
     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
     try:
         (
@@ -440,7 +441,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["source_samples_list"] = source_samples_list
     config["main_folder"] = main_folder
     config["source_space_dir"] = source_space_dir
-    config["path_to_files"] = path_to_files
     config["task"] = task
 
     # materialization_criteria = MaterializationCriteria()

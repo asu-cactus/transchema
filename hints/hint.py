@@ -8,6 +8,8 @@ import hints.hint_v3 as h3
 
 def get_hints(prompt_type, hint_source,target_data_schema, file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, hint_flag, hints_truncate) :
     hints = []
+    if(hint_source.startswith("none")):
+        return hints
     if(hint_source.startswith("v1")) : 
         if(prompt_type == "join") :
             hints = h.get_join_hints(hint_source,file_count,source_data_name_list,source_data_schema_list,directory,len_idx_target_idx, hint_flag, hints_truncate)

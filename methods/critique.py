@@ -116,6 +116,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     )
     try:
        df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
+       #if (is_column_numerical(df_ground_truth.columns[0])):
        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
        query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
        if args.critique_type == "history":
@@ -206,7 +207,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             is_correct,
             similarity_scores,
             shared_columns,
-        ) = compare_lists_matching(df_ground_truth, df_critique)
+        ) = compare_lists_matching(df_critique, df_ground_truth)
         if (is_correct==False and len(shared_columns)>0 and len(df_ground_truth)==len(df_critique)):
             print("TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:")
             sorted_df_critique = df_critique.sort_values(by=shared_columns[0])

@@ -173,7 +173,7 @@ def get_parser():
     parser.add_argument(
         "--hint-source",
         type=str,
-        default="v3",
+        default="none",
         choices=["v1_kv", "v1_text", "v2", "v3"],
         help="Hint source selection",
     )

@@ -10,6 +10,7 @@ from datetime import datetime
 from util.utils import get_test_info
 from test_scope import get_test_cases_ids
 from hints.hint import get_hints
+from validation.hard_match import is_column_numerical
 
 # import auto_suggest_llm_prompts as prt
 import tiktoken
@@ -58,7 +59,7 @@ def get_prompt(
     aggregate_hints_truncate=[],
     fd_flag=0,
     model="gpt-4.1-mini",
-    hint_source="v1",
+    hint_source="none",
     save_path="",
     nth_intermediate_step=0,
     combine_ask_and_configure=False,
@@ -161,20 +162,18 @@ def get_prompt(
 
     if prompt_type == "get_next_operator":
  
-        #print("To get hints")
-
-        #hints = get_hints(
-         #   "get_next_operator",
-          #  hint_source,
-          # target_data_schema,
-          #  file_count,
-          #  source_data_name_list,
-          #  source_data_schema_list,
-          #  directory,
-          #  len_idx_target_idx,
-          #  0,
-          #  [],
-        #)
+        hints = get_hints(
+            "get_next_operator",
+            hint_source,
+            target_data_schema,
+            file_count,
+            source_data_name_list,
+            source_data_schema_list,
+            directory,
+            len_idx_target_idx,
+            0,
+            [],
+        )
 
         #print("Hints received")
 
@@ -274,18 +273,18 @@ def get_prompt(
     elif prompt_type == "join":
         print("get hints")
         hints = ""
-#get_hints(
- #           "join",
-  #          hint_source,
-   #         target_data_schema,
-    #        file_count,
-     #       source_data_name_list,
-      #      source_data_schema_list,
-       #     directory,
-        #    len_idx_target_idx,
-         #   join_flag,
-          #  join_hints_truncate,
-        #)
+        get_hints(
+            "join",
+            hint_source,
+            target_data_schema,
+            file_count,
+            source_data_name_list,
+            source_data_schema_list,
+            directory,
+            len_idx_target_idx,
+            join_flag,
+            join_hints_truncate,
+        )
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types;
@@ -548,6 +547,7 @@ def get_target_samples(
     # print(directory,len_idx_target_idx, target_perc,is_perc, target_length, max_tokens, static_prompt_length)
     target_csv_path = directory + "/length" + len_idx_target_idx + "/target.csv"
     target_df = pd.read_csv(target_csv_path, low_memory=False)
+    #if (is_column_numerical(target_df.columns[0])):
     target_df = target_df.drop(target_df.columns[0], axis=1)
 
     # sampling
@@ -558,11 +558,8 @@ def get_target_samples(
             n=min(target_length, target_df.shape[0]), replace=False
         )
     # print(static_prompt_length, max_tokens - static_prompt_length)
-    #num_tuples = len(target_df)
-    #target_samples_string = get_target_string(
-     #   target_df_sampled, max_tokens - static_prompt_length, encoding
-    #)  # -1000 buffer for good measures
-    target_samples_string = str(target_df_sampled)
+    num_tuples = len(target_df)
+    target_samples_string = str("There are ")+ str(num_tuples) + str(" available target examples: ") + str(target_df_sampled)
     return target_samples_string
 
 
@@ -602,6 +599,7 @@ def get_source_samples(directory, len_idx_target_idx, i, sample_length, num_toke
     # print(filename)
     # sys.exit()
     source_df = pd.read_csv(filename, low_memory=False)
+    #if (is_column_numerical(source_df.columns[0])):
     source_df = source_df.drop(source_df.columns[0], axis=1)
     num_tuples = len(source_df)
     num_tuples_string = "\t Source {index} contains {num_tuples_in_source} tuples, with examples as follows: \n".format(
@@ -922,6 +920,7 @@ def get_column_matching_hints(intermediate_df, target_df, step):
 
 def calculate_score(gt_df, tgt_df):
 
+    return 1 
     # parameters
     w1 = 1
     w2 = 1

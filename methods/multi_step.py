@@ -1,6 +1,6 @@
 import time
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import compare_lists_matching
+from validation.hard_match import is_column_numerical, compare_lists_matching
 from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
@@ -412,6 +412,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                        break
                 except Exception as e: 
                     print("".join(traceback.format_exc()))
+                    response = ""
                     error_str = error_str + "No valid response from LLM.\n"       
                 script_cnt += 1
             if response == "Success":
@@ -437,6 +438,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     df_ground_truth = pd.read_csv(
                         ground_truth_location, low_memory=False
                     )
+                    #if (is_column_numerical(df_ground_truth.columns[0])):
                     df_ground_truth.drop(
                         columns=df_ground_truth.columns[0], axis=1, inplace=True
                     )
