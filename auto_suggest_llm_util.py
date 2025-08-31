@@ -484,7 +484,7 @@ def get_prompt(
     # print(len(encoding.encode(prompt)))
     prompt_len = len(encoding.encode(prompt))
     if prompt_len > max_tokens:
-        # return ["-1"]
+        print(prompt)
         raise Exception(f"Prompt length {prompt_len} exceeds maximum tokens.")
 
     return prompt

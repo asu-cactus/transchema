@@ -10,7 +10,7 @@ from hints.hint_v3 import get_column_equivalence
 from auto_suggest_llm_util import get_source, get_target_samples, get_filtered_functional_dependency, calculate_score
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import compare_lists_matching
+from validation.hard_match import compare_lists_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
 from log_util.log_util import create_logger
 
@@ -214,14 +214,26 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns[0])
             new_header_critique = []
             for col in sorted_df_critique.columns:
-                first_three_values = sorted_df_critique[col].head(3).astype(str)
-                concatenated_header = "-".join(first_three_values)
+                if "float" in str(sorted_df_critique[col].dtype):
+                    print("is numeric")
+                    first_three_values = sorted_df_our_critique[col].head(3).astype(int)
+                else:
+                    print("is not numeric")
+                    first_three_values = sorted_df_our_critique[col].head(3)
+                print(first_three_values)
+                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
                 new_header_critique.append(concatenated_header)
             sorted_df_critique.columns=new_header_critique
             new_header_ground_truth = []
             for col in sorted_df_ground_truth.columns:
-                first_three_values = sorted_df_ground_truth[col].head(3).astype(str)
-                concatenated_header = "-".join(first_three_values)
+                if "float" in str(sorted_df_ground_truth[col].dtype):
+                    print("is numeric")
+                    first_three_values = sorted_df_ground_truth[col].head(3).astype(int)
+                else:
+                    print("is not numeric")
+                    first_three_values = sorted_df_ground_truth[col].head(3)
+                print(first_three_values)
+                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
                 new_header_ground_truth.append(concatenated_header)
             sorted_df_ground_truth.columns=new_header_ground_truth
             print("OUR RESPONSE:")

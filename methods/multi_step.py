@@ -459,15 +459,30 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                             sorted_df_our_response = df_our_response.sort_values(by=shared_columns[0])
                             sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns[0])
                             new_header_our_response = []
-                            for col in sorted_df_our_response.columns: 
-                                first_three_values = sorted_df_our_response[col].head(3).astype(str)
-                                concatenated_header = "-".join(first_three_values)
+                            for col in sorted_df_our_response.columns:
+                                if "float" in str(sorted_df_our_response[col].dtype):
+                                    print("is numeric")
+                                    first_three_values = sorted_df_our_response[col].head(3).astype(int)
+                                else: 
+                                    print("is not numeric")
+                                    first_three_values = sorted_df_our_response[col].head(3)
+                                print(first_three_values)
+                                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
+                                print(concatenated_header)
                                 new_header_our_response.append(concatenated_header)
                             sorted_df_our_response.columns=new_header_our_response
                             new_header_ground_truth = []
-                            for col in sorted_df_ground_truth.columns:           
-                                first_three_values = sorted_df_ground_truth[col].head(3).astype(str)
-                                concatenated_header = "-".join(first_three_values)
+                            for col in sorted_df_ground_truth.columns:
+                                if "float" in str(sorted_df_ground_truth[col].dtype):
+                                    print("is numeric") 
+                                    first_three_values = sorted_df_ground_truth[col].head(3).astype(int)
+                                else:           
+                                    print("is not numeric")
+                                    first_three_values = sorted_df_ground_truth[col].head(3)
+                                print(first_three_values)
+                                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
+                               
+                                print(concatenated_header)
                                 new_header_ground_truth.append(concatenated_header)
                             sorted_df_ground_truth.columns=new_header_ground_truth
                             print("OUR RESPONSE:")
