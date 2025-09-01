@@ -22,12 +22,12 @@ def compare_columns(pred_column, gold_column):
     print("num matches:", matches)
     total = len(pred_column)
     print("total:", total)
-    #print("non-matching tuples:")
+    print("non-matching tuples:")
     #for p, g in zip(pred_column, gold_column):
-        #if are_elements_equal(p, g) == False:
-         #  print(p)
-          # print(g)
-           #print("\n")
+     #   if are_elements_equal(p, g) == False:
+      #     print(p)
+       #    print(g)
+        #   print("\n")
     return matches / total if total > 0 else 0
 
 
@@ -45,12 +45,10 @@ def compare_numerical_columns(pred_column, gold_column):
     print("num matches:", matches)
     total = len(pred_column)
     print("total:", total)
-    #print("non-matching tuples:")
+    print("non-matching tuples:")
     #for p, g in zip(pred_column, gold_column):
      #   if p - g >= 0.01:
-      #     print(p)
-       #    print(g)
-        #   print("\n")
+      #      print(str(p)+"<->"+str(g)+";")
     return matches / total if total > 0 else 0
 
 
@@ -122,8 +120,8 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         return (
             0,
             False,
-            ["mismatch"],
             ["Mismatch - No columns in one or both DataFrames"],
+            [],
         )
 
     half_comparison = False
@@ -135,17 +133,16 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
             return (
                 0,
                 False,
-                ["mismatch"],
                 [
                     f"Mismatch - DataFrames lengths differ (pred:{len(generated_sql_df)} v.s. gold:{len(ground_truth_df)})"
                 ],
+                [],
             )
         else:
             half_comparison = True
 
     similarities = []
     all_matches = []
-
     num_cols = len(generated_sql_df.columns)
 
     for col in generated_sql_df.columns:

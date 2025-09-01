@@ -93,7 +93,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         query = query.replace("$SCHEMA$", target_data_schema_with_types)
     else:
         query = query.replace("$SCHEMA$", target_data_schema)
-    query = query.replace("$EXAMPLES$", target_samples[0])
+    query = query.replace("$EXAMPLES$", target_samples)
 
 
     # get source examples
@@ -116,7 +116,6 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     )
     try:
        df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
-       #if (is_column_numerical(df_ground_truth.columns[0])):
        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
        query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
        if args.critique_type == "history":
@@ -151,10 +150,13 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     cost = token_tracker.cost_summary()
     logger.info(cost)
 
-    with open(
-        main_folder + "/length" + len_idx_target_idx + "/python_recovered.py", mode="r"
-    ) as f:
-        python_code = f.read()
+    try: 
+        with open(
+            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py", mode="r"
+        ) as f:
+            python_code = f.read()
+    except Exception as e:
+        python_code = ""
     target_location_critique = (
         main_folder
         + "/length"
@@ -167,7 +169,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
     - Please keep the final output columns the same as it was in the python script given. [Strictly do not add prefix or suffix to the column names]
-    - You just need to apply the group by according to the criticizer response.
+    - You just need to apply the fix according to the criticizer response.
     - Do not use assignment operation for any column.
     Python Code : ```Python 
     {python_code}
@@ -210,30 +212,28 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         ) = compare_lists_matching(df_critique, df_ground_truth)
         if (is_correct==False and len(shared_columns)>0 and len(df_ground_truth)==len(df_critique)):
             print("TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:")
-            sorted_df_critique = df_critique.sort_values(by=shared_columns[0])
-            sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns[0])
+            sorted_df_critique = df_critique.sort_values(by=shared_columns)
+            sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns)
             new_header_critique = []
             for col in sorted_df_critique.columns:
                 if "float" in str(sorted_df_critique[col].dtype):
-                    print("is numeric")
-                    first_three_values = sorted_df_our_critique[col].head(3).astype(int)
+                    print("is float")
+                    first_three_values = sorted_df_critique[col].head(3).astype(int)
                 else:
-                    print("is not numeric")
-                    first_three_values = sorted_df_our_critique[col].head(3)
-                print(first_three_values)
-                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
+                    print("is not float")
+                    first_three_values = sorted_df_critique[col].head(3)
+                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
                 new_header_critique.append(concatenated_header)
             sorted_df_critique.columns=new_header_critique
             new_header_ground_truth = []
             for col in sorted_df_ground_truth.columns:
                 if "float" in str(sorted_df_ground_truth[col].dtype):
-                    print("is numeric")
+                    print("is float")
                     first_three_values = sorted_df_ground_truth[col].head(3).astype(int)
                 else:
-                    print("is not numeric")
+                    print("is not float")
                     first_three_values = sorted_df_ground_truth[col].head(3)
-                print(first_three_values)
-                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
+                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
                 new_header_ground_truth.append(concatenated_header)
             sorted_df_ground_truth.columns=new_header_ground_truth
             print("OUR RESPONSE:")

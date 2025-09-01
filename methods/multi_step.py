@@ -72,7 +72,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     else:
         json_file_path = "data/chatgpt_github_ss.json"
 
-    # log_dir = "logs-auto-suggest-llm-proof-bayesian"
     log_dir = log_dir_
     main_folder = "autopipeline-benchmarks/github-pipelines"
 
@@ -108,11 +107,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         start_time = time.time()
         token_tracker = TokenUsageTracker()
         cost_summary.append(token_tracker.cost_summary())
-        # #print(cost_summary)
-
         len_idx_target_idx = task[6:]
-
-        # #print(len_idx_target_idx)
 
         # Get the information of the target and source data
 
@@ -167,8 +162,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 logger.info("Token Limit Exceeded")
                 break_flag = 2
                 break
-            # print(prompt)
-            # # sys.exit()
             res = query_gpt(
                 llm_client,
                 model,
@@ -180,8 +173,8 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 type="Ask For Operator",
             )
             operation = get_operation(res[0])
+            print(operation)
 
-            # sys.exit()
             # operation = 'JOIN'
 
             if operation == "JOIN":
@@ -209,14 +202,10 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     hint_source=hint_source,
                     few_shot=few_shot,
                 )
-                # sys.exit()
                 if prompt[0] == "-1":
                     logger.info("Token Limit Exceeded")
                     break_flag = 2
                     break
-
-                # print(prompt[0])
-                # sys.exit()
 
                 res = query_gpt(
                     llm_client,
@@ -260,15 +249,12 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     hint_source=hint_source,
                     few_shot=few_shot,
                 )
-                # sys.exit()
                 if prompt[0] == "-1":
                     logger.info("Token Limit Exceeded")
                     break_flag = 2
                     break
 
                 # run llm and get group by column
-                # print(prompt[0])
-                # sys.exit()
                 res = query_gpt(
                     llm_client,
                     model,
@@ -279,7 +265,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     token_tracker,
                     type="Configure Group by/Aggergate",
                 )
-                # print(res[0])
                 # add it to the history
                 group_by_column = re.sub(r"```json\n|\n|```", "", res[0])
                 history_elements.append(res)
@@ -324,7 +309,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     token_tracker,
                     type="Configure Union",
                 )
-                # print(res[0])
                 tables_ = get_columns(res[0])
                 history_elements.append(tables_)
                 operation_history.append(operation + " : " + str(tables_))
@@ -403,12 +387,9 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 match = pattern.search(res[0])
                 try:
                     script = match.group(1).strip()
-                    # print(script)
                     response = execute_python(script)
-                    # print(response)
                     error_str = error_str + response + "\n"
                     if response == "Success":
-                       # sys.exit()
                        break
                 except Exception as e: 
                     print("".join(traceback.format_exc()))
@@ -438,7 +419,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     df_ground_truth = pd.read_csv(
                         ground_truth_location, low_memory=False
                     )
-                    #if (is_column_numerical(df_ground_truth.columns[0])):
                     df_ground_truth.drop(
                         columns=df_ground_truth.columns[0], axis=1, inplace=True
                     )
@@ -449,39 +429,31 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                             similarity_scores,
                             shared_columns,
                         ) = compare_lists_matching(df_our_response, df_ground_truth)
-                        """
-                        print(
-                            case_accuracy, is_correct, similarity_scores, shared_columns
-                        )
-                        """
                         if (is_correct==False and len(shared_columns)>0 and len(df_our_response)==len(df_ground_truth)):
                             print("TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:") 
-                            sorted_df_our_response = df_our_response.sort_values(by=shared_columns[0])
-                            sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns[0])
+                            sorted_df_our_response = df_our_response.sort_values(by=shared_columns)
+                            sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns)
                             new_header_our_response = []
                             for col in sorted_df_our_response.columns:
                                 if "float" in str(sorted_df_our_response[col].dtype):
-                                    print("is numeric")
+                                    print("is float")
                                     first_three_values = sorted_df_our_response[col].head(3).astype(int)
                                 else: 
-                                    print("is not numeric")
+                                    print("is not float")
                                     first_three_values = sorted_df_our_response[col].head(3)
-                                print(first_three_values)
-                                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
+                                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
                                 print(concatenated_header)
                                 new_header_our_response.append(concatenated_header)
                             sorted_df_our_response.columns=new_header_our_response
                             new_header_ground_truth = []
                             for col in sorted_df_ground_truth.columns:
                                 if "float" in str(sorted_df_ground_truth[col].dtype):
-                                    print("is numeric") 
+                                    print("is float") 
                                     first_three_values = sorted_df_ground_truth[col].head(3).astype(int)
                                 else:           
-                                    print("is not numeric")
+                                    print("is not float")
                                     first_three_values = sorted_df_ground_truth[col].head(3)
-                                print(first_three_values)
-                                concatenated_header = str(first_three_values[0])+"-"+str(first_three_values[1])+"-"+str(first_three_values[2])
-                               
+                                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
                                 print(concatenated_header)
                                 new_header_ground_truth.append(concatenated_header)
                             sorted_df_ground_truth.columns=new_header_ground_truth

@@ -35,7 +35,7 @@ def get_python_script_deprecated(
  - USE LESS COMMENTS IN THE SCRIPT TO SAVE TOKENS.
  - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
- Please quote the Python script between one single "```Python" and "```".
+ Again, please quote the Python script between one single "```Python" and "```".
 
  Errors in previous Attempts : {error_string}
 
@@ -68,18 +68,24 @@ def get_python_script(
     prompt = """
     You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table and STRICTLY follow the sequence of the operations mentioned in 'operation_history' list . The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way.
 
+    Transformation Plan:
+
     Operation History: {operation_history}
 
     1. Target Table Name: {target_data_name}
     2. Target Schema: {target_data_schema}
     3. Target Examples: {target_samples}
     4. Source Information: {source_information_with_location}
-
     5. Write the result to this path {save_path}
 
-    Transformation Plan:
+    Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that will be used.
+
+    Please quote the Python script between one single "```Python" and "```".
+
+    Hints to be considered for Python code generation:
  - Your code should only take the CSV file paths given in the Source Data Information as inputs.
- - You may use string conversions or date conversions if needed.
+ - Please ensure all operation output contributed (or used) by the final output.
+ - You may use string conversions or date conversions if needed. 
  - Note that some column names, e.g., purpose, funded_year, may not match the values in the column, e.g., 5 for purpose, 16844 for funded_year. In this case consider the column to be aggregation, e.g., count per purpose, and sum for funded_year. They should not be used in Group By columns.
  - Make sure that table generated through the script has the same column structure as target.
  - Please answer what operation you should perform next based on "operation history", "source tables" and "target tables" information ("schema" as well as the "examples")  in one word.
@@ -94,9 +100,6 @@ def get_python_script(
  - If a column has integer values in one of the source tables, but the same column has float values in the target tables, an average aggregation should be applied to the column and the column should NOT be considered as GROUP BY attribute. 
  - Most source files have a numerical index column, which is always the first column, and it should be ignored in the transformation. Therefore, when reading a CSV file, please add index_col=0, e.g., sourceX = pd.read_csv('autopipeline-benchmarks/github-pipelines/lengthY_Z/test_X.csv', index_col=0)
  - Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
-
-  Python Script:
- - Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that will be used.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
  - Please do not use source files that are not mentioned in this prompt.
  Please quote the Python script between one single "```Python" and "```".
