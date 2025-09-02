@@ -293,7 +293,7 @@ def replace_result_info(query, num_result_samples, result_path):
     df_result = pd.read_csv(result_path, low_memory=False)
     res_schema = ", ".join(df_result.columns)
     res_examples = df_result.head(num_result_samples).to_string(index=False)
-    query = query.replace("$RES_SCHEMA$", res_schema)
-    query = query.replace("$NUM_RES_TUPLES$", str(len(df_result)))
-    query = query.replace("$RES_EXAMPLES$", res_examples)
+    query = query.replace("$RES_SCHEMA_NOT_AVAILABLE$", res_schema)
+    query = query.replace("$NUM_RES_TUPLES_NOT_AVAILABLE$", str(len(df_result)))
+    query = query.replace("$RES_EXAMPLES_NOT_AVAILABLE$", res_examples)
     return query

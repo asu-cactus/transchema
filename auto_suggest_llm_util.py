@@ -588,6 +588,9 @@ def get_source(
         ss += "\tSource {i} Examples: {source_samples_list}\n".format(
             i=i, source_samples_list=source_samples
         )
+        ss += "\tSource {i} File Location: {directory}/length{len_idx_target_idx}/test_{i}.csv\n".format(
+            i=i, directory=directory, len_idx_target_idx=len_idx_target_idx
+        )
     return ss
 
 
