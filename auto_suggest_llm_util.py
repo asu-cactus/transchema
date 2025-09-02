@@ -5,6 +5,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import pdb
 import pandas as pd
+pd.set_option("display.max_columns", None)
 import logging
 from datetime import datetime
 from util.utils import get_test_info
