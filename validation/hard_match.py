@@ -28,7 +28,7 @@ def compare_columns(pred_column, gold_column):
       #     print(p)
        #    print(g)
         #   print("\n")
-    return matches / total if total > 0 else 0
+    return matches / total if total > 0 else 1/(1-(total-matches))
 
 
 def compare_numerical_columns(pred_column, gold_column):
@@ -49,7 +49,7 @@ def compare_numerical_columns(pred_column, gold_column):
     #for p, g in zip(pred_column, gold_column):
      #   if p - g >= 0.01:
       #      print(str(p)+"<->"+str(g)+";")
-    return matches / total if total > 0 else 0
+    return matches / total if total > 0 else 1/(1-(total-matches))
 
 
 def is_column_numerical(column):
