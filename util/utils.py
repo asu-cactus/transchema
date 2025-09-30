@@ -129,7 +129,7 @@ def execute_python(gpt_response):
         exec(gpt_response)
         return "Success"
     except Exception as e:
-        print(e)
+        print("Exception: "+str(e))
         return f"Error: {e}"
 
 
@@ -280,8 +280,6 @@ def numerical_similarity(num1, num2, threshold=1e-8):
 #adding code to anonymize target data schema (column names)
 def anonymize_target_data_schema(target_data_schema):
     # Replace column names with generic names
-    ##print("length: ")
-    ##print(len(target_data_schema))
     target_data_schema_list = target_data_schema.split(",")
     anonymized_schema = [f"col_{i}" for i in range(len(target_data_schema_list))]
     strigifiedschema = ",".join(anonymized_schema)
@@ -289,16 +287,11 @@ def anonymize_target_data_schema(target_data_schema):
 
 def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag):
 
-    #print(json_file_path)
-
-    #print(len_id_target_id)
-
     # Read the JSON file once
     with open(json_file_path, "r") as file:
         data_list = json.load(file)
         # Create a dictionary for faster lookups
         data_dict = {item["Source Data Name"]: item for item in data_list}
-        # #print(data_dict)
 
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
@@ -316,15 +309,14 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
         if file.startswith("test")
     )
 
-    #print(file_count)
 
     # Find and store the required data
     source_data_name_list = []
     source_data_schema_list = []
+    source_num_tuples = []
     source_samples_list = []
-    target_data_name, target_data_schema, target_samples = None, None, None
+    target_data_name, target_data_schema, target_data_schema_with_types, target_samples = None, None, None, None
 
-    #print(f"FILE COUNT: {file_count}")
     for i in range(file_count):
         source_data_name_to_find = f"Source{len_id_target_id}_{i}"
         data = data_dict.get(source_data_name_to_find)
@@ -336,9 +328,7 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
             ):  # Assuming all target data names and schemas are the same
                 target_data_name = data["Target Data Name"]
                 target_data_schema = data["Target Data Schema"]
-                #print("target_data_schema")
-                #print(target_data_schema)
-                #print("--------------------------------")
+                target_data_schema_with_types = data["Target Data Schema with Types"]
                 #adding code to anonymize target data schema (column names)
                 #anonymizes on flag condition
                 if(anon_flag == 1):
@@ -352,6 +342,7 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
     return (
         target_data_name,
         target_data_schema,
+        target_data_schema_with_types,
         target_samples,
         file_count,
         source_data_name_list,

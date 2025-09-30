@@ -16,8 +16,8 @@ def avg_tup(list_tup):
     avg_cost = 0
     avg_lat = 0
     for tup in list_tup:
-        avg_cost += tup[3]
-        avg_lat += tup[4]
+        avg_cost += tup[2]
+        avg_lat += tup[3]
     avg_cost = avg_cost / len(list_tup)
     avg_lat = avg_lat / len(list_tup)
 
@@ -34,9 +34,9 @@ def avg_tup_(list_tup):
     avg_lat = 0
     avg_score = 0
     for tup in list_tup:
-        avg_cost += tup[3]
-        avg_lat += tup[4]
-        avg_score += tup[2]
+        avg_cost += tup[2]
+        avg_lat += tup[3]
+        avg_score += tup[1]
     avg_cost = avg_cost / len(list_tup)
     avg_lat = avg_lat / len(list_tup)
     avg_score = avg_score / len(list_tup)
@@ -102,7 +102,7 @@ def crit(args, length, id_, operation_history):
     print("CRITIQUE FINAL RESULTS:")
     if "fd" in args.critique_setting:
         abl_a = critique(
-            args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history
+            args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history 
         )
         with open(critique_path, "a", newline="") as f:
             writer = csv.writer(f)
@@ -173,7 +173,7 @@ def get_parser():
     parser.add_argument(
         "--hint-source",
         type=str,
-        default="v3",
+        default="none",
         choices=["v1_kv", "v1_text", "v2", "v3"],
         help="Hint source selection",
     )

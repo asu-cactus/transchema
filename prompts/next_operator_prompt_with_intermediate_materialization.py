@@ -13,9 +13,9 @@ def get_next_operator_prompt_with_intermediate_materialization(
     no_thinking: bool,
 ):
 
-    assert len(all_intermediate_results) == len(
-        operation_history
-    ), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
+    #assert len(all_intermediate_results) == len(
+     #   operation_history
+    #), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
     if fd_hints.strip() == "":
         fd_hints = ""
     else:
@@ -30,7 +30,7 @@ Allowed Operations: {allowed_operation_list}.
 1. Target Table Name: {target_data_name}
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
-4. Multi Source Information: {source_information}
+4. Source Information: {source_information}
  
 Some useful hints:
 {hints}
@@ -60,7 +60,11 @@ More Instructions:
     - For PIVOT and UNPIVOT, no configuration is needed, you can set CONFIGURATION to "NONE".  
     - If you need help from tools to determine the configuration, you can set CONFIGURATION to "NONE".
 - You can propose a whole plan of operations that follow the operation history. After thinking step by step, the final answer should be wrapped in two $ signs in the last single line and strictly follow this format: Next operation after operation history is $OPERATOR$ and configuration is $CONFIGURATION$.
-- If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
+- If any two source tables have different columns, DO NOT give the UNION operation.
+- If there are multiple source tables and the target table having exactly same columns, give Union operation first priority .
+- If there are two source tables with different schemas that share one or a few common columns, which exist in the target data, give Join operation first priority.
+- If multiple source tables share the same schema while the target table (i.e., target examples) also share the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
+- Many data transformation pipelines contain a GROUP BY operator at the very end.
 - You should only answer from allowed operations.
 - If you think no more operation is needed further, please set OPERATOR to "NO_MORE_OPERATION" and CONFIGURATION to "NONE". Note that NO_MORE_OPERATION is NOT allowed when operation history is empty.
 - Try not to repeat operation and it's configuration from the operation history.
@@ -68,10 +72,13 @@ More Instructions:
     else:
         prompt_last = f"""
 {fd_hints}
-Note: The above row examples provided are only part of the corresponding rows.
 
-- Please answer what operation you should perform next.
-- If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
+- Please answer what operation you should perform next based on "operation history", "source tables" and "target tables" information ("schema" as well as the "examples")  in one word.
+- If any two source tables have different columns, DO NOT give the UNION operation.
+- If there are multiple source tables and the target table having exactly same columns, give Union operation first priority .
+- If there are two source tables with different schemas that share one or a few common columns, which exist in the target data, give Join operation first priority.
+- If multiple source tables share the same schema while the target table (i.e., target examples) also share the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
+- Many data transformation pipelines contain a GROUP BY operator at the very end, particularly if the leftmost columns in the intermediate result contain a lot of duplicate values. 
 - Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
 - You should only answer from allowed operations. 
 - If you think no more operation is needed further, please return 'NO_MORE_OPERATION'. Note that NO_MORE_OPERATION is NOT allowed when operation history is empty.
@@ -79,8 +86,8 @@ Note: The above row examples provided are only part of the corresponding rows.
 """
 
     if no_thinking:
-        prompt_last += f"- The final answer should be one word wrapped in $ quotes. i.e. $OPERATOR$. No other information should be in the answer."
+        prompt_last += f"- To faciliate the parsing of the operation, the final answer should be in $ quotes. i.e. $OPERATOR$, such as $JOIN$, $UNION, $GROUP_BY/AGGREGATE$ in a single line"
     else:
-        prompt_last += f"- You can propose a whole plan of operations that follow the operation history. After thinking step by step, the final answer should be wrapped in two $ signs in the last single line and strictly follow this format: Next operation after operation history is $OPERATOR$."
+        prompt_last += f"- You can propose a whole plan of operations that follow the operation history. After thinking step by step. To faciliate the parsing of the operation, the final answer should be in $ quotes. i.e. $OPERATOR$, such as $JOIN$, $UNION, $GROUP_BY/AGGREGATE$ in a single line"
 
     return [f"{prompt_start}{prompt_middle}{prompt_last}"]
