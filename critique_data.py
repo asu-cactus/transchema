@@ -1,18 +1,18 @@
 import traceback
-from methods.critique import critique
 import argparse
 import json
 import csv
 import pdb
 
-from methods.precursor import precursor
+# from methods.precursor import precursor
+from methods.multi_step import multi_step
 from methods.critique import critique
 from log_util.log_util import setup_logging
 
 
 def avg_tup(list_tup):
-    if (len(list_tup) == 0):
-       return (0, 0, 0)
+    if len(list_tup) == 0:
+        return (0, 0, 0)
     avg_cost = 0
     avg_lat = 0
     for tup in list_tup:
@@ -26,8 +26,8 @@ def avg_tup(list_tup):
 
 
 def avg_tup_(list_tup):
-    if (len(list_tup) == 0):
-       return (0, 0, 0)
+    if len(list_tup) == 0:
+        return (0, 0, 0)
     print("_________________________")
     print(f"averaging {list_tup}")
     avg_cost = 0
@@ -52,7 +52,7 @@ def ms(args, length, id, log_dir, experiment_name):
     true_tup_ = []
     false_tup_ = []
     for i in range(0, args.no_of_runs):
-        ms_info = precursor(args, length, id, log_dir, experiment_name, i)
+        ms_info = multi_step(args, length, id, log_dir, experiment_name, i)
         results.append(ms_info)
 
     for tup in results:
@@ -102,7 +102,7 @@ def crit(args, length, id_, operation_history):
     print("CRITIQUE FINAL RESULTS:")
     if "fd" in args.critique_setting:
         abl_a = critique(
-            args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history 
+            args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history
         )
         with open(critique_path, "a", newline="") as f:
             writer = csv.writer(f)
@@ -113,7 +113,6 @@ def crit(args, length, id_, operation_history):
             return abl_a
         else:
             result = abl_a
-
 
     if "metadata" in args.critique_setting:
         abl_ab = critique(
@@ -129,8 +128,7 @@ def crit(args, length, id_, operation_history):
             return abl_ab
         else:
             result = abl_ab
-  
-                
+
     if "annonymization" in args.critique_setting:
         abl_abc = critique(
             args, length, id_, args.log_directory, [1, 1, 1], 0, operation_history
@@ -147,8 +145,8 @@ def crit(args, length, id_, operation_history):
         return abl_abc
 
     print("Failed!")
-    print(result)       
-    return result    
+    print(result)
+    return result
 
 
 def get_parser():
@@ -331,12 +329,11 @@ if __name__ == "__main__":
 
     cases = list(range(start, end))
 
-    
     processed_without_exceptions = 0
 
     for case in cases:
-        
-        print("Processing:", case)    
+
+        print("Processing:", case)
 
         case_path = f"{length}_{case}"
         # log_dir = f"crit_logs/{case_path}"
@@ -368,7 +365,6 @@ if __name__ == "__main__":
 
             else:
                 print("Success!")
-
 
             processed_without_exceptions += 1
 
