@@ -5,6 +5,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import pdb
 import pandas as pd
+
 pd.set_option("display.max_columns", None)
 import logging
 from datetime import datetime
@@ -30,9 +31,10 @@ from prompts.code_generation_prompt import (
     get_python_script,
     get_python_script_with_intermediate_materialization,
 )
-from prompts.next_operator_prompt_with_intermediate_materialization import (
-    get_next_operator_prompt_with_intermediate_materialization,
-)
+
+# from prompts.next_operator_prompt_with_intermediate_materialization import (
+#     get_next_operator_prompt_with_intermediate_materialization,
+# )
 
 
 def get_prompt(
@@ -61,7 +63,7 @@ def get_prompt(
     fd_flag=0,
     model="gpt-4.1-mini",
     hint_source="none",
-    save_path="",
+    csv_save_path="",
     nth_intermediate_step=0,
     combine_ask_and_configure=False,
     no_thinking=False,
@@ -69,7 +71,7 @@ def get_prompt(
 ):
     """
     Args:
-        save_path (str): Path to save the intermediate results.
+        csv_save_path (str): Path to save the intermediate results.
         nth_intermediate_step (int): Current step at which to materialize the intermediate result.
             Show the intermediate results in the steps [1,2,3,...,n-1].
             Default is 0, which means no intermediate materialization.
@@ -93,13 +95,13 @@ def get_prompt(
     else:
         encoding = tiktoken.encoding_for_model(model)
 
-    if nth_intermediate_step == 1:
-        all_intermediate_results = []
+    if nth_intermediate_step <= 1:
+        all_intermediate_results = {}
     if nth_intermediate_step > 1:
         # Get the intermediate results only if nth_intermediate_step > 1 because at the 1st step won't
         # have intermediate results
         intermediate_dir = f"{directory}/length{len_idx_target_idx}/"
-        #print(intermediate_dir)
+        # print(intermediate_dir)
         all_intermediate_results = get_all_intermediate(
             intermediate_dir, encoding, source_length, nth_intermediate_step
         )
@@ -115,7 +117,7 @@ def get_prompt(
         encoding,
     )
 
-    #print("source_information: "+source_information)
+    # print("source_information: "+source_information)
 
     # read few shot examples
     few_shot_examples = [""]
@@ -158,11 +160,8 @@ def get_prompt(
             for step in range(1, nth_intermediate_step):
                 fd_hints += get_column_matching_hints(intermediate_df, df, step)
 
-
-
-
     if prompt_type == "get_next_operator":
- 
+
         hints = get_hints(
             "get_next_operator",
             hint_source,
@@ -176,14 +175,13 @@ def get_prompt(
             [],
         )
 
-        #print("Hints received")
+        # print("Hints received")
 
         hints = [""]
 
         if target_data_schema_with_types:
-             target_data_schema = target_data_schema_with_types;
-             #print(target_data_schema)
-
+            target_data_schema = target_data_schema_with_types
+            # print(target_data_schema)
 
         if few_shot == 1:
             static_prompt = get_next_operator_prompt_fewshot(
@@ -223,24 +221,9 @@ def get_prompt(
             encoding,
         )
 
-        #print("Target Examples: "+target_samples)
+        # print("Target Examples: "+target_samples)
 
-        if nth_intermediate_step > 0:
-            prompt = get_next_operator_prompt_with_intermediate_materialization(
-                allowed_operation_list,
-                operation_history,
-                target_data_name,
-                target_data_schema,
-                target_samples,
-                file_count,
-                source_information,
-                fd_hints,
-                hints,
-                all_intermediate_results,
-                combine_ask_and_configure=combine_ask_and_configure,
-                no_thinking=no_thinking,
-            )[0]
-        elif few_shot == 1:
+        if few_shot == 1:
             prompt = get_next_operator_prompt_fewshot(
                 allowed_operation_list,
                 operation_history,
@@ -264,6 +247,7 @@ def get_prompt(
                 source_information,
                 fd_hints,
                 hints,
+                all_intermediate_results,
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -288,7 +272,7 @@ def get_prompt(
         )
 
         if target_data_schema_with_types:
-            target_data_schema = target_data_schema_with_types;
+            target_data_schema = target_data_schema_with_types
             print(target_data_schema)
 
         static_prompt = get_join_prompt(
@@ -340,8 +324,8 @@ def get_prompt(
         )
 
         if target_data_schema_with_types:
-             target_data_schema = target_data_schema_with_types;
-             #print(target_data_schema)
+            target_data_schema = target_data_schema_with_types
+            # print(target_data_schema)
 
         static_prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
@@ -380,8 +364,8 @@ def get_prompt(
     elif prompt_type == "union":
 
         if target_data_schema_with_types:
-            target_data_schema = target_data_schema_with_types;
-            #print(target_data_schema)
+            target_data_schema = target_data_schema_with_types
+            # print(target_data_schema)
 
         static_prompt = get_union_prompt(
             allowed_operation_list,
@@ -416,8 +400,8 @@ def get_prompt(
     elif prompt_type == "python_script":
 
         if target_data_schema_with_types:
-             target_data_schema = target_data_schema_with_types;
-             print(target_data_schema)
+            target_data_schema = target_data_schema_with_types
+            print(target_data_schema)
 
         source_information_with_location = get_source_with_location(
             file_count,
@@ -439,7 +423,7 @@ def get_prompt(
             "",
             file_count,
             source_information_with_location,
-            save_path,
+            csv_save_path,
             error_string,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
@@ -462,7 +446,7 @@ def get_prompt(
                 target_samples,
                 file_count,
                 source_information_with_location,
-                save_path,
+                csv_save_path,
                 error_string,
                 all_intermediate_results,
             )[0]
@@ -475,7 +459,7 @@ def get_prompt(
                 target_samples,
                 file_count,
                 source_information_with_location,
-                save_path,
+                csv_save_path,
                 error_string,
             )[0]
     else:
@@ -530,8 +514,8 @@ def get_target_string(df, rem_tokens, encoding):
 
     # print('ans :', ans)
     temp_l = examples_l[:ans]
-    #print(str(temp_l))
-    #print(len(encoding.encode(str(temp_l))))
+    # print(str(temp_l))
+    # print(len(encoding.encode(str(temp_l))))
     return [str(temp_l)]
 
 
@@ -548,7 +532,7 @@ def get_target_samples(
     # print(directory,len_idx_target_idx, target_perc,is_perc, target_length, max_tokens, static_prompt_length)
     target_csv_path = directory + "/length" + len_idx_target_idx + "/target.csv"
     target_df = pd.read_csv(target_csv_path, low_memory=False)
-    #if (is_column_numerical(target_df.columns[0])):
+    # if (is_column_numerical(target_df.columns[0])):
     target_df = target_df.drop(target_df.columns[0], axis=1)
 
     # sampling
@@ -560,7 +544,12 @@ def get_target_samples(
         )
     # print(static_prompt_length, max_tokens - static_prompt_length)
     num_tuples = len(target_df)
-    target_samples_string = str("There are ")+ str(num_tuples) + str(" available target examples: ") + str(target_df_sampled)
+    target_samples_string = (
+        str("There are ")
+        + str(num_tuples)
+        + str(" available target examples: ")
+        + str(target_df_sampled)
+    )
     return target_samples_string
 
 
@@ -595,7 +584,9 @@ def get_source(
     return ss
 
 
-def get_source_samples(directory, len_idx_target_idx, i, sample_length, num_tokens, encoding):
+def get_source_samples(
+    directory, len_idx_target_idx, i, sample_length, num_tokens, encoding
+):
     # print(directory,len_idx_target_idx)
     filename = "{main_directory}/length{len_idx_target_idx}/test_{i}.csv".format(
         main_directory=directory, len_idx_target_idx=len_idx_target_idx, i=i
@@ -603,7 +594,7 @@ def get_source_samples(directory, len_idx_target_idx, i, sample_length, num_toke
     # print(filename)
     # sys.exit()
     source_df = pd.read_csv(filename, low_memory=False)
-    #if (is_column_numerical(source_df.columns[0])):
+    # if (is_column_numerical(source_df.columns[0])):
     source_df = source_df.drop(source_df.columns[0], axis=1)
     num_tuples = len(source_df)
     num_tuples_string = "\t Source {index} contains {num_tuples_in_source} tuples, with examples as follows: \n".format(
@@ -611,10 +602,10 @@ def get_source_samples(directory, len_idx_target_idx, i, sample_length, num_toke
     )
     source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
     source_samples_string = str(source_df_sampled)
-    #source_samples_string = get_target_string(
-     #   source_df_sampled, num_tokens, encoding
-    #)  # -1000 buffer for good measures # for now no limit on max_tokens for source
-    #print(source_samples_string)
+    # source_samples_string = get_target_string(
+    #   source_df_sampled, num_tokens, encoding
+    # )  # -1000 buffer for good measures # for now no limit on max_tokens for source
+    # print(source_samples_string)
     source_samples_string = num_tuples_string + source_samples_string
     return source_samples_string
 
@@ -663,9 +654,9 @@ def get_all_intermediate(
     def get_intermediate(file_path, encoding, sample_length):
         source_df = pd.read_csv(file_path, low_memory=False)
         source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
-        #source_samples_string = get_target_string(
-         #   source_df_sampled, numTokens, encoding
-        #)  i# -1000 buffer for good measures # for now no limit on max_tokens for source
+        # source_samples_string = get_target_string(
+        #   source_df_sampled, numTokens, encoding
+        # )  i# -1000 buffer for good measures # for now no limit on max_tokens for source
         source_samples_string = str(source_df_sampled)
         schema = source_df.columns.tolist()
         return IntermediateResult(schema, source_samples_string, str(file_path))
@@ -678,11 +669,16 @@ def get_all_intermediate(
 
     source_dir = Path(intermediate_dir)
     # Find all files matching the pattern "test{integer}.csv" in the source directory
-    all_intermediate_results = []
+    all_intermediate_results = {}
     for step in range(1, nth_intermediate_step):
         file_path = source_dir / f"intermediate_step{step}.csv"
+        if not file_path.exists():
+            print(
+                f"Intermediate file not found: {file_path}. It is due to errors during materialization."
+            )
+            continue
         intermediate_result = get_intermediate(file_path, encoding, sample_length)
-        all_intermediate_results.append(intermediate_result)
+        all_intermediate_results[step] = intermediate_result
 
     return all_intermediate_results
 
@@ -803,7 +799,7 @@ def get_filtered_functional_dependency(df):
         if not filtered_F or not all_keys_sorted:
             return [], {}
     except Exception as e:
-        return [], {} 
+        return [], {}
 
     # Find the key with the most dependencies
     key_dependencies = {}
@@ -924,7 +920,7 @@ def get_column_matching_hints(intermediate_df, target_df, step):
 
 def calculate_score(gt_df, tgt_df):
 
-    return 1 
+    return 1
     # parameters
     w1 = 1
     w2 = 1

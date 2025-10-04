@@ -1,4 +1,5 @@
 import time
+from dataclasses import dataclass
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import is_column_numerical, compare_lists_matching
 from validation.soft_match import compare_lists_matching_soft
@@ -21,7 +22,122 @@ import pandas as pd
 import os
 import traceback
 from pathlib import Path
-import sys
+import shutil
+
+main_folder = "autopipeline-benchmarks/github-pipelines"
+source_space_dir = f"{main_folder}/intermediate_space"
+
+
+allowed_operation_list = [
+    "JOIN",
+    "UNION",
+    "GROUP_BY/AGGREGATE",
+    "PIVOT",
+    "UNPIVOT",
+    "NO_MORE_OPERATION",
+]
+
+
+@dataclass
+class Config:
+    target_data_name: str
+    target_data_schema: str
+    target_data_schema_with_types: str
+    target_samples: str
+    file_count: int
+    source_data_name_list: list
+    source_data_schema_list: list
+    directory: str
+    len_idx_target_idx: str
+    target_perc: float
+    is_perc: bool
+    target_length: int
+    source_length: int
+    fd_flag: bool
+    hint_source: str
+    llm_client: LLMClient
+    q_count: dict
+    logger: any
+    cost_summary: list
+    token_tracker: TokenUsageTracker
+    model: str
+    token_limit: int
+
+
+def get_python_response(operation_history, break_flag, csv_save_path, config: Config):
+    logger = config.logger
+    llm_client = config.llm_client
+
+    max_trails = 5
+    error_str = ""
+    for _ in range(max_trails):
+        prompt = get_prompt(
+            prompt_type="python_script",
+            max_tokens=config.token_limit,
+            model=config.model,
+            allowed_operation_list=allowed_operation_list,
+            operation_history=operation_history,
+            target_data_name=config.target_data_name,
+            target_data_schema=config.target_data_schema,
+            target_data_schema_with_types=config.target_data_schema_with_types,
+            target_samples=config.target_samples,
+            file_count=config.file_count,
+            source_data_name_list=config.source_data_name_list,
+            source_data_schema_list=config.source_data_schema_list,
+            directory=config.directory,
+            len_idx_target_idx=config.len_idx_target_idx,
+            target_perc=config.target_perc,
+            is_perc=config.is_perc,
+            target_length=config.target_length,
+            error_string=error_str,
+            csv_save_path=csv_save_path,
+            hint_source=config.hint_source,
+        )
+
+        if prompt[0] == "-1":
+            logger.info("Token Limit Exceeded")
+            break_flag = 2
+            break
+
+        res = query_gpt(
+            llm_client,
+            config.model,
+            prompt,
+            config.q_count,
+            logger,
+            config.cost_summary,
+            config.token_tracker,
+            type="Get Python Script",
+        )
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res[0])
+        try:
+            script = match.group(1).strip()
+            response = execute_python(script)
+            error_str = error_str + response + "\n"
+            if response == "Success":
+                break
+        except Exception as e:
+            print("".join(traceback.format_exc()))
+            response = ""
+            error_str = error_str + "No valid response from LLM.\n"
+    else:
+        print(f"Exceed {max_trails} trails, Materialization Failed")
+    return script, response, break_flag
+
+
+def create_intermediate_space(main_folder, len_id, target_id):
+    # create source space
+
+    source_space_path = Path(f"{source_space_dir}/length{len_id}_{target_id}")
+    source_space_path.mkdir(exist_ok=True, parents=True)
+
+    source_dir = Path(f"{main_folder}/length{len_id}_{target_id}")
+    # Find all files matching the pattern "test{integer}.csv" in the source directory
+    for file in source_dir.glob("*"):
+        if file.is_file():  # Skip directories
+            shutil.copy(file, source_space_path)
+    return source_space_dir
 
 
 def multi_step(args, length, id_, log_dir_, experiment_name, i_):
@@ -56,7 +172,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     fd_flag = args.fd_flag
     token_limit = args.token_limit
     model = args.model
-    path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
+    path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
         1
@@ -65,6 +181,8 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         if file.startswith("test")
     )
 
+    if args.intermediate_materialization:
+        interm_space_dir = create_intermediate_space(main_folder, len_id, target_id)
     # print(file_count)
 
     if file_count > 1:
@@ -73,16 +191,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         json_file_path = "data/chatgpt_github_ss.json"
 
     log_dir = log_dir_
-    main_folder = "autopipeline-benchmarks/github-pipelines"
-
-    allowed_operation_list = [
-        "JOIN",
-        "UNION",
-        "GROUP_BY/AGGREGATE",
-        "PIVOT",
-        "UNPIVOT",
-        "NO_MORE_OPERATION",
-    ]
 
     task_list = get_test_cases_ids(
         json_file_path, len_id, max_len_id, target_id, max_target_id
@@ -91,6 +199,9 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     logger = create_logger("AUTOSUGGEST", log_dir, len_id, target_id, max_target_id)
 
     q_count = {"total": 0, "in_task": 0}
+
+    # Create configuration for LLM calls
+    directory = source_space_dir if args.intermediate_materialization else main_folder
 
     # language = 'sql' #or 'python'
 
@@ -123,17 +234,42 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
         # added anon_flag to get_test_info() call
 
-        # 0 to ask for operator and 1 for column and 2 to generate script
-        toggle_operator = 0
-        history_op = []
+        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
+
+        target_file_location = (
+            f"{main_folder}/length{len_idx_target_idx}/target_multisource.csv"
+        )
+        ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
+        config = Config(
+            target_data_name=target_data_name,
+            target_data_schema=target_data_schema,
+            target_data_schema_with_types=target_data_schema_with_types,
+            target_samples=target_samples,
+            file_count=file_count,
+            source_data_name_list=source_data_name_list,
+            source_data_schema_list=source_data_schema_list,
+            len_idx_target_idx=len_idx_target_idx,
+            target_perc=target_per,
+            is_perc=is_perc,
+            target_length=target_length,
+            source_length=source_length,
+            fd_flag=fd_flag,
+            hint_source=hint_source,
+            llm_client=llm_client,
+            q_count=q_count,
+            logger=logger,
+            cost_summary=cost_summary,
+            token_tracker=token_tracker,
+            model=model,
+            token_limit=token_limit,
+            directory=directory,
+        )
+
         history_elements = []
         operation_history = []
-
-        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
         break_flag = 1
 
-
-
+        step = 0
         while break_flag:
 
             prompt = get_prompt(
@@ -145,11 +281,11 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 target_data_name=target_data_name,
                 target_data_schema=target_data_schema,
                 target_samples=target_samples,
-                target_data_schema_with_types = target_data_schema_with_types,
+                target_data_schema_with_types=target_data_schema_with_types,
                 file_count=file_count,
                 source_data_name_list=source_data_name_list,
                 source_data_schema_list=source_data_schema_list,
-                directory=main_folder,
+                directory=directory,
                 len_idx_target_idx=len_idx_target_idx,
                 target_perc=target_per,
                 is_perc=is_perc,
@@ -157,6 +293,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 source_length=source_length,
                 hint_source=hint_source,
                 few_shot=few_shot,
+                nth_intermediate_step=step if args.intermediate_materialization else 0,
             )
             if prompt[0] == "-1":
                 logger.info("Token Limit Exceeded")
@@ -187,12 +324,12 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     operation_history=operation_history,
                     target_data_name=target_data_name,
                     target_data_schema=target_data_schema,
-                    target_data_schema_with_types = target_data_schema_with_types,
+                    target_data_schema_with_types=target_data_schema_with_types,
                     target_samples=target_samples,
                     file_count=file_count,
                     source_data_name_list=source_data_name_list,
                     source_data_schema_list=source_data_schema_list,
-                    directory=main_folder,
+                    directory=directory,
                     len_idx_target_idx=len_idx_target_idx,
                     target_perc=target_per,
                     is_perc=is_perc,
@@ -201,7 +338,11 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     join_hints_truncate=join_hints_truncate,
                     hint_source=hint_source,
                     few_shot=few_shot,
+                    nth_intermediate_step=(
+                        step if args.intermediate_materialization else 0
+                    ),
                 )
+
                 if prompt[0] == "-1":
                     logger.info("Token Limit Exceeded")
                     break_flag = 2
@@ -234,12 +375,12 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     operation_history=operation_history,
                     target_data_name=target_data_name,
                     target_data_schema=target_data_schema,
-                    target_data_schema_with_types = target_data_schema_with_types,
+                    target_data_schema_with_types=target_data_schema_with_types,
                     target_samples=target_samples,
                     file_count=file_count,
                     source_data_name_list=source_data_name_list,
                     source_data_schema_list=source_data_schema_list,
-                    directory=main_folder,
+                    directory=directory,
                     len_idx_target_idx=len_idx_target_idx,
                     target_perc=target_per,
                     is_perc=is_perc,
@@ -248,6 +389,9 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     aggregate_hints_truncate=aggregate_hints_truncate,
                     hint_source=hint_source,
                     few_shot=few_shot,
+                    nth_intermediate_step=(
+                        step if args.intermediate_materialization else 0
+                    ),
                 )
                 if prompt[0] == "-1":
                     logger.info("Token Limit Exceeded")
@@ -280,18 +424,21 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     operation_history=operation_history,
                     target_data_name=target_data_name,
                     target_data_schema=target_data_schema,
-                    target_data_schema_with_types = target_data_schema_with_types,
+                    target_data_schema_with_types=target_data_schema_with_types,
                     target_samples=target_samples,
                     file_count=file_count,
                     source_data_name_list=source_data_name_list,
                     source_data_schema_list=source_data_schema_list,
-                    directory=main_folder,
+                    directory=directory,
                     len_idx_target_idx=len_idx_target_idx,
                     target_perc=target_per,
                     is_perc=is_perc,
                     target_length=target_length,
                     hint_source=hint_source,
                     few_shot=few_shot,
+                    nth_intermediate_step=(
+                        step if args.intermediate_materialization else 0
+                    ),
                 )
 
                 if prompt[0] == "-1":
@@ -328,85 +475,35 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
             else:
                 pass
 
+            # Materialize the intermediate table here itself
+            step += 1
+            if args.intermediate_materialization:
+                csv_save_path = f"{interm_space_dir}/length{len_idx_target_idx}/intermediate_step{step}.csv"
+                script, response, break_flag = get_python_response(
+                    operation_history, break_flag, csv_save_path, config
+                )
+            print(f"finished step {step}")
+
         # print(operation_history)
 
         if break_flag == 0:
             # Generate Table and Compare
             # ss = get_source_with_location(file_count, source_data_name_list,source_data_schema_list, source_samples_list, main_folder, len_idx_target_idx)
-            target_file_location = "{main_folder}/length{len_idx_target_idx}/target_multisource.csv".format(
-                main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
-            )
-            ground_truth_location = (
-                "{main_folder}/length{len_idx_target_idx}/target.csv".format(
-                    main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
-                )
-            )
+
             # put this in a loop
-            script_cnt = 0
-            error_str = ""
-            while script_cnt < 5:
-                prompt = get_prompt(
-                    prompt_type="python_script",
-                    max_tokens=token_limit,
-                    model=model,
-                    allowed_operation_list=allowed_operation_list,
-                    operation_history=operation_history,
-                    target_data_name=target_data_name,
-                    target_data_schema=target_data_schema,
-                    target_data_schema_with_types = target_data_schema_with_types,
-                    target_samples=target_samples,
-                    file_count=file_count,
-                    source_data_name_list=source_data_name_list,
-                    source_data_schema_list=source_data_schema_list,
-                    directory=main_folder,
-                    len_idx_target_idx=len_idx_target_idx,
-                    target_perc=target_per,
-                    is_perc=is_perc,
-                    target_length=target_length,
-                    error_string=error_str,
-                    save_path=target_file_location,
-                    hint_source=hint_source,
-                )
+            script, response, break_flag = get_python_response(
+                operation_history, break_flag, target_file_location, config
+            )
 
-                if prompt[0] == "-1":
-                    logger.info("Token Limit Exceeded")
-                    break_flag = 2
-                    break
-
-                res = query_gpt(
-                    llm_client,
-                    model,
-                    prompt,
-                    q_count,
-                    logger,
-                    cost_summary,
-                    token_tracker,
-                    type="Get Python Script",
-                )
-                pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
-                match = pattern.search(res[0])
-                try:
-                    script = match.group(1).strip()
-                    response = execute_python(script)
-                    error_str = error_str + response + "\n"
-                    if response == "Success":
-                       break
-                except Exception as e: 
-                    print("".join(traceback.format_exc()))
-                    response = ""
-                    error_str = error_str + "No valid response from LLM.\n"       
-                script_cnt += 1
             if response == "Success":
                 # save file here
                 # file_name
                 if not os.path.exists(
-                    f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
+                    f"{main_folder}/length{length}_{id_}/script_archive"
                 ):
-                    os.makedirs(
-                        f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive"
-                    )
+                    os.makedirs(f"{main_folder}/length{length}_{id_}/script_archive")
                 with open(
-                    f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/script_archive/{experiment_name}_{i_}.py",
+                    f"{main_folder}/length{length}_{id_}/script_archive/{experiment_name}_{i_}.py",
                     "w",
                 ) as file:
                     file.write(script)
@@ -429,46 +526,78 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                             similarity_scores,
                             shared_columns,
                         ) = compare_lists_matching(df_our_response, df_ground_truth)
-                        if (is_correct==False and len(shared_columns)>0 and len(df_our_response)==len(df_ground_truth)):
-                            print("TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:") 
-                            sorted_df_our_response = df_our_response.sort_values(by=shared_columns)
-                            sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns)
+                        if (
+                            is_correct == False
+                            and len(shared_columns) > 0
+                            and len(df_our_response) == len(df_ground_truth)
+                        ):
+                            print(
+                                "TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:"
+                            )
+                            sorted_df_our_response = df_our_response.sort_values(
+                                by=shared_columns
+                            )
+                            sorted_df_ground_truth = df_ground_truth.sort_values(
+                                by=shared_columns
+                            )
                             new_header_our_response = []
                             for col in sorted_df_our_response.columns:
                                 if "float" in str(sorted_df_our_response[col].dtype):
                                     print("is float")
-                                    first_three_values = sorted_df_our_response[col].head(3).astype(int)
-                                else: 
+                                    first_three_values = (
+                                        sorted_df_our_response[col].head(3).astype(int)
+                                    )
+                                else:
                                     print("is not float")
-                                    first_three_values = sorted_df_our_response[col].head(3)
-                                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
+                                    first_three_values = sorted_df_our_response[
+                                        col
+                                    ].head(3)
+                                concatenated_header = (
+                                    str(first_three_values.iloc[0])
+                                    + "-"
+                                    + str(first_three_values.iloc[1])
+                                    + "-"
+                                    + str(first_three_values.iloc[2])
+                                )
                                 print(concatenated_header)
                                 new_header_our_response.append(concatenated_header)
-                            sorted_df_our_response.columns=new_header_our_response
+                            sorted_df_our_response.columns = new_header_our_response
                             new_header_ground_truth = []
                             for col in sorted_df_ground_truth.columns:
                                 if "float" in str(sorted_df_ground_truth[col].dtype):
-                                    print("is float") 
-                                    first_three_values = sorted_df_ground_truth[col].head(3).astype(int)
-                                else:           
+                                    print("is float")
+                                    first_three_values = (
+                                        sorted_df_ground_truth[col].head(3).astype(int)
+                                    )
+                                else:
                                     print("is not float")
-                                    first_three_values = sorted_df_ground_truth[col].head(3)
-                                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
+                                    first_three_values = sorted_df_ground_truth[
+                                        col
+                                    ].head(3)
+                                concatenated_header = (
+                                    str(first_three_values.iloc[0])
+                                    + "-"
+                                    + str(first_three_values.iloc[1])
+                                    + "-"
+                                    + str(first_three_values.iloc[2])
+                                )
                                 print(concatenated_header)
                                 new_header_ground_truth.append(concatenated_header)
-                            sorted_df_ground_truth.columns=new_header_ground_truth
+                            sorted_df_ground_truth.columns = new_header_ground_truth
                             print("OUR RESPONSE:")
                             print(sorted_df_our_response)
                             print("GROUND TRUTH:")
-                            print(sorted_df_ground_truth) 
+                            print(sorted_df_ground_truth)
                             (
                                 case_accuracy,
                                 is_correct,
                                 similarity_scores,
                                 shared_columns,
-                            ) = compare_lists_matching(sorted_df_our_response, sorted_df_ground_truth)
+                            ) = compare_lists_matching(
+                                sorted_df_our_response, sorted_df_ground_truth
+                            )
                         else:
-                            score = calculate_score(df_ground_truth, df_our_response)    
+                            score = calculate_score(df_ground_truth, df_our_response)
                     except Exception as e:
                         print("".join(traceback.format_exc()))
                         is_correct = False
@@ -483,7 +612,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     # Only try to write the file if script was actually generated
     if script:
         with open(
-            f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/python_recovered.py",
+            f"{main_folder}/length{length}_{id_}/python_recovered.py",
             "w",
         ) as file:
             file.write(script)

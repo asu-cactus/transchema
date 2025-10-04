@@ -91,15 +91,15 @@ def get_operation_and_configuration(res):
     else:
         print(f"Last line:\n{last_line}")
         return None, "none"
-    #assert (
-     #   operation in allowed_operation_list
-    #), f"Operation not in allowed list: {operation}"
+    # assert (
+    #   operation in allowed_operation_list
+    # ), f"Operation not in allowed list: {operation}"
     return operation, configuration
 
 
 def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
 
-    #print("Get Operator-"+str(nth_intermediate_step))
+    # print("Get Operator-"+str(nth_intermediate_step))
     prompt = get_prompt(
         prompt_type="get_next_operator",
         max_tokens=args.token_limit,
@@ -125,14 +125,12 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         no_thinking=args.no_thinking,
     )
 
-
-    #print("Prompt is" + prompt)
+    # print("Prompt is" + prompt)
 
     operation = None
     max_tries = 5
     while operation is None and max_tries > 0:
         max_tries -= 1
-
 
         res = query_gpt(
             llm_client,
@@ -145,7 +143,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             type="Ask For Operator",
         )[0]
 
-        #print("Response is"+res)
+        # print("Response is"+res)
 
         if not args.combine_ask_and_configure:
             operation = get_operation(res)
@@ -153,7 +151,7 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             if operation in allowed_operation_list:
                 return operation, None
             else:
-                #print(operation)
+                # print(operation)
                 return operation, None
         else:
             operation, configuration = get_operation_and_configuration(res)
@@ -283,10 +281,10 @@ def materialize_chatgpt(
             type="Get Python Script",
         )[0]
 
-        #print(res)
-        #res = res[0]
-        #print("+++")
-        #print(res)
+        # print(res)
+        # res = res[0]
+        # print("+++")
+        # print(res)
         pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
         match = pattern.search(res)
         script = match.group(1).strip()
@@ -301,7 +299,7 @@ def materialize_chatgpt(
             save_path = f"{save_dir}/python_step{nth_intermediate_step}.py"
             with open(save_path, "w") as f:
                 f.write(script)
-            return
+            return save_path
 
     raise Exception(f"Exceed {n_trails} trails, Materialization Failed")
 
@@ -320,7 +318,7 @@ def verify_result(target_file_location, ground_truth_location, config):
     logger = config["logger"]
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
-    #if (is_column_numerical(df_ground_truth.columns[0])):
+    # if (is_column_numerical(df_ground_truth.columns[0])):
     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
     try:
         (
@@ -342,7 +340,6 @@ def verify_result(target_file_location, ground_truth_location, config):
     log_str = f"Hard comparison, {config['task']=}, {hard_avg_similarity=},  {hard_is_correct=}, {hard_similarity_scores=}"
     print(log_str)
     logger.info(log_str)
-
 
     hard_match_result = {
         "avg_similarity": hard_avg_similarity,
@@ -430,7 +427,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["len_idx_target_idx"] = len_idx_target_idx
     config["target_data_name"] = target_data_name
     config["target_data_schema"] = target_data_schema
-    if (target_data_schema_with_types):
+    if target_data_schema_with_types:
         config["target_data_schema_with_types"] = target_data_schema_with_types
     else:
         config["target_data_schema_with_types"] = target_data_schema
@@ -447,17 +444,17 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     max_operations = 9
     for nth_intermediate_step in range(1, max_operations + 1):
-        #print("**Step-" + str(nth_intermediate_step))
+        # print("**Step-" + str(nth_intermediate_step))
         try:
             # Get the operation
             operation, configuration = get_operator(
                 llm_client, operation_history, nth_intermediate_step, args, config
             )
 
-            #print("Next Operator:"+operation)
+            # print("Next Operator:"+operation)
 
             if operation == "NO_MORE_OPERATION":
-                #print("No More Operation")
+                # print("No More Operation")
                 logger.info("No More Operation")
                 break
 
