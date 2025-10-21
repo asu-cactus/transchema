@@ -207,7 +207,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
 
     ################## Run for each task ##################
 
-    for task in task_list:
+    for task in task_list:  # Note: this is always only one task
 
         q_count["in_task"] = 0
 
