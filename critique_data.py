@@ -6,6 +6,7 @@ import pdb
 
 # from methods.precursor import precursor
 from methods.multi_step import multi_step
+from methods.single_step_cot import single_step_cot
 from methods.critique import critique
 from log_util.log_util import setup_logging
 
@@ -52,7 +53,10 @@ def ms(args, length, id, log_dir, experiment_name):
     true_tup_ = []
     false_tup_ = []
     for i in range(0, args.no_of_runs):
-        ms_info = multi_step(args, length, id, log_dir, experiment_name, i)
+        if args.single_step_cot:
+            ms_info = single_step_cot(args, length, id, log_dir, experiment_name, i)
+        else:
+            ms_info = multi_step(args, length, id, log_dir, experiment_name, i)
         results.append(ms_info)
 
     for tup in results:
@@ -293,18 +297,23 @@ def get_parser():
         action="store_true",
         help="Add Few Shot Examples",
     )
-
     parser.add_argument(
-        "--combine_ask_and_configure",
+        "--single_step_cot",
         action="store_true",
-        help="Allow combining ask and configure into one step",
+        help="Use Single Step CoT instead of Multi Step",
     )
 
-    parser.add_argument(
-        "--no_thinking",
-        action="store_true",
-        help="Disable thinking process when asked for next operator",
-    )
+    # parser.add_argument(
+    #     "--combine_ask_and_configure",
+    #     action="store_true",
+    #     help="Allow combining ask and configure into one step",
+    # )
+
+    # parser.add_argument(
+    #     "--no_thinking",
+    #     action="store_true",
+    #     help="Disable thinking process when asked for next operator",
+    # )
 
     return parser
 
@@ -354,8 +363,12 @@ if __name__ == "__main__":
                 writer = csv.writer(f)
                 writer.writerow(result)
 
-            # critique iff ms is wrong
             if not result[1]:
+                if args.single_step_cot:
+                    # No critique for single step cot
+                    continue
+
+                # critique iff ms is wrong
 
                 crit_info = crit(args, length, case, operation_history)
                 average_crit_path = f"{args.result_directory}/final_critique.csv"

@@ -27,10 +27,7 @@ from prompts.configuration_prompts import (
     get_group_by_aggregate_prompt,
     get_union_prompt,
 )
-from prompts.code_generation_prompt import (
-    get_python_script,
-    get_python_script_with_intermediate_materialization,
-)
+from prompts.code_generation_prompt import get_python_script
 
 # from prompts.next_operator_prompt_with_intermediate_materialization import (
 #     get_next_operator_prompt_with_intermediate_materialization,
@@ -415,6 +412,7 @@ def get_prompt(
         )
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
         # print(error_string)
+
         static_prompt = get_python_script(
             allowed_operation_list,
             operation_history,
@@ -425,6 +423,7 @@ def get_prompt(
             source_information_with_location,
             csv_save_path,
             error_string,
+            all_intermediate_results,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -437,31 +436,19 @@ def get_prompt(
             static_prompt_length,
             encoding,
         )
-        if nth_intermediate_step > 0:
-            prompt = get_python_script_with_intermediate_materialization(
-                allowed_operation_list,
-                operation_history,
-                target_data_name,
-                target_data_schema,
-                target_samples,
-                file_count,
-                source_information_with_location,
-                csv_save_path,
-                error_string,
-                all_intermediate_results,
-            )[0]
-        else:
-            prompt = get_python_script(
-                allowed_operation_list,
-                operation_history,
-                target_data_name,
-                target_data_schema,
-                target_samples,
-                file_count,
-                source_information_with_location,
-                csv_save_path,
-                error_string,
-            )[0]
+
+        prompt = get_python_script(
+            allowed_operation_list,
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            target_samples,
+            file_count,
+            source_information_with_location,
+            csv_save_path,
+            error_string,
+            all_intermediate_results,
+        )[0]
     else:
         raise ValueError(f"Invalid prompt type {prompt_type}.")
 
