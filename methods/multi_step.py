@@ -466,7 +466,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
             elif operation == "UNPIVOT":
                 operation_history.append(operation)
                 pass
-            elif operation == "NO_MORE_OPERATION" or operation == "":
+            elif operation == "NO_MORE_OPERATION" or operation == "" or step > 15:
                 # generate python script
                 # do similarity search
                 # go to next
