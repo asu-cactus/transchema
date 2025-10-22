@@ -83,4 +83,7 @@ Please look at the target examples, and ensure the generated data has the same t
 Hint 17:
 Most source files have a numerical index column, which is always the first column, and it should be ignored in the transformation. Therefore, when reading a CSV file, please add index_col=0, e.g., sourceX = pd.read_csv('autopipeline-benchmarks/github-pipelines/lengthY_Z/test_X.csv', index_col=0)
 
+Hint 18:
+If the output data from the last generated python script has the same schema with the target examples, however the key constraints exist in the target examples do not exist in the generated output data, please add a GroupBy to the last generated python script. The GroupBy attributes must be the primary key of the target examples (i.e., attributes serving as unique tuple identifer in the target examples).
+
 $METADATA$ 
