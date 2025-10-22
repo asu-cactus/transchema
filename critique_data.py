@@ -363,12 +363,12 @@ if __name__ == "__main__":
                 writer = csv.writer(f)
                 writer.writerow(result)
 
-            if args.single_step_cot:
-                # No critique for single step cot
-                continue
-
-            # critique iff ms is wrong
             if not result[1]:
+                if args.single_step_cot:
+                    # No critique for single step cot
+                    continue
+
+                # critique iff ms is wrong
 
                 crit_info = crit(args, length, case, operation_history)
                 average_crit_path = f"{args.result_directory}/final_critique.csv"
