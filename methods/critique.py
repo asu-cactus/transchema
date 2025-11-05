@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import re
 import traceback
-import pdb
 import tiktoken
 from hints.hint_v3 import get_column_equivalence
 from auto_suggest_llm_util import get_source, get_target_samples, get_filtered_functional_dependency, calculate_score
@@ -14,9 +13,14 @@ from validation.hard_match import compare_lists_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
 from log_util.log_util import create_logger
 
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+from rag_pipeline.rag_layer import RAGDB, milvus_results_to_json
+
 
 def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
+    
     with open(prompt_file, mode="r") as f:
         query = f.read()
 
@@ -41,9 +45,13 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     target_id = id_
     max_target_id = id_
     main_folder = "autopipeline-benchmarks/github-pipelines"
-    anon_flag = flags[2]
-    fd = flags[0]
-    metadata_flag = flags[1]
+    # anon_flag = flags[2]
+    # fd = flags[0]
+    # metadata_flag = flags[1]
+    # few_shot_flag = flags[3]
+
+    fd, metadata_flag, anon_flag, few_shot_flag = flags
+    
     len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
 
@@ -55,10 +63,23 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         type_ = "DEF_CRITIQUE"
     else:
         type_ = "NEW_CRITIQUE"
+    
     logger = create_logger(type_, log_dir, len_id, target_id, max_target_id)
-
+    
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
+    
+    # Inserting components for Few Shot examples here:
 
+    rag_db = None
+    if args.few_shot:
+
+        rag_db = RAGDB(
+            uri= args.rag_db_uri, # "rag_pipeline/test_dummy/milvus_demo_4.db",
+            model_id=args.rag_embedding_model, # "Qwen/Qwen3-Embedding-0.6B",
+            collection=args.rag_db_collection, #"plan_docs",
+            max_len=args.rag_embedding_dim
+        )
+    
     # get schema
     (
         target_data_name,
@@ -70,17 +91,17 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         source_data_schema_list,
         source_samples_list,
     ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
-
+    
 
     # get model encoding
     if args.model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
-    elif args.model == "o4-mini" or model == "o3":
+    elif args.model == "o4-mini" or args.model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
     else:
         encoding = tiktoken.encoding_for_model(args.model)
-
+    
     num_tokens = args.token_limit
 
     num_target_samples = args.target_length
@@ -94,7 +115,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     else:
         query = query.replace("$SCHEMA$", target_data_schema)
     query = query.replace("$EXAMPLES$", target_samples)
-
+    
 
     # get source examples
     source_information = get_source(
@@ -141,6 +162,31 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
 
     if metadata_flag == 1:
         query = query.replace("$METADATA$", "If the target data schema does not make sense, please suggest new column names that better represent the semantics of the columns.")
+    
+
+    if few_shot_flag == 1:        
+        aux_query = query if isinstance(query, list) else [query]
+        rag_results = rag_db.search(
+            aux_query, 
+            top_k=args.rag_topk, 
+            batch_size=args.rag_embedding_batch_size
+        )
+
+        # This is a comma separated string,
+        # therefore splitting it before passing it into a function.
+
+        output_fields = args.rag_output_fields.split(",")
+
+        rag_json_results = milvus_results_to_json(
+            results=rag_results, 
+            output_fields=output_fields
+        )
+        
+        few_shot_docs = [f"Few-shot Example {idx}:\n {document['doc']}" for idx, document in enumerate(rag_json_results)]
+        few_shot_prompt = "\n\n".join(few_shot_docs)
+        few_shot_prompt = "Here are some few shot examples:\n\n" + few_shot_prompt
+
+        query = query.replace("$FEW_SHOT_EXAMPLES$", few_shot_prompt)
 
 
     res = llm_client.gpt(query)

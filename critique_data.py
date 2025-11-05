@@ -105,12 +105,23 @@ def crit(args, length, id_, operation_history):
 
     print("CRITIQUE FINAL RESULTS:")
     if "fd" in args.critique_setting:
+        # The last flag corresponds to the few shot case.
+        # 1 → we use few shot
+        # 0 → we do not use few shot
+        if args.few_shot:
+            fd_flags = [1, 0, 0, 1]
+        else:
+            fd_flags = [1, 0, 0, 0]
+        
         abl_a = critique(
-            args, length, id_, args.log_directory, [1, 0, 0], 0, operation_history
+            args, length, id_, args.log_directory, 
+            fd_flags, 0, operation_history
         )
+
         with open(critique_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id_}", "fd") + abl_a)
+
         if abl_a[0] == True:
             print("Success!")
             print(abl_a)
@@ -119,8 +130,17 @@ def crit(args, length, id_, operation_history):
             result = abl_a
 
     if "metadata" in args.critique_setting:
+        # The last flag corresponds to the few shot case.
+        # 1 → we use few shot
+        # 0 → we do not use few shot
+        if args.few_shot:
+            metadata_flags = [1, 1, 0, 1]
+        else:
+            metadata_flags = [1, 1, 0, 0]
+
         abl_ab = critique(
-            args, length, id_, args.log_directory, [1, 1, 0], 0, operation_history
+            args, length, id_, args.log_directory, 
+            metadata_flags, 0, operation_history
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -134,8 +154,16 @@ def crit(args, length, id_, operation_history):
             result = abl_ab
 
     if "annonymization" in args.critique_setting:
+        # The last flag corresponds to the few shot case.
+        # 1 → we use few shot
+        # 0 → we do not use few shot
+        if args.few_shot:
+            anonymization_flags = [1, 1, 1, 1]
+        else:
+            anonymization_flags = [1, 1, 1, 0]
         abl_abc = critique(
-            args, length, id_, args.log_directory, [1, 1, 1], 0, operation_history
+            args, length, id_, args.log_directory, 
+            anonymization_flags, 0, operation_history
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -287,6 +315,55 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--rag_db_uri",
+        type=str,
+        default="rag_pipeline/test_dummy/milvus_demo_4.db",
+        help="URI for the RAG DB."
+    )
+
+    parser.add_argument(
+        "--rag_embedding_model",
+        type=str,
+        default="Qwen/Qwen3-Embedding-0.6B",
+        help="Embedding model for the RAG DB."
+    )
+
+    parser.add_argument(
+        "--rag_embedding_dim",
+        type=int,
+        default=8192,
+        help="Max dimension size of the embedding model for the RAG DB."
+    )
+
+    parser.add_argument(
+        "--rag_db_collection",
+        type=str,
+        default="plan_docs",
+        help="RAG DB collection that contains all the documents."
+    )
+
+    parser.add_argument(
+        "--rag_topk",
+        type=int,
+        default=3,
+        help="Top-k relevant samples to be retrieved from the RAG DB."
+    )
+
+    parser.add_argument(
+        "--rag_embedding_batch_size",
+        type=int,
+        default=2,
+        help="Batch size for the embedding model in the RAG DB."
+    )
+
+    parser.add_argument(
+        "--rag_output_fields",
+        type=str,
+        default="doc",
+        help="A comma separated string containing all the fields required to be retrieved from the RAG DB."
+    )
+
+    parser.add_argument(
         "--intermediate_materialization",
         action="store_true",
         help="Materialize intermediate results",
@@ -314,6 +391,7 @@ def get_parser():
     #     action="store_true",
     #     help="Disable thinking process when asked for next operator",
     # )
+
 
     return parser
 
