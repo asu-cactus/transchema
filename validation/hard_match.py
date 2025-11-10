@@ -41,7 +41,9 @@ def compare_numerical_columns(pred_column, gold_column):
     gold_column.sort()
     
     # Count matches
-    matches = sum(1 for p, g in zip(pred_column, gold_column) if p - g < 0.01 or (math.isnan(p) == True and math.isnan(g) == True))
+    # matches = sum(1 for p, g in zip(pred_column, gold_column) if p - g < 0.01 or (math.isnan(p) == True and math.isnan(g) == True))
+    # Modifying the comparison logic to match AutoPipeline's implementation.
+    matches = sum(1 for p, g in zip(pred_column, gold_column) if (abs(p - g) / max(abs(p), abs(g))) < 0.01 or (math.isnan(p) == True and math.isnan(g) == True))
     print("num matches:", matches)
     total = len(pred_column)
     print("total:", total)
