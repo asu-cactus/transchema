@@ -11,7 +11,7 @@ with open('output.csv', 'a', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['name', 'len_id', 'max_len_id', 'target_id', 'max_target_id', 'target_per', 'is_perc', 'hint_source', 'anon_flag', 'target_length', 'source_length', 'join_flag', 'aggregate_flag', 'fd_flag', 'join_hints_truncate', 'aggregate_hints_truncate', 'critique_setting', 'critique_type', 'token_limit', 'model', 'log_dir', 'experiment_name', 'no_of_runs', 'hints_v3_truncates', 'intermediate_materialization', 'few_shot', 'combine_ask_and_configure', 'no_thinking', 'majority_voting'])
 
-path = "/Users/jiazou/Downloads/thing/logs-auto-suggest-llm-21-04"
+path = "../logs-auto-suggest-llm-21-04"
 contents = os.listdir(path)
 for content in contents:
     path_cont = f"/Users/jiazou/Downloads/thing/logs-auto-suggest-llm-21-04/{content}"
