@@ -11,15 +11,16 @@ with open('output.csv', 'a', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['name', 'len_id', 'max_len_id', 'target_id', 'max_target_id', 'target_per', 'is_perc', 'hint_source', 'anon_flag', 'target_length', 'source_length', 'join_flag', 'aggregate_flag', 'fd_flag', 'join_hints_truncate', 'aggregate_hints_truncate', 'critique_setting', 'critique_type', 'token_limit', 'model', 'log_dir', 'experiment_name', 'no_of_runs', 'hints_v3_truncates', 'intermediate_materialization', 'few_shot', 'combine_ask_and_configure', 'no_thinking', 'majority_voting'])
 
-path = "../logs-auto-suggest-llm-21-04"
+path = input('path: ')
+path = path.strip()
 contents = os.listdir(path)
 for content in contents:
-    path_cont = f"/Users/jiazou/Downloads/thing/logs-auto-suggest-llm-21-04/{content}"
+    path_cont = f"{path}/{content}"
     if os.path.isdir(path_cont):
         contents2 = os.listdir(path_cont)
         for content2 in contents2:
             if content2 == 'args.log':
-                rf = read(f"/Users/jiazou/Downloads/thing/logs-auto-suggest-llm-21-04/{content}/args.log") 
+                rf = read(f"{path}/{content}/args.log") 
                 rf = rf.strip()
                 dict_match = re.search(r"\{.*?\}", rf)
                 if dict_match:
