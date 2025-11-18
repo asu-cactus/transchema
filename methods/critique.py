@@ -71,6 +71,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     # Inserting components for Few Shot examples here:
 
     rag_db = None
+    rag_query_obj = None
     if args.few_shot:
 
         rag_db = RAGDB(
@@ -79,6 +80,13 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             collection=args.rag_db_collection, #"plan_docs",
             max_len=args.rag_embedding_dim
         )
+
+        rag_query_obj = {
+            "$SRC_INFO$": None,
+            "$SCHEMA$": None,
+            "$EXAMPLES$": None
+        }
+
     
     # get schema
     (
@@ -112,9 +120,12 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     target_samples = get_target_samples(main_folder, len_idx_target_idx, 0, False, num_target_samples, num_tokens, len(encoding.encode(query)), encoding)
     if (target_data_schema_with_types):
         query = query.replace("$SCHEMA$", target_data_schema_with_types)
+        rag_query_obj["$SCHEMA$"] = target_data_schema_with_types
     else:
         query = query.replace("$SCHEMA$", target_data_schema)
+        rag_query_obj["$SCHEMA$"] = target_data_schema
     query = query.replace("$EXAMPLES$", target_samples)
+    rag_query_obj["$EXAMPLES$"] = target_samples
     
 
     # get source examples
@@ -130,6 +141,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
                          )
 
     query = query.replace("$SRC_INFO$", source_information)
+    rag_query_obj["$SRC_INFO$"] = source_information
     ground_truth_location = (
         "{main_folder}/length{len_idx_target_idx}/target.csv".format(
             main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
@@ -164,8 +176,21 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         query = query.replace("$METADATA$", "If the target data schema does not make sense, please suggest new column names that better represent the semantics of the columns.")
     
 
-    if few_shot_flag == 1:        
-        aux_query = query if isinstance(query, list) else [query]
+    if few_shot_flag == 1:
+        rag_query_prompt = f"""
+        Source Data Information: $SRC_INFO$
+        Target Data Information : 
+        Schema :  $SCHEMA$
+        Number of Tuples: $NUM_TUPLES$
+        Examples : $EXAMPLES$
+        """
+
+        for key, value in rag_query_obj.items():
+            if value != None:
+                rag_query_prompt = rag_query_prompt.replace(key, value)
+        
+        # aux_query = query if isinstance(query, list) else [query]
+        aux_query = [rag_query_prompt]
         rag_results = rag_db.search(
             aux_query, 
             top_k=args.rag_topk, 
