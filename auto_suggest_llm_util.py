@@ -206,7 +206,7 @@ def get_prompt(
                 source_information,
                 fd_hints,
                 hints,
-                static_hints,
+                static_hints=static_hints,
             )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
