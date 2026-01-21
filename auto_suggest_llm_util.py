@@ -173,8 +173,8 @@ def get_prompt(
         )
 
         # print("Hints received")
-
-        hints = [""]
+        print(hints)
+        # hints = [""]
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
@@ -254,8 +254,7 @@ def get_prompt(
 
     elif prompt_type == "join":
         print("get hints")
-        hints = ""
-        get_hints(
+        hints = get_hints(
             "join",
             hint_source,
             target_data_schema,
@@ -267,6 +266,8 @@ def get_prompt(
             join_flag,
             join_hints_truncate,
         )
+
+        print(hints)
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types

@@ -47,7 +47,7 @@ Hint : {hints}
         target_data_schema=target_data_schema,
         target_samples=target_samples,
         source_information=source_information,
-        hints="",
+        hints=hints[0],
         fd_hints=fd_hints,
     )
     return [prompt]
@@ -100,7 +100,7 @@ Hint : {hints}
         target_data_schema=target_data_schema,
         target_samples=target_samples,
         source_information=source_information,
-        hints="",
+        hints=hints[0],
         fd_hints=fd_hints,
     )
     return [prompt]

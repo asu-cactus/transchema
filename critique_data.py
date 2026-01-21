@@ -112,10 +112,9 @@ def crit(args, length, id_, operation_history):
             fd_flags = [1, 0, 0, 1]
         else:
             fd_flags = [1, 0, 0, 0]
-        
+
         abl_a = critique(
-            args, length, id_, args.log_directory, 
-            fd_flags, 0, operation_history
+            args, length, id_, args.log_directory, fd_flags, 0, operation_history
         )
 
         with open(critique_path, "a", newline="") as f:
@@ -139,8 +138,7 @@ def crit(args, length, id_, operation_history):
             metadata_flags = [1, 1, 0, 0]
 
         abl_ab = critique(
-            args, length, id_, args.log_directory, 
-            metadata_flags, 0, operation_history
+            args, length, id_, args.log_directory, metadata_flags, 0, operation_history
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -162,8 +160,13 @@ def crit(args, length, id_, operation_history):
         else:
             anonymization_flags = [1, 1, 1, 0]
         abl_abc = critique(
-            args, length, id_, args.log_directory, 
-            anonymization_flags, 0, operation_history
+            args,
+            length,
+            id_,
+            args.log_directory,
+            anonymization_flags,
+            0,
+            operation_history,
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -244,21 +247,27 @@ def get_parser():
         "--join-hints-truncate",
         type=float,
         nargs="+",
-        default=[
-            0.027387593197926163,
-            0.8763891522960383,
-            0.6923226156693141,
-            0.8946066635038473,
-            0.14038693859523377,
-            0.8007445686755367,
-        ],
+        # 0 : high threshold for distinct value ratio from at least one of the columns
+        # 1 : high threshold for jaccard similarity
+        # 2 : high threshold for jaccard containment
+        # 3 : high threshold for value-overlap in case of numerical columns
+        # 4 : high leftness
+        # 5 : high sortedness
+        default=[0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
         help="Join hints truncate thresholds",
     )
     parser.add_argument(
         "--aggregate-hints-truncate",
         type=float,
         nargs="+",
-        default=[0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1],
+        # aht = [
+        # dvr_ub, dvr_lb,
+        # leftness_ub, leftness_lb,
+        # emptiness_ub, emptiness_lb,
+        # peak_frequency_ub, peak_frequency_lb,
+        # value_range_ub, value_range_lb
+        # ]
+        default=[0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2],
         help="Aggregate hints truncate thresholds",
     )
 
@@ -318,49 +327,49 @@ def get_parser():
         "--rag_db_uri",
         type=str,
         default="rag_pipeline/test_dummy/milvus_demo_4.db",
-        help="URI for the RAG DB."
+        help="URI for the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_embedding_model",
         type=str,
         default="Qwen/Qwen3-Embedding-0.6B",
-        help="Embedding model for the RAG DB."
+        help="Embedding model for the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_embedding_dim",
         type=int,
         default=8192,
-        help="Max dimension size of the embedding model for the RAG DB."
+        help="Max dimension size of the embedding model for the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_db_collection",
         type=str,
         default="plan_docs",
-        help="RAG DB collection that contains all the documents."
+        help="RAG DB collection that contains all the documents.",
     )
 
     parser.add_argument(
         "--rag_topk",
         type=int,
         default=3,
-        help="Top-k relevant samples to be retrieved from the RAG DB."
+        help="Top-k relevant samples to be retrieved from the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_embedding_batch_size",
         type=int,
         default=2,
-        help="Batch size for the embedding model in the RAG DB."
+        help="Batch size for the embedding model in the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_output_fields",
         type=str,
         default="doc",
-        help="A comma separated string containing all the fields required to be retrieved from the RAG DB."
+        help="A comma separated string containing all the fields required to be retrieved from the RAG DB.",
     )
 
     parser.add_argument(
@@ -391,7 +400,6 @@ def get_parser():
     #     action="store_true",
     #     help="Disable thinking process when asked for next operator",
     # )
-
 
     return parser
 
