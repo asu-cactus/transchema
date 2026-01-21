@@ -164,7 +164,7 @@ def get_join_hints(
     # at the end sort the dictionary based on length of values satisfied.
     feat_dict = {}
 
-    print("Generating join hints...")
+    # print("Generating join hints...")
 
     for table_name1, table_name2 in combinations(tables.keys(), 2):
         table1 = tables[table_name1]
@@ -257,7 +257,7 @@ def get_join_hints(
 
         # process column based features
 
-        print(feat_dict)
+        # print(feat_dict)
 
         if hint_source == "v1_kv":
             cnt = 0
@@ -309,7 +309,7 @@ def get_join_hints(
         # add the hint string
         # print(feat_dict)
 
-    print(hints)
+    # print(hints)
     return [hints]
 
     # return dict(sorted(feat_dict.items(), key=lambda item: (item[1].get('priority', 0) == 0, len(item[1])), reverse=True))
@@ -317,7 +317,7 @@ def get_join_hints(
 
 def get_truncated_join_feature(f, join_flag, jht):
     feature_list = {}
-    print(join_flag, jht)
+    # print(join_flag, jht)
     if join_flag:
         if f[0] >= jht[0] or f[1] >= jht[0]:
             feature_list["dvr"] = {}

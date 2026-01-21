@@ -267,7 +267,7 @@ def get_prompt(
             join_hints_truncate,
         )
 
-        print(hints)
+        # print(hints)
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
