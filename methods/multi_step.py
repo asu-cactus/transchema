@@ -62,6 +62,7 @@ class Config:
     token_tracker: TokenUsageTracker
     model: str
     token_limit: int
+    static_hints: bool
 
 
 def get_python_response(operation_history, break_flag, csv_save_path, config: Config):
@@ -92,6 +93,7 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
             error_string=error_str,
             csv_save_path=csv_save_path,
             hint_source=config.hint_source,
+            static_hints=config.static_hints,
         )
 
         if prompt[0] == "-1":
@@ -172,6 +174,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     fd_flag = args.fd_flag
     token_limit = args.token_limit
     model = args.model
+    static_hints = args.static_hints
     path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
@@ -263,6 +266,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
             model=model,
             token_limit=token_limit,
             directory=directory,
+            static_hints=static_hints,
         )
 
         history_elements = []
@@ -294,6 +298,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 hint_source=hint_source,
                 few_shot=few_shot,
                 nth_intermediate_step=step if args.intermediate_materialization else 0,
+                static_hints=static_hints,
             )
             if prompt[0] == "-1":
                 logger.info("Token Limit Exceeded")
@@ -341,6 +346,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     nth_intermediate_step=(
                         step if args.intermediate_materialization else 0
                     ),
+                    static_hints=static_hints,
                 )
 
                 if prompt[0] == "-1":
@@ -392,6 +398,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     nth_intermediate_step=(
                         step if args.intermediate_materialization else 0
                     ),
+                    static_hints=static_hints,
                 )
                 if prompt[0] == "-1":
                     logger.info("Token Limit Exceeded")
@@ -439,6 +446,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                     nth_intermediate_step=(
                         step if args.intermediate_materialization else 0
                     ),
+                    static_hints=static_hints,
                 )
 
                 if prompt[0] == "-1":

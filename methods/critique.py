@@ -6,7 +6,12 @@ import re
 import traceback
 import tiktoken
 from hints.hint_v3 import get_column_equivalence
-from auto_suggest_llm_util import get_source, get_target_samples, get_filtered_functional_dependency, calculate_score
+from auto_suggest_llm_util import (
+    get_source,
+    get_target_samples,
+    get_filtered_functional_dependency,
+    calculate_score,
+)
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, is_column_numerical
@@ -20,9 +25,18 @@ from rag_pipeline.rag_layer import RAGDB, milvus_results_to_json
 
 def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
-    
+
     with open(prompt_file, mode="r") as f:
         query = f.read()
+
+    static_hints_read = ""
+    with open("prompts/static_hints_critique.txt", mode="r") as f:
+        static_hints_read = f.read()
+
+    if args.static_hints:
+        query = query.replace("$STATIC_HINTS$", static_hints_read)
+    else:
+        query = query.replace("$STATIC_HINTS$", "")
 
     log_dir = log_dir_
 
@@ -51,9 +65,8 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     # few_shot_flag = flags[3]
 
     fd, metadata_flag, anon_flag, few_shot_flag = flags
-    
-    len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
+    len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
     token_tracker = TokenUsageTracker()
 
@@ -63,23 +76,23 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         type_ = "DEF_CRITIQUE"
     else:
         type_ = "NEW_CRITIQUE"
-    
+
     logger = create_logger(type_, log_dir, len_id, target_id, max_target_id)
-    
+
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
-    
+
     # Inserting components for Few Shot examples here:
 
     rag_db = None
     if args.few_shot:
 
         rag_db = RAGDB(
-            uri= args.rag_db_uri, # "rag_pipeline/test_dummy/milvus_demo_4.db",
-            model_id=args.rag_embedding_model, # "Qwen/Qwen3-Embedding-0.6B",
-            collection=args.rag_db_collection, #"plan_docs",
-            max_len=args.rag_embedding_dim
+            uri=args.rag_db_uri,  # "rag_pipeline/test_dummy/milvus_demo_4.db",
+            model_id=args.rag_embedding_model,  # "Qwen/Qwen3-Embedding-0.6B",
+            collection=args.rag_db_collection,  # "plan_docs",
+            max_len=args.rag_embedding_dim,
         )
-    
+
     # get schema
     (
         target_data_name,
@@ -91,7 +104,6 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         source_data_schema_list,
         source_samples_list,
     ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
-    
 
     # get model encoding
     if args.model == "gpt-4.1-mini":
@@ -101,7 +113,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         encoding = tiktoken.get_encoding("cl100k_base")
     else:
         encoding = tiktoken.encoding_for_model(args.model)
-    
+
     num_tokens = args.token_limit
 
     num_target_samples = args.target_length
@@ -109,25 +121,33 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     num_source_samples = args.source_length
 
     # get target examples
-    target_samples = get_target_samples(main_folder, len_idx_target_idx, 0, False, num_target_samples, num_tokens, len(encoding.encode(query)), encoding)
-    if (target_data_schema_with_types):
+    target_samples = get_target_samples(
+        main_folder,
+        len_idx_target_idx,
+        0,
+        False,
+        num_target_samples,
+        num_tokens,
+        len(encoding.encode(query)),
+        encoding,
+    )
+    if target_data_schema_with_types:
         query = query.replace("$SCHEMA$", target_data_schema_with_types)
     else:
         query = query.replace("$SCHEMA$", target_data_schema)
     query = query.replace("$EXAMPLES$", target_samples)
-    
 
     # get source examples
     source_information = get_source(
-                             file_count, 
-                             source_data_name_list, 
-                             source_data_schema_list, 
-                             main_folder, 
-                             len_idx_target_idx,
-                             num_source_samples,
-                             num_tokens,
-                             encoding
-                         )
+        file_count,
+        source_data_name_list,
+        source_data_schema_list,
+        main_folder,
+        len_idx_target_idx,
+        num_source_samples,
+        num_tokens,
+        encoding,
+    )
 
     query = query.replace("$SRC_INFO$", source_information)
     ground_truth_location = (
@@ -136,15 +156,17 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         )
     )
     try:
-       df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
-       df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-       query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
-       if args.critique_type == "history":
-           query = replace_history_info(query, operation_history)
-           result_path = get_result_path(args, main_folder, len_idx_target_idx)
-           query = replace_result_info(query, num_target_samples, result_path)
+        df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
+        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+        query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
+        if args.critique_type == "history":
+            query = replace_history_info(query, operation_history)
+            result_path = get_result_path(args, main_folder, len_idx_target_idx)
+            query = replace_result_info(query, num_target_samples, result_path)
     except Exception as e:
-       query = query.replace("$NUM_TUPLES$", "Last python script failed to produce any output.")
+        query = query.replace(
+            "$NUM_TUPLES$", "Last python script failed to produce any output."
+        )
 
     if fd == 1:
         df_ground_truth_fd = df_ground_truth.sample(
@@ -159,17 +181,16 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     else:
         query = query.replace("$FD_HINT$", "")
 
-
     if metadata_flag == 1:
-        query = query.replace("$METADATA$", "If the target data schema does not make sense, please suggest new column names that better represent the semantics of the columns.")
-    
+        query = query.replace(
+            "$METADATA$",
+            "If the target data schema does not make sense, please suggest new column names that better represent the semantics of the columns.",
+        )
 
-    if few_shot_flag == 1:        
+    if few_shot_flag == 1:
         aux_query = query if isinstance(query, list) else [query]
         rag_results = rag_db.search(
-            aux_query, 
-            top_k=args.rag_topk, 
-            batch_size=args.rag_embedding_batch_size
+            aux_query, top_k=args.rag_topk, batch_size=args.rag_embedding_batch_size
         )
 
         # This is a comma separated string,
@@ -178,16 +199,17 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         output_fields = args.rag_output_fields.split(",")
 
         rag_json_results = milvus_results_to_json(
-            results=rag_results, 
-            output_fields=output_fields
+            results=rag_results, output_fields=output_fields
         )
-        
-        few_shot_docs = [f"Few-shot Example {idx}:\n {document['doc']}" for idx, document in enumerate(rag_json_results)]
+
+        few_shot_docs = [
+            f"Few-shot Example {idx}:\n {document['doc']}"
+            for idx, document in enumerate(rag_json_results)
+        ]
         few_shot_prompt = "\n\n".join(few_shot_docs)
         few_shot_prompt = "Here are some few shot examples:\n\n" + few_shot_prompt
 
         query = query.replace("$FEW_SHOT_EXAMPLES$", few_shot_prompt)
-
 
     res = llm_client.gpt(query)
 
@@ -196,9 +218,10 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     cost = token_tracker.cost_summary()
     logger.info(cost)
 
-    try: 
+    try:
         with open(
-            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py", mode="r"
+            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
+            mode="r",
         ) as f:
             python_code = f.read()
     except Exception as e:
@@ -211,7 +234,9 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
         + args.critique_type
         + ".csv"
     )
-    query_generator = """Based on the LLM response, can you refine the python code.
+    query_generator = """Based on the LLM response, can you refine the python code."""
+    if args.static_hints:
+        query_generator += """
 
 Hint 1:
 Note that some column names, e.g., purpose, funded_year, may not match the values in the column, e.g., 5 for purpose, 16844 for funded_year. In this case consider the column to be aggregation, e.g., count per purpose, and sum for funded_year. They should not be used in Group By columns.
@@ -263,8 +288,8 @@ Consider applying string functions to certain columns that look similar but have
 
 Hint 16:
 Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
-
-
+"""
+    query_generator += """
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
     - Please keep the final output columns the same as it was in the python script given. [Strictly do not add prefix or suffix to the column names]
@@ -309,8 +334,14 @@ Please look at the target examples, and ensure the generated data has the same t
             similarity_scores,
             shared_columns,
         ) = compare_lists_matching(df_critique, df_ground_truth)
-        if (is_correct==False and len(shared_columns)>0 and len(df_ground_truth)==len(df_critique)):
-            print("TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:")
+        if (
+            is_correct == False
+            and len(shared_columns) > 0
+            and len(df_ground_truth) == len(df_critique)
+        ):
+            print(
+                "TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:"
+            )
             sorted_df_critique = df_critique.sort_values(by=shared_columns)
             sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns)
             new_header_critique = []
@@ -321,9 +352,15 @@ Please look at the target examples, and ensure the generated data has the same t
                 else:
                     print("is not float")
                     first_three_values = sorted_df_critique[col].head(3)
-                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
+                concatenated_header = (
+                    str(first_three_values.iloc[0])
+                    + "-"
+                    + str(first_three_values.iloc[1])
+                    + "-"
+                    + str(first_three_values.iloc[2])
+                )
                 new_header_critique.append(concatenated_header)
-            sorted_df_critique.columns=new_header_critique
+            sorted_df_critique.columns = new_header_critique
             new_header_ground_truth = []
             for col in sorted_df_ground_truth.columns:
                 if "float" in str(sorted_df_ground_truth[col].dtype):
@@ -332,9 +369,15 @@ Please look at the target examples, and ensure the generated data has the same t
                 else:
                     print("is not float")
                     first_three_values = sorted_df_ground_truth[col].head(3)
-                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
+                concatenated_header = (
+                    str(first_three_values.iloc[0])
+                    + "-"
+                    + str(first_three_values.iloc[1])
+                    + "-"
+                    + str(first_three_values.iloc[2])
+                )
                 new_header_ground_truth.append(concatenated_header)
-            sorted_df_ground_truth.columns=new_header_ground_truth
+            sorted_df_ground_truth.columns = new_header_ground_truth
             print("OUR RESPONSE:")
             print(sorted_df_critique)
             print("GROUND TRUTH:")
@@ -362,7 +405,6 @@ Please look at the target examples, and ensure the generated data has the same t
         score,
     )
     return crit_info
-
 
 
 def replace_history_info(query, operation_history):

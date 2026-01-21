@@ -65,6 +65,7 @@ def get_prompt(
     combine_ask_and_configure=False,
     no_thinking=False,
     few_shot=False,
+    static_hints=False,
 ):
     """
     Args:
@@ -205,6 +206,7 @@ def get_prompt(
                 source_information,
                 fd_hints,
                 hints,
+                static_hints,
             )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -245,6 +247,7 @@ def get_prompt(
                 fd_hints,
                 hints,
                 all_intermediate_results,
+                static_hints,
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -283,6 +286,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -305,6 +309,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
 
     elif prompt_type == "group_by_aggregate":
@@ -335,6 +340,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -357,6 +363,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
 
     elif prompt_type == "union":
@@ -373,6 +380,7 @@ def get_prompt(
             "",
             file_count,
             source_information,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -393,6 +401,7 @@ def get_prompt(
             target_samples,
             file_count,
             source_information,
+            static_hints,
         )[0]
 
     elif prompt_type == "python_script":
@@ -425,6 +434,7 @@ def get_prompt(
             csv_save_path,
             error_string,
             all_intermediate_results,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -449,6 +459,7 @@ def get_prompt(
             csv_save_path,
             error_string,
             all_intermediate_results,
+            static_hints,
         )[0]
     else:
         raise ValueError(f"Invalid prompt type {prompt_type}.")

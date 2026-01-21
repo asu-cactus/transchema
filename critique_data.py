@@ -213,6 +213,13 @@ def get_parser():
     parser.add_argument(
         "--anon-flag", action="store_true", help="Set anon_flag to True"
     )
+
+    parser.add_argument(
+        "--static-hints",
+        action="store_true",
+        help="Add general purpose static hints to the prompt",
+    )
+
     parser.add_argument(
         "--no-anon",
         dest="anon_flag",
