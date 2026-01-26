@@ -181,6 +181,26 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             results=rag_results, 
             output_fields=output_fields
         )
+
+        # Log retrieved documents explicitly (so we can audit retrieval without digging into the prompt).
+        try:
+            logger.info(
+                f"RAG_RETRIEVAL: uri={args.rag_db_uri} collection={args.rag_db_collection} top_k={args.rag_topk}"
+            )
+        except Exception:
+            pass
+        for idx, document in enumerate(rag_json_results):
+            try:
+                doc_id = document.get("id")
+                distance = document.get("distance", document.get("score"))
+                doc_text = document.get("doc", "")
+                preview = doc_text[:800].replace("\n", "\\n")
+                logger.info(
+                    f"RAG_HIT_{idx}: id={doc_id} distance={distance} preview={preview}"
+                )
+            except Exception:
+                # Don't let logging failures break critique.
+                pass
         
         few_shot_docs = [f"Few-shot Example {idx}:\n {document['doc']}" for idx, document in enumerate(rag_json_results)]
         few_shot_prompt = "\n\n".join(few_shot_docs)
