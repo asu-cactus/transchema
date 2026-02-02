@@ -431,6 +431,21 @@ if __name__ == "__main__":
 
     cases = list(range(start, end))
 
+    # failed cases
+    cases = [
+        73,
+        74,
+        76,
+        82,
+        90,
+        91,
+        92,
+        93,
+        95,
+        97,
+        100,
+    ]
+
     processed_without_exceptions = 0
 
     for case in cases:
