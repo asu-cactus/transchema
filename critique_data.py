@@ -3,7 +3,6 @@ import argparse
 import json
 import csv
 import pdb
-import gc
 
 # from methods.precursor import precursor
 from methods.multi_step import multi_step
@@ -463,7 +462,5 @@ if __name__ == "__main__":
         except Exception as e:
             print("".join(traceback.format_exc()))
             print(f"Error processing case {case_path}: {str(e)}")
-        
-        gc.collect()
 
     print(processed_without_exceptions)

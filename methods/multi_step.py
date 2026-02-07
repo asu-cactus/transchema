@@ -271,12 +271,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
 
         step = 0
         while break_flag:
-            
-            # Safety cap: stop after 15 steps regardless of model output
-            if step > 15:
-                logger.info(f"Stopping after {step} steps (safety cap)")
-                break_flag = 0
-                break
 
             prompt = get_prompt(
                 prompt_type="get_next_operator",

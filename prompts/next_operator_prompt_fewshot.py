@@ -37,7 +37,7 @@ Note: The row examples provided are part of the corresponding rows.
 - You may deduce the type of columns in 'Target Table' from the 'Target Examples'. Strictly make sure that the operations in 'Operation History' lead to 'Target Table' with those same type.
 - If the any of the schemas in source tables are almost similar, give outer Union operation first priority.
 - Please try to make sure, using the operator history, that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR.
-- CRITICAL STOPPING RULE: Before selecting another operation, check if the operation history already accounts for combining all source tables to produce the target schema. If all source tables have been combined (via JOIN, UNION, etc.) and the resulting columns match the target schema, you MUST return 'NO_MORE_OPERATION'. Do not add redundant or unnecessary operations after the pipeline is complete.
+- If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
 - You should only answer from allowed operations.
 - Try not to repeat operation and it's configuration from the operation history.
 - IMPORTANT: If there is only one source table, UNION should not be an option.
