@@ -5,6 +5,8 @@ import numpy as np
 import re
 import traceback
 import tiktoken
+from pathlib import Path
+from typing import Optional, Union
 from hints.hint_v3 import get_column_equivalence
 from auto_suggest_llm_util import get_source, get_target_samples, get_filtered_functional_dependency, calculate_score
 from util.utils import execute_python, get_test_info
@@ -18,7 +20,113 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, milvus_results_to_json
 
 
-def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
+def resolve_rag_examples_base(rag_examples_base: Optional[Union[str, Path]] = None) -> Path:
+    """
+    Resolve the path to the rag-examples-w-pipeline directory.
+
+    This function provides a smart fallback to find the rag-examples-w-pipeline
+    directory in common locations. Users can override by providing their own path
+    or by setting the RAG_EXAMPLES_BASE environment variable.
+
+    Args:
+        rag_examples_base: Optional path to rag-examples-w-pipeline directory.
+            If None, uses smart fallback (or RAG_EXAMPLES_BASE env var if set).
+            Can be a string or Path object.
+
+    Returns:
+        Path object pointing to the rag-examples-w-pipeline directory.
+
+    Raises:
+        ValueError: If a provided path does not exist.
+        FileNotFoundError: If no path could be resolved via fallback.
+
+    Examples:
+        >>> # Use default smart fallback (transchema/ or workspace root)
+        >>> base = resolve_rag_examples_base()
+
+        >>> # Override with custom path
+        >>> base = resolve_rag_examples_base("/path/to/rag-examples-w-pipeline")
+        >>> base = resolve_rag_examples_base(Path("/path/to/rag-examples-w-pipeline"))
+
+        >>> # Or set environment variable: export RAG_EXAMPLES_BASE=/path/to/rag-examples-w-pipeline
+    """
+    # 1. Explicit parameter (highest priority)
+    if rag_examples_base is not None:
+        base_path = Path(rag_examples_base)
+        if not base_path.exists():
+            raise ValueError(
+                f"Provided rag_examples_base path does not exist: {rag_examples_base}. "
+                "Please ensure the directory exists or use None for automatic detection."
+            )
+        return base_path
+
+    # 2. Environment variable
+    env_path = os.environ.get("RAG_EXAMPLES_BASE")
+    if env_path:
+        base_path = Path(env_path)
+        if base_path.exists():
+            return base_path
+        # If env is set but path invalid, warn but continue to fallback
+        import warnings
+        warnings.warn(
+            f"RAG_EXAMPLES_BASE is set but path does not exist: {env_path}. "
+            "Using automatic fallback.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    # 3. Smart fallback: transchema/ first, then workspace root
+    transchema_dir = Path(__file__).resolve().parent.parent  # transchema/methods -> transchema
+    workspace_root = transchema_dir.parent  # transchema -> workspace root
+
+    base_path = transchema_dir / "rag-examples-w-pipeline"
+    if base_path.exists():
+        return base_path
+    base_path = workspace_root / "rag-examples-w-pipeline"
+    if base_path.exists():
+        return base_path
+
+    raise FileNotFoundError(
+        "Could not find rag-examples-w-pipeline directory. "
+        f"Tried: {transchema_dir / 'rag-examples-w-pipeline'}, "
+        f"{workspace_root / 'rag-examples-w-pipeline'}. "
+        "Provide the path via rag_examples_base parameter or RAG_EXAMPLES_BASE environment variable."
+    )
+
+
+def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_examples_base: Optional[Union[str, Path]] = None):
+    """
+    Run critique on a data-pipeline transformation using RAG few-shot examples.
+
+    When few_shot is enabled, retrieves similar documents from RAG, resolves their
+    case IDs, and for each case loads the pipeline (operator_pipeline.txt) and
+    Python code (python_recovered.py) from the rag-examples-w-pipeline directory,
+    then injects them into the prompt as few-shot examples.
+
+    Args:
+        args: Configuration object (model, rag_db_uri, rag_topk, etc.).
+        length: Length parameter (e.g., 4).
+        id_: Target ID parameter (e.g., 32).
+        log_dir_: Log directory path.
+        flags: Tuple (fd_flag, metadata_flag, anon_flag, few_shot_flag).
+        is_def: 1 for DEF_CRITIQUE, 0 for NEW_CRITIQUE.
+        operation_history: History of operations for the current case.
+        rag_examples_base: Optional path to rag-examples-w-pipeline directory.
+            If None, uses resolve_rag_examples_base() (env RAG_EXAMPLES_BASE or
+            automatic fallback). Can be str or Path. Use this to integrate
+            with your own layout.
+
+    Returns:
+        Tuple (is_correct, cost, time_elapsed, score).
+
+    Examples:
+        >>> # Default (automatic path resolution)
+        >>> result = critique(args, 4, 32, log_dir, flags, 0, history)
+
+        >>> # Custom path for integration
+        >>> result = critique(args, 4, 32, log_dir, flags, 0, history,
+        ...                   rag_examples_base="/path/to/rag-examples-w-pipeline")
+    """
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
     
     with open(prompt_file, mode="r") as f:
@@ -54,7 +162,6 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     
     len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
-
     token_tracker = TokenUsageTracker()
 
     start_time = time.time()
@@ -68,13 +175,10 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
     
-    # Inserting components for Few Shot examples here:
-
     rag_db = None
     if args.few_shot:
-
         rag_db = RAGDB(
-            uri= args.rag_db_uri, # "rag_pipeline/test_dummy/milvus_demo_4.db",
+            uri=args.rag_db_uri, # "rag_pipeline/test_dummy/milvus_demo_4.db",
             model_id=args.rag_embedding_model, # "Qwen/Qwen3-Embedding-0.6B",
             collection=args.rag_db_collection, #"plan_docs",
             max_len=args.rag_embedding_dim
@@ -130,6 +234,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
                          )
 
     query = query.replace("$SRC_INFO$", source_information)
+    
     ground_truth_location = (
         "{main_folder}/length{len_idx_target_idx}/target.csv".format(
             main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
@@ -166,21 +271,42 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
 
     if few_shot_flag == 1:        
         aux_query = query if isinstance(query, list) else [query]
-        rag_results = rag_db.search(
-            aux_query, 
-            top_k=args.rag_topk, 
-            batch_size=args.rag_embedding_batch_size
-        )
-
+        
         # This is a comma separated string,
         # therefore splitting it before passing it into a function.
-
         output_fields = args.rag_output_fields.split(",")
+        # Ensure case_id is in output_fields if not already present
+        if "case_id" not in output_fields:
+            output_fields.append("case_id")
+        
+        # Exclude current case (self-retrieval prevention); search requests top_k+5 for post-filter buffer
+        rag_results = rag_db.search(
+            aux_query,
+            top_k=args.rag_topk,
+            batch_size=args.rag_embedding_batch_size,
+            output_fields=output_fields,
+            exclude_case_id=len_idx_target_idx,
+        )
 
         rag_json_results = milvus_results_to_json(
-            results=rag_results, 
+            results=rag_results,
             output_fields=output_fields
         )
+
+        # Post-filter: always remove same-case docs (guarantee; Milvus filter is best-effort)
+        rag_json_results = [d for d in rag_json_results if d.get("case_id") != len_idx_target_idx]
+
+        # Deduplicate by case_id (keep first = best distance; handles duplicate docs in DB from re-ingestion)
+        seen_case_ids = set()
+        deduped = []
+        for d in rag_json_results:
+            cid = d.get("case_id")
+            if cid is None:
+                deduped.append(d)  # keep docs without case_id (fallback)
+            elif cid not in seen_case_ids:
+                seen_case_ids.add(cid)
+                deduped.append(d)
+        rag_json_results = deduped[: args.rag_topk]
 
         # Log retrieved documents explicitly (so we can audit retrieval without digging into the prompt).
         try:
@@ -194,20 +320,82 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
                 doc_id = document.get("id")
                 distance = document.get("distance", document.get("score"))
                 doc_text = document.get("doc", "")
+                case_id = document.get("case_id", "N/A")
                 preview = doc_text[:800].replace("\n", "\\n")
                 logger.info(
-                    f"RAG_HIT_{idx}: id={doc_id} distance={distance} preview={preview}"
+                    f"RAG_HIT_{idx}: id={doc_id} case_id={case_id} distance={distance} preview={preview}"
                 )
             except Exception:
                 # Don't let logging failures break critique.
                 pass
         
-        few_shot_docs = [f"Few-shot Example {idx}:\n {document['doc']}" for idx, document in enumerate(rag_json_results)]
-        few_shot_prompt = "\n\n".join(few_shot_docs)
+        # Resolve rag-examples-w-pipeline base path (user override, env var, or smart fallback)
+        rag_examples_base_path = resolve_rag_examples_base(rag_examples_base)
+        try:
+            logger.info(f"Using rag-examples-w-pipeline at: {rag_examples_base_path}")
+        except Exception:
+            pass
+
+        few_shot_blocks = []
+        for idx, document in enumerate(rag_json_results):
+            case_id = document.get("case_id")
+            doc_text = document.get("doc", "")
+
+            # If case_id is not available, fallback to document text only
+            if not case_id:
+                few_shot_blocks.append(f"Few-shot Example {idx + 1}:\n{doc_text}")
+                continue
+
+            # Build folder path: case_id "4_24" → "Length4_24"
+            folder_name = f"Length{case_id}"  # e.g., "Length4_24"
+            case_folder = rag_examples_base_path / folder_name
+            
+            # Read pipeline and Python code files
+            pipeline_content = ""
+            python_code = ""
+            
+            pipeline_path = case_folder / "operator_pipeline.txt"
+            python_path = case_folder / "python_recovered.py"
+            
+            try:
+                if pipeline_path.exists():
+                    pipeline_content = pipeline_path.read_text(encoding="utf-8", errors="ignore").strip()
+                else:
+                    logger.warning(f"Pipeline file not found for case {case_id}: {pipeline_path}")
+            except Exception as e:
+                logger.warning(f"Could not read pipeline for case {case_id}: {e}")
+            
+            try:
+                if python_path.exists():
+                    python_code = python_path.read_text(encoding="utf-8", errors="ignore").strip()
+                else:
+                    logger.warning(f"Python code file not found for case {case_id}: {python_path}")
+            except Exception as e:
+                logger.warning(f"Could not read Python code for case {case_id}: {e}")
+            
+            # Build formatted block for this example
+            block_parts = [
+                f"Few-shot Example {idx + 1}:",
+                doc_text
+            ]
+            
+            if pipeline_content:
+                block_parts.append(f"\nPipeline for this few-shot example:")
+                block_parts.append(pipeline_content)
+            
+            if python_code:
+                block_parts.append(f"\nPython code for this few-shot example:")
+                block_parts.append("```python")
+                block_parts.append(python_code)
+                block_parts.append("```")
+            
+            few_shot_blocks.append("\n".join(block_parts))
+        
+        # Join all blocks
+        few_shot_prompt = "\n\n".join(few_shot_blocks)
         few_shot_prompt = "Here are some few shot examples:\n\n" + few_shot_prompt
 
         query = query.replace("$FEW_SHOT_EXAMPLES$", few_shot_prompt)
-
 
     res = llm_client.gpt(query)
 
