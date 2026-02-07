@@ -16,6 +16,7 @@ from validation.hard_match import is_column_numerical
 
 # import auto_suggest_llm_prompts as prt
 import tiktoken
+from transformers import AutoTokenizer
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms
 
@@ -29,9 +30,17 @@ from prompts.configuration_prompts import (
 )
 from prompts.code_generation_prompt import get_python_script
 
+_tokenizer_cache = {}
+
 # from prompts.next_operator_prompt_with_intermediate_materialization import (
 #     get_next_operator_prompt_with_intermediate_materialization,
 # )
+
+
+def encode_text(text, encoding, tokenizer):
+    if tokenizer:
+        return tokenizer.encode(text)
+    return encoding.encode(text)
 
 
 def get_prompt(
@@ -84,13 +93,24 @@ def get_prompt(
     # dynamic : target_examples
     # max_tokens = 128000 # for gpt4turbo
 
-    if model == "gpt-4.1-mini":
+    model_str = str(model).lower() if model else ""
+    
+    if "qwen" in model_str:
+        # Use Qwen's actual tokenizer from transformers (with caching)
+        if "qwen2.5" not in _tokenizer_cache:
+            _tokenizer_cache["qwen2.5"] = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        tokenizer = _tokenizer_cache["qwen2.5"]
+        encoding = None
+    elif model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
+        tokenizer = None
     elif model == "o4-mini" or model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
+        tokenizer = None
     else:
         encoding = tiktoken.encoding_for_model(model)
+        tokenizer = None
 
     if nth_intermediate_step <= 1:
         all_intermediate_results = {}
@@ -100,7 +120,7 @@ def get_prompt(
         intermediate_dir = f"{directory}/length{len_idx_target_idx}/"
         # print(intermediate_dir)
         all_intermediate_results = get_all_intermediate(
-            intermediate_dir, encoding, source_length, nth_intermediate_step
+            intermediate_dir, encoding, tokenizer, source_length, nth_intermediate_step
         )
 
     source_information = get_source(
@@ -112,6 +132,7 @@ def get_prompt(
         source_length,
         max_tokens,
         encoding,
+        tokenizer,
     )
 
     # print("source_information: "+source_information)
@@ -206,7 +227,7 @@ def get_prompt(
                 fd_hints,
                 hints,
             )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -216,6 +237,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
 
         # print("Target Examples: "+target_samples)
@@ -283,7 +305,7 @@ def get_prompt(
             hints,
             fd_hints,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -293,6 +315,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_join_prompt(
             allowed_operation_list,
@@ -335,7 +358,7 @@ def get_prompt(
             hints,
             fd_hints,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -345,6 +368,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
@@ -373,7 +397,7 @@ def get_prompt(
             file_count,
             source_information,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -383,6 +407,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_union_prompt(
             allowed_operation_list,
@@ -409,6 +434,7 @@ def get_prompt(
             len_idx_target_idx,
             max_tokens,
             encoding,
+            tokenizer,
         )
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
         # print(error_string)
@@ -425,7 +451,7 @@ def get_prompt(
             error_string,
             all_intermediate_results,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -435,6 +461,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
 
         prompt = get_python_script(
@@ -453,8 +480,8 @@ def get_prompt(
         raise ValueError(f"Invalid prompt type {prompt_type}.")
 
     # print(prompt)
-    # print(len(encoding.encode(prompt)))
-    prompt_len = len(encoding.encode(prompt))
+    # print(len(encode_text(prompt, encoding, tokenizer)))
+    prompt_len = len(encode_text(prompt, encoding, tokenizer))
     if prompt_len > max_tokens:
         print(prompt)
         raise Exception(f"Prompt length {prompt_len} exceeds maximum tokens.")
@@ -465,14 +492,14 @@ def get_prompt(
     # Dynamic tokens
 
 
-def get_target_string(df, rem_tokens, encoding):
+def get_target_string(df, rem_tokens, encoding, tokenizer):
 
     # string should be target rows in list
     examples_l = df.values.tolist()
     examples = str(examples_l)
 
     # if all passes do not check further
-    if len(encoding.encode(examples)) < rem_tokens:
+    if len(encode_text(examples, encoding, tokenizer)) < rem_tokens:
         return examples
 
     # if not then do binary search on exact number of examples that can be in there
@@ -489,7 +516,7 @@ def get_target_string(df, rem_tokens, encoding):
         temp_l = examples_l[: mid + 1]
         # how much string is being used
         temp = str(temp_l)
-        encode_len = len(encoding.encode(temp))
+        encode_len = len(encode_text(temp, encoding, tokenizer))
 
         # print(rem_tokens, encode_len)
 
@@ -502,7 +529,7 @@ def get_target_string(df, rem_tokens, encoding):
     # print('ans :', ans)
     temp_l = examples_l[:ans]
     # print(str(temp_l))
-    # print(len(encoding.encode(str(temp_l))))
+    # print(len(encode_text(str(temp_l), encoding, tokenizer)))
     return [str(temp_l)]
 
 
@@ -515,6 +542,7 @@ def get_target_samples(
     max_tokens,
     static_prompt_length,
     encoding,
+    tokenizer,
 ):
     # print(directory,len_idx_target_idx, target_perc,is_perc, target_length, max_tokens, static_prompt_length)
     target_csv_path = directory + "/length" + len_idx_target_idx + "/target.csv"
@@ -549,6 +577,7 @@ def get_source(
     sample_length,
     num_tokens,
     encoding,
+    tokenizer,
 ):
     ss = "\n"
     for i in range(file_count):
@@ -560,7 +589,7 @@ def get_source(
             i=i, source_data_schema_list=source_data_schema_list[i]
         )
         source_samples = get_source_samples(
-            directory, len_idx_target_idx, i, sample_length, num_tokens, encoding
+            directory, len_idx_target_idx, i, sample_length, num_tokens, encoding, tokenizer
         )
         ss += "\tSource {i} Examples: {source_samples_list}\n".format(
             i=i, source_samples_list=source_samples
@@ -572,7 +601,8 @@ def get_source(
 
 
 def get_source_samples(
-    directory, len_idx_target_idx, i, sample_length, num_tokens, encoding
+
+    directory, len_idx_target_idx, i, sample_length, num_tokens, encoding, tokenizer
 ):
     # print(directory,len_idx_target_idx)
     filename = "{main_directory}/length{len_idx_target_idx}/test_{i}.csv".format(
@@ -606,6 +636,7 @@ def get_source_with_location(
     len_idx_target_idx,
     num_tokens,
     encoding,
+    tokenizer,
 ):
     ss = ""
     for i in range(file_count):
@@ -617,7 +648,7 @@ def get_source_with_location(
             i=i, source_data_schema_list=source_data_schema_list[i]
         )
         source_samples_list = get_source_samples(
-            main_directory, len_idx_target_idx, i, source_length, num_tokens, encoding
+            main_directory, len_idx_target_idx, i, source_length, num_tokens, encoding, tokenizer
         )
         ss += "\tSource {i} Examples: {source_samples_list}\n".format(
             i=i, source_samples_list=source_samples_list
@@ -636,13 +667,13 @@ class IntermediateResult:
 
 
 def get_all_intermediate(
-    intermediate_dir, encoding, sample_length, nth_intermediate_step
+    intermediate_dir, encoding, tokenizer, sample_length, nth_intermediate_step
 ):
-    def get_intermediate(file_path, encoding, sample_length):
+    def get_intermediate(file_path, encoding, tokenizer, sample_length):
         source_df = pd.read_csv(file_path, low_memory=False)
         source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
         # source_samples_string = get_target_string(
-        #   source_df_sampled, numTokens, encoding
+        #   source_df_sampled, numTokens, encoding, tokenizer
         # )  i# -1000 buffer for good measures # for now no limit on max_tokens for source
         source_samples_string = str(source_df_sampled)
         schema = source_df.columns.tolist()
@@ -664,7 +695,7 @@ def get_all_intermediate(
                 f"Intermediate file not found: {file_path}. It is due to errors during materialization."
             )
             continue
-        intermediate_result = get_intermediate(file_path, encoding, sample_length)
+        intermediate_result = get_intermediate(file_path, encoding, tokenizer, sample_length)
         all_intermediate_results[step] = intermediate_result
 
     return all_intermediate_results

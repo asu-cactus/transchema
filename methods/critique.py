@@ -5,6 +5,7 @@ import numpy as np
 import re
 import traceback
 import tiktoken
+from transformers import AutoTokenizer
 from hints.hint_v3 import get_column_equivalence
 from auto_suggest_llm_util import get_source, get_target_samples, get_filtered_functional_dependency, calculate_score
 from util.utils import execute_python, get_test_info
@@ -16,6 +17,14 @@ from log_util.log_util import create_logger
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, milvus_results_to_json
+
+_tokenizer_cache = {}
+
+
+def encode_text(text, encoding, tokenizer):
+    if tokenizer is not None:
+        return tokenizer.encode(text)
+    return encoding.encode(text)
 
 
 def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
@@ -94,13 +103,23 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     
 
     # get model encoding
-    if args.model == "gpt-4.1-mini":
+    model_str = str(args.model).lower() if args.model else ""
+    
+    if "qwen" in model_str:
+        if "qwen2.5" not in _tokenizer_cache:
+            _tokenizer_cache["qwen2.5"] = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        tokenizer = _tokenizer_cache["qwen2.5"]
+        encoding = None
+    elif args.model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
+        tokenizer = None
     elif args.model == "o4-mini" or args.model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
+        tokenizer = None
     else:
         encoding = tiktoken.encoding_for_model(args.model)
+        tokenizer = None
     
     num_tokens = args.token_limit
 
@@ -109,7 +128,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     num_source_samples = args.source_length
 
     # get target examples
-    target_samples = get_target_samples(main_folder, len_idx_target_idx, 0, False, num_target_samples, num_tokens, len(encoding.encode(query)), encoding)
+    target_samples = get_target_samples(main_folder, len_idx_target_idx, 0, False, num_target_samples, num_tokens, len(encode_text(query, encoding, tokenizer)), encoding, tokenizer)
     if (target_data_schema_with_types):
         query = query.replace("$SCHEMA$", target_data_schema_with_types)
     else:
@@ -126,7 +145,8 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
                              len_idx_target_idx,
                              num_source_samples,
                              num_tokens,
-                             encoding
+                             encoding,
+                             tokenizer
                          )
 
     query = query.replace("$SRC_INFO$", source_information)

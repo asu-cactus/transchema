@@ -4,6 +4,7 @@ import os
 import pdb
 from openai import OpenAI
 import tiktoken
+from transformers import AutoTokenizer
 
 MODEL = "text-embedding-3-small"
 SHEET_NAME = ["L1-Zero-shot CoT", "L2", "L3", "L4", "L5"]
@@ -38,8 +39,11 @@ def get_prompt_embeddings(
     client=OpenAI(),
     excel_path="data/LLM-based data transformation results.xlsx",
     embeddings_path="data/ms_embeddings",
-    encoder=tiktoken.encoding_for_model("gpt-4"),
+    encoder=None,
 ):
+    # Default to GPT-4 encoding if not provided
+    if encoder is None:
+        encoder = tiktoken.encoding_for_model("gpt-4")
     # Load embeddings if they exist
     if os.path.exists(f"{embeddings_path}.npz"):
         return np.load(f"{embeddings_path}.npz")
@@ -73,8 +77,11 @@ def get_fewshot_prompt(
     target_name,
     client=OpenAI(),
     excel_path="data/LLM-based data transformation results.xlsx",
-    encoder=tiktoken.encoding_for_model("gpt-4"),
+    encoder=None,
 ):
+    # Default to GPT-4 encoding if not provided
+    if encoder is None:
+        encoder = tiktoken.encoding_for_model("gpt-4")
 
     # "L2" is the first set of embeddings, "L3" is the second set, etc.
     search_len = int(target_name[6:].split("_")[0]) - 1
