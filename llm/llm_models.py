@@ -142,7 +142,7 @@ class LLMClient:
         )
         def _request_with_backoff():
 
-            if self.model == "o4-mini" or self.model == "o3":
+            if self.model == "o4-mini" or self.model == "o3" or "deepseek-r1" in self.model.lower():
                 return self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
