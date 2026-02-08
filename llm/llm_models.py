@@ -77,6 +77,13 @@ class LLMClient:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-32B-Instruct")
             else:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        elif "deepseek-r1" in model.lower():
+            self.client = openai.OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama"  
+            )
+            # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
+            self.encoding = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
         else:
             self.client = openai.OpenAI(api_key=openai.api_key)
             if model == "gpt-4.1-mini":
