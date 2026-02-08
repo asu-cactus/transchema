@@ -8,6 +8,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 import psycopg2
 import csv
 import re
+import subprocess
+import tempfile
+import sys
 
 
 def convert_if_number(s):
@@ -127,12 +130,64 @@ def execute_sql(conn, query):
         return f"Error: {e.pgerror}"
 
 
-def execute_python(gpt_response):
+def execute_python(gpt_response, timeout=300):
+    """
+    Execute Python code in a subprocess to isolate memory issues.
+    If the subprocess gets killed (e.g., OOM), the main process continues.
+    
+    Args:
+        gpt_response: Python code string to execute
+        timeout: Maximum execution time in seconds (default: 300s = 5min)
+    
+    Returns:
+        "Success" if execution succeeds, error message otherwise
+    """
     try:
-        exec(gpt_response)
-        return "Success"
+        # Write the script to a temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(gpt_response)
+            script_path = f.name
+        
+        try:
+            # Run the script in a subprocess
+            result = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=os.getcwd()
+            )
+            
+            # Check the return code
+            if result.returncode == 0:
+                return "Success"
+            elif result.returncode == -9 or result.returncode == 137:
+                # Process was killed (likely OOM)
+                print(f"Script was killed (OOM suspected). Return code: {result.returncode}")
+                return "Error: Script killed due to memory limits (OOM)"
+            else:
+                # Other error
+                error_msg = result.stderr if result.stderr else result.stdout
+                print(f"Script failed with return code {result.returncode}")
+                print(f"Error output: {error_msg}")
+                return f"Error: {error_msg}"
+                
+        finally:
+            # Clean up the temporary file
+            try:
+                os.unlink(script_path)
+            except:
+                pass
+                
+    except subprocess.TimeoutExpired:
+        print(f"Script execution timed out after {timeout}s")
+        try:
+            os.unlink(script_path)
+        except:
+            pass
+        return f"Error: Execution timeout ({timeout}s)"
     except Exception as e:
-        print("Exception: "+str(e))
+        print(f"Exception in execute_python: {e}")
         return f"Error: {e}"
 
 
