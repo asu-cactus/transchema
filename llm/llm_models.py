@@ -73,7 +73,10 @@ class LLMClient:
                 base_url="http://localhost:11434/v1",
                 api_key="ollama"  
             )
-            self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+            if "32b" in model.lower():
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-32B-Instruct")
+            else:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
         else:
             self.client = openai.OpenAI(api_key=openai.api_key)
             if model == "gpt-4.1-mini":
