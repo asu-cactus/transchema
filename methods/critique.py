@@ -105,7 +105,16 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     # get model encoding
     model_str = str(args.model).lower() if args.model else ""
     
-    if "qwen" in model_str:
+    if "qwen3" in model_str:
+        cache_key = "qwen3-32b" if "32b" in model_str else "qwen3"
+        if cache_key not in _tokenizer_cache:
+            if "32b" in model_str:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+            else:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+        tokenizer = _tokenizer_cache[cache_key]
+        encoding = None
+    elif "qwen" in model_str:
         if "qwen2.5" not in _tokenizer_cache:
             _tokenizer_cache["qwen2.5"] = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
         tokenizer = _tokenizer_cache["qwen2.5"]

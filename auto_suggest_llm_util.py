@@ -95,7 +95,17 @@ def get_prompt(
 
     model_str = str(model).lower() if model else ""
     
-    if "qwen" in model_str:
+    if "qwen3" in model_str:
+        # Use Qwen3's actual tokenizer from transformers (with caching)
+        cache_key = "qwen3-32b" if "32b" in model_str else "qwen3"
+        if cache_key not in _tokenizer_cache:
+            if "32b" in model_str:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+            else:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+        tokenizer = _tokenizer_cache[cache_key]
+        encoding = None
+    elif "qwen" in model_str:
         # Use Qwen's actual tokenizer from transformers (with caching)
         if "qwen2.5" not in _tokenizer_cache:
             _tokenizer_cache["qwen2.5"] = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")

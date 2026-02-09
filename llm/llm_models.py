@@ -77,6 +77,15 @@ class LLMClient:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-32B-Instruct")
             else:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        elif "qwen3" in model.lower():
+            self.client = openai.OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama"  
+            )
+            if "32b" in model.lower():
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+            else:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
         elif "deepseek-r1" in model.lower():
             self.client = openai.OpenAI(
                 base_url="http://localhost:11434/v1",
