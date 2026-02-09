@@ -113,7 +113,9 @@ class Solver:
             f"Solver initialized with max_steps={max_steps}, max_time={max_time}, temperature={temperature}"
         )
         if additional_context:
-            logger.info(f"Solver initialized with additional context ({len(additional_context)} characters)")
+            logger.info(
+                f"Solver initialized with additional context ({len(additional_context)} characters)"
+            )
 
     def _log_llm_call(self, operation: str, inputs: dict, step: Optional[int] = None):
         """Log LLM call details"""
@@ -387,12 +389,22 @@ class Solver:
                 )
 
                 # Update memory - handle Start_Again_Tool specially
-                if tool_name == "Start_Again_Tool" and isinstance(result, dict) and result.get("signal") == "START_AGAIN":
+                if (
+                    tool_name == "Start_Again_Tool"
+                    and isinstance(result, dict)
+                    and result.get("signal") == "START_AGAIN"
+                ):
                     reason = result.get("reason", "Pipeline restart requested.")
-                    logger.info(f"[Step {step_count}] START_AGAIN signal received: {reason}")
-                    self.memory.mark_start_again(step_count, reason, clear_history=self.start_again_clear_history)
+                    logger.info(
+                        f"[Step {step_count}] START_AGAIN signal received: {reason}"
+                    )
+                    self.memory.mark_start_again(
+                        step_count, reason, clear_history=self.start_again_clear_history
+                    )
                 else:
-                    self.memory.add_action(step_count, tool_name, sub_goal, command, result)
+                    self.memory.add_action(
+                        step_count, tool_name, sub_goal, command, result
+                    )
                 self._log_memory_update(
                     step_count, tool_name, sub_goal, command, result
                 )
@@ -415,17 +427,21 @@ class Solver:
                         step=step_count,
                     )
 
-                    stop_verification = self.verifier.verificate_context_with_additional_info(
-                        question,
-                        query_analysis,
-                        self.memory,
-                        self.additional_context,
-                        step_count,
-                        json_data,
+                    stop_verification = (
+                        self.verifier.verificate_context_with_additional_info(
+                            question,
+                            query_analysis,
+                            self.memory,
+                            self.additional_context,
+                            step_count,
+                            json_data,
+                        )
                     )
 
                     self._log_llm_response(
-                        "verificate_context_with_additional_info", stop_verification, step=step_count
+                        "verificate_context_with_additional_info",
+                        stop_verification,
+                        step=step_count,
                     )
                 else:
                     self._log_llm_call(
@@ -558,9 +574,11 @@ def construct_solver(
     if additional_context_file:
         logger.info(f"Loading additional context from: {additional_context_file}")
         try:
-            with open(additional_context_file, 'r') as f:
+            with open(additional_context_file, "r") as f:
                 additional_context = f.read()
-            logger.info(f"Additional context loaded ({len(additional_context)} characters)")
+            logger.info(
+                f"Additional context loaded ({len(additional_context)} characters)"
+            )
         except Exception as e:
             logger.warning(f"Failed to load additional context file: {str(e)}")
             additional_context = None

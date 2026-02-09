@@ -25,7 +25,7 @@ CASES_TO_RUN = [
 # Configuration
 CASES_DIR = "/home/local/ASUAD/jrtandel/transchema/AgentFlow/cases"
 RESULTS_DIR = "/home/local/ASUAD/jrtandel/transchema/AgentFlow/results"
-LLM_ENGINE_NAME = "gpt-4o"
+LLM_ENGINE_NAME = "gpt-4.1-mini"
 
 # Start Again Tool behavior:
 # True  = clear all prior actions from memory and start fresh
@@ -88,6 +88,7 @@ for i, case_file in enumerate(CASES_TO_RUN, 1):
                 "Configure_Join_Operator_Tool",
                 "Configure_Union_Operator_Tool",
                 "Configure_GroupBy_Aggregate_Operator_Tool",
+                "Code_Generator_Tool",
                 # "Critique_Pipeline_Tool",
                 # "Start_Again_Tool",
             ],
@@ -96,9 +97,11 @@ for i, case_file in enumerate(CASES_TO_RUN, 1):
                 "Default",
                 "Default",
                 "Default",
+                "Default",
                 # "Default",
                 # "Default",
             ],
+            model_engine=["trainable", "trainable", "trainable", "trainable"],
             additional_context_file=answer_path,
             start_again_clear_history=START_AGAIN_CLEAR_HISTORY,
         )

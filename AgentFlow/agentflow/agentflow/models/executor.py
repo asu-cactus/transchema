@@ -32,6 +32,10 @@ TOOL_NAME_MAPPING_LONG = {
         "class_name": "Wikipedia_Search_Tool",
         "dir_name": "wikipedia_search",
     },
+    "Code_Generator_Tool": {
+        "class_name": "Code_Generator_Tool",
+        "dir_name": "code_generator",
+    },
 }
 
 # Short to long mapping for fallback
@@ -41,6 +45,7 @@ TOOL_NAME_MAPPING_SHORT = {
     "Python_Coder_Tool": "Python_Code_Generator_Tool",
     "Web_Search_Tool": "Web_RAG_Search_Tool",
     "Wikipedia_Search_Tool": "Wikipedia_RAG_Search_Tool",
+    "Code_Generator_Tool": "Code_Generator_Tool",
 }
 
 try:

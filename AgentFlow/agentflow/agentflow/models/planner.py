@@ -264,6 +264,12 @@ Instructions:
 - Current step count and remaining steps
 
 3. Select ONE tool from the available tools list that is best suited for the next step.
+   Consider these special tools if available:
+   - **Code_Generator_Tool**: Use this tool when you need to visualize or score the current pipeline state (i.e., the accumulated operations in memory). It generates executable Python code that materializes the transformation operations configured so far, allowing you to understand what the data looks like after those transformations. Use it when:
+     * You are NOT confident about what operator to add next and need to see the intermediate data to make a better decision.
+     * Multiple operations have been configured and you need to verify their combined effect before proceeding.
+     * You want to understand the shape, schema, or content of the data after the transformations performed so far.
+     Do NOT use the Code_Generator_Tool if you are already confident about the next operator to add — in that case, proceed directly with the appropriate Configure or Add tool.
 
 4. Formulate a specific, achievable sub-goal for the selected tool that:
    - Is directly achievable with that specific tool's capabilities
@@ -327,6 +333,7 @@ Instructions:
 1. Analyze the query, previous steps, and ONLY the available tools.
 2. Select the **single best tool** from the available tools list for the next step.
 3. Consider these special tools if available:
+   - **Code_Generator_Tool**: Use this tool to visualize and score the current pipeline state (i.e., the accumulated operations in memory). It generates executable Python code that materializes the transformation operations configured so far, letting you understand what the data looks like after those transformations. Use it when you are NOT confident about which operator to add next and need to see the intermediate data to make a better decision, or when multiple operations have been configured and you want to verify their combined effect before proceeding. Do NOT use it if you are already confident about the next operator — in that case, proceed directly with the appropriate Configure or Add tool.
    - **Critique_Pipeline_Tool**: Use when the pipeline is CLOSE to correct (most operators are right) but needs 1-2 adjustments. Include all case info and operation history in the context.
    - **Start_Again_Tool**: Use when the pipeline has gone fundamentally wrong (wrong operator types, completely wrong approach). This signals that all prior operations should be discarded.
 4. Formulate a specific, achievable **sub-goal** that:
