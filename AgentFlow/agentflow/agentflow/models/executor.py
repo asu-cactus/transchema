@@ -17,24 +17,21 @@ prompt_logger = logging.getLogger("agentflow.prompts")
 TOOL_NAME_MAPPING_LONG = {
     "Generalist_Solution_Generator_Tool": {
         "class_name": "Base_Generator_Tool",
-        "dir_name": "base_generator"
+        "dir_name": "base_generator",
     },
     "Ground_Google_Search_Tool": {
         "class_name": "Google_Search_Tool",
-        "dir_name": "google_search"
+        "dir_name": "google_search",
     },
     "Python_Code_Generator_Tool": {
         "class_name": "Python_Coder_Tool",
-        "dir_name": "python_coder"
+        "dir_name": "python_coder",
     },
-    "Web_RAG_Search_Tool": {
-        "class_name": "Web_Search_Tool",
-        "dir_name": "web_search"
-    },
+    "Web_RAG_Search_Tool": {"class_name": "Web_Search_Tool", "dir_name": "web_search"},
     "Wikipedia_RAG_Search_Tool": {
         "class_name": "Wikipedia_Search_Tool",
-        "dir_name": "wikipedia_search"
-    }
+        "dir_name": "wikipedia_search",
+    },
 }
 
 # Short to long mapping for fallback
@@ -43,20 +40,31 @@ TOOL_NAME_MAPPING_SHORT = {
     "Google_Search_Tool": "Ground_Google_Search_Tool",
     "Python_Coder_Tool": "Python_Code_Generator_Tool",
     "Web_Search_Tool": "Web_RAG_Search_Tool",
-    "Wikipedia_Search_Tool": "Wikipedia_RAG_Search_Tool"
+    "Wikipedia_Search_Tool": "Wikipedia_RAG_Search_Tool",
 }
 
 try:
     TimeoutError
 except NameError:
+
     class TimeoutError(Exception):
         pass
 
 
 class Executor:
-    def __init__(self, llm_engine_name: str, root_cache_dir: str = "solver_cache",  num_threads: int = 1, max_time: int = 120,
-    max_output_length: int = 100000, verbose: bool = False, base_url: str = None, check_model: bool = True, temperature: float = .0,
-    tool_instances_cache: dict = None):
+    def __init__(
+        self,
+        llm_engine_name: str,
+        root_cache_dir: str = "solver_cache",
+        num_threads: int = 1,
+        max_time: int = 120,
+        max_output_length: int = 100000,
+        verbose: bool = False,
+        base_url: str = None,
+        check_model: bool = True,
+        temperature: float = 0.0,
+        tool_instances_cache: dict = None,
+    ):
         self.llm_engine_name = llm_engine_name
         self.root_cache_dir = root_cache_dir
         self.num_threads = num_threads
@@ -65,16 +73,27 @@ class Executor:
         self.verbose = verbose
         self.base_url = base_url
         self.check_model = check_model
-        self.temperature  = temperature
+        self.temperature = temperature
 
         # Store the tool instances cache
-        self.tool_instances_cache = tool_instances_cache if tool_instances_cache is not None else {}
+        self.tool_instances_cache = (
+            tool_instances_cache if tool_instances_cache is not None else {}
+        )
 
         if base_url is not None:
-            self.llm_generate_tool_command = create_llm_engine(model_string=self.llm_engine_name, is_multimodal=False, base_url=self.base_url, temperature = self.temperature)
+            self.llm_generate_tool_command = create_llm_engine(
+                model_string=self.llm_engine_name,
+                is_multimodal=False,
+                base_url=self.base_url,
+                temperature=self.temperature,
+            )
         else:
-            self.llm_generate_tool_command = create_llm_engine(model_string=self.llm_engine_name, is_multimodal=False, temperature = self.temperature)
-    
+            self.llm_generate_tool_command = create_llm_engine(
+                model_string=self.llm_engine_name,
+                is_multimodal=False,
+                temperature=self.temperature,
+            )
+
     def set_query_cache_dir(self, query_cache_dir):
         if query_cache_dir:
             self.query_cache_dir = query_cache_dir
@@ -83,7 +102,26 @@ class Executor:
             self.query_cache_dir = os.path.join(self.root_cache_dir, timestamp)
         os.makedirs(self.query_cache_dir, exist_ok=True)
 
-    def generate_tool_command(self, question: str, image: str, context: str, sub_goal: str, tool_name: str, tool_metadata: Dict[str, Any], step_count: int = 0, json_data: Any = None) -> Any:
+    def generate_tool_command(
+        self,
+        question: str,
+        image: str,
+        context: str,
+        sub_goal: str,
+        tool_name: str,
+        tool_metadata: Dict[str, Any],
+        step_count: int = 0,
+        json_data: Any = None,
+        memory: Any = None,
+    ) -> Any:
+        # Format operation history from memory if available
+        operation_history = ""
+        if memory:
+            actions = memory.get_actions()
+            if actions:
+                # Use str() and regular concatenation to avoid f-string format issues with dict braces
+                operation_history = "\n\n**Operation History:**\n" + str(actions)
+
         prompt_generate_tool_command = f"""
         Task: Generate a precise command to execute the selected tool.
 
@@ -92,7 +130,7 @@ Context:
 - **Sub-Goal:** {sub_goal}
 - **Tool Name:** {tool_name}
 - **Tool Metadata:** {tool_metadata}
-- **Relevant Data:** {context}
+- **Relevant Data:** {context}{operation_history}
 
 Instructions:
 1.  Analyze the tool's required parameters from its metadata.
@@ -100,6 +138,7 @@ Instructions:
 3.  The command must include at least one call to `tool.execute()`.
 4.  Each `tool.execute()` call must be assigned to a variable named **`execution`**.
 5.  Please give the exact numbers and parameters should be used in the `tool.execute()` call.
+6.  IMPORTANT: For Configure_* tools (Join, Union, GroupBy_Aggregate), the query parameter MUST include the Operation History to avoid repeating previous operations and to understand the pipeline state.
 
 Output Format:
 Present your response in the following structured format. Do not include any extra text or explanations.
@@ -120,18 +159,26 @@ Generated Command:
 ```python
 execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's Last Theorem"])
 ```
+
+Example3 (for Configure tools):
+Please follow the configuration prompt to genrate tool specific output.
+)
 """
 
         # Log the full prompt
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(f"GENERATE_TOOL_COMMAND PROMPT (Step {step_count}):")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(prompt_generate_tool_command)
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
 
-        tool_command = self.llm_generate_tool_command(prompt_generate_tool_command, response_format=ToolCommand)
+        tool_command = self.llm_generate_tool_command(
+            prompt_generate_tool_command, response_format=ToolCommand
+        )
         if json_data is not None:
-            json_data[f"tool_commander_{step_count}_prompt"] = prompt_generate_tool_command
+            json_data[f"tool_commander_{step_count}_prompt"] = (
+                prompt_generate_tool_command
+            )
             json_data[f"tool_commander_{step_count}_response"] = str(tool_command)
 
         return tool_command
@@ -139,7 +186,7 @@ execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's L
     def extract_explanation_and_command(self, response: Any) -> tuple:
         def normalize_code(code: str) -> str:
             # Remove leading/trailing whitespace and triple backticks if present
-            return re.sub(r'^```python\s*', '', code).rstrip('```').strip()
+            return re.sub(r"^```python\s*", "", code).rstrip("```").strip()
 
         analysis = "No analysis found."
         explanation = "No explanation found."
@@ -159,27 +206,45 @@ execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's L
                 try:
                     # Extract analysis
                     analysis_pattern = r"Analysis:(.*?)Command Explanation"
-                    analysis_match = re.search(analysis_pattern, response, re.DOTALL | re.IGNORECASE)
-                    analysis = analysis_match.group(1).strip() if analysis_match else "No analysis found."
+                    analysis_match = re.search(
+                        analysis_pattern, response, re.DOTALL | re.IGNORECASE
+                    )
+                    analysis = (
+                        analysis_match.group(1).strip()
+                        if analysis_match
+                        else "No analysis found."
+                    )
 
                     # Extract explanation
                     explanation_pattern = r"Command Explanation:(.*?)Generated Command"
-                    explanation_match = re.search(explanation_pattern, response, re.DOTALL | re.IGNORECASE)
-                    explanation = explanation_match.group(1).strip() if explanation_match else "No explanation found."
+                    explanation_match = re.search(
+                        explanation_pattern, response, re.DOTALL | re.IGNORECASE
+                    )
+                    explanation = (
+                        explanation_match.group(1).strip()
+                        if explanation_match
+                        else "No explanation found."
+                    )
 
                     # Extract command using "Generated Command:" prefix
                     command_pattern = r"Generated Command:.*?```python\n(.*?)```"
-                    command_match = re.search(command_pattern, response, re.DOTALL | re.IGNORECASE)
+                    command_match = re.search(
+                        command_pattern, response, re.DOTALL | re.IGNORECASE
+                    )
                     if command_match:
                         command = command_match.group(1).strip()
                     else:
                         # Fallback: Extract ANY ```python ... ``` block (even without prefix)
                         loose_command_pattern = r"```python\s*\n(.*?)```"
-                        loose_match = re.findall(loose_command_pattern, response, re.DOTALL | re.IGNORECASE)
+                        loose_match = re.findall(
+                            loose_command_pattern, response, re.DOTALL | re.IGNORECASE
+                        )
                         if loose_match:
                             # Take the last or most complete one? Or first meaningful?
                             # Here we take the longest one as heuristic
-                            command = max(loose_match, key=lambda x: len(x.strip())).strip()
+                            command = max(
+                                loose_match, key=lambda x: len(x.strip())
+                            ).strip()
                         else:
                             command = "No command found."
                 except Exception as e:
@@ -214,7 +279,7 @@ execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's L
 
         def split_commands(command: str) -> List[str]:
             # Use regex to find all tool.execute() commands and their surrounding code
-            pattern = r'.*?execution\s*=\s*tool\.execute\([^\n]*\)\s*(?:\n|$)'
+            pattern = r".*?execution\s*=\s*tool\.execute\([^\n]*\)\s*(?:\n|$)"
             blocks = re.findall(pattern, command, re.DOTALL)
             return [block.strip() for block in blocks if block.strip()]
 
@@ -222,50 +287,49 @@ execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's L
             """
             Execute a code block with timeout protection using threading.
             This works in any thread, unlike signal.alarm() which only works in the main thread.
-            
+
             Uses a cancellation event to allow cooperative cancellation and reduce memory leaks.
             """
             import threading
-            
-            result_container = {'result': None, 'exception': None, 'completed': False}
+
+            result_container = {"result": None, "exception": None, "completed": False}
             cancel_event = threading.Event()
-            
+
             def target():
                 try:
                     # Inject cancel_event into the execution context for cooperative cancellation
-                    local_context['_cancel_event'] = cancel_event
+                    local_context["_cancel_event"] = cancel_event
                     exec(block, globals(), local_context)
-                    result_container['result'] = local_context.get('execution')
-                    result_container['completed'] = True
+                    result_container["result"] = local_context.get("execution")
+                    result_container["completed"] = True
                 except Exception as e:
-                    result_container['exception'] = e
-                    result_container['completed'] = True
-            
+                    result_container["exception"] = e
+                    result_container["completed"] = True
+
             # Start execution in a daemon thread
             exec_thread = threading.Thread(target=target, name=f"ToolExec-{id(block)}")
             exec_thread.daemon = True
             exec_thread.start()
-            
+
             # Wait for completion or timeout
             exec_thread.join(timeout=self.max_time)
-            
-            if not result_container['completed']:
+
+            if not result_container["completed"]:
                 # Timeout occurred - signal cancellation
                 cancel_event.set()
-                
+
                 # Give it a brief moment to notice the cancellation
                 exec_thread.join(timeout=0.5)
-                
+
                 # Clean up references to help GC
                 result_container.clear()
-                local_context.pop('_cancel_event', None)
-                
-                return f"Execution timed out after {self.max_time} seconds"
-            elif result_container['exception']:
-                raise result_container['exception']
-            else:
-                return result_container['result']
+                local_context.pop("_cancel_event", None)
 
+                return f"Execution timed out after {self.max_time} seconds"
+            elif result_container["exception"]:
+                raise result_container["exception"]
+            else:
+                return result_container["result"]
 
         # Try to get tool from cache first
         tool = None
@@ -276,7 +340,9 @@ execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's L
             print(f"Using cached tool instance for: {tool_name}")
         else:
             # Fallback: Import the tool module and instantiate it
-            print(f"Warning: Tool '{tool_name}' not found in cache, instantiating with default parameters")
+            print(
+                f"Warning: Tool '{tool_name}' not found in cache, instantiating with default parameters"
+            )
 
             # tool_name could be either short or long name
             # First check if it's a long name
@@ -291,11 +357,11 @@ execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's L
                     class_name = TOOL_NAME_MAPPING_LONG[long_name]["class_name"]
                 else:
                     # Shouldn't happen, but fallback
-                    dir_name = tool_name.lower().replace('_tool', '')
+                    dir_name = tool_name.lower().replace("_tool", "")
                     class_name = tool_name
             else:
                 # Fallback to original behavior for unmapped tools
-                dir_name = tool_name.lower().replace('_tool', '')
+                dir_name = tool_name.lower().replace("_tool", "")
                 class_name = tool_name
 
             module_name = f"tools.{dir_name}.tool"
@@ -325,7 +391,7 @@ execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's L
 
             for block in command_blocks:
                 # Create a local context to safely execute the block
-                local_context = {'tool': tool}
+                local_context = {"tool": tool}
 
                 # Execute the block with timeout protection
                 result = execute_with_timeout(block, local_context)

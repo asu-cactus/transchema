@@ -87,6 +87,8 @@ class Solver:
         root_cache_dir: str = "cache",
         verbose: bool = True,
         temperature: float = 0.0,
+        additional_context: str = None,
+        start_again_clear_history: bool = False,
     ):
         self.planner = planner
         self.verifier = verifier
@@ -96,6 +98,8 @@ class Solver:
         self.max_time = max_time
         self.max_tokens = max_tokens
         self.root_cache_dir = root_cache_dir
+        self.additional_context = additional_context
+        self.start_again_clear_history = start_again_clear_history
 
         self.output_types = output_types.lower().split(",")
         self.temperature = temperature
@@ -108,6 +112,8 @@ class Solver:
         logger.info(
             f"Solver initialized with max_steps={max_steps}, max_time={max_time}, temperature={temperature}"
         )
+        if additional_context:
+            logger.info(f"Solver initialized with additional context ({len(additional_context)} characters)")
 
     def _log_llm_call(self, operation: str, inputs: dict, step: Optional[int] = None):
         """Log LLM call details"""
@@ -332,6 +338,7 @@ class Solver:
                         self.planner.toolbox_metadata[tool_name],
                         step_count,
                         json_data,
+                        self.memory,
                     )
 
                     self._log_llm_response(
@@ -379,8 +386,13 @@ class Solver:
                     f"[Step {step_count}] Execution time: {execution_time_step}s"
                 )
 
-                # Update memory
-                self.memory.add_action(step_count, tool_name, sub_goal, command, result)
+                # Update memory - handle Start_Again_Tool specially
+                if tool_name == "Start_Again_Tool" and isinstance(result, dict) and result.get("signal") == "START_AGAIN":
+                    reason = result.get("reason", "Pipeline restart requested.")
+                    logger.info(f"[Step {step_count}] START_AGAIN signal received: {reason}")
+                    self.memory.mark_start_again(step_count, reason, clear_history=self.start_again_clear_history)
+                else:
+                    self.memory.add_action(step_count, tool_name, sub_goal, command, result)
                 self._log_memory_update(
                     step_count, tool_name, sub_goal, command, result
                 )
@@ -390,28 +402,54 @@ class Solver:
                 # [5] Verify memory (context verification)
                 local_start_time = time.time()
 
-                self._log_llm_call(
-                    "verificate_context",
-                    {
-                        "question": question,
-                        "query_analysis": query_analysis[:200] + "...",
-                        "step_count": step_count,
-                    },
-                    step=step_count,
-                )
+                # Use new verifier with additional context if available, otherwise use standard verifier
+                if self.additional_context:
+                    self._log_llm_call(
+                        "verificate_context_with_additional_info",
+                        {
+                            "question": question,
+                            "query_analysis": query_analysis[:200] + "...",
+                            "additional_context": self.additional_context[:200] + "...",
+                            "step_count": step_count,
+                        },
+                        step=step_count,
+                    )
 
-                stop_verification = self.verifier.verificate_context(
-                    question,
-                    image_path,
-                    query_analysis,
-                    self.memory,
-                    step_count,
-                    json_data,
-                )
+                    stop_verification = self.verifier.verificate_context_with_additional_info(
+                        question,
+                        query_analysis,
+                        self.memory,
+                        self.additional_context,
+                        step_count,
+                        json_data,
+                    )
 
-                self._log_llm_response(
-                    "verificate_context", stop_verification, step=step_count
-                )
+                    self._log_llm_response(
+                        "verificate_context_with_additional_info", stop_verification, step=step_count
+                    )
+                else:
+                    self._log_llm_call(
+                        "verificate_context",
+                        {
+                            "question": question,
+                            "query_analysis": query_analysis[:200] + "...",
+                            "step_count": step_count,
+                        },
+                        step=step_count,
+                    )
+
+                    stop_verification = self.verifier.verificate_context(
+                        question,
+                        image_path,
+                        query_analysis,
+                        self.memory,
+                        step_count,
+                        json_data,
+                    )
+
+                    self._log_llm_response(
+                        "verificate_context", stop_verification, step=step_count
+                    )
 
                 context_verification, conclusion = self.verifier.extract_conclusion(
                     stop_verification
@@ -497,7 +535,7 @@ def construct_solver(
     enabled_tools: list[str] = ["all"],
     tool_engine: list[str] = ["Default"],
     model_engine: list[str] = ["trainable", "gpt-4o", "gpt-4o", "gpt-4o"],
-    output_types: str = "final,direct",
+    output_types: str = "final",
     max_steps: int = 10,
     max_time: int = 300,
     max_tokens: int = 4000,
@@ -506,12 +544,26 @@ def construct_solver(
     vllm_config_path: str = None,
     base_url: str = None,
     temperature: float = 0.0,
+    additional_context_file: str = None,
+    start_again_clear_history: bool = False,
 ):
 
     logger.info("Constructing solver...")
     logger.info(f"LLM Engine: {llm_engine_name}")
     logger.info(f"Enabled Tools: {enabled_tools}")
     logger.info(f"Model Engine Config: {model_engine}")
+
+    # Read additional context file if provided
+    additional_context = None
+    if additional_context_file:
+        logger.info(f"Loading additional context from: {additional_context_file}")
+        try:
+            with open(additional_context_file, 'r') as f:
+                additional_context = f.read()
+            logger.info(f"Additional context loaded ({len(additional_context)} characters)")
+        except Exception as e:
+            logger.warning(f"Failed to load additional context file: {str(e)}")
+            additional_context = None
 
     # Parse model_engine configuration
     planner_main_engine = (
@@ -589,6 +641,8 @@ def construct_solver(
         root_cache_dir=root_cache_dir,
         verbose=verbose,
         temperature=temperature,
+        additional_context=additional_context,
+        start_again_clear_history=start_again_clear_history,
     )
 
     logger.info("Solver construction completed")

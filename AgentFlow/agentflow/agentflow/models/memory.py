@@ -63,11 +63,36 @@ class Memory:
             })
 
     def add_action(self, step_count: int, tool_name: str, sub_goal: str, command: str, result: Any) -> None:
+        # Truncate command to first 100 characters to save memory
+        truncated_command = command[:100] + "..." if len(command) > 100 else command
+
         action = {
             'tool_name': tool_name,
             'sub_goal': sub_goal,
-            'command': command,
+            'command': truncated_command,
             'result': result,
+        }
+        step_name = f"Action Step {step_count}"
+        self.actions[step_name] = action
+
+    def mark_start_again(self, step_count: int, reason: str, clear_history: bool = False) -> None:
+        """Mark a START_AGAIN signal in memory.
+
+        Args:
+            step_count: Current step number.
+            reason: Why the pipeline is being restarted.
+            clear_history: If True, clear all prior actions and start fresh.
+                           If False, keep prior actions but add a START_AGAIN marker
+                           so subsequent tools know to ignore everything before it.
+        """
+        if clear_history:
+            self.actions.clear()
+
+        action = {
+            'tool_name': 'Start_Again_Tool',
+            'sub_goal': 'Restart pipeline from scratch',
+            'command': 'Pipeline restart',
+            'result': f'START_AGAIN: {reason}. All operations before this point should be discarded.',
         }
         step_name = f"Action Step {step_count}"
         self.actions[step_name] = action

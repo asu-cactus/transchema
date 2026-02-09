@@ -15,15 +15,32 @@ prompt_logger = logging.getLogger("agentflow.prompts")
 
 
 class Verifier:
-    def __init__(self, llm_engine_name: str, llm_engine_fixed_name: str = "dashscope",
-                 toolbox_metadata: dict = None, available_tools: list = None,
-                 verbose: bool = False, base_url: str = None, is_multimodal: bool = False,
-                 check_model: bool = True, temperature: float = .0):
+    def __init__(
+        self,
+        llm_engine_name: str,
+        llm_engine_fixed_name: str = "dashscope",
+        toolbox_metadata: dict = None,
+        available_tools: list = None,
+        verbose: bool = False,
+        base_url: str = None,
+        is_multimodal: bool = False,
+        check_model: bool = True,
+        temperature: float = 0.0,
+    ):
         self.llm_engine_name = llm_engine_name
         self.llm_engine_fixed_name = llm_engine_fixed_name
         self.is_multimodal = is_multimodal
-        self.llm_engine_fixed = create_llm_engine(model_string=llm_engine_fixed_name, is_multimodal=False, temperature=temperature)
-        self.llm_engine = create_llm_engine(model_string=llm_engine_name, is_multimodal=False, base_url=base_url, temperature=temperature)
+        self.llm_engine_fixed = create_llm_engine(
+            model_string=llm_engine_fixed_name,
+            is_multimodal=False,
+            temperature=temperature,
+        )
+        self.llm_engine = create_llm_engine(
+            model_string=llm_engine_name,
+            is_multimodal=False,
+            base_url=base_url,
+            temperature=temperature,
+        )
         self.toolbox_metadata = toolbox_metadata if toolbox_metadata is not None else {}
         self.available_tools = available_tools if available_tools is not None else []
         self.verbose = verbose
@@ -35,15 +52,20 @@ class Verifier:
             try:
                 with Image.open(image_path) as img:
                     width, height = img.size
-                image_info.update({
-                    "width": width,
-                    "height": height
-                })
+                image_info.update({"width": width, "height": height})
             except Exception as e:
                 print(f"Error processing image file: {str(e)}")
         return image_info
 
-    def verificate_context(self, question: str, image: str, query_analysis: str, memory: Memory, step_count: int = 0, json_data: Any = None) -> Any:
+    def verificate_context(
+        self,
+        question: str,
+        image: str,
+        query_analysis: str,
+        memory: Memory,
+        step_count: int = 0,
+        json_data: Any = None,
+    ) -> Any:
         image_info = self.get_image_info(image)
         if self.is_multimodal:
             prompt_memory_verification = f"""
@@ -136,23 +158,113 @@ IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: 
         input_data = [prompt_memory_verification]
         if image_info:
             try:
-                with open(image_info["image_path"], 'rb') as file:
+                with open(image_info["image_path"], "rb") as file:
                     image_bytes = file.read()
                 input_data.append(image_bytes)
             except Exception as e:
                 print(f"Error reading image file: {str(e)}")
 
         # Log the full prompt
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(f"VERIFICATE_CONTEXT PROMPT (Step {step_count}):")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(prompt_memory_verification)
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
 
-        stop_verification = self.llm_engine_fixed(input_data, response_format=MemoryVerification)
+        stop_verification = self.llm_engine_fixed(
+            input_data, response_format=MemoryVerification
+        )
         if json_data is not None:
             json_data[f"verifier_{step_count}_prompt"] = input_data
             json_data[f"verifier_{step_count}_response"] = str(stop_verification)
+        return stop_verification
+
+    def verificate_context_with_additional_info(
+        self,
+        question: str,
+        query_analysis: str,
+        memory: Memory,
+        additional_context: str,
+        step_count: int = 0,
+        json_data: Any = None,
+    ) -> Any:
+        """
+        Verify context with additional information (e.g., correct transformation pipeline, scores, etc.)
+        This method is non-multimodal and focuses on data transformation tasks.
+
+        Args:
+            question: The user query
+            query_analysis: Initial analysis of the query
+            memory: Memory object containing action history
+            additional_context: Additional context like correct pipeline or evaluation criteria
+            step_count: Current step count
+            json_data: Optional JSON data for logging
+
+        Returns:
+            Verification response indicating STOP or CONTINUE
+        """
+        prompt_memory_verification = f"""
+Task: Evaluate if the current memory (action history) is complete and accurate enough to answer the query, considering the additional context provided.
+
+Context:
+- **Query:** {question}
+- **Available Tools:** {self.available_tools}
+- **Toolbox Metadata:** {self.toolbox_metadata}
+- **Initial Analysis:** {query_analysis}
+- **Memory (Tools Used & Results):** {memory.get_actions()}
+
+Additional Context (Reference Information):
+{additional_context}
+
+Instructions:
+1. Review the query, initial analysis, and memory (action history).
+2. Compare the actions taken in memory with the verification information provided [if it is provided]:
+   - Does the memory's approach align with the expected pattern or solution indicated in the verification information?
+3. Assess the completeness of the memory:
+   - Does it fully address all parts of the query?
+   - Are all required transformations/operations present?
+4. Check for potential issues:
+   - Are there any inconsistencies between the memory and the additional context?
+   - Is any information ambiguous or in need of verification?
+   - Are there operations in the additional context that haven't been executed yet?
+5. Determine if any unused tools could provide missing information or operations.
+
+Final Determination:
+- If the memory is sufficient and aligns with the additional context, explain why and conclude with "STOP".
+- If more information or operations are needed, explain:
+  * What's missing compared to the additional context
+  * Which tools or operations should be used next
+  * Why they are necessary
+  Then conclude with "CONTINUE".
+
+Response Format:
+Explanation:
+<Provide a detailed analysis explaining your decision. Reference both the memory and the additional context.>
+
+Conclusion: [STOP or CONTINUE]
+
+IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: CONTINUE".
+"""
+
+        input_data = [prompt_memory_verification]
+
+        # Log the full prompt
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(
+            f"VERIFICATE_CONTEXT_WITH_ADDITIONAL_INFO PROMPT (Step {step_count}):"
+        )
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(prompt_memory_verification)
+        prompt_logger.debug("=" * 80)
+
+        stop_verification = self.llm_engine_fixed(
+            input_data, response_format=MemoryVerification
+        )
+        if json_data is not None:
+            json_data[f"verifier_with_context_{step_count}_prompt"] = input_data
+            json_data[f"verifier_with_context_{step_count}_response"] = str(
+                stop_verification
+            )
         return stop_verification
 
     def extract_conclusion(self, response: Any) -> Tuple[str, str]:
@@ -167,23 +279,25 @@ IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: 
             analysis = response.analysis
             stop_signal = response.stop_signal
             if stop_signal:
-                return analysis, 'STOP'
+                return analysis, "STOP"
             else:
-                return analysis, 'CONTINUE'
+                return analysis, "CONTINUE"
         else:
             analysis = response
-            pattern = r'conclusion\**:?\s*\**\s*(\w+)'
+            pattern = r"conclusion\**:?\s*\**\s*(\w+)"
             matches = list(re.finditer(pattern, response, re.IGNORECASE | re.DOTALL))
             if matches:
                 conclusion = matches[-1].group(1).upper()
-                if conclusion in ['STOP', 'CONTINUE']:
+                if conclusion in ["STOP", "CONTINUE"]:
                     return analysis, conclusion
 
             # If no valid conclusion found, search for STOP or CONTINUE anywhere in the text
-            if 'stop' in response.lower():
-                return analysis, 'STOP'
-            elif 'continue' in response.lower():
-                return analysis, 'CONTINUE'
+            if "stop" in response.lower():
+                return analysis, "STOP"
+            elif "continue" in response.lower():
+                return analysis, "CONTINUE"
             else:
-                print("No valid conclusion (STOP or CONTINUE) found in the response. Continuing...")
-                return analysis, 'CONTINUE'
+                print(
+                    "No valid conclusion (STOP or CONTINUE) found in the response. Continuing..."
+                )
+                return analysis, "CONTINUE"

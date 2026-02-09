@@ -76,13 +76,13 @@ class Planner:
         print("Input data of `generate_base_response()`: ", input_data)
 
         # Log the full prompt
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug("GENERATE_BASE_RESPONSE PROMPT:")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(f"Question: {question}")
         if image_info:
             prompt_logger.debug(f"Image Info: {image_info}")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
 
         self.base_response = self.llm_engine(input_data, max_tokens=max_tokens)
         # self.base_response = self.llm_engine_fixed(input_data, max_tokens=max_tokens)
@@ -94,113 +94,9 @@ class Planner:
 
         if self.is_multimodal:
             query_prompt = f"""
-You are a PLANNER for an LLM-based data transformation system.
-
-Your job: decide the NEXT ACTION to build a transformation pipeline that maps the given source table(s) to the target table.
-
-You must choose exactly ONE of these decisions:
-- ADD_OPERATOR  (meaning: add a new operator to the pipeline)
-- NO_MORE_OPERATOR (meaning: the pipeline is complete enough; stop adding operators)
-
-If you choose ADD_OPERATOR, you must also choose an operator type from:
-['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT'].
-
-You have access to tools. Your final output MUST be a JSON object with exactly:
-\{
-  "context": "...",
-  "sub_goal": "...",
-  "tool_name": "..."
-}
-Where tool_name MUST match exactly one of the available tools.
-
---------------------
-TRANSFORMATION CASE
---------------------
-{question}
-
---------------------
-TOOLS YOU CAN CALL
---------------------
-Available Tools:
-{self.available_tools}
-
-Tool Metadata:
-{self.toolbox_metadata}
-
---------------------
-WHAT YOU MUST DO
---------------------
-1) Understand what the target table represents from schema + examples.
-2) Compare target schema vs source schema:
-   - Identify which target columns can be directly projected/renamed
-   - Identify which target columns require aggregation, reshaping, or combining tables
-3) Decide the NEXT ACTION needed:
-   - If the next required step is to decide WHICH operator comes next, use Add_Operator_Tool.
-   - If the next required step is to CONFIGURE the most recently added operator (because it has no config yet),
-     use the corresponding Configure_* tool.
-   - If the target can be obtained from the current pipeline state with only projection/rename/filter,
-     choose NO_MORE_OPERATOR.
-4) Avoid repeating an operator type + config already in Operation History unless absolutely necessary.
-
---------------------
-DECISION RULES
---------------------
-Choose ADD_OPERATOR if any of these is true:
-- target needs aggregation (e.g., target has fewer rows / summarizes source) -> GROUP_BY/AGGREGATE
-- target needs combining multiple sources -> JOIN or UNION
-- target is wide-to-long or long-to-wide -> PIVOT or UNPIVOT
-
-Choose NO_MORE_OPERATOR if:
-- the pipeline already yields target schema and semantics, and only trivial formatting remains
-- OR adding any operator would be speculative / not supported by evidence from examples
-
---------------------
-HOW TO MAP DECISION TO TOOL
---------------------
-You MUST select exactly ONE tool_name from the available tools list.
-
-A) If the most recent operator in Operation History is NOT FULLY CONFIGURED:
-   - If the most recent operator is JOIN:
-       tool_name = "Configure_Join_Operator_Tool"
-       sub_goal must ask: "what tables should be joined and at which columns?"
-   - If the most recent operator is GROUP_BY/AGGREGATE:
-       tool_name = "Configure_GroupBy_Aggregate_Operator_Tool"
-       sub_goal must ask: "which columns should be used for group by, which columns aggregated, and which functions?"
-   - If the most recent operator is UNION:
-       tool_name = "Configure_Union_Operator_Tool"
-       sub_goal must ask: "what tables should be union-ed?"
-   - If the most recent operator is PIVOT or UNPIVOT and there is no configure tool available:
-       you must include a DRAFT config skeleton directly in sub_goal (and do NOT select a missing tool).
-
-B) If there is no pending configuration (i.e., the latest operator is already configured, or there is no operator yet):
-   - If decision = ADD_OPERATOR:
-       tool_name = "Add_Operator_Tool"
-       sub_goal must include:
-         - decision: ADD_OPERATOR
-         - operator_type (one of allowed operator types)
-         - which input table(s) it applies to (source or intermediate)
-         - what mismatch it resolves (very explicit)
-         - a DRAFT config skeleton (keys/fields to be filled in by Configure tool when applicable)
-   - If decision = NO_MORE_OPERATOR:
-       tool_name = "NO_MORE_OPERATOR_Tool"
-       sub_goal must say why no more operators are needed.
-
-IMPORTANT: Put ALL details needed by the chosen tool into "context".
-- Include target schema, source schema, relevant sample rows, and operation history.
-- If referencing a file, include its exact path.
-- If referencing columns, spell them exactly as in schema.
-- If intermediate tables exist, include their names and schemas (from operation history / memory).
-
---------------------
-OUTPUT REQUIREMENTS
---------------------
-Return ONLY valid JSON for NextStep with keys: context, sub_goal, tool_name.
-No extra keys. No prose outside JSON.
-
-                        """
-        else:
-            query_prompt = f"""
 Task: Analyze the given query to determine necessary skills and tools.
+
+CRITICAL CONSTRAINT: You can ONLY suggest operations and tools that are in the available tools list. Do NOT suggest operations or tools that are not available.
 
 Inputs:
 - Query: {question}
@@ -209,13 +105,37 @@ Inputs:
 
 Instructions:
 1. Identify the main objectives in the query.
-2. List the necessary skills and tools.
+2. List ONLY the skills and tools that are actually available in the available tools list.
 3. For each skill and tool, explain how it helps address the query.
-4. Note any additional considerations.
+4. If the query requires operations not supported by available tools, explicitly note this limitation.
+5. Note any additional considerations.
 
 Format your response with a summary of the query, lists of skills and tools with explanations, and a section for additional considerations.
 
-Be biref and precise with insight. 
+IMPORTANT: Be brief and precise. Focus ONLY on what can be achieved with the available tools.
+
+                        """
+        else:
+            query_prompt = f"""
+Task: Analyze the given query to determine necessary skills and tools.
+
+CRITICAL CONSTRAINT: You can ONLY suggest operations and tools that are in the available tools list. Do NOT suggest operations or tools that are not available.
+
+Inputs:
+- Query: {question}
+- Available tools: {self.available_tools}
+- Metadata for tools: {self.toolbox_metadata}
+
+Instructions:
+1. Identify the main objectives in the query.
+2. List ONLY the skills and tools that are actually available in the available tools list.
+3. For each skill and tool, explain how it helps address the query.
+4. If the query requires operations not supported by available tools, explicitly note this limitation.
+5. Note any additional considerations.
+
+Format your response with a summary of the query, lists of skills and tools with explanations, and a section for additional considerations.
+
+IMPORTANT: Be brief and precise. Focus ONLY on what can be achieved with the available tools.
 """
 
         input_data = [query_prompt]
@@ -230,11 +150,11 @@ Be biref and precise with insight.
         print("Input data of `analyze_query()`: ", input_data)
 
         # Log the full prompt
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug("ANALYZE_QUERY PROMPT:")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(query_prompt)
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
 
         # self.query_analysis = self.llm_engine_mm(input_data, response_format=QueryAnalysis)
         # self.query_analysis = self.llm_engine(input_data, response_format=QueryAnalysis)
@@ -314,12 +234,14 @@ Be biref and precise with insight.
             prompt_generate_next_step = f"""
 Task: Determine the optimal next step to address the given query based on the provided analysis, available tools, and previous steps taken.
 
+CRITICAL CONSTRAINT: You can ONLY use tools from the available tools list. Do NOT suggest operations, sub-goals, or actions that require tools not in this list.
+
 Context:
 Query: {question}
 Image: {image}
 Query Analysis: {query_analysis}
 
-Available Tools:
+Available Tools (THESE ARE THE ONLY TOOLS YOU CAN USE):
 {self.available_tools}
 
 Tool Metadata:
@@ -336,14 +258,17 @@ Instructions:
 
 2. Determine the most appropriate next step by considering:
 - Key objectives from the query analysis
-- Capabilities of available tools
-- Logical progression of problem-solving
+- Capabilities of ONLY the available tools (do not assume any other tools exist)
+- Logical progression of problem-solving within the scope of available tools
 - Outcomes from previous steps
 - Current step count and remaining steps
 
-3. Select ONE tool best suited for the next step, keeping in mind the limited number of remaining steps.
+3. Select ONE tool from the available tools list that is best suited for the next step.
 
-4. Formulate a specific, achievable sub-goal for the selected tool that maximizes progress towards answering the query.
+4. Formulate a specific, achievable sub-goal for the selected tool that:
+   - Is directly achievable with that specific tool's capabilities
+   - Does NOT require operations outside the scope of available tools
+   - Maximizes progress towards answering the query within tool constraints
 
 Response Format:
 Your response MUST follow this structure:
@@ -365,10 +290,14 @@ It MUST contain any involved data, file names, and variables from Previous Steps
 - <tool_name> MUST be the exact name of a tool from the available tools list.
 
 Rules:
-- Select only ONE tool for this step.
-- The sub-goal MUST directly address the query and be achievable by the selected tool.
+- Select only ONE tool for this step from the available tools list.
+- The sub-goal MUST be directly achievable by the selected tool using ONLY its documented capabilities.
+- Do NOT suggest sub-goals that require operations or transformations not supported by available tools.
 - The Context section MUST include ALL necessary information for the tool to function, including ALL relevant file paths, data, and variables from previous steps.
 - The tool name MUST exactly match one from the available tools list: {self.available_tools}.
+- If the next logical step requires a tool not in the available tools list, you MUST either:
+  a) Choose an alternative approach using available tools, OR
+  b) Indicate that no more steps can be taken with available tools
 - Avoid redundancy by considering previous steps and building on prior results.
 - Your response MUST conclude with the Context, Sub-Goal, and Tool Name sections IN THIS ORDER, presented ONLY ONCE.
 - Include NO content after these three sections.
@@ -385,38 +314,49 @@ Remember: Your response MUST end with the Context, Sub-Goal, and Tool Name secti
             prompt_generate_next_step = f"""
 Task: Determine the optimal next step to address the query using available tools and previous steps.
 
+CRITICAL CONSTRAINT: You can ONLY use tools from the available tools list. Do NOT suggest operations, sub-goals, or actions that require tools not in this list.
+
 Context:
 - **Query:** {question}
 - **Query Analysis:** {query_analysis}
-- **Available Tools:** {self.available_tools}
+- **Available Tools (THESE ARE THE ONLY TOOLS YOU CAN USE):** {self.available_tools}
 - **Toolbox Metadata:** {self.toolbox_metadata}
 - **Previous Steps:** {memory.get_actions()}
 
 Instructions:
-1. Analyze the query, previous steps, and available tools.
-2. Select the **single best tool** for the next step.
-3. Formulate a specific, achievable **sub-goal** for that tool.
-4. Provide all necessary **context** (data, file names, variables) for the tool to function.
+1. Analyze the query, previous steps, and ONLY the available tools.
+2. Select the **single best tool** from the available tools list for the next step.
+3. Consider these special tools if available:
+   - **Critique_Pipeline_Tool**: Use when the pipeline is CLOSE to correct (most operators are right) but needs 1-2 adjustments. Include all case info and operation history in the context.
+   - **Start_Again_Tool**: Use when the pipeline has gone fundamentally wrong (wrong operator types, completely wrong approach). This signals that all prior operations should be discarded.
+4. Formulate a specific, achievable **sub-goal** that:
+   - Is directly achievable with that tool's documented capabilities
+   - Does NOT require operations outside the scope of available tools
+5. Provide all necessary **context** (data, file names, variables) for the tool to function.
 
 Response Format:
-1.  **Justification:** Explain your choice of tool and sub-goal.
+1.  **Justification:** Explain your choice of tool and sub-goal (and why it's achievable with available tools).
 2.  **Context:** Provide all necessary information for the tool.
 3.  **Sub-Goal:** State the specific objective for the tool.
-4.  **Tool Name:** State the exact name of the selected tool.
+4.  **Tool Name:** State the exact name of the selected tool (must be from available tools list).
 
 Rules:
-- Select only ONE tool.
-- The sub-goal must be directly achievable by the selected tool.
+- Select only ONE tool from the available tools list.
+- The sub-goal must be directly achievable by the selected tool using ONLY its documented capabilities.
+- Do NOT suggest sub-goals that require operations not supported by available tools.
+- If the next logical step requires a tool not in the available tools list, you MUST either:
+  a) Choose an alternative approach using available tools, OR
+  b) Indicate that no more steps can be taken with available tools
 - The Context section must contain all information the tool needs to function.
 - The response must end with the Context, Sub-Goal, and Tool Name sections in that order, with no extra content.
                     """
 
         # Log the full prompt
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(f"GENERATE_NEXT_STEP PROMPT (Step {step_count}):")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(prompt_generate_next_step)
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
 
         next_step = self.llm_engine(prompt_generate_next_step, response_format=NextStep)
         if json_data is not None:
@@ -494,11 +434,11 @@ Instructions:
                 print(f"Error reading image file: {str(e)}")
 
         # Log the full prompt
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug("GENERATE_FINAL_OUTPUT PROMPT:")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(prompt_generate_final_output)
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
 
         # final_output = self.llm_engine_mm(input_data)
         # final_output = self.llm_engine(input_data)
@@ -551,11 +491,11 @@ Output Structure:
                 print(f"Error reading image file: {str(e)}")
 
         # Log the full prompt
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug("GENERATE_DIRECT_OUTPUT PROMPT:")
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
         prompt_logger.debug(prompt_generate_final_output)
-        prompt_logger.debug("="*80)
+        prompt_logger.debug("=" * 80)
 
         # final_output = self.llm_engine(input_data)
         final_output = self.llm_engine_fixed(input_data)
