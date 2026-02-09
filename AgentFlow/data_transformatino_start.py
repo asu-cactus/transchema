@@ -5,13 +5,21 @@ from agentflow.agentflow.solver import construct_solver
 llm_engine_name = "gpt-4o"
 # llm_engine_name = "dashscope" # you can use "dashscope" as well, to use the default API key in the environment variables qwen2.5-7b-instruct
 
-# Construct the solver
-solver = construct_solver(llm_engine_name=llm_engine_name)
+# Construct the solver with only configuration operators and add_operator
+solver = construct_solver(
+    llm_engine_name=llm_engine_name,
+    enabled_tools=[
+        "Add_Operator_Tool",
+        "Configure_Join_Operator_Tool",
+        "Configure_Union_Operator_Tool",
+        "Configure_GroupBy_Aggregate_Operator_Tool",
+    ],
+    tool_engine=["Default", "Default", "Default", "Default"],  # All use default engines
+)
 
 # Solve the user query
 output = solver.solve(
-    """The transformation case I'm fosusing on is this : 1. Target Table Name: Target1_0 2. Target Schema: ['State': string, 'AverageTemperature': float] 3. Target Examples: There are 241 available target examples: State AverageTemperature 240 Zhejiang 16.185409 116 Mato Grosso 25.471903 41 Dagestan 9.737170 4. Source Information: Source 0: Source 0 Name: Source1_0_0 Source 0 Schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country'] Source 0 Examples: Source 0 contains 100000 tuples, with examples as follows: dt AverageTemperature AverageTemperatureUncertainty State \ 0 2002-11-01 4.190 0.187 Rostov 1 1923-11-01 26.761 0.413 Sergipe 2 1994-09-01 25.560 0.245 Manipur Country 0 Russia 1 Brazil 2 India Source 0 File Location: autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv
-    At each step of planning add one operator and end the task when you have all the operators and configuration needed to perform the transformation.
+    """1. Target Table Name: Target1_0 2. Target Schema: ['State': string, 'AverageTemperature': float] 3. Target Examples: There are 241 available target examples: State AverageTemperature 240 Zhejiang 16.185409 116 Mato Grosso 25.471903 41 Dagestan 9.737170 4. Source Information: Source 0: Source 0 Name: Source1_0_0 Source 0 Schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country'] Source 0 Examples: Source 0 contains 100000 tuples, with examples as follows: dt AverageTemperature AverageTemperatureUncertainty State \ 0 2002-11-01 4.190 0.187 Rostov 1 1923-11-01 26.761 0.413 Sergipe 2 1994-09-01 25.560 0.245 Manipur Country 0 Russia 1 Brazil 2 India Source 0 File Location: autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv
     """
 )
 

@@ -3,11 +3,15 @@ import json
 import os
 import re
 import threading
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from agentflow.engine.factory import create_llm_engine
 from agentflow.models.formatters import ToolCommand
+
+# Get the prompt logger
+prompt_logger = logging.getLogger("agentflow.prompts")
 
 # Tool name mapping: Static fallback mapping (long external names to internal)
 TOOL_NAME_MAPPING_LONG = {
@@ -117,6 +121,13 @@ Generated Command:
 execution = tool.execute(query=["Methanol", "function of hyperbola", "Fermat's Last Theorem"])
 ```
 """
+
+        # Log the full prompt
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(f"GENERATE_TOOL_COMMAND PROMPT (Step {step_count}):")
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(prompt_generate_tool_command)
+        prompt_logger.debug("="*80)
 
         tool_command = self.llm_generate_tool_command(prompt_generate_tool_command, response_format=ToolCommand)
         if json_data is not None:

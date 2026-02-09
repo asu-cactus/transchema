@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import logging
 from typing import Any, Tuple
 
 from PIL import Image
@@ -8,6 +9,9 @@ from PIL import Image
 from agentflow.engine.factory import create_llm_engine
 from agentflow.models.formatters import MemoryVerification
 from agentflow.models.memory import Memory
+
+# Get the prompt logger
+prompt_logger = logging.getLogger("agentflow.prompts")
 
 
 class Verifier:
@@ -137,6 +141,13 @@ IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: 
                 input_data.append(image_bytes)
             except Exception as e:
                 print(f"Error reading image file: {str(e)}")
+
+        # Log the full prompt
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(f"VERIFICATE_CONTEXT PROMPT (Step {step_count}):")
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(prompt_memory_verification)
+        prompt_logger.debug("="*80)
 
         stop_verification = self.llm_engine_fixed(input_data, response_format=MemoryVerification)
         if json_data is not None:

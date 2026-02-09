@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import logging
 from typing import Any, Dict, List, Tuple
 
 from PIL import Image
@@ -8,6 +9,9 @@ from PIL import Image
 from agentflow.engine.factory import create_llm_engine
 from agentflow.models.formatters import NextStep, QueryAnalysis
 from agentflow.models.memory import Memory
+
+# Get the prompt logger
+prompt_logger = logging.getLogger("agentflow.prompts")
 
 
 class Planner:
@@ -70,6 +74,16 @@ class Planner:
                 print(f"Error reading image file: {str(e)}")
 
         print("Input data of `generate_base_response()`: ", input_data)
+
+        # Log the full prompt
+        prompt_logger.debug("="*80)
+        prompt_logger.debug("GENERATE_BASE_RESPONSE PROMPT:")
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(f"Question: {question}")
+        if image_info:
+            prompt_logger.debug(f"Image Info: {image_info}")
+        prompt_logger.debug("="*80)
+
         self.base_response = self.llm_engine(input_data, max_tokens=max_tokens)
         # self.base_response = self.llm_engine_fixed(input_data, max_tokens=max_tokens)
 
@@ -92,7 +106,7 @@ If you choose ADD_OPERATOR, you must also choose an operator type from:
 ['JOIN', 'UNION', 'GROUP_BY/AGGREGATE', 'PIVOT', 'UNPIVOT'].
 
 You have access to tools. Your final output MUST be a JSON object with exactly:
-{
+\{
   "context": "...",
   "sub_goal": "...",
   "tool_name": "..."
@@ -214,6 +228,13 @@ Be biref and precise with insight.
                 print(f"Error reading image file: {str(e)}")
 
         print("Input data of `analyze_query()`: ", input_data)
+
+        # Log the full prompt
+        prompt_logger.debug("="*80)
+        prompt_logger.debug("ANALYZE_QUERY PROMPT:")
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(query_prompt)
+        prompt_logger.debug("="*80)
 
         # self.query_analysis = self.llm_engine_mm(input_data, response_format=QueryAnalysis)
         # self.query_analysis = self.llm_engine(input_data, response_format=QueryAnalysis)
@@ -390,6 +411,13 @@ Rules:
 - The response must end with the Context, Sub-Goal, and Tool Name sections in that order, with no extra content.
                     """
 
+        # Log the full prompt
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(f"GENERATE_NEXT_STEP PROMPT (Step {step_count}):")
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(prompt_generate_next_step)
+        prompt_logger.debug("="*80)
+
         next_step = self.llm_engine(prompt_generate_next_step, response_format=NextStep)
         if json_data is not None:
             json_data[f"action_predictor_{step_count}_prompt"] = (
@@ -465,6 +493,13 @@ Instructions:
             except Exception as e:
                 print(f"Error reading image file: {str(e)}")
 
+        # Log the full prompt
+        prompt_logger.debug("="*80)
+        prompt_logger.debug("GENERATE_FINAL_OUTPUT PROMPT:")
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(prompt_generate_final_output)
+        prompt_logger.debug("="*80)
+
         # final_output = self.llm_engine_mm(input_data)
         # final_output = self.llm_engine(input_data)
         final_output = self.llm_engine_fixed(input_data)
@@ -514,6 +549,13 @@ Output Structure:
                 input_data.append(image_bytes)
             except Exception as e:
                 print(f"Error reading image file: {str(e)}")
+
+        # Log the full prompt
+        prompt_logger.debug("="*80)
+        prompt_logger.debug("GENERATE_DIRECT_OUTPUT PROMPT:")
+        prompt_logger.debug("="*80)
+        prompt_logger.debug(prompt_generate_final_output)
+        prompt_logger.debug("="*80)
 
         # final_output = self.llm_engine(input_data)
         final_output = self.llm_engine_fixed(input_data)
