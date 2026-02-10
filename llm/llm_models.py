@@ -93,6 +93,13 @@ class LLMClient:
             )
             # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
             self.encoding = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
+        elif "mixtral" in model.lower():
+            self.client = openai.OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama"  
+            )
+            # Mixtral uses the Mistral tokenizer
+            self.encoding = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
         else:
             self.client = openai.OpenAI(api_key=openai.api_key)
             if model == "gpt-4.1-mini":

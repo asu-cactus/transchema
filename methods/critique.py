@@ -124,6 +124,11 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
             _tokenizer_cache["deepseek-r1"] = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
         tokenizer = _tokenizer_cache["deepseek-r1"]
         encoding = None
+    elif "mixtral" in model_str:
+        if "mixtral" not in _tokenizer_cache:
+            _tokenizer_cache["mixtral"] = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+        tokenizer = _tokenizer_cache["mixtral"]
+        encoding = None
     elif args.model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
