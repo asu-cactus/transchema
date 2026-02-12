@@ -27,6 +27,11 @@ CASES_DIR = "/home/local/ASUAD/jrtandel/transchema/AgentFlow/cases"
 RESULTS_DIR = "/home/local/ASUAD/jrtandel/transchema/AgentFlow/results"
 LLM_ENGINE_NAME = "gpt-4.1-mini"
 
+# Planner granularity:
+# "operator" = existing operator-level planning (decides which operator to add/configure next)
+# "pipeline" = pipeline-level planning (decides whether to create a new pipeline or modify existing)
+PLANNER_GRANULARITY = "pipeline"
+
 # Start Again Tool behavior:
 # True  = clear all prior actions from memory and start fresh
 # False = keep prior actions but add a START_AGAIN marker (signal only)
@@ -81,9 +86,23 @@ for i, case_file in enumerate(CASES_TO_RUN, 1):
 
         # Construct the solver for this case
         print(f"Initializing solver for case: {case_file}")
-        solver = construct_solver(
-            llm_engine_name=LLM_ENGINE_NAME,
-            enabled_tools=[
+
+        # Select tools based on planner granularity
+        if PLANNER_GRANULARITY == "pipeline":
+            enabled_tools = [
+                "Create_Pipeline_Tool",
+                "Modify_Pipeline_Tool",
+                "Code_Generator_Tool",
+                "Finalize_Pipeline_Tool",
+            ]
+            tool_engine = [
+                "Default",
+                "Default",
+                "Default",
+                "Default",
+            ]
+        else:
+            enabled_tools = [
                 "Add_Operator_Tool",
                 "Configure_Join_Operator_Tool",
                 "Configure_Union_Operator_Tool",
@@ -91,8 +110,8 @@ for i, case_file in enumerate(CASES_TO_RUN, 1):
                 "Code_Generator_Tool",
                 # "Critique_Pipeline_Tool",
                 # "Start_Again_Tool",
-            ],
-            tool_engine=[
+            ]
+            tool_engine = [
                 "Default",
                 "Default",
                 "Default",
@@ -100,10 +119,16 @@ for i, case_file in enumerate(CASES_TO_RUN, 1):
                 "Default",
                 # "Default",
                 # "Default",
-            ],
+            ]
+
+        solver = construct_solver(
+            llm_engine_name=LLM_ENGINE_NAME,
+            enabled_tools=enabled_tools,
+            tool_engine=tool_engine,
             model_engine=["trainable", "trainable", "trainable", "trainable"],
             additional_context_file=answer_path,
             start_again_clear_history=START_AGAIN_CLEAR_HISTORY,
+            planner_granularity=PLANNER_GRANULARITY,
         )
 
         # Read the case query

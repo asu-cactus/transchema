@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 # Planner: QueryAnalysis
@@ -32,6 +33,12 @@ class NextStep(BaseModel):
 class MemoryVerification(BaseModel):
     analysis: str
     stop_signal: bool
+
+# Verifier: PipelineVerification (pipeline-level, includes finalized_pipeline_id)
+class PipelineVerification(BaseModel):
+    analysis: str
+    stop_signal: bool
+    finalized_pipeline_id: Optional[str] = None
 
 # Executor: ToolCommand
 class ToolCommand(BaseModel):

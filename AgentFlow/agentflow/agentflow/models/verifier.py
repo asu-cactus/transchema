@@ -7,7 +7,7 @@ from typing import Any, Tuple
 from PIL import Image
 
 from agentflow.engine.factory import create_llm_engine
-from agentflow.models.formatters import MemoryVerification
+from agentflow.models.formatters import MemoryVerification, PipelineVerification
 from agentflow.models.memory import Memory
 
 # Get the prompt logger
@@ -26,10 +26,12 @@ class Verifier:
         is_multimodal: bool = False,
         check_model: bool = True,
         temperature: float = 0.0,
+        granularity: str = "operator",
     ):
         self.llm_engine_name = llm_engine_name
         self.llm_engine_fixed_name = llm_engine_fixed_name
         self.is_multimodal = is_multimodal
+        self.granularity = granularity
         self.llm_engine_fixed = create_llm_engine(
             model_string=llm_engine_fixed_name,
             is_multimodal=False,
@@ -267,14 +269,149 @@ IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: 
             )
         return stop_verification
 
+    def verificate_context_pipeline(
+        self,
+        question: str,
+        image: str,
+        query_analysis: str,
+        memory: Memory,
+        step_count: int = 0,
+        json_data: Any = None,
+    ) -> Any:
+        """Pipeline-level verification that also identifies which pipeline to finalize."""
+        prompt_memory_verification = f"""
+Task: Evaluate if the current pipeline is complete and correct enough to produce the target transformation, or if more modifications are needed.
+
+Context:
+- **Query:** {question}
+- **Available Tools:** {self.available_tools}
+- **Toolbox Metadata:** {self.toolbox_metadata}
+- **Initial Analysis:** {query_analysis}
+- **Memory (Tools Used & Results):** {memory.get_actions()}
+
+Instructions:
+1. Review the query and the pipeline(s) created/modified in memory.
+2. Assess completeness: Does the latest pipeline fully address the target transformation?
+3. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready.
+4. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory.
+
+Final Determination:
+- If the pipeline is complete and correct:
+  * Explain why
+  * Provide the pipeline_id to finalize (from the most recent Create_Pipeline_Tool or Modify_Pipeline_Tool result in memory)
+  * Conclude with "STOP"
+- If modifications are still needed:
+  * Explain what's missing or incorrect
+  * Conclude with "CONTINUE"
+
+IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: CONTINUE".
+If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id to finalize.
+"""
+
+        input_data = [prompt_memory_verification]
+
+        # Log the full prompt
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(f"VERIFICATE_CONTEXT_PIPELINE PROMPT (Step {step_count}):")
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(prompt_memory_verification)
+        prompt_logger.debug("=" * 80)
+
+        stop_verification = self.llm_engine_fixed(
+            input_data, response_format=PipelineVerification
+        )
+        if json_data is not None:
+            json_data[f"verifier_pipeline_{step_count}_prompt"] = input_data
+            json_data[f"verifier_pipeline_{step_count}_response"] = str(stop_verification)
+        return stop_verification
+
+    def verificate_context_pipeline_with_additional_info(
+        self,
+        question: str,
+        query_analysis: str,
+        memory: Memory,
+        additional_context: str,
+        step_count: int = 0,
+        json_data: Any = None,
+    ) -> Any:
+        """Pipeline-level verification with additional context that also identifies which pipeline to finalize."""
+        prompt_memory_verification = f"""
+Task: Evaluate if the current pipeline is complete and correct enough to produce the target transformation, considering the additional context provided.
+
+Context:
+- **Query:** {question}
+- **Available Tools:** {self.available_tools}
+- **Toolbox Metadata:** {self.toolbox_metadata}
+- **Initial Analysis:** {query_analysis}
+- **Memory (Tools Used & Results):** {memory.get_actions()}
+
+Additional Context (Reference Information):
+{additional_context}
+
+Instructions:
+1. Review the query and the pipeline(s) created/modified in memory.
+2. Compare with the additional context — does the pipeline align with the expected approach?
+3. Assess completeness: Does the latest pipeline fully address the target transformation?
+4. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready.
+5. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory.
+
+Final Determination:
+- If the pipeline is complete, correct, and aligns with the additional context:
+  * Explain why
+  * Provide the pipeline_id to finalize (from the most recent Create_Pipeline_Tool or Modify_Pipeline_Tool result in memory)
+  * Conclude with "STOP"
+- If modifications are still needed:
+  * Explain what's missing or incorrect
+  * Conclude with "CONTINUE"
+
+IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: CONTINUE".
+If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id to finalize.
+"""
+
+        input_data = [prompt_memory_verification]
+
+        # Log the full prompt
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(
+            f"VERIFICATE_CONTEXT_PIPELINE_WITH_ADDITIONAL_INFO PROMPT (Step {step_count}):"
+        )
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(prompt_memory_verification)
+        prompt_logger.debug("=" * 80)
+
+        stop_verification = self.llm_engine_fixed(
+            input_data, response_format=PipelineVerification
+        )
+        if json_data is not None:
+            json_data[f"verifier_pipeline_with_context_{step_count}_prompt"] = input_data
+            json_data[f"verifier_pipeline_with_context_{step_count}_response"] = str(
+                stop_verification
+            )
+        return stop_verification
+
     def extract_conclusion(self, response: Any) -> Tuple[str, str]:
+        finalized_pipeline_id = None
+
         if isinstance(response, str):
             # Attempt to parse the response as JSON
             try:
                 response_dict = json.loads(response)
-                response = MemoryVerification(**response_dict)
+                if self.granularity == "pipeline":
+                    response = PipelineVerification(**response_dict)
+                else:
+                    response = MemoryVerification(**response_dict)
             except Exception as e:
                 print(f"Failed to parse response as JSON: {str(e)}")
+
+        if isinstance(response, PipelineVerification):
+            analysis = response.analysis
+            stop_signal = response.stop_signal
+            finalized_pipeline_id = response.finalized_pipeline_id
+            if stop_signal:
+                return analysis, "STOP", finalized_pipeline_id
+            else:
+                return analysis, "CONTINUE", finalized_pipeline_id
+
         if isinstance(response, MemoryVerification):
             analysis = response.analysis
             stop_signal = response.stop_signal

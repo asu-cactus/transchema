@@ -26,10 +26,12 @@ class Planner:
         is_multimodal: bool = False,
         check_model: bool = True,
         temperature: float = 0.0,
+        granularity: str = "operator",
     ):
         self.llm_engine_name = llm_engine_name
         self.llm_engine_fixed_name = llm_engine_fixed_name
         self.is_multimodal = is_multimodal
+        self.granularity = granularity
         # self.llm_engine_mm = create_llm_engine(model_string=llm_engine_name, is_multimodal=False, base_url=base_url, temperature = temperature)
         self.llm_engine_fixed = create_llm_engine(
             model_string=llm_engine_fixed_name,
@@ -90,6 +92,66 @@ class Planner:
         return self.base_response
 
     def analyze_query(self, question: str, image: str) -> str:
+        if self.granularity == "pipeline":
+            return self._analyze_query_pipeline(question, image)
+        return self._analyze_query_operator(question, image)
+
+    def _analyze_query_pipeline(self, question: str, image: str) -> str:
+        image_info = self.get_image_info(image)
+
+        query_prompt = f"""
+Task: Analyze the given query at a PIPELINE level to determine whether a new data transformation pipeline needs to be created or an existing pipeline should be modified.
+
+CRITICAL CONSTRAINT: You can ONLY suggest operations and tools that are in the available tools list. Do NOT suggest operations or tools that are not available.
+
+Inputs:
+- Query: {question}
+- Available tools: {self.available_tools}
+- Metadata for tools: {self.toolbox_metadata}
+
+Instructions:
+1. Understand the high-level goal of the query — what is the desired end-to-end data transformation?
+2. Determine whether this requires:
+   a) Creating a NEW pipeline from scratch (no existing pipeline addresses this transformation), or
+   b) Modifying an EXISTING pipeline (the transformation is partially addressed and needs adjustments).
+3. Identify the overall pipeline strategy: what sequence of high-level operations (joins, unions, aggregations, code generation) would achieve the target transformation.
+4. List ONLY the skills and tools that are actually available in the available tools list.
+5. Note any additional considerations at the pipeline level.
+
+Format your response with:
+- A concise summary of the query and the target transformation
+- Pipeline decision: CREATE NEW or MODIFY EXISTING (and why)
+- Required skills and relevant tools from the available list
+- Additional considerations
+
+IMPORTANT: Be brief and precise. Focus on the pipeline-level strategy, NOT individual operator details.
+"""
+
+        input_data = [query_prompt]
+        if image_info:
+            try:
+                with open(image_info["image_path"], "rb") as file:
+                    image_bytes = file.read()
+                input_data.append(image_bytes)
+            except Exception as e:
+                print(f"Error reading image file: {str(e)}")
+
+        print("Input data of `analyze_query() [pipeline-level]`: ", input_data)
+
+        # Log the full prompt
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug("ANALYZE_QUERY PROMPT [PIPELINE-LEVEL]:")
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(query_prompt)
+        prompt_logger.debug("=" * 80)
+
+        self.query_analysis = self.llm_engine_fixed(
+            input_data, response_format=QueryAnalysis
+        )
+
+        return str(self.query_analysis).strip()
+
+    def _analyze_query_operator(self, question: str, image: str) -> str:
         image_info = self.get_image_info(image)
 
         if self.is_multimodal:
@@ -221,6 +283,113 @@ IMPORTANT: Be brief and precise. Focus ONLY on what can be achieved with the ava
         return context, sub_goal, tool_name
 
     def generate_next_step(
+        self,
+        question: str,
+        image: str,
+        query_analysis: str,
+        memory: Memory,
+        step_count: int,
+        max_step_count: int,
+        json_data: Any = None,
+    ) -> Any:
+        if self.granularity == "pipeline":
+            return self._generate_next_step_pipeline(
+                question,
+                image,
+                query_analysis,
+                memory,
+                step_count,
+                max_step_count,
+                json_data,
+            )
+        return self._generate_next_step_operator(
+            question,
+            image,
+            query_analysis,
+            memory,
+            step_count,
+            max_step_count,
+            json_data,
+        )
+
+    def _generate_next_step_pipeline(
+        self,
+        question: str,
+        image: str,
+        query_analysis: str,
+        memory: Memory,
+        step_count: int,
+        max_step_count: int,
+        json_data: Any = None,
+    ) -> Any:
+        prompt_generate_next_step = f"""
+Task: Determine the optimal next step at a PIPELINE level to address the given query.
+
+You are operating at a PIPELINE granularity. Instead of picking individual operators one at a time, you should reason about the pipeline as a whole and decide whether to:
+1. **Create a new pipeline** — Design the full sequence of operations needed to achieve the target transformation.
+2. **Modify the existing pipeline** — Adjust, add, remove, or reconfigure operations in the current pipeline to fix issues or improve correctness.
+
+CRITICAL CONSTRAINT: You can ONLY use tools from the available tools list. Do NOT suggest operations, sub-goals, or actions that require tools not in this list.
+
+Context:
+- **Query:** {question}
+- **Query Analysis:** {query_analysis}
+- **Available Tools (THESE ARE THE ONLY TOOLS YOU CAN USE):** {self.available_tools}
+- **Toolbox Metadata:** {self.toolbox_metadata}
+- **Current Step:** {step_count} of {max_step_count}
+- **Remaining Steps:** {max_step_count - step_count}
+- **Previous Steps and Their Results:** {memory.get_actions()}
+
+Instructions:
+1. Review the query, the pipeline-level analysis, and all previous steps.
+2. Decide the pipeline-level action:
+   - If no pipeline exists yet (no previous steps or after a START_AGAIN), plan and begin creating a new pipeline.
+   - If a pipeline is in progress, evaluate whether it is on track or needs modification.
+3. Select the **single best tool** from the available tools list for the next step.
+4. Consider these special tools if available:
+   - **Code_Generator_Tool**: Use to visualize the current pipeline state. Generates executable Python code that materializes operations configured so far. Use when you need to verify the pipeline's combined effect before proceeding.
+   - **Critique_Pipeline_Tool**: Use when the pipeline is CLOSE to correct but needs 1-2 adjustments. Include all case info and operation history in the context.
+   - **Start_Again_Tool**: Use when the pipeline has gone fundamentally wrong and needs a complete restart.
+5. Formulate a specific, achievable **sub-goal** for the selected tool.
+6. Provide all necessary **context** (data, file names, variables) for the tool to function.
+
+Pipeline-Level Reasoning:
+- Think about the END-TO-END transformation needed, not just the next single operator.
+- Consider the overall pipeline structure: what operations are needed, in what order, and how they connect.
+- When creating a new pipeline, plan the full sequence but execute one tool at a time.
+- When modifying, identify exactly what is wrong and what change will fix it.
+
+Response Format:
+1. **Justification:** Explain your pipeline-level reasoning and choice of tool.
+2. **Context:** Provide all necessary information for the tool.
+3. **Sub-Goal:** State the specific objective for the tool.
+4. **Tool Name:** State the exact name of the selected tool (must be from available tools list).
+
+Rules:
+- Select only ONE tool from the available tools list.
+- The sub-goal must be directly achievable by the selected tool.
+- The response must end with the Context, Sub-Goal, and Tool Name sections in that order, with no extra content.
+"""
+        # Removed Operation History
+
+        # Log the full prompt
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(
+            f"GENERATE_NEXT_STEP PROMPT [PIPELINE-LEVEL] (Step {step_count}):"
+        )
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(prompt_generate_next_step)
+        prompt_logger.debug("=" * 80)
+
+        next_step = self.llm_engine(prompt_generate_next_step, response_format=NextStep)
+        if json_data is not None:
+            json_data[f"action_predictor_{step_count}_prompt"] = (
+                prompt_generate_next_step
+            )
+            json_data[f"action_predictor_{step_count}_response"] = str(next_step)
+        return next_step
+
+    def _generate_next_step_operator(
         self,
         question: str,
         image: str,

@@ -413,63 +413,121 @@ class Solver:
 
                 # [5] Verify memory (context verification)
                 local_start_time = time.time()
+                is_pipeline_mode = self.planner.granularity == "pipeline"
 
-                # Use new verifier with additional context if available, otherwise use standard verifier
-                if self.additional_context:
-                    self._log_llm_call(
-                        "verificate_context_with_additional_info",
-                        {
-                            "question": question,
-                            "query_analysis": query_analysis[:200] + "...",
-                            "additional_context": self.additional_context[:200] + "...",
-                            "step_count": step_count,
-                        },
-                        step=step_count,
-                    )
+                if is_pipeline_mode:
+                    # Pipeline-level verification
+                    if self.additional_context:
+                        self._log_llm_call(
+                            "verificate_context_pipeline_with_additional_info",
+                            {
+                                "question": question,
+                                "query_analysis": query_analysis[:200] + "...",
+                                "additional_context": self.additional_context[:200] + "...",
+                                "step_count": step_count,
+                            },
+                            step=step_count,
+                        )
 
-                    stop_verification = (
-                        self.verifier.verificate_context_with_additional_info(
+                        stop_verification = (
+                            self.verifier.verificate_context_pipeline_with_additional_info(
+                                question,
+                                query_analysis,
+                                self.memory,
+                                self.additional_context,
+                                step_count,
+                                json_data,
+                            )
+                        )
+
+                        self._log_llm_response(
+                            "verificate_context_pipeline_with_additional_info",
+                            stop_verification,
+                            step=step_count,
+                        )
+                    else:
+                        self._log_llm_call(
+                            "verificate_context_pipeline",
+                            {
+                                "question": question,
+                                "query_analysis": query_analysis[:200] + "...",
+                                "step_count": step_count,
+                            },
+                            step=step_count,
+                        )
+
+                        stop_verification = self.verifier.verificate_context_pipeline(
                             question,
+                            image_path,
                             query_analysis,
                             self.memory,
-                            self.additional_context,
                             step_count,
                             json_data,
                         )
-                    )
 
-                    self._log_llm_response(
-                        "verificate_context_with_additional_info",
-                        stop_verification,
-                        step=step_count,
-                    )
+                        self._log_llm_response(
+                            "verificate_context_pipeline", stop_verification, step=step_count
+                        )
                 else:
-                    self._log_llm_call(
-                        "verificate_context",
-                        {
-                            "question": question,
-                            "query_analysis": query_analysis[:200] + "...",
-                            "step_count": step_count,
-                        },
-                        step=step_count,
-                    )
+                    # Operator-level verification (original behavior)
+                    if self.additional_context:
+                        self._log_llm_call(
+                            "verificate_context_with_additional_info",
+                            {
+                                "question": question,
+                                "query_analysis": query_analysis[:200] + "...",
+                                "additional_context": self.additional_context[:200] + "...",
+                                "step_count": step_count,
+                            },
+                            step=step_count,
+                        )
 
-                    stop_verification = self.verifier.verificate_context(
-                        question,
-                        image_path,
-                        query_analysis,
-                        self.memory,
-                        step_count,
-                        json_data,
-                    )
+                        stop_verification = (
+                            self.verifier.verificate_context_with_additional_info(
+                                question,
+                                query_analysis,
+                                self.memory,
+                                self.additional_context,
+                                step_count,
+                                json_data,
+                            )
+                        )
 
-                    self._log_llm_response(
-                        "verificate_context", stop_verification, step=step_count
-                    )
+                        self._log_llm_response(
+                            "verificate_context_with_additional_info",
+                            stop_verification,
+                            step=step_count,
+                        )
+                    else:
+                        self._log_llm_call(
+                            "verificate_context",
+                            {
+                                "question": question,
+                                "query_analysis": query_analysis[:200] + "...",
+                                "step_count": step_count,
+                            },
+                            step=step_count,
+                        )
 
-                context_verification, conclusion = self.verifier.extract_conclusion(
-                    stop_verification
-                )
+                        stop_verification = self.verifier.verificate_context(
+                            question,
+                            image_path,
+                            query_analysis,
+                            self.memory,
+                            step_count,
+                            json_data,
+                        )
+
+                        self._log_llm_response(
+                            "verificate_context", stop_verification, step=step_count
+                        )
+
+                extract_result = self.verifier.extract_conclusion(stop_verification)
+                if is_pipeline_mode:
+                    context_verification, conclusion, finalized_pipeline_id = extract_result
+                else:
+                    context_verification, conclusion = extract_result
+                    finalized_pipeline_id = None
 
                 logger.info(
                     f"[Step {step_count}] Verification conclusion: {conclusion}"
@@ -481,6 +539,8 @@ class Solver:
                     print(
                         f"[Analysis]: {context_verification}\n[Conclusion]: {conclusion} {conclusion_emoji}"
                     )
+                    if is_pipeline_mode and finalized_pipeline_id:
+                        print(f"[Finalized Pipeline]: {finalized_pipeline_id}")
                     print(f"[Time]: {round(time.time() - local_start_time, 2)}s")
 
                 # Break the loop if the context is verified
@@ -488,6 +548,41 @@ class Solver:
                     logger.info(
                         f"Context verified - stopping execution loop at step {step_count}"
                     )
+
+                    # In pipeline mode, finalize the selected pipeline
+                    if is_pipeline_mode and finalized_pipeline_id:
+                        logger.info(
+                            f"Finalizing pipeline: {finalized_pipeline_id}"
+                        )
+                        # Find the pipeline definition from memory
+                        pipeline_def = ""
+                        for action in reversed(list(self.memory.get_actions().values())):
+                            result = action.get("result", {})
+                            if isinstance(result, dict) and result.get("pipeline_id") == finalized_pipeline_id:
+                                pipeline_def = result.get("pipeline", "")
+                                break
+
+                        finalize_result = self.executor.execute_tool_command(
+                            "Finalize_Pipeline_Tool",
+                            f'execution = tool.execute(pipeline_id="{finalized_pipeline_id}", pipeline="""{pipeline_def}""")',
+                        )
+                        step_count += 1
+                        self.memory.add_action(
+                            step_count,
+                            "Finalize_Pipeline_Tool",
+                            f"Mark pipeline {finalized_pipeline_id} as finalized",
+                            "",
+                            finalize_result,
+                        )
+                        self._log_memory_update(
+                            step_count, "Finalize_Pipeline_Tool",
+                            f"Mark pipeline {finalized_pipeline_id} as finalized",
+                            "", finalize_result,
+                        )
+
+                        if self.verbose:
+                            print(f"\n==> 🏁 Pipeline '{finalized_pipeline_id}' finalized for materialization")
+
                     break
 
             # Add memory and statistics to json_data
@@ -562,12 +657,14 @@ def construct_solver(
     temperature: float = 0.0,
     additional_context_file: str = None,
     start_again_clear_history: bool = False,
+    planner_granularity: str = "operator",
 ):
 
     logger.info("Constructing solver...")
     logger.info(f"LLM Engine: {llm_engine_name}")
     logger.info(f"Enabled Tools: {enabled_tools}")
     logger.info(f"Model Engine Config: {model_engine}")
+    logger.info(f"Planner Granularity: {planner_granularity}")
 
     # Read additional context file if provided
     additional_context = None
@@ -620,6 +717,7 @@ def construct_solver(
         verbose=verbose,
         base_url=base_url,
         temperature=temperature,
+        granularity=planner_granularity,
     )
 
     # Instantiate Verifier
@@ -631,6 +729,7 @@ def construct_solver(
         verbose=verbose,
         base_url=base_url if verifier_engine == llm_engine_name else None,
         temperature=temperature,
+        granularity=planner_granularity,
     )
 
     # Instantiate Memory
