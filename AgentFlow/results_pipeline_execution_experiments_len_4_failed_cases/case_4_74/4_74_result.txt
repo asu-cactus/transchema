@@ -1,7 +1,7 @@
 Case: 4_74
 Status: INCORRECT
-Timestamp: 2026-02-16T14:43:49.166653
-Duration: 90.64 seconds
+Timestamp: 2026-02-16T15:28:16.220864
+Duration: 244.04 seconds
 LLM Engine: gpt-4.1-mini
 Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_74/logs
 
@@ -9,7 +9,7 @@ Verification:
   is_correct: False
   average_similarity: 0.0
   matched_columns: []
-  calculate_score: 1.0
+  calculate_score: 0.8571428571428571
 
 ================================================================================
 QUERY:
@@ -39,4 +39,69 @@ Index: []
 ================================================================================
 OUTPUT:
 ================================================================================
-No output
+```Python
+import pandas as pd
+
+def main():
+    # Step 1: UNION - Load data from Source4_74_0 with index_col=0
+    source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_74/test_0.csv"
+    df = pd.read_csv(source_path, index_col=0)
+
+    # Step 2: TRANSFORM - Create mapping for 'Item Name' strings to unique integer IDs
+    unique_item_names = df['Item Name'].dropna().unique()
+    item_name_to_id = {name: idx for idx, name in enumerate(unique_item_names)}
+
+    # Replace 'Item Name' with integer IDs, assign -1 for unmapped or missing values
+    df['Item Name'] = df['Item Name'].map(item_name_to_id).fillna(-1).astype(int)
+
+    # Step 3: VALIDATE - Check for missing values in required columns and handle them
+    # Columns to validate: ['Gender', 'Purchase ID', 'SN', 'Age', 'Item ID', 'Item Name', 'Price']
+    required_columns = ['Gender', 'Purchase ID', 'SN', 'Age', 'Item ID', 'Item Name', 'Price']
+
+    # Check for missing columns (should not happen, but just in case)
+    missing_cols = set(required_columns) - set(df.columns)
+    if missing_cols:
+        raise ValueError(f"Missing required columns in source data: {missing_cols}")
+
+    # Handle missing values:
+    # For 'Gender' and 'SN' (string columns), fill missing with empty string
+    df['Gender'] = df['Gender'].fillna('')
+    df['SN'] = df['SN'].fillna('')
+
+    # For numeric columns, drop rows with missing values (could also fill with defaults if desired)
+    numeric_cols = ['Purchase ID', 'Age', 'Item ID', 'Item Name', 'Price']
+    df = df.dropna(subset=numeric_cols)
+
+    # Step 4: ERROR HANDLING - 'Item Name' unmapped values already assigned -1 above
+
+    # Step 5: FINAL VALIDATION - Ensure correct data types and column order as per target schema
+    # Target schema:
+    # ['Gender': string, 'Purchase ID': integer, 'SN': integer, 'Age': integer, 'Item ID': integer, 'Item Name': integer, 'Price': integer]
+
+    # Cast columns to correct types:
+    # 'Gender' and 'SN' are strings
+    df['Gender'] = df['Gender'].astype(str)
+    df['SN'] = df['SN'].astype(str)
+
+    # For integer columns, convert with errors='raise' to catch any issues
+    int_columns = ['Purchase ID', 'Age', 'Item ID', 'Item Name', 'Price']
+    for col in int_columns:
+        # First convert to numeric (float) then to int to handle if source has floats
+        df[col] = pd.to_numeric(df[col], errors='raise')
+        # For 'Price', source example shows float values, but target schema requires integer
+        # So we round before converting to int
+        if col == 'Price':
+            df[col] = df[col].round()
+        df[col] = df[col].astype(int)
+
+    # Reorder columns to match target schema exactly
+    target_columns = ['Gender', 'Purchase ID', 'SN', 'Age', 'Item ID', 'Item Name', 'Price']
+    df = df[target_columns]
+
+    # Step 6: SAVE - Save the resulting DataFrame as CSV to the specified path
+    output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_74/target_multisource_agentic.csv"
+    df.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
+    main()
+```

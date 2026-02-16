@@ -1,42 +1,42 @@
 Case: 4_35
-Status: INCORRECT
-Timestamp: 2026-02-16T14:42:47.333003
-Duration: 61.42 seconds
+Status: CORRECT
+Timestamp: 2026-02-16T15:22:21.079722
+Duration: 354.72 seconds
 LLM Engine: gpt-4.1-mini
 Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_35/logs
 
 Verification:
-  is_correct: False
-  average_similarity: 0.0
-  matched_columns: []
-  calculate_score: 3.0
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['AB de Villiers-AD Russell-AM Rahane', '0-0-1', '12-13-12', '575-453-613', '11-7-3', '163-192-129', '942-871-793', '56-82-14']
+  calculate_score: 0.0
 
 ================================================================================
 QUERY:
 ================================================================================
 1. Target Table Name: Target4_35
 2. Target Schema: ['batsman': string, 'batsman_runs_x': integer, 'batsman_runs_y': integer, 'no of balls': integer, 'batsman_runs_x_4': integer, 'strike': float, 'batsman_runs_y_6': integer, 'total_runs': integer]
-3. Target Examples: There are 88 available target examples:        batsman  batsman_runs_x  batsman_runs_y  no of balls  batsman_runs_x_4  \
-25   RG Sharma               4               0          542               707   
-15    AS Yadav               6               0          720               962   
-81    T Curran               0               0           28                24   
-0     KL Rahul              13               2          873              1288   
-50     SN Khan               1               0          188               239   
-42   S Hetmyer               1               0           76                93   
-70      S Dube               0               0           33                40   
-53      R Bhui               0               0           18                 8   
-62  PJ Sangwan               0               0            5                 1   
+3. Target Examples: There are 88 available target examples:           batsman  batsman_runs_x  batsman_runs_y  no of balls  \
+12        CA Lynn               7               0          679   
+55  Mohammad Nabi               0               0           92   
+54       R Ashwin               0               0          104   
+47      V Shankar               1               0          352   
+10     AD Russell               7               0          453   
+62     PJ Sangwan               0               0            5   
+37     MA Agarwal               2               0          335   
+13       MS Dhoni               6               0          638   
+49        R Parag               1               0          133   
 
-        strike  batsman_runs_y_6  total_runs  
-25  130.442804                 9          21  
-15  133.611111                15          26  
-81   85.714286                 0           0  
-0   147.537228                17          57  
-50  127.127660                 3           6  
-42  122.368421                 1           7  
-70  121.212121                 0           3  
-53   44.444444                 0           0  
-62   20.000000                 0           0  
+    batsman_runs_x_4      strike  batsman_runs_y_6  total_runs  
+12               924  136.082474                14          40  
+55               144  156.521739                 1           7  
+54               151  145.192308                 2           8  
+47               473  134.375000                 5          23  
+10               871  192.273731                13          82  
+62                 1   20.000000                 0           0  
+37               462  137.910448                 6          19  
+13               917  143.730408                13          51  
+49               169  127.067669                 3           5  
 4. Source Information: 	Source 0:
 	Source 0 Name: Source4_35_0
 	Source 0 Schema: ['batsman', 'batsman_runs']
@@ -88,4 +88,64 @@ QUERY:
 ================================================================================
 OUTPUT:
 ================================================================================
-No output
+```Python
+import pandas as pd
+
+# Load source data with index_col=0 to ignore the numerical index column
+source0 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_0.csv', index_col=0)
+source1 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_1.csv', index_col=0)
+source2 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_2.csv', index_col=0)
+source3 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_3.csv', index_col=0)
+source4 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_4.csv', index_col=0)
+
+# Step 1: INNER JOIN Source4_35_0 and Source4_35_2 on 'batsman'
+# Rename batsman_runs columns to distinguish them before join
+source0_renamed = source0.rename(columns={'batsman_runs': 'batsman_runs_x'})
+source2_renamed = source2.rename(columns={'batsman_runs': 'batsman_runs_y'})
+df1 = pd.merge(source0_renamed, source2_renamed, on='batsman', how='inner')
+
+# Step 2: INNER JOIN the result with Source4_35_3 on 'batsman'
+# Rename batsman_runs from source3 to batsman_runs_x_4
+source3_renamed = source3.rename(columns={'batsman_runs': 'batsman_runs_x_4'})
+df2 = pd.merge(df1, source3_renamed, on='batsman', how='inner')
+
+# Step 3: INNER JOIN the result with Source4_35_1 on 'batsman'
+df3 = pd.merge(df2, source1, on='batsman', how='inner')
+
+# Step 4: INNER JOIN the result with Source4_35_4 on 'batsman'
+# Rename batsman_runs from source4 to batsman_runs_y_6 to match target schema
+source4_renamed = source4.rename(columns={'batsman_runs': 'batsman_runs_y_6'})
+df4 = pd.merge(df3, source4_renamed, on='batsman', how='inner')
+
+# Step 5: GROUP_BY 'batsman' and aggregate sums of all numeric columns except 'strike'
+# 'strike' is float and should be averaged (mean) as per typical strike rate calculation
+agg_dict = {
+    'batsman_runs_x': 'sum',
+    'batsman_runs_y': 'sum',
+    'batsman_runs_x_4': 'sum',
+    'total_runs': 'sum',
+    'no of balls': 'sum',
+    'batsman_runs_y_6': 'sum',
+    'strike': 'mean'
+}
+grouped = df4.groupby('batsman', as_index=False).agg(agg_dict)
+
+# Step 6: PIVOT is not needed here because we already have distinct columns for batsman_runs_x and batsman_runs_y
+
+# Step 7: SELECT & COMPUTE - ensure columns are in the exact order and types as target schema
+final_df = grouped[['batsman', 'batsman_runs_x', 'batsman_runs_y', 'no of balls',
+                    'batsman_runs_x_4', 'strike', 'batsman_runs_y_6', 'total_runs']]
+
+# Convert columns to correct types as per target schema
+final_df['batsman'] = final_df['batsman'].astype(str)
+final_df['batsman_runs_x'] = final_df['batsman_runs_x'].astype(int)
+final_df['batsman_runs_y'] = final_df['batsman_runs_y'].astype(int)
+final_df['no of balls'] = final_df['no of balls'].astype(int)
+final_df['batsman_runs_x_4'] = final_df['batsman_runs_x_4'].astype(int)
+final_df['strike'] = final_df['strike'].astype(float)
+final_df['batsman_runs_y_6'] = final_df['batsman_runs_y_6'].astype(int)
+final_df['total_runs'] = final_df['total_runs'].astype(int)
+
+# Step 8: SAVE the final dataframe as CSV
+final_df.to_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/target_multisource_agentic.csv', index=False)
+```

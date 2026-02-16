@@ -59,7 +59,7 @@ LLM_ENGINE_NAME = "gpt-4.1-mini"
 PLANNER_GRANULARITY = "pipeline"
 
 # Pipeline execution + scoring inside the agentic loop
-EXECUTE_PIPELINE = True
+EXECUTE_PIPELINE = False
 
 # Start Again Tool behavior
 START_AGAIN_CLEAR_HISTORY = False
