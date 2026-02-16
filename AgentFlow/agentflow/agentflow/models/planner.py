@@ -18,7 +18,7 @@ class Planner:
     def __init__(
         self,
         llm_engine_name: str,
-        llm_engine_fixed_name: str = "gpt-4o",
+        llm_engine_fixed_name: str = "gpt-4.1-mini",
         toolbox_metadata: dict = None,
         available_tools: List = None,
         verbose: bool = False,
@@ -27,11 +27,13 @@ class Planner:
         check_model: bool = True,
         temperature: float = 0.0,
         granularity: str = "operator",
+        execute_pipeline: bool = False,
     ):
         self.llm_engine_name = llm_engine_name
         self.llm_engine_fixed_name = llm_engine_fixed_name
         self.is_multimodal = is_multimodal
         self.granularity = granularity
+        self.execute_pipeline = execute_pipeline
         # self.llm_engine_mm = create_llm_engine(model_string=llm_engine_name, is_multimodal=False, base_url=base_url, temperature = temperature)
         self.llm_engine_fixed = create_llm_engine(
             model_string=llm_engine_fixed_name,
@@ -322,6 +324,26 @@ IMPORTANT: Be brief and precise. Focus ONLY on what can be achieved with the ava
         max_step_count: int,
         json_data: Any = None,
     ) -> Any:
+        # Build score feedback section only when execute_pipeline is enabled
+        if self.execute_pipeline:
+            score_feedback_section = """
+5. **Score Feedback**: When a Code_Generator_Tool step in the previous results includes a `pipeline_execution` result with a score, use it to guide your decision:
+   - A high combined score (near 3.0, with score_fd, score_key, column_mapping_score all near 1.0) means the pipeline is correct — consider finalizing.
+   - Some of the modification you can try : If FD and key constaints are missing, you can try to add a group by and appropriate aggregations. If the pipeline has joins, you may change the join types[From inner to left and from left to inner.].
+   - A low score means the pipeline needs modification. Look at score_details (shape mismatch, column mismatch) to decide what to fix.
+   - If execution_error is present, the generated code has bugs — consider modifying the pipeline or regenerating code.
+   - If the score is not improving across iterations, consider Start_Again_Tool.
+6. Formulate a specific, achievable **sub-goal** for the selected tool.
+7. Provide all necessary **context** (data, file names, variables) for the tool to function."""
+            code_gen_description = "**Code_Generator_Tool**: Use to generate executable Python code that materializes the pipeline. The code will be automatically executed and scored against the ground truth. Use when you want to test whether the current pipeline produces the correct output or when you need score feedback to decide what to fix next."
+            extra_reasoning = "\n- Use score feedback from Code_Generator_Tool executions to guide pipeline refinement."
+        else:
+            score_feedback_section = """
+5. Formulate a specific, achievable **sub-goal** for the selected tool.
+6. Provide all necessary **context** (data, file names, variables) for the tool to function."""
+            code_gen_description = "**Code_Generator_Tool**: Use to visualize the current pipeline state. Generates executable Python code that materializes operations configured so far. Use when you need to verify the pipeline's combined effect before proceeding."
+            extra_reasoning = ""
+
         prompt_generate_next_step = f"""
 Task: Determine the optimal next step at a PIPELINE level to address the given query.
 
@@ -347,17 +369,16 @@ Instructions:
    - If a pipeline is in progress, evaluate whether it is on track or needs modification.
 3. Select the **single best tool** from the available tools list for the next step.
 4. Consider these special tools if available:
-   - **Code_Generator_Tool**: Use to visualize the current pipeline state. Generates executable Python code that materializes operations configured so far. Use when you need to verify the pipeline's combined effect before proceeding.
+   - {code_gen_description}
    - **Critique_Pipeline_Tool**: Use when the pipeline is CLOSE to correct but needs 1-2 adjustments. Include all case info and operation history in the context.
    - **Start_Again_Tool**: Use when the pipeline has gone fundamentally wrong and needs a complete restart.
-5. Formulate a specific, achievable **sub-goal** for the selected tool.
-6. Provide all necessary **context** (data, file names, variables) for the tool to function.
+{score_feedback_section}
 
 Pipeline-Level Reasoning:
 - Think about the END-TO-END transformation needed, not just the next single operator.
 - Consider the overall pipeline structure: what operations are needed, in what order, and how they connect.
 - When creating a new pipeline, plan the full sequence but execute one tool at a time.
-- When modifying, identify exactly what is wrong and what change will fix it.
+- When modifying, identify exactly what is wrong and what change will fix it.{extra_reasoning}
 
 Response Format:
 1. **Justification:** Explain your pipeline-level reasoning and choice of tool.
@@ -543,6 +564,77 @@ Rules:
         return next_step
 
     def generate_final_output(self, question: str, image: str, memory: Memory) -> str:
+        if self.granularity == "pipeline":
+            return self._generate_final_output_pipeline(question, image, memory)
+        return self._generate_final_output_operator(question, image, memory)
+
+    def _generate_final_output_pipeline(
+        self, question: str, image: str, memory: Memory
+    ) -> str:
+        """Generate a Python script as the final output for pipeline-level granularity."""
+        # Extract the finalized pipeline from memory
+        finalized_pipeline = ""
+        finalized_pipeline_id = ""
+        for action in reversed(list(memory.get_actions().values())):
+            result = action.get("result", {})
+            if (
+                isinstance(result, dict)
+                and result.get("signal") == "PIPELINE_FINALIZED"
+            ):
+                finalized_pipeline_id = result.get("pipeline_id", "")
+                finalized_pipeline = result.get("pipeline", "")
+                break
+
+        prompt = f"""You are generating executable Python code at runtime. A data transformation pipeline has been designed and finalized. Your job is to translate this pipeline into a complete, executable Python script using pandas.
+
+Transformation Context:
+{question}
+
+Finalized Pipeline (ID: {finalized_pipeline_id}):
+{finalized_pipeline}
+
+Full Action History (for reference):
+{memory.get_actions()}
+
+Instructions:
+1. Generate a complete Python script that implements the finalized pipeline.
+2. The script must be immediately executable — no placeholders, no omissions.
+3. Follow the pipeline's sequence of operations strictly.
+4. Use pandas for all data transformations.
+5. Read all source CSV files as specified in the query (use index_col=0 since most source files have a numerical index column).
+6. Ensure the output matches the target schema exactly (column names, types, order).
+7. Save the final result to a CSV file.
+
+Key guidelines:
+- All source tables must be used.
+- For JOIN operations: use pd.merge() with appropriate join keys and join type (inner/outer).
+- For UNION operations: use pd.concat() on tables with compatible schemas.
+- For GROUP_BY/AGGREGATE: use .groupby() with .agg().
+- GROUP BY columns are never float types — they correspond to unique, non-float columns at the leftmost part of the target schema.
+- If target examples contain duplicate keys or rows, GROUP BY should NOT be used.
+- Two tables may join on columns with different names but similar values.
+- Most source files have a numerical index column (first column) — use index_col=0 when reading.
+- Ensure the final output has the same column structure as the target table.
+
+Please quote the Python script between one single "```Python" and "```".
+"""
+
+        input_data = [prompt]
+
+        # Log the full prompt
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug("GENERATE_FINAL_OUTPUT PROMPT [PIPELINE-LEVEL]:")
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(prompt)
+        prompt_logger.debug("=" * 80)
+
+        final_output = self.llm_engine_fixed(input_data)
+
+        return final_output
+
+    def _generate_final_output_operator(
+        self, question: str, image: str, memory: Memory
+    ) -> str:
         image_info = self.get_image_info(image)
         if self.is_multimodal:
             prompt_generate_final_output = f"""
@@ -623,6 +715,71 @@ Instructions:
         return final_output
 
     def generate_direct_output(self, question: str, image: str, memory: Memory) -> str:
+        if self.granularity == "pipeline":
+            return self._generate_direct_output_pipeline(question, image, memory)
+        return self._generate_direct_output_operator(question, image, memory)
+
+    def _generate_direct_output_pipeline(
+        self, question: str, image: str, memory: Memory
+    ) -> str:
+        """Generate a Python script as the direct output for pipeline-level granularity."""
+        # Extract the finalized pipeline from memory
+        finalized_pipeline = ""
+        finalized_pipeline_id = ""
+        for action in reversed(list(memory.get_actions().values())):
+            result = action.get("result", {})
+            if (
+                isinstance(result, dict)
+                and result.get("signal") == "PIPELINE_FINALIZED"
+            ):
+                finalized_pipeline_id = result.get("pipeline_id", "")
+                finalized_pipeline = result.get("pipeline", "")
+                break
+
+        prompt = f"""You are generating executable Python code at runtime. Translate the finalized data transformation pipeline into a complete, executable Python script.
+
+Transformation Context:
+{question}
+
+Initial Analysis:
+{self.query_analysis}
+
+Finalized Pipeline (ID: {finalized_pipeline_id}):
+{finalized_pipeline}
+
+Action History:
+{memory.get_actions()}
+
+Generate a complete, immediately executable Python script using pandas that:
+1. Reads all source CSV files (use index_col=0).
+2. Implements every operation in the finalized pipeline in order.
+3. Produces output matching the target schema exactly (column names, types, order).
+4. Saves the result to a CSV file.
+
+Rules:
+- All source tables must be used.
+- JOIN → pd.merge(); UNION → pd.concat(); GROUP_BY/AGGREGATE → .groupby().agg().
+- No placeholders or omissions — the script must be complete.
+
+Please quote the Python script between one single "```Python" and "```".
+"""
+
+        input_data = [prompt]
+
+        # Log the full prompt
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug("GENERATE_DIRECT_OUTPUT PROMPT [PIPELINE-LEVEL]:")
+        prompt_logger.debug("=" * 80)
+        prompt_logger.debug(prompt)
+        prompt_logger.debug("=" * 80)
+
+        final_output = self.llm_engine_fixed(input_data)
+
+        return final_output
+
+    def _generate_direct_output_operator(
+        self, question: str, image: str, memory: Memory
+    ) -> str:
         image_info = self.get_image_info(image)
         if self.is_multimodal:
             prompt_generate_final_output = f"""

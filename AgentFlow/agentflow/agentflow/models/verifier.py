@@ -27,11 +27,13 @@ class Verifier:
         check_model: bool = True,
         temperature: float = 0.0,
         granularity: str = "operator",
+        execute_pipeline: bool = False,
     ):
         self.llm_engine_name = llm_engine_name
         self.llm_engine_fixed_name = llm_engine_fixed_name
         self.is_multimodal = is_multimodal
         self.granularity = granularity
+        self.execute_pipeline = execute_pipeline
         self.llm_engine_fixed = create_llm_engine(
             model_string=llm_engine_fixed_name,
             is_multimodal=False,
@@ -279,6 +281,19 @@ IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: 
         json_data: Any = None,
     ) -> Any:
         """Pipeline-level verification that also identifies which pipeline to finalize."""
+        # Conditionally add score-based guidance when execute_pipeline is enabled
+        if self.execute_pipeline:
+            score_instruction = """
+4. **Score Feedback**: If any Code_Generator_Tool result in memory includes a `pipeline_execution` with a score:
+   - Score near 3.0 (score_fd, score_key, column_mapping_score all near 1.0) + successful execution → strong evidence the pipeline is correct → recommend STOP.
+   - Moderate score → modifications may help → recommend CONTINUE.
+   - Failed execution or low score → pipeline needs changes → recommend CONTINUE.
+   - IMPORTANT: A successful execution with a high score is STRONG evidence the pipeline is correct, even if the pipeline plan looks incomplete to you.
+5. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
+        else:
+            score_instruction = """
+4. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
+
         prompt_memory_verification = f"""
 Task: Evaluate if the current pipeline is complete and correct enough to produce the target transformation, or if more modifications are needed.
 
@@ -293,7 +308,7 @@ Instructions:
 1. Review the query and the pipeline(s) created/modified in memory.
 2. Assess completeness: Does the latest pipeline fully address the target transformation?
 3. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready.
-4. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory.
+{score_instruction}
 
 Final Determination:
 - If the pipeline is complete and correct:
@@ -335,6 +350,19 @@ If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id t
         json_data: Any = None,
     ) -> Any:
         """Pipeline-level verification with additional context that also identifies which pipeline to finalize."""
+        # Conditionally add score-based guidance when execute_pipeline is enabled
+        if self.execute_pipeline:
+            score_instruction = """
+5. **Score Feedback**: If any Code_Generator_Tool result in memory includes a `pipeline_execution` with a score:
+   - Score near 3.0 (score_fd, score_key, column_mapping_score all near 1.0) + successful execution → strong evidence the pipeline is correct → recommend STOP.
+   - Moderate score → modifications may help → recommend CONTINUE.
+   - Failed execution or low score → pipeline needs changes → recommend CONTINUE.
+   - IMPORTANT: A successful execution with a high score is STRONG evidence the pipeline is correct.
+6. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
+        else:
+            score_instruction = """
+5. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
+
         prompt_memory_verification = f"""
 Task: Evaluate if the current pipeline is complete and correct enough to produce the target transformation, considering the additional context provided.
 
@@ -353,7 +381,7 @@ Instructions:
 2. Compare with the additional context — does the pipeline align with the expected approach?
 3. Assess completeness: Does the latest pipeline fully address the target transformation?
 4. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready.
-5. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory.
+{score_instruction}
 
 Final Determination:
 - If the pipeline is complete, correct, and aligns with the additional context:

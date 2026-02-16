@@ -112,10 +112,9 @@ def crit(args, length, id_, operation_history):
             fd_flags = [1, 0, 0, 1]
         else:
             fd_flags = [1, 0, 0, 0]
-        
+
         abl_a = critique(
-            args, length, id_, args.log_directory, 
-            fd_flags, 0, operation_history
+            args, length, id_, args.log_directory, fd_flags, 0, operation_history
         )
 
         with open(critique_path, "a", newline="") as f:
@@ -139,8 +138,7 @@ def crit(args, length, id_, operation_history):
             metadata_flags = [1, 1, 0, 0]
 
         abl_ab = critique(
-            args, length, id_, args.log_directory, 
-            metadata_flags, 0, operation_history
+            args, length, id_, args.log_directory, metadata_flags, 0, operation_history
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -162,8 +160,13 @@ def crit(args, length, id_, operation_history):
         else:
             anonymization_flags = [1, 1, 1, 0]
         abl_abc = critique(
-            args, length, id_, args.log_directory, 
-            anonymization_flags, 0, operation_history
+            args,
+            length,
+            id_,
+            args.log_directory,
+            anonymization_flags,
+            0,
+            operation_history,
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -318,49 +321,49 @@ def get_parser():
         "--rag_db_uri",
         type=str,
         default="rag_pipeline/test_dummy/milvus_demo_4.db",
-        help="URI for the RAG DB."
+        help="URI for the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_embedding_model",
         type=str,
         default="Qwen/Qwen3-Embedding-0.6B",
-        help="Embedding model for the RAG DB."
+        help="Embedding model for the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_embedding_dim",
         type=int,
         default=8192,
-        help="Max dimension size of the embedding model for the RAG DB."
+        help="Max dimension size of the embedding model for the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_db_collection",
         type=str,
         default="plan_docs",
-        help="RAG DB collection that contains all the documents."
+        help="RAG DB collection that contains all the documents.",
     )
 
     parser.add_argument(
         "--rag_topk",
         type=int,
         default=3,
-        help="Top-k relevant samples to be retrieved from the RAG DB."
+        help="Top-k relevant samples to be retrieved from the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_embedding_batch_size",
         type=int,
         default=2,
-        help="Batch size for the embedding model in the RAG DB."
+        help="Batch size for the embedding model in the RAG DB.",
     )
 
     parser.add_argument(
         "--rag_output_fields",
         type=str,
         default="doc",
-        help="A comma separated string containing all the fields required to be retrieved from the RAG DB."
+        help="A comma separated string containing all the fields required to be retrieved from the RAG DB.",
     )
 
     parser.add_argument(
@@ -391,7 +394,6 @@ def get_parser():
     #     action="store_true",
     #     help="Disable thinking process when asked for next operator",
     # )
-
 
     return parser
 

@@ -68,6 +68,7 @@ class Executor:
         base_url: str = None,
         check_model: bool = True,
         temperature: float = 0.0,
+        execute_pipeline: bool = False,
         tool_instances_cache: dict = None,
     ):
         self.llm_engine_name = llm_engine_name
@@ -79,6 +80,7 @@ class Executor:
         self.base_url = base_url
         self.check_model = check_model
         self.temperature = temperature
+        self.execute_pipeline = execute_pipeline
 
         # Store the tool instances cache
         self.tool_instances_cache = (
@@ -283,10 +285,44 @@ Please follow the configuration prompt to genrate tool specific output.
         """
 
         def split_commands(command: str) -> List[str]:
-            # Use regex to find all tool.execute() commands and their surrounding code
-            pattern = r".*?execution\s*=\s*tool\.execute\([^\n]*\)\s*(?:\n|$)"
-            blocks = re.findall(pattern, command, re.DOTALL)
-            return [block.strip() for block in blocks if block.strip()]
+            # Find execution = tool.execute(...) blocks, handling multiline arguments
+            # and skipping parentheses inside string literals
+            blocks = []
+            start_pattern = re.compile(r"execution\s*=\s*tool\.execute\(")
+            for match in start_pattern.finditer(command):
+                start = match.start()
+                depth = 1
+                i = match.end()
+                in_string = None  # tracks current string delimiter (""", ''', ", ')
+                while i < len(command) and depth > 0:
+                    ch = command[i]
+                    if in_string:
+                        # Inside a string — look for the closing delimiter
+                        if ch == "\\" and i + 1 < len(command):
+                            i += 2  # skip escaped character
+                            continue
+                        if len(in_string) == 3 and command[i : i + 3] == in_string:
+                            in_string = None
+                            i += 3
+                            continue
+                        if len(in_string) == 1 and ch == in_string:
+                            in_string = None
+                    else:
+                        # Outside a string — check for string starts or parens
+                        if command[i : i + 3] in ('"""', "'''"):
+                            in_string = command[i : i + 3]
+                            i += 3
+                            continue
+                        if ch in ('"', "'"):
+                            in_string = ch
+                        elif ch == "(":
+                            depth += 1
+                        elif ch == ")":
+                            depth -= 1
+                    i += 1
+                if depth == 0:
+                    blocks.append(command[start:i].strip())
+            return blocks
 
         def execute_with_timeout(block: str, local_context: dict) -> Optional[str]:
             """
@@ -387,6 +423,9 @@ Please follow the configuration prompt to genrate tool specific output.
             return f"Error: Could not get tool instance for '{tool_name}'"
 
         try:
+            if hasattr(tool, "execute_pipeline"):
+                tool.execute_pipeline = self.execute_pipeline
+
             # Set the custom output directory
             tool.set_custom_output_dir(self.query_cache_dir)
 

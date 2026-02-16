@@ -394,6 +394,46 @@ def get_prompt(
             source_information,
         )[0]
 
+    elif prompt_type == "get_case_info":
+        # Lightweight prompt for the agentic pipeline workflow.
+        # Returns: target name, target schema, target examples (3 rows),
+        # and source information (name, schema, 3 examples, file location).
+
+        if target_data_schema_with_types:
+            target_data_schema = target_data_schema_with_types
+
+        target_samples = get_target_samples(
+            directory,
+            len_idx_target_idx,
+            target_perc,
+            is_perc,
+            target_length,
+            max_tokens,
+            0,  # static_prompt_length=0 (no static prompt to account for)
+            encoding,
+        )
+
+        source_information_with_location = get_source_with_location(
+            file_count,
+            source_data_name_list,
+            source_data_schema_list,
+            source_length,
+            directory,
+            len_idx_target_idx,
+            max_tokens,
+            encoding,
+        )
+
+        prompt = (
+            f"1. Target Table Name: {target_data_name}\n"
+            f"2. Target Schema: {target_data_schema}\n"
+            f"3. Target Examples: {target_samples}\n"
+            f"4. Source Information: {source_information_with_location}\n"
+            f"5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length{len_idx_target_idx}/target_multisource_agentic.csv"
+        )
+
+        return prompt
+
     elif prompt_type == "python_script":
 
         if target_data_schema_with_types:
@@ -907,7 +947,7 @@ def get_column_matching_hints(intermediate_df, target_df, step):
 
 def calculate_score(gt_df, tgt_df):
 
-    return 1
+    # return 1
     # parameters
     w1 = 1
     w2 = 1

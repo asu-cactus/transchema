@@ -1,4 +1,8 @@
 import argparse
+import os
+import re
+import subprocess
+import sys
 import time
 import json
 import logging
@@ -6,12 +10,19 @@ from datetime import datetime
 from typing import Optional
 from pathlib import Path
 
+import pandas as pd
+
 from agentflow.models.initializer import Initializer
 from agentflow.models.planner import Planner
 from agentflow.models.verifier import Verifier
 from agentflow.models.memory import Memory
 from agentflow.models.executor import Executor
 from agentflow.models.utils import make_json_serializable_truncated
+
+# Add transchema root to path for importing calculate_score
+_TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[3])
+if _TRANSCHEMA_ROOT not in sys.path:
+    sys.path.insert(0, _TRANSCHEMA_ROOT)
 
 
 # Configure logging
@@ -89,6 +100,8 @@ class Solver:
         temperature: float = 0.0,
         additional_context: str = None,
         start_again_clear_history: bool = False,
+        execute_pipeline: bool = False,
+        ground_truth_csv: str = None,
     ):
         self.planner = planner
         self.verifier = verifier
@@ -100,6 +113,8 @@ class Solver:
         self.root_cache_dir = root_cache_dir
         self.additional_context = additional_context
         self.start_again_clear_history = start_again_clear_history
+        self.execute_pipeline = execute_pipeline
+        self.ground_truth_csv = ground_truth_csv
 
         self.output_types = output_types.lower().split(",")
         self.temperature = temperature
@@ -108,6 +123,11 @@ class Solver:
             for output_type in self.output_types
         ), "Invalid output type. Supported types are 'base', 'final', 'direct'."
         self.verbose = verbose
+
+        if self.ground_truth_csv and not os.path.isfile(self.ground_truth_csv):
+            raise ValueError(
+                f"ground_truth_csv path does not exist: {self.ground_truth_csv}"
+            )
 
         logger.info(
             f"Solver initialized with max_steps={max_steps}, max_time={max_time}, temperature={temperature}"
@@ -173,6 +193,456 @@ class Solver:
         logger.info(
             f"💾 [Step {step}] Memory updated - Total actions: {len(memory_state)}"
         )
+
+    # ---- Pipeline execution + scoring helpers ----
+
+    def _extract_generated_code(self, code_gen_result) -> Optional[str]:
+        """Extract generated code string from Code_Generator_Tool's result."""
+        if isinstance(code_gen_result, list):
+            for item in code_gen_result:
+                if isinstance(item, dict) and item.get("generated_code"):
+                    return item["generated_code"]
+        elif isinstance(code_gen_result, dict) and code_gen_result.get(
+            "generated_code"
+        ):
+            return code_gen_result["generated_code"]
+        return None
+
+    def _extract_output_csv_path(self, generated_code: str) -> Optional[str]:
+        """Extract the output CSV path from generated Python code."""
+        # Match .to_csv('path') or .to_csv("path")
+        literal_matches = re.findall(
+            r"\.to_csv\s*\(\s*['\"]([^'\"]+\.csv)['\"]", generated_code
+        )
+        if literal_matches:
+            return literal_matches[-1]
+
+        # Match variable assignments like OUTPUT_CSV_PATH = "x.csv"
+        var_assignments = dict(
+            re.findall(
+                r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*['\"]([^'\"]+\.csv)['\"]",
+                generated_code,
+            )
+        )
+
+        # Match .to_csv(VAR_NAME, ...) and resolve against known assignments
+        var_calls = re.findall(
+            r"\.to_csv\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:,|\))",
+            generated_code,
+        )
+        for var_name in reversed(var_calls):
+            if var_name in var_assignments:
+                return var_assignments[var_name]
+
+        if "OUTPUT_CSV_PATH" in var_assignments:
+            return var_assignments["OUTPUT_CSV_PATH"]
+
+        return None
+
+    def _extract_code_from_output(self, llm_output: str) -> Optional[str]:
+        """Extract Python code block from LLM output (```Python ... ```)."""
+        if not llm_output:
+            return None
+        match = re.search(r"```[Pp]ython\s*(.*?)\s*```", llm_output, re.DOTALL)
+        return match.group(1).strip() if match else None
+
+    def _execute_and_score_pipeline(
+        self, code_gen_result, step_count: int
+    ) -> Optional[dict]:
+        """
+        Execute generated Python code and calculate score against ground truth.
+
+        Args:
+            code_gen_result: Result from Code_Generator_Tool (list of dicts)
+            step_count: Current step number
+
+        Returns:
+            dict with execution_success, output_csv_path, score, score_details, execution_error
+        """
+        generated_code = self._extract_generated_code(code_gen_result)
+        if not generated_code:
+            return {
+                "execution_success": False,
+                "execution_error": "No generated code found in Code_Generator_Tool result",
+                "score": None,
+            }
+
+        # Determine the output CSV path from the generated code
+        output_csv_path = self._extract_output_csv_path(generated_code)
+
+        # Prefer case-local script archive under the benchmark case directory
+        case_dir = (
+            os.path.dirname(self.ground_truth_csv)
+            if self.ground_truth_csv
+            else self.root_cache_dir
+        )
+        if not os.path.isabs(case_dir):
+            case_dir = os.path.join(_TRANSCHEMA_ROOT, case_dir)
+        script_archive_dir = os.path.join(case_dir, "script_archive")
+        os.makedirs(script_archive_dir, exist_ok=True)
+
+        # If no output path found, inject a default one
+        if not output_csv_path:
+            output_csv_path = os.path.join(
+                script_archive_dir, f"pipeline_output_step{step_count}.csv"
+            )
+            generated_code += (
+                f"\n\n# Auto-injected output save\n"
+                f"try:\n"
+                f"    execution.to_csv('{output_csv_path}', index=False)\n"
+                f"except NameError:\n"
+                f"    try:\n"
+                f"        result.to_csv('{output_csv_path}', index=False)\n"
+                f"    except NameError:\n"
+                f"        pass\n"
+            )
+
+        # Resolve relative output paths against repository root
+        resolved_output_csv_path = (
+            output_csv_path
+            if os.path.isabs(output_csv_path)
+            else os.path.join(_TRANSCHEMA_ROOT, output_csv_path)
+        )
+
+        # Write code to a case-local script archive file
+        script_path = os.path.join(script_archive_dir, "agent_run.py")
+        with open(script_path, "w") as f:
+            f.write(generated_code)
+
+        logger.info(f"[Step {step_count}] Executing pipeline code: {script_path}")
+        if self.verbose:
+            print(f"\n==> ⚙️ Step {step_count}: Executing generated pipeline code...")
+
+        # Execute in subprocess with timeout
+        try:
+            proc = subprocess.run(
+                [sys.executable, os.path.abspath(script_path)],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=_TRANSCHEMA_ROOT,
+            )
+
+            if proc.returncode != 0:
+                error_msg = proc.stderr[-2000:] if proc.stderr else "Unknown error"
+                logger.error(
+                    f"[Step {step_count}] Pipeline code execution failed: {error_msg}"
+                )
+                if self.verbose:
+                    print(f"\n==> ❌ Code execution failed:\n{error_msg[:500]}")
+                return {
+                    "execution_success": False,
+                    "execution_error": error_msg,
+                    "execution_stdout": proc.stdout[-1000:] if proc.stdout else "",
+                    "score": None,
+                }
+
+            # Execution succeeded - now score
+            if os.path.isfile(resolved_output_csv_path):
+                score_result = self._calculate_pipeline_score(resolved_output_csv_path)
+                logger.info(
+                    f"[Step {step_count}] Pipeline score: {score_result.get('score')}"
+                )
+                if self.verbose:
+                    print(f"\n==> 📊 Pipeline Score: {score_result.get('score')}")
+                    print(f"    FD Score: {score_result.get('score_fd')}")
+                    print(f"    Key Score: {score_result.get('score_key')}")
+                    print(
+                        f"    Column Mapping Score: {score_result.get('column_mapping_score')}"
+                    )
+                return {
+                    "execution_success": True,
+                    "output_csv_path": resolved_output_csv_path,
+                    "execution_stdout": proc.stdout[-1000:] if proc.stdout else "",
+                    **score_result,
+                }
+            else:
+                msg = (
+                    f"Code ran but output CSV not found at: {resolved_output_csv_path}"
+                )
+                logger.warning(f"[Step {step_count}] {msg}")
+                if self.verbose:
+                    print(f"\n==> ⚠️ {msg}")
+                return {
+                    "execution_success": True,
+                    "execution_error": msg,
+                    "execution_stdout": proc.stdout[-1000:] if proc.stdout else "",
+                    "score": None,
+                }
+
+        except subprocess.TimeoutExpired:
+            logger.error(
+                f"[Step {step_count}] Pipeline code execution timed out (120s)"
+            )
+            if self.verbose:
+                print(f"\n==> ⏰ Code execution timed out (120s)")
+            return {
+                "execution_success": False,
+                "execution_error": "Code execution timed out after 120 seconds",
+                "score": None,
+            }
+        except Exception as e:
+            logger.error(f"[Step {step_count}] Pipeline execution error: {e}")
+            return {
+                "execution_success": False,
+                "execution_error": str(e),
+                "score": None,
+            }
+
+    def _calculate_pipeline_score(self, output_csv_path: str) -> dict:
+        """Calculate score comparing ground truth to pipeline output."""
+        try:
+            from auto_suggest_llm_util import (
+                calculate_score,
+                get_filtered_functional_dependency,
+                extract_dependencies,
+            )
+            from valentine import valentine_match, algorithms
+        except ImportError as e:
+            logger.warning(f"Could not import scoring functions: {e}")
+            return {
+                "score": None,
+                "score_fd": None,
+                "score_key": None,
+                "column_mapping_score": None,
+                "score_error": f"Import error: {e}",
+            }
+
+        try:
+            gt_df = pd.read_csv(self.ground_truth_csv, index_col=0, low_memory=False)
+            tgt_df = pd.read_csv(output_csv_path, low_memory=False)
+
+            # Drop unnamed index columns if present in output
+            unnamed_cols = [c for c in tgt_df.columns if c.startswith("Unnamed")]
+            if unnamed_cols:
+                tgt_df.drop(columns=unnamed_cols, inplace=True)
+
+            # Calculate individual score components for detailed feedback
+            key_gt, fd_gt = get_filtered_functional_dependency(gt_df)
+            key_tgt, fd_tgt = get_filtered_functional_dependency(tgt_df)
+
+            dependencies_gt = extract_dependencies(fd_gt)
+            dependencies_tgt = extract_dependencies(fd_tgt)
+
+            overlapping_dependencies = dependencies_gt.intersection(dependencies_tgt)
+            overlapping_keys = set(key_gt).intersection(key_tgt)
+
+            score_fd = (
+                len(overlapping_dependencies) / len(dependencies_gt)
+                if len(dependencies_gt) > 0
+                else 1
+            )
+            score_key = len(overlapping_keys) / len(key_gt) if len(key_gt) > 0 else 1
+
+            matcher = algorithms.Cupid()
+            matches = valentine_match(gt_df, tgt_df, matcher)
+            gt_df_columns = set(gt_df.columns)
+            matched_columns = set(match[0] for match in matches)
+            column_mapping_score = (
+                len(matched_columns) / len(gt_df_columns)
+                if len(gt_df_columns) > 0
+                else 0
+            )
+
+            # Combined score (same formula as calculate_score)
+            w1, w2, w3, p = 1, 1, 1, 1
+            combined_score = pow(
+                w1 * (score_fd**p)
+                + w2 * (score_key**p)
+                + w3 * (column_mapping_score**p),
+                1 / p,
+            )
+
+            return {
+                "score": float(combined_score),
+                "score_fd": float(score_fd),
+                "score_key": float(score_key),
+                "column_mapping_score": float(column_mapping_score),
+                "score_details": {
+                    "gt_shape": list(gt_df.shape),
+                    "output_shape": list(tgt_df.shape),
+                    "gt_columns": list(gt_df.columns),
+                    "output_columns": list(tgt_df.columns),
+                },
+                "score_error": None,
+            }
+        except Exception as e:
+            logger.error(f"Error calculating pipeline score: {e}")
+            return {
+                "score": None,
+                "score_fd": None,
+                "score_key": None,
+                "column_mapping_score": None,
+                "score_error": str(e),
+            }
+
+    def _merge_code_result_with_score(self, original_result, code_exec_result: dict):
+        """Merge code execution + score results into the tool result for memory."""
+        augmented = (
+            list(original_result)
+            if isinstance(original_result, list)
+            else [original_result]
+        )
+        augmented.append(
+            {
+                "pipeline_execution": {
+                    "execution_success": code_exec_result.get(
+                        "execution_success", False
+                    ),
+                    "output_csv_path": code_exec_result.get("output_csv_path"),
+                    "score": code_exec_result.get("score"),
+                    "score_fd": code_exec_result.get("score_fd"),
+                    "score_key": code_exec_result.get("score_key"),
+                    "column_mapping_score": code_exec_result.get(
+                        "column_mapping_score"
+                    ),
+                    "score_details": code_exec_result.get("score_details"),
+                    "execution_error": code_exec_result.get("execution_error"),
+                }
+            }
+        )
+        return augmented
+
+    def _get_finalized_pipeline_code(
+        self, finalized_pipeline_id: Optional[str] = None
+    ) -> Optional[str]:
+        """Extract generated code from memory for the finalized (or latest) pipeline.
+
+        When *finalized_pipeline_id* is provided, only code belonging to that
+        pipeline is returned.  Otherwise the most recent generated_code from
+        any pipeline result in memory is returned as a fallback.
+        """
+        for action in reversed(list(self.memory.get_actions().values())):
+            result = action.get("result", {})
+            if isinstance(result, list):
+                for item in result:
+                    if isinstance(item, dict) and item.get("generated_code"):
+                        if (
+                            not finalized_pipeline_id
+                            or item.get("pipeline_id") == finalized_pipeline_id
+                        ):
+                            return item["generated_code"]
+            elif isinstance(result, dict) and result.get("generated_code"):
+                if (
+                    not finalized_pipeline_id
+                    or result.get("pipeline_id") == finalized_pipeline_id
+                ):
+                    return result["generated_code"]
+        return None
+
+    def _verify_results(self, output_csv_path: str) -> Optional[dict]:
+        """
+        Verify pipeline output against ground truth using compare_lists_matching.
+
+        Imitates the validation logic from methods/multi_step.py:
+        1. Run compare_lists_matching
+        2. If not correct but shared_columns exist and lengths match,
+           retry with column header renaming (value-based headers)
+        3. Compute calculate_score as a fallback metric
+        4. Always return is_correct
+        """
+        from auto_suggest_llm_util import calculate_score
+
+        is_correct = False
+        case_accuracy = 0
+        score = 0
+        similarity_scores = []
+        shared_columns = []
+
+        try:
+            from validation.hard_match import compare_lists_matching
+
+            gt_df = pd.read_csv(self.ground_truth_csv, low_memory=False)
+            output_df = pd.read_csv(output_csv_path, low_memory=False)
+
+            # Drop first unnamed index column from ground truth (same as multi_step.py)
+            if gt_df.columns[0].startswith("Unnamed"):
+                gt_df.drop(columns=gt_df.columns[0], axis=1, inplace=True)
+
+            # Clean up unnamed columns from output
+            unnamed_cols = [c for c in output_df.columns if c.startswith("Unnamed")]
+            if unnamed_cols:
+                output_df.drop(columns=unnamed_cols, inplace=True)
+
+            try:
+                (
+                    case_accuracy,
+                    is_correct,
+                    similarity_scores,
+                    shared_columns,
+                ) = compare_lists_matching(output_df, gt_df)
+
+                if (
+                    is_correct is False
+                    and len(shared_columns) > 0
+                    and len(output_df) == len(gt_df)
+                ):
+                    # Retry: ignore column headers, sort and rename by first 3 values
+                    logger.info(
+                        "Retrying with value-based column headers for better comparison"
+                    )
+                    sorted_output = output_df.sort_values(by=shared_columns)
+                    sorted_gt = gt_df.sort_values(by=shared_columns)
+
+                    def _rename_columns_by_values(df):
+                        new_headers = []
+                        for col in df.columns:
+                            if "float" in str(df[col].dtype):
+                                first_three = df[col].head(3).astype(int)
+                            else:
+                                first_three = df[col].head(3)
+                            header = (
+                                str(first_three.iloc[0])
+                                + "-"
+                                + str(first_three.iloc[1])
+                                + "-"
+                                + str(first_three.iloc[2])
+                            )
+                            new_headers.append(header)
+                        df.columns = new_headers
+                        return df
+
+                    sorted_output = _rename_columns_by_values(sorted_output)
+                    sorted_gt = _rename_columns_by_values(sorted_gt)
+
+                    (
+                        case_accuracy,
+                        is_correct,
+                        similarity_scores,
+                        shared_columns,
+                    ) = compare_lists_matching(sorted_output, sorted_gt)
+                else:
+                    # Calculate score as fallback metric
+                    try:
+                        score = calculate_score(gt_df, output_df)
+                    except Exception:
+                        score = 0
+            except Exception as e:
+                logger.error(f"Error in compare_lists_matching: {e}")
+                is_correct = False
+
+        except Exception as e:
+            logger.error(f"Error during result verification: {e}")
+            is_correct = False
+            case_accuracy = 0
+
+        # Build safe similarity list (handle error strings from compare_lists_matching)
+        safe_similarities = []
+        for s in similarity_scores:
+            try:
+                safe_similarities.append(float(s))
+            except (ValueError, TypeError):
+                safe_similarities.append(0.0)
+
+        return {
+            "is_correct": bool(is_correct),
+            "average_similarity": float(case_accuracy) if case_accuracy else 0.0,
+            "column_similarities": safe_similarities,
+            "all_matched_columns": list(shared_columns) if shared_columns else [],
+            "calculate_score": float(score) if score else 0.0,
+        }
+
+    # ---- End pipeline execution helpers ----
 
     def solve(self, question: str, image_path: Optional[str] = None):
         """
@@ -249,6 +719,8 @@ class Solver:
             # Main execution loop
             step_count = 0
             action_times = []
+            is_pipeline_mode = self.planner.granularity == "pipeline"
+            finalized_pipeline_id = None
 
             logger.info(
                 f"Starting main execution loop (max_steps={self.max_steps}, max_time={self.max_time})"
@@ -372,6 +844,21 @@ class Solver:
 
                     self._log_tool_result(tool_name, result, step_count)
 
+                    # [4b] Execute generated code and calculate score (when enabled)
+                    # if (
+                    #     self.execute_pipeline
+                    #     and isinstance(result, list)
+                    #     and len(result) > 0
+                    # ):
+                    #     code_exec_result = self._execute_and_score_pipeline(
+                    #         result, step_count
+                    #     )
+                    #     if code_exec_result:
+                    #         result = self._merge_code_result_with_score(
+                    #             result, code_exec_result
+                    #         )
+                    #         result = make_json_serializable_truncated(result)
+
                     json_data[f"tool_result_{step_count}"] = result
 
                     if self.verbose:
@@ -423,21 +910,20 @@ class Solver:
                             {
                                 "question": question,
                                 "query_analysis": query_analysis[:200] + "...",
-                                "additional_context": self.additional_context[:200] + "...",
+                                "additional_context": self.additional_context[:200]
+                                + "...",
                                 "step_count": step_count,
                             },
                             step=step_count,
                         )
 
-                        stop_verification = (
-                            self.verifier.verificate_context_pipeline_with_additional_info(
-                                question,
-                                query_analysis,
-                                self.memory,
-                                self.additional_context,
-                                step_count,
-                                json_data,
-                            )
+                        stop_verification = self.verifier.verificate_context_pipeline_with_additional_info(
+                            question,
+                            query_analysis,
+                            self.memory,
+                            self.additional_context,
+                            step_count,
+                            json_data,
                         )
 
                         self._log_llm_response(
@@ -466,7 +952,9 @@ class Solver:
                         )
 
                         self._log_llm_response(
-                            "verificate_context_pipeline", stop_verification, step=step_count
+                            "verificate_context_pipeline",
+                            stop_verification,
+                            step=step_count,
                         )
                 else:
                     # Operator-level verification (original behavior)
@@ -476,7 +964,8 @@ class Solver:
                             {
                                 "question": question,
                                 "query_analysis": query_analysis[:200] + "...",
-                                "additional_context": self.additional_context[:200] + "...",
+                                "additional_context": self.additional_context[:200]
+                                + "...",
                                 "step_count": step_count,
                             },
                             step=step_count,
@@ -524,7 +1013,9 @@ class Solver:
 
                 extract_result = self.verifier.extract_conclusion(stop_verification)
                 if is_pipeline_mode:
-                    context_verification, conclusion, finalized_pipeline_id = extract_result
+                    context_verification, conclusion, finalized_pipeline_id = (
+                        extract_result
+                    )
                 else:
                     context_verification, conclusion = extract_result
                     finalized_pipeline_id = None
@@ -551,14 +1042,17 @@ class Solver:
 
                     # In pipeline mode, finalize the selected pipeline
                     if is_pipeline_mode and finalized_pipeline_id:
-                        logger.info(
-                            f"Finalizing pipeline: {finalized_pipeline_id}"
-                        )
+                        logger.info(f"Finalizing pipeline: {finalized_pipeline_id}")
                         # Find the pipeline definition from memory
                         pipeline_def = ""
-                        for action in reversed(list(self.memory.get_actions().values())):
+                        for action in reversed(
+                            list(self.memory.get_actions().values())
+                        ):
                             result = action.get("result", {})
-                            if isinstance(result, dict) and result.get("pipeline_id") == finalized_pipeline_id:
+                            if (
+                                isinstance(result, dict)
+                                and result.get("pipeline_id") == finalized_pipeline_id
+                            ):
                                 pipeline_def = result.get("pipeline", "")
                                 break
 
@@ -575,13 +1069,17 @@ class Solver:
                             finalize_result,
                         )
                         self._log_memory_update(
-                            step_count, "Finalize_Pipeline_Tool",
+                            step_count,
+                            "Finalize_Pipeline_Tool",
                             f"Mark pipeline {finalized_pipeline_id} as finalized",
-                            "", finalize_result,
+                            "",
+                            finalize_result,
                         )
 
                         if self.verbose:
-                            print(f"\n==> 🏁 Pipeline '{finalized_pipeline_id}' finalized for materialization")
+                            print(
+                                f"\n==> 🏁 Pipeline '{finalized_pipeline_id}' finalized for materialization"
+                            )
 
                     break
 
@@ -599,37 +1097,185 @@ class Solver:
                 f"Execution loop completed - {step_count} steps in {total_time}s"
             )
 
-            # Generate final output if requested
-            if "final" in self.output_types:
-                self._log_llm_call(
-                    "generate_final_output",
-                    {"question": question, "image_path": image_path},
-                )
+            # ---- Final code extraction and verification ----
+            if is_pipeline_mode:
+                final_code = None
 
-                final_output = self.planner.generate_final_output(
-                    question, image_path, self.memory
-                )
+                if self.execute_pipeline:
+                    # Variant 1 (With Code Execution):
+                    # Tools already executed code during the loop.
+                    # Extract the generated code from the finalized pipeline in memory.
+                    final_code = self._get_finalized_pipeline_code(
+                        finalized_pipeline_id
+                    )
+                    if final_code:
+                        logger.info(
+                            f"Extracted final code from finalized pipeline: {finalized_pipeline_id}"
+                        )
+                        if self.verbose:
+                            print(
+                                f"\n==> 📋 Using code from finalized pipeline: {finalized_pipeline_id}"
+                            )
+                            print(
+                                f"\n==> 🐙 Final Code:\n```python\n{final_code}\n```"
+                            )
+                    else:
+                        logger.warning(
+                            f"No generated code found for finalized pipeline: {finalized_pipeline_id}"
+                        )
+                        if self.verbose:
+                            print(
+                                f"\n==> ⚠️ No code found for finalized pipeline: {finalized_pipeline_id}"
+                            )
+                else:
+                    # Variant 2 (Without Code Execution):
+                    # Generate code via LLM.
+                    if "final" in self.output_types:
+                        self._log_llm_call(
+                            "generate_final_output",
+                            {"question": question, "image_path": image_path},
+                        )
+                        final_output = self.planner.generate_final_output(
+                            question, image_path, self.memory
+                        )
+                        self._log_llm_response(
+                            "generate_final_output", final_output
+                        )
+                        json_data["final_output"] = final_output
+                        final_code = self._extract_code_from_output(
+                            str(final_output)
+                        )
+                        if self.verbose:
+                            print(
+                                f"\n==> 🐙 Detailed Solution:\n\n{final_output}"
+                            )
 
-                self._log_llm_response("generate_final_output", final_output)
-                json_data["final_output"] = final_output
+                    if not final_code and "direct" in self.output_types:
+                        self._log_llm_call(
+                            "generate_direct_output",
+                            {"question": question, "image_path": image_path},
+                        )
+                        direct_output = self.planner.generate_direct_output(
+                            question, image_path, self.memory
+                        )
+                        self._log_llm_response(
+                            "generate_direct_output", direct_output
+                        )
+                        json_data["direct_output"] = direct_output
+                        final_code = self._extract_code_from_output(
+                            str(direct_output)
+                        )
+                        if self.verbose:
+                            print(
+                                f"\n==> 🐙 Final Answer:\n\n{direct_output}"
+                            )
 
-                print(f"\n==> 🐙 Detailed Solution:\n\n{final_output}")
+                if final_code:
+                    json_data["final_code"] = final_code
+                    json_data["final_code_source"] = (
+                        "memory" if self.execute_pipeline else "llm_generation"
+                    )
 
-            # Generate direct output if requested
-            if "direct" in self.output_types:
-                self._log_llm_call(
-                    "generate_direct_output",
-                    {"question": question, "image_path": image_path},
-                )
+                    # --- Common final step: Execute, Score, Verify ---
+                    if self.ground_truth_csv:
+                        if self.verbose:
+                            print(
+                                f"\n==> ⚙️ Executing final code and verifying results..."
+                            )
 
-                direct_output = self.planner.generate_direct_output(
-                    question, image_path, self.memory
-                )
+                        final_exec_result = self._execute_and_score_pipeline(
+                            [{"generated_code": final_code}],
+                            step_count=step_count + 1,
+                        )
 
-                self._log_llm_response("generate_direct_output", direct_output)
-                json_data["direct_output"] = direct_output
+                        if final_exec_result:
+                            json_data["final_score"] = (
+                                make_json_serializable_truncated(final_exec_result)
+                            )
+                            if self.verbose:
+                                print(
+                                    f"\n==> 📊 Final Score: {final_exec_result.get('score')}"
+                                )
 
-                print(f"\n==> 🐙 Final Answer:\n\n{direct_output}")
+                            # Verify results using compare_lists_matching
+                            if (
+                                final_exec_result.get("execution_success")
+                                and final_exec_result.get("output_csv_path")
+                            ):
+                                verification = self._verify_results(
+                                    final_exec_result["output_csv_path"]
+                                )
+                                if verification:
+                                    json_data["verification_result"] = (
+                                        make_json_serializable_truncated(
+                                            verification
+                                        )
+                                    )
+                                    is_correct = verification.get(
+                                        "is_correct", False
+                                    )
+                                    json_data["is_correct"] = is_correct
+                                    if self.verbose:
+                                        status = "CORRECT" if is_correct else "INCORRECT"
+                                        print(
+                                            f"\n==> {'✅' if is_correct else '❌'} Verification: {status}"
+                                        )
+                                        print(
+                                            f"    Average Similarity: {verification.get('average_similarity')}"
+                                        )
+                                        print(
+                                            f"    Matched Columns: {verification.get('all_matched_columns')}"
+                                        )
+                                        print(
+                                            f"    Calculate Score: {verification.get('calculate_score')}"
+                                        )
+                            else:
+                                # Execution failed or no output CSV
+                                json_data["is_correct"] = False
+                                if self.verbose:
+                                    print(
+                                        f"\n==> ❌ Verification: FAILED (no output CSV produced)"
+                                    )
+                    else:
+                        logger.warning(
+                            "No ground truth CSV available for scoring/verification"
+                        )
+                        json_data["is_correct"] = False
+                else:
+                    logger.warning(
+                        "No final code available for scoring/verification"
+                    )
+                    json_data["is_correct"] = False
+
+            else:
+                # Non-pipeline mode: keep existing behavior
+                if "final" in self.output_types:
+                    self._log_llm_call(
+                        "generate_final_output",
+                        {"question": question, "image_path": image_path},
+                    )
+                    final_output = self.planner.generate_final_output(
+                        question, image_path, self.memory
+                    )
+                    self._log_llm_response(
+                        "generate_final_output", final_output
+                    )
+                    json_data["final_output"] = final_output
+                    print(f"\n==> 🐙 Detailed Solution:\n\n{final_output}")
+
+                if "direct" in self.output_types:
+                    self._log_llm_call(
+                        "generate_direct_output",
+                        {"question": question, "image_path": image_path},
+                    )
+                    direct_output = self.planner.generate_direct_output(
+                        question, image_path, self.memory
+                    )
+                    self._log_llm_response(
+                        "generate_direct_output", direct_output
+                    )
+                    json_data["direct_output"] = direct_output
+                    print(f"\n==> 🐙 Final Answer:\n\n{direct_output}")
 
             print(f"\n[Total Time]: {total_time}s")
             print(f"\n==> ✅ Query Solved!")
@@ -642,7 +1288,7 @@ class Solver:
 
 
 def construct_solver(
-    llm_engine_name: str = "gpt-4o",
+    llm_engine_name: str = "gpt-4.1-mini",
     enabled_tools: list[str] = ["all"],
     tool_engine: list[str] = ["Default"],
     model_engine: list[str] = ["trainable", "gpt-4o", "gpt-4o", "gpt-4o"],
@@ -658,6 +1304,8 @@ def construct_solver(
     additional_context_file: str = None,
     start_again_clear_history: bool = False,
     planner_granularity: str = "operator",
+    execute_pipeline: bool = False,
+    ground_truth_csv: str = None,
 ):
 
     logger.info("Constructing solver...")
@@ -718,6 +1366,7 @@ def construct_solver(
         base_url=base_url,
         temperature=temperature,
         granularity=planner_granularity,
+        execute_pipeline=execute_pipeline,
     )
 
     # Instantiate Verifier
@@ -730,6 +1379,7 @@ def construct_solver(
         base_url=base_url if verifier_engine == llm_engine_name else None,
         temperature=temperature,
         granularity=planner_granularity,
+        execute_pipeline=execute_pipeline,
     )
 
     # Instantiate Memory
@@ -742,6 +1392,7 @@ def construct_solver(
         verbose=verbose,
         base_url=base_url if executor_engine == llm_engine_name else None,
         temperature=temperature,
+        execute_pipeline=execute_pipeline,
         tool_instances_cache=initializer.tool_instances_cache,
     )
 
@@ -760,6 +1411,8 @@ def construct_solver(
         temperature=temperature,
         additional_context=additional_context,
         start_again_clear_history=start_again_clear_history,
+        execute_pipeline=execute_pipeline,
+        ground_truth_csv=ground_truth_csv,
     )
 
     logger.info("Solver construction completed")
