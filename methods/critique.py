@@ -17,7 +17,8 @@ from log_util.log_util import create_logger
 
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
-from rag_pipeline.rag_layer import RAGDB, milvus_results_to_json
+from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
+from rag_pipeline.feature_extractor import compute_from_data, load_source_target_from_folder
 
 
 def resolve_rag_examples_base(rag_examples_base: Optional[Union[str, Path]] = None) -> Path:
@@ -176,13 +177,20 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
     
     rag_db = None
+    feature_rag_db = None
     if args.few_shot:
-        rag_db = RAGDB(
-            uri=args.rag_db_uri, # "rag_pipeline/test_dummy/milvus_demo_4.db",
-            model_id=args.rag_embedding_model, # "Qwen/Qwen3-Embedding-0.6B",
-            collection=args.rag_db_collection, #"plan_docs",
-            max_len=args.rag_embedding_dim
-        )
+        if getattr(args, "rag_retrieval_strategy", "text") == "feature":
+            feature_rag_db = FeatureRAGDB(
+                uri=args.rag_db_uri,
+                collection=getattr(args, "rag_feature_collection", "plan_docs_features"),
+            )
+        else:
+            rag_db = RAGDB(
+                uri=args.rag_db_uri,
+                model_id=args.rag_embedding_model,
+                collection=args.rag_db_collection,
+                max_len=args.rag_embedding_dim
+            )
     
     # get schema
     (
@@ -269,49 +277,99 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         query = query.replace("$METADATA$", "If the target data schema does not make sense, please suggest new column names that better represent the semantics of the columns.")
     
 
-    if few_shot_flag == 1:        
-        aux_query = query if isinstance(query, list) else [query]
-        
-        # This is a comma separated string,
-        # therefore splitting it before passing it into a function.
+    if few_shot_flag == 1:
+        # Resolve rag-examples base path early (needed for feature strategy to load docs from disk)
+        rag_examples_base_path = resolve_rag_examples_base(rag_examples_base)
+        #try:
+        #    logger.info(f"Using rag-examples-w-pipeline at: {rag_examples_base_path}")
+        #except Exception:
+        #    pass
+
         output_fields = args.rag_output_fields.split(",")
-        # Ensure case_id is in output_fields if not already present
         if "case_id" not in output_fields:
             output_fields.append("case_id")
-        
-        # Exclude current case (self-retrieval prevention); search requests top_k+5 for post-filter buffer
-        rag_results = rag_db.search(
-            aux_query,
-            top_k=args.rag_topk,
-            batch_size=args.rag_embedding_batch_size,
-            output_fields=output_fields,
-            exclude_case_id=len_idx_target_idx,
-        )
 
-        rag_json_results = milvus_results_to_json(
-            results=rag_results,
-            output_fields=output_fields
-        )
-
-        # Post-filter: always remove same-case docs (guarantee; Milvus filter is best-effort)
-        rag_json_results = [d for d in rag_json_results if d.get("case_id") != len_idx_target_idx]
-
-        # Deduplicate by case_id (keep first = best distance; handles duplicate docs in DB from re-ingestion)
-        seen_case_ids = set()
-        deduped = []
-        for d in rag_json_results:
-            cid = d.get("case_id")
-            if cid is None:
-                deduped.append(d)  # keep docs without case_id (fallback)
-            elif cid not in seen_case_ids:
-                seen_case_ids.add(cid)
-                deduped.append(d)
-        rag_json_results = deduped[: args.rag_topk]
+        if feature_rag_db is not None:
+            # Feature-based retrieval: compute 23-dim from current task, search feature collection
+            task_folder = Path(main_folder) / f"length{len_idx_target_idx}"
+            try:
+                source_dfs, target_df = load_source_target_from_folder(task_folder)
+                query_vector = compute_from_data(source_dfs, target_df, pipeline_operator_list=None)
+            except Exception as e:
+                try:
+                    logger.warning(f"Feature extraction failed, using zero vector: {e}")
+                except Exception:
+                    pass
+                query_vector = [0.0] * 23
+            try:
+                logger.info(f"RAG_FEATURE_QUERY_VECTOR: {query_vector}")
+            except Exception:
+                pass
+            rag_results = feature_rag_db.search(
+                [query_vector],
+                top_k=args.rag_topk,
+                output_fields=["id", "case_id"],
+                exclude_case_id=len_idx_target_idx,
+            )
+            rag_json_results = milvus_results_to_json(
+                results=rag_results,
+                output_fields=["id", "case_id"],
+            )
+            rag_json_results = [d for d in rag_json_results if d.get("case_id") != len_idx_target_idx]
+            seen_case_ids = set()
+            deduped = []
+            for d in rag_json_results:
+                cid = d.get("case_id")
+                if cid is None:
+                    deduped.append(d)
+                elif cid not in seen_case_ids:
+                    seen_case_ids.add(cid)
+                    deduped.append(d)
+            rag_json_results = deduped[: args.rag_topk]
+            # Load doc text from disk (feature collection does not store doc)
+            for d in rag_json_results:
+                cid = d.get("case_id")
+                doc_text = ""
+                if cid:
+                    doc_path = rag_examples_base_path / f"Length{cid}" / f"Length{cid}.txt"
+                    if doc_path.exists():
+                        try:
+                            doc_text = doc_path.read_text(encoding="utf-8", errors="ignore").strip()
+                        except Exception:
+                            pass
+                d["doc"] = doc_text
+        else:
+            # Text-based retrieval (existing flow)
+            aux_query = query if isinstance(query, list) else [query]
+            rag_results = rag_db.search(
+                aux_query,
+                top_k=args.rag_topk,
+                batch_size=args.rag_embedding_batch_size,
+                output_fields=output_fields,
+                exclude_case_id=len_idx_target_idx,
+            )
+            rag_json_results = milvus_results_to_json(
+                results=rag_results,
+                output_fields=output_fields,
+            )
+            rag_json_results = [d for d in rag_json_results if d.get("case_id") != len_idx_target_idx]
+            seen_case_ids = set()
+            deduped = []
+            for d in rag_json_results:
+                cid = d.get("case_id")
+                if cid is None:
+                    deduped.append(d)
+                elif cid not in seen_case_ids:
+                    seen_case_ids.add(cid)
+                    deduped.append(d)
+            rag_json_results = deduped[: args.rag_topk]
 
         # Log retrieved documents explicitly (so we can audit retrieval without digging into the prompt).
         try:
+            strategy = getattr(args, "rag_retrieval_strategy", "text")
+            coll = args.rag_db_collection if strategy == "text" else getattr(args, "rag_feature_collection", "plan_docs_features")
             logger.info(
-                f"RAG_RETRIEVAL: uri={args.rag_db_uri} collection={args.rag_db_collection} top_k={args.rag_topk}"
+                f"RAG_RETRIEVAL: strategy={strategy} uri={args.rag_db_uri} collection={coll} top_k={args.rag_topk}"
             )
         except Exception:
             pass
@@ -328,13 +386,6 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
             except Exception:
                 # Don't let logging failures break critique.
                 pass
-        
-        # Resolve rag-examples-w-pipeline base path (user override, env var, or smart fallback)
-        rag_examples_base_path = resolve_rag_examples_base(rag_examples_base)
-        try:
-            logger.info(f"Using rag-examples-w-pipeline at: {rag_examples_base_path}")
-        except Exception:
-            pass
 
         few_shot_blocks = []
         for idx, document in enumerate(rag_json_results):

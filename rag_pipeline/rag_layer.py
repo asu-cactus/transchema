@@ -187,6 +187,93 @@ class RAGDB:
         return x
 
 
+# ---------------------------------------------------------------------------
+# Feature-based retrieval (23-dim vectors, no embedder)
+# ---------------------------------------------------------------------------
+
+FEATURE_DIM = 23  # must match feature_extractor.FEATURE_DIM
+
+
+class FeatureRAGDB:
+    """
+    Milvus collection for 23-dim feature vectors. Use for retrieval when
+    rag_retrieval_strategy == "feature". Same DB file as RAGDB, different collection.
+    """
+
+    def __init__(
+        self,
+        uri: str = "milvus.db",
+        collection: str = "plan_docs_features",
+    ):
+        self.uri = uri
+        self.client = MilvusClient(uri)
+        self.collection = collection
+        if not self.client.has_collection(collection):
+            self.client.create_collection(
+                collection_name=collection,
+                dimension=FEATURE_DIM,
+                metric_type="COSINE",
+                auto_id=True,
+                enable_dynamic_field=True,
+            )
+        try:
+            self.client.load_collection(collection)
+        except Exception:
+            pass
+
+    def insert_vectors(self, case_ids: List[str], vectors: List[List[float]]) -> bool:
+        """Insert (case_id, vector) rows. vectors must be list of 23-dim lists."""
+        if len(case_ids) != len(vectors):
+            raise ValueError("case_ids and vectors must have same length")
+        rows = [
+            {"vector": vectors[i], "case_id": case_ids[i]}
+            for i in range(len(case_ids))
+        ]
+        self.client.insert(collection_name=self.collection, data=rows)
+        return True
+
+    def search(
+        self,
+        query_vectors: List[List[float]],
+        top_k: int = 5,
+        output_fields: Optional[List[str]] = None,
+        exclude_case_id: Optional[str] = None,
+    ):
+        """Search by feature vector. Returns same shape as RAGDB.search for drop-in use."""
+        if output_fields is None:
+            output_fields = ["id", "case_id"]
+        limit = top_k + 5 if exclude_case_id else top_k
+        filter_expr = ""
+        if exclude_case_id:
+            safe_id = str(exclude_case_id).replace('"', '\\"')
+            filter_expr = f'case_id != "{safe_id}"'
+        try:
+            if filter_expr:
+                return self.client.search(
+                    collection_name=self.collection,
+                    data=query_vectors,
+                    filter=filter_expr,
+                    limit=limit,
+                    output_fields=output_fields,
+                    search_params={"params": {"ef": 64}},
+                )
+            return self.client.search(
+                collection_name=self.collection,
+                data=query_vectors,
+                limit=limit,
+                output_fields=output_fields,
+                search_params={"params": {"ef": 64}},
+            )
+        except Exception:
+            return self.client.search(
+                collection_name=self.collection,
+                data=query_vectors,
+                limit=limit,
+                output_fields=output_fields,
+                search_params={"params": {"ef": 64}},
+            )
+
+
 if __name__ == "__main__":
     db = RAGDB(
         uri="rag_pipeline/db/milvus_demo_4.db",
