@@ -65,17 +65,21 @@ class Memory:
             self.files.append({"file_name": fname, "description": desc})
 
     def add_action(
-        self, step_count: int, tool_name: str, sub_goal: str, command: str, result: Any
+        self, step_count: int, tool_name: str, sub_goal: str, command: str, result: Any  # noqa: ARG002 — command intentionally not stored
     ) -> None:
-        # Truncate command to first 100 characters to save memory
-        truncated_command = (
-            ""  # command[:100] + "..." if len(command) > 100 else command
-        )
+        # Strip 'prompt' and 'raw_response' fields from result to avoid redundancy in LLM context
+        def _strip_verbose_fields(obj: Any) -> Any:
+            if isinstance(obj, dict):
+                return {k: v for k, v in obj.items() if k not in ("prompt", "raw_response")}
+            if isinstance(obj, list):
+                return [_strip_verbose_fields(item) for item in obj]
+            return obj
+
+        result = _strip_verbose_fields(result)
 
         action = {
             "tool_name": tool_name,
             "sub_goal": sub_goal,
-            "command": truncated_command,
             "result": result,
         }
         step_name = f"Action Step {step_count}"

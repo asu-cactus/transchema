@@ -510,44 +510,70 @@ Tool Name: Object_Detector_Tool
 Remember: Your response MUST end with the Context, Sub-Goal, and Tool Name sections, with NO additional content afterwards.
                         """
         else:
+            # Build score feedback section (operator mode, mirroring pipeline mode guidance)
+            if self.execute_pipeline:
+                score_feedback_section = """
+**Score Feedback** — When a previous step contains a `score_summary` from `Code_Gen_And_Score_Tool`, use it to guide the next action:
+- `score = 1.0` AND no missed items in any category → pipeline is complete, do NOT add more operators.
+- `functional_dependencies.missed` is non-empty → add or fix a GROUP BY operator.
+- `keys.missed_ground_truth_keys` is non-empty → add GROUP BY on those columns.
+- `column_mappings.missed_target_columns` is non-empty → add a JOIN to source tables that contain those columns.
+- Code execution failed (`execution_success = False`) → invoke `Critique_Pipeline_Tool` to diagnose and suggest corrections.
+- Score improved but is still < 1.0 → inspect the `score_summary` to determine which category needs fixing and choose the appropriate operator tool.
+"""
+            else:
+                score_feedback_section = ""
+
             prompt_generate_next_step = f"""
-Task: Determine the optimal next step to address the query using available tools and previous steps.
+Task: Determine the optimal next step to build the data transformation pipeline operator by operator.
 
-CRITICAL CONSTRAINT: You can ONLY use tools from the available tools list. Do NOT suggest operations, sub-goals, or actions that require tools not in this list.
+You are operating at OPERATOR granularity. You configure one operator at a time, incrementally building the pipeline. Each tool below corresponds to a specific operator or a utility action.
 
+CRITICAL CONSTRAINT: You can ONLY use tools from the available tools list. Do NOT suggest operations or tools that are not in this list.
+
+=== OPERATOR TOOLS (configure one operator per step) ===
+- **Configure_Join_Operator_Tool**: Configure a JOIN between two tables. Use when the target columns span multiple source tables that share a key column (primary key / foreign key relationship), or when different schemas need to be combined on a common attribute.
+- **Configure_Union_Operator_Tool**: Configure a UNION (stack) of tables with identical schemas. Use when multiple source tables have the same columns and their rows need to be combined into one table.
+- **Configure_GroupBy_Aggregate_Operator_Tool**: Configure GROUP BY + aggregation. Use when the target has fewer rows than the source (i.e., rows need to be rolled up), or when target columns have aggregated values (sum, count, avg, etc.).
+- **Add_Pivot_Tool**: Configure a PIVOT operation to turn row values into column headers (wide format). Use when distinct values from one source column should become separate columns in the target.
+- **Add_Unpivot_Tool**: Configure an UNPIVOT (melt) operation to turn column headers into row values (narrow format). Use when multiple source columns should be stacked into rows with a key-value structure.
+
+=== UTILITY TOOLS (use strategically, not at every step) ===
+- **Code_Gen_And_Score_Tool**: Generate Python code implementing all operators configured so far, execute it, and calculate the score against the target table. Use this tool when:
+  * You believe the pipeline is complete (all needed operators are configured) — to verify the result.
+  * You need to materialize intermediate results to understand the current data shape before deciding the next operator.
+  After invocation, the `score_summary` in the result tells you exactly what is correct and what still needs fixing.
+- **Critique_Pipeline_Tool**: Critique the current pipeline and suggest specific corrections. Use this tool when:
+  * `Code_Gen_And_Score_Tool` produced a low score and you need structured analysis of what went wrong.
+  * The verifier flagged issues and you need expert guidance on which operators to add, change, or remove.
+  * The pipeline is close to correct but 1-2 operators need adjustment.
+
+{score_feedback_section}
 Context:
 - **Query:** {question}
 - **Query Analysis:** {query_analysis}
 - **Available Tools (THESE ARE THE ONLY TOOLS YOU CAN USE):** {self.available_tools}
 - **Toolbox Metadata:** {self.toolbox_metadata}
-- **Previous Steps:** {memory.get_actions()}
+- **Previous Steps and Their Results:** {memory.get_actions()}
+- **Current Step:** {step_count} of {max_step_count}
+- **Remaining Steps:** {max_step_count - step_count}
 
 Instructions:
-1. Analyze the query, previous steps, and ONLY the available tools.
-2. Select the **single best tool** from the available tools list for the next step.
-3. Consider these special tools if available:
-   - **Code_Generator_Tool**: Use this tool to visualize and score the current pipeline state (i.e., the accumulated operations in memory). It generates executable Python code that materializes the transformation operations configured so far, letting you understand what the data looks like after those transformations. Use it when you are NOT confident about which operator to add next and need to see the intermediate data to make a better decision, or when multiple operations have been configured and you want to verify their combined effect before proceeding. Do NOT use it if you are already confident about the next operator — in that case, proceed directly with the appropriate Configure or Add tool.
-   - **Critique_Pipeline_Tool**: Use when the pipeline is CLOSE to correct (most operators are right) but needs 1-2 adjustments. Include all case info and operation history in the context.
-   - **Start_Again_Tool**: Use when the pipeline has gone fundamentally wrong (wrong operator types, completely wrong approach). This signals that all prior operations should be discarded.
-4. Formulate a specific, achievable **sub-goal** that:
-   - Is directly achievable with that tool's documented capabilities
-   - Does NOT require operations outside the scope of available tools
-5. Provide all necessary **context** (data, file names, variables) for the tool to function.
+1. Review the query, schemas, previous steps, and any score feedback.
+2. Determine which operator to configure next, OR whether to generate/score code, OR whether to critique.
+3. Select the **single best tool** for this step.
+4. Formulate a specific, achievable **sub-goal** directly achievable by that tool.
+5. Provide all necessary **context** (source/target schemas, file paths, operation history, error messages).
 
 Response Format:
-1.  **Justification:** Explain your choice of tool and sub-goal (and why it's achievable with available tools).
-2.  **Context:** Provide all necessary information for the tool.
-3.  **Sub-Goal:** State the specific objective for the tool.
-4.  **Tool Name:** State the exact name of the selected tool (must be from available tools list).
+1. **Justification:** Explain your reasoning and choice of tool.
+2. **Context:** All information the tool needs (schemas, examples, file paths, prior operator results).
+3. **Sub-Goal:** The specific objective for the selected tool.
+4. **Tool Name:** The exact name from the available tools list.
 
 Rules:
 - Select only ONE tool from the available tools list.
-- The sub-goal must be directly achievable by the selected tool using ONLY its documented capabilities.
-- Do NOT suggest sub-goals that require operations not supported by available tools.
-- If the next logical step requires a tool not in the available tools list, you MUST either:
-  a) Choose an alternative approach using available tools, OR
-  b) Indicate that no more steps can be taken with available tools
-- The Context section must contain all information the tool needs to function.
+- The sub-goal must be directly achievable by the selected tool.
 - The response must end with the Context, Sub-Goal, and Tool Name sections in that order, with no extra content.
                     """
 

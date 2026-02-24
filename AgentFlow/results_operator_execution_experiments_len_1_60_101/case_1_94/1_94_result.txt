@@ -1,0 +1,70 @@
+Case: 1_94
+Status: INCORRECT
+Timestamp: 2026-02-24T14:10:29.821868
+Duration: 285.05 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_94/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 2.875
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_94
+2. Target Schema: ['Store': float, 'Dept': float, 'Date': string, 'Weekly_Sales': float, 'IsHoliday': string, 'ID': float, 'shop_id': float, 'item_id': float]
+3. Target Examples: There are 300000 available target examples:         Store  Dept        Date  Weekly_Sales IsHoliday        ID  shop_id  \
+104223    NaN   NaN         NaN           NaN       NaN   59063.0     25.0   
+282011    NaN   NaN         NaN           NaN       NaN   41578.0     28.0   
+227509    NaN   NaN         NaN           NaN       NaN  124522.0     52.0   
+180963    NaN   NaN         NaN           NaN       NaN   73475.0     21.0   
+118166    NaN   NaN         NaN           NaN       NaN   72588.0     21.0   
+...       ...   ...         ...           ...       ...       ...      ...   
+4877      8.0  93.0  2011-09-16      32770.86     False       NaN      NaN   
+237792    NaN   NaN         NaN           NaN       NaN   39204.0     12.0   
+2041     12.0   6.0  2010-02-26       9616.70     False       NaN      NaN   
+145824    NaN   NaN         NaN           NaN       NaN   59745.0     25.0   
+133204    NaN   NaN         NaN           NaN       NaN   21382.0      2.0   
+
+        item_id  
+104223   1288.0  
+282011  13269.0  
+227509   1761.0  
+180963  21386.0  
+118166   8571.0  
+...         ...  
+4877        NaN  
+237792   3774.0  
+2041        NaN  
+145824   8808.0  
+133204   4706.0  
+
+[30000 rows x 8 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_94_0
+	Source 0 Schema: ['Store', 'Dept', 'Date', 'Weekly_Sales', 'IsHoliday']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   Store  Dept        Date  Weekly_Sales  IsHoliday
+0     35     1  2010-06-04      15683.80      False
+1     22     7  2010-06-04      38291.05      False
+2     13    93  2010-04-16      45997.13      False
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_94_1
+	Source 1 Schema: ['ID', 'shop_id', 'item_id']
+	Source 1 Examples: 	 Source 1 contains 200000 tuples, with examples as follows: 
+       ID  shop_id  item_id
+0  202892       44    20462
+1   36681       12     4966
+2   68321       24    21828
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

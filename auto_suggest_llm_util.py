@@ -946,6 +946,9 @@ def get_column_matching_hints(intermediate_df, target_df, step):
 
 
 def calculate_score(gt_df, tgt_df):
+    # Truncate to cap scoring time
+    gt_df = gt_df.iloc[:2000, :15]
+    tgt_df = tgt_df.iloc[:2000, :15]
 
     # return 1
     # parameters
@@ -1004,6 +1007,9 @@ def calculate_score(gt_df, tgt_df):
 
 
 def calculate_score_cost(gt_df, tgt_df, cost_):
+    # Truncate to cap scoring time
+    gt_df = gt_df.iloc[:2000, :15]
+    tgt_df = tgt_df.iloc[:2000, :15]
 
     # parameters
     w1 = 1

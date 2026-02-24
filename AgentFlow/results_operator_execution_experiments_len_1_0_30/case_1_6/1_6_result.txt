@@ -1,0 +1,94 @@
+Case: 1_6
+Status: CORRECT
+Timestamp: 2026-02-24T13:46:20.251241
+Duration: 46.03 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_0_30/case_1_6/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['provider_id', 'provider_name', 'provider_zip_code', 'average_covered_charges', 'average_total_payments', 'average_medicare_payments']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_6
+2. Target Schema: ['provider_id': integer, 'provider_name': string, 'provider_zip_code': integer, 'average_covered_charges': float, 'average_total_payments': float, 'average_medicare_payments': float]
+3. Target Examples: There are 3164 available target examples:       provider_id                                      provider_name  \
+818        110229                      PIEDMONT NEWNAN HOSPITAL, INC   
+1712       290005                               NORTH VISTA HOSPITAL   
+1771       310040  CAREPOINT HEALTH-HOBOKEN UNIVERSITY MEDICAL CE...   
+479         60011                       DENVER HEALTH MEDICAL CENTER   
+658        100189                           NORTHWEST MEDICAL CENTER   
+...           ...                                                ...   
+1418       230031                          LAKE HURON MEDICAL CENTER   
+2683       450137   BAYLOR SCOTT AND WHITE ALL SAINTS MEDICAL CENTER   
+841        130049                                    KOOTENAI HEALTH   
+133         30114                                ORO VALLEY HOSPITAL   
+2271       370236                             INTEGRIS HEALTH EDMOND   
+
+      provider_zip_code  average_covered_charges  average_total_payments  \
+818               30265             33914.837333             8226.088667   
+1712              89030             59715.670000            13687.992727   
+1771               7030            139561.166667            11502.321333   
+479               80204             44043.316875            19453.848750   
+658               33063             92875.408936            10709.823191   
+...                 ...                      ...                     ...   
+1418              48060             18829.882381             6942.120000   
+2683              76104             46141.293889            12832.435556   
+841               83814             37322.075273            12272.101273   
+133               85755             53557.995517             7231.817241   
+2271              73034             30714.832857             5816.752857   
+
+      average_medicare_payments  
+818                 6990.794333  
+1712               12643.191818  
+1771                9395.718000  
+479                16962.824375  
+658                 9483.881064  
+...                         ...  
+1418                5762.783810  
+2683               10319.072963  
+841                10446.326909  
+133                 5999.204828  
+2271                4798.562857  
+
+[316 rows x 6 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_6_0
+	Source 0 Schema: ['average_covered_charges', 'average_medicare_payments', 'average_total_payments', 'drg_definition', 'hospital_referral_region_hrr_description', 'provider_city', 'provider_id', 'provider_name', 'provider_state', 'provider_street_address', 'provider_zip_code', 'total_discharges']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   average_covered_charges  average_medicare_payments  average_total_payments  \
+0                 17734.69                    3154.38                 4303.92   
+1                 28375.14                    8231.48                 9003.10   
+2                 68931.09                    9809.00                13479.96   
+
+                                 drg_definition  \
+0  195 - SIMPLE PNEUMONIA & PLEURISY W/O CC/MCC   
+1             180 - RESPIRATORY NEOPLASMS W MCC   
+2   707 - MAJOR MALE PELVIC PROCEDURES W CC/MCC   
+
+  hospital_referral_region_hrr_description provider_city  provider_id  \
+0                        TN - Johnson City  JOHNSON CITY       440184   
+1                             FL - Orlando  THE VILLAGES       100290   
+2                             TX - Houston       HOUSTON       450358   
+
+                       provider_name provider_state provider_street_address  \
+0  FRANKLIN WOODS COMMUNITY HOSPITAL             TN    300 MED TECH PARKWAY   
+1    VILLAGES REGIONAL HOSPITAL, THE             FL     1451 EL CAMINO REAL   
+2             METHODIST HOSPITAL,THE             TX             6565 FANNIN   
+
+   provider_zip_code  total_discharges  
+0              37604                13  
+1              32159                21  
+2              77030                23  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_6/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_6/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

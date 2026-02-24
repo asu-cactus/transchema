@@ -12,22 +12,6 @@ from agentflow.tools.base import BaseTool
 TOOL_NAME = "Configure_Join_Operator_Tool"
 
 
-LIMITATION = f"""
-The {TOOL_NAME} has several limitations:
-1) It proposes join inputs/keys based on schemas/examples and may be ambiguous if keys are not evident.
-2) It does not execute joins; it only suggests which tables/columns to join.
-3) If intermediate results are missing or schemas are incomplete, join suggestions may be low-confidence.
-"""
-
-
-BEST_PRACTICE = f"""
-For optimal results with the {TOOL_NAME}:
-1) Provide full source table schemas and representative examples.
-2) Provide the target schema and target examples so the join can be aligned to target columns.
-3) Include operation history to avoid repeating prior join configurations.
-4) Provide FD hints / join key hints when available.
-"""
-
 
 def _extract_between_dollars(text: str) -> Optional[str]:
     if not text:
@@ -90,7 +74,6 @@ class Configure_Join_Operator_Tool(BaseTool):
                     "description": "Configure a JOIN from transformation case information.",
                 }
             ],
-            user_metadata={"limitations": LIMITATION, "best_practices": BEST_PRACTICE},
         )
 
         # NOTE: deterministic mode

@@ -11,22 +11,6 @@ from agentflow.tools.base import BaseTool
 TOOL_NAME = "Configure_GroupBy_Aggregate_Operator_Tool"
 
 
-LIMITATION = f"""
-The {TOOL_NAME} has several limitations:
-1) It proposes GroupBy/Aggregate columns and functions based on schemas/examples and may be ambiguous.
-2) It does not execute aggregations; it only suggests the configuration.
-3) If the target examples are not representative, aggregation choices may be incorrect.
-"""
-
-
-BEST_PRACTICE = f"""
-For optimal results with the {TOOL_NAME}:
-1) Provide representative target examples (to infer whether SUM/AVG/COUNT etc. is needed).
-2) Provide full source schemas and examples.
-3) Include operation history so the tool doesn't repeat an existing GroupBy config.
-4) Provide FD hints when available.
-"""
-
 
 def _extract_between_dollars(text: str) -> Optional[str]:
     if not text:
@@ -112,7 +96,6 @@ class Configure_GroupBy_Aggregate_Operator_Tool(BaseTool):
                     "description": "Configure a GROUP_BY/AGGREGATE from transformation case information.",
                 }
             ],
-            user_metadata={"limitations": LIMITATION, "best_practices": BEST_PRACTICE},
         )
 
         self.llm_engine = create_llm_engine(

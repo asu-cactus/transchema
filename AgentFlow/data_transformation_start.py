@@ -56,7 +56,7 @@ TARGET_IDS = None  # [13]
 
 # Range mode settings (only used when TARGET_IDS is None)
 MAX_LEN_ID = 1
-TARGET_ID_START = 65
+TARGET_ID_START = 60
 TARGET_ID_END = 101
 # ============================================================
 
@@ -69,7 +69,7 @@ BENCHMARKS_DIR = os.path.join(
 RESULTS_DIR = os.path.join(
     _TRANSCHEMA_ROOT,
     "AgentFlow",
-    "results_pipeline_execution_experiments_len_1_65_101",
+    "results_operator_execution_experiments_len_1_60_101",
 )
 
 # Model / solver configuration
@@ -78,7 +78,7 @@ LLM_ENGINE_NAME = "gpt-4.1-mini"
 # Planner granularity:
 #   "operator" = operator-level planning
 #   "pipeline" = pipeline-level planning
-PLANNER_GRANULARITY = "pipeline"
+PLANNER_GRANULARITY = "operator"
 
 # Pipeline execution + scoring inside the agentic loop
 EXECUTE_PIPELINE = True
@@ -217,11 +217,13 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
             tool_engine = ["Default"] * len(enabled_tools)
         else:
             enabled_tools = [
-                "Add_Operator_Tool",
                 "Configure_Join_Operator_Tool",
                 "Configure_Union_Operator_Tool",
                 "Configure_GroupBy_Aggregate_Operator_Tool",
-                "Code_Generator_Tool",
+                "Add_Pivot_Tool",
+                "Add_Unpivot_Tool",
+                "Code_Gen_And_Score_Tool",
+                "Critique_Pipeline_Tool",
             ]
             tool_engine = ["Default"] * len(enabled_tools)
 

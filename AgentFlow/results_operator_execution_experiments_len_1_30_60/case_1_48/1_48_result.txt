@@ -1,0 +1,50 @@
+Case: 1_48
+Status: CORRECT
+Timestamp: 2026-02-24T13:28:10.829156
+Duration: 49.59 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_30_60/case_1_48/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Date', 'Water Use', 'Power Use']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_48
+2. Target Schema: ['Date': string, 'Water Use': float, 'Power Use': integer]
+3. Target Examples: There are 96 available target examples:         Date  Water Use  Power Use
+5   Apr_2011    3771.72      30445
+49  Jun_2007    6278.30      33980
+1   Apr_2007    6148.88      34389
+13  Aug_2010    3906.84      33184
+18  Dec_2007    3770.39      33868
+37  Jan_2011    3225.59      30530
+55  Jun_2013    1067.03      29305
+78  Nov_2011    2941.06      24693
+26  Feb_2008    2847.15      30837
+75  Nov_2008    5394.16      31214
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_48_0
+	Source 0 Schema: ['Text Date', 'Value Date', 'Zip Code', 'Water Use', 'Power Use']
+	Source 0 Examples: 	 Source 0 contains 6960 tuples, with examples as follows: 
+  Text Date Value Date                                         Zip Code  \
+0  Mar_2008     Mar-08  90230\n(33.99506171100046, -118.39500957899969)   
+1  Jul_2011     Jul-11  90272\n(34.04886156900045, -118.53572692799969)   
+2  Apr_2010     Apr-10  90272\n(34.04886156900045, -118.53572692799969)   
+
+   Water Use  Power Use  
+0      16.70        396  
+1      35.73       1013  
+2      23.53        916  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_48/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output
