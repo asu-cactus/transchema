@@ -30,7 +30,25 @@ from auto_suggest_llm_util import get_prompt
 #   Set TARGET_IDS to None and configure the range below.
 #
 LEN_ID = 4
-TARGET_IDS = [31, 35, 74, 79, 97]  # e.g. [4, 6, 48, 56] or None for range mode
+TARGET_IDS = [
+    # 16, 17, 18, 19, 
+    # 20, 21, 22, 23, 24, 25,
+    27, 28, 29,
+    # 32, 33,
+    # 36,
+    # 38,
+    # 40, 41, 42, 43,
+    # 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+    # 59, 60, 61,
+    # 68,
+    # 70, 71,
+    # 75,
+    # 77, 78,
+    # 81,
+    # 84,
+    # 92, 93, 94, 95, 96,
+    # 100,
+]  # e.g. [4, 6, 48, 56] or None for range mode
 
 # Range mode settings (only used when TARGET_IDS is None)
 MAX_LEN_ID = 4

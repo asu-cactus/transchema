@@ -19,10 +19,15 @@ from agentflow.models.memory import Memory
 from agentflow.models.executor import Executor
 from agentflow.models.utils import make_json_serializable_truncated
 
-# Add transchema root to path for importing calculate_score
+# Add transchema root to path for imports
 _TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[3])
 if _TRANSCHEMA_ROOT not in sys.path:
     sys.path.insert(0, _TRANSCHEMA_ROOT)
+
+# Add eval_score dir to path (score.py imports fdtool and column_map_utils relative to it)
+_EVAL_SCORE_ROOT = str(Path(__file__).resolve().parents[3] / "eval_score")
+if _EVAL_SCORE_ROOT not in sys.path:
+    sys.path.insert(0, _EVAL_SCORE_ROOT)
 
 
 # Configure logging
@@ -345,8 +350,7 @@ class Solver:
                 )
                 if self.verbose:
                     print(f"\n==> 📊 Pipeline Score: {score_result.get('score')}")
-                    print(f"    FD Score: {score_result.get('score_fd')}")
-                    print(f"    Key Score: {score_result.get('score_key')}")
+                    print(f"    FD F1 Score: {score_result.get('score_fd')}")
                     print(
                         f"    Column Mapping Score: {score_result.get('column_mapping_score')}"
                     )
@@ -390,20 +394,14 @@ class Solver:
             }
 
     def _calculate_pipeline_score(self, output_csv_path: str) -> dict:
-        """Calculate score comparing ground truth to pipeline output."""
+        """Calculate score comparing pipeline output to ground truth using eval_score."""
         try:
-            from auto_suggest_llm_util import (
-                calculate_score,
-                get_filtered_functional_dependency,
-                extract_dependencies,
-            )
-            from valentine import valentine_match, algorithms
+            from score import relative_csv_score
         except ImportError as e:
-            logger.warning(f"Could not import scoring functions: {e}")
+            logger.warning(f"Could not import eval_score scoring functions: {e}")
             return {
                 "score": None,
                 "score_fd": None,
-                "score_key": None,
                 "column_mapping_score": None,
                 "score_error": f"Import error: {e}",
             }
@@ -417,52 +415,22 @@ class Solver:
             if unnamed_cols:
                 tgt_df.drop(columns=unnamed_cols, inplace=True)
 
-            # Calculate individual score components for detailed feedback
-            key_gt, fd_gt = get_filtered_functional_dependency(gt_df)
-            key_tgt, fd_tgt = get_filtered_functional_dependency(tgt_df)
-
-            dependencies_gt = extract_dependencies(fd_gt)
-            dependencies_tgt = extract_dependencies(fd_tgt)
-
-            overlapping_dependencies = dependencies_gt.intersection(dependencies_tgt)
-            overlapping_keys = set(key_gt).intersection(key_tgt)
-
-            score_fd = (
-                len(overlapping_dependencies) / len(dependencies_gt)
-                if len(dependencies_gt) > 0
-                else 1
-            )
-            score_key = len(overlapping_keys) / len(key_gt) if len(key_gt) > 0 else 1
-
-            matcher = algorithms.Cupid()
-            matches = valentine_match(gt_df, tgt_df, matcher)
-            gt_df_columns = set(gt_df.columns)
-            matched_columns = set(match[0] for match in matches)
-            column_mapping_score = (
-                len(matched_columns) / len(gt_df_columns)
-                if len(gt_df_columns) > 0
-                else 0
-            )
-
-            # Combined score (same formula as calculate_score)
-            w1, w2, w3, p = 1, 1, 1, 1
-            combined_score = pow(
-                w1 * (score_fd**p)
-                + w2 * (score_key**p)
-                + w3 * (column_mapping_score**p),
-                1 / p,
+            fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = (
+                relative_csv_score(tgt_df, gt_df)
             )
 
             return {
-                "score": float(combined_score),
-                "score_fd": float(score_fd),
-                "score_key": float(score_key),
-                "column_mapping_score": float(column_mapping_score),
+                "score": float(true_combined_score),
+                "score_fd": float(fd_f1),
+                "column_mapping_score": float(col_ratio),
                 "score_details": {
                     "gt_shape": list(gt_df.shape),
                     "output_shape": list(tgt_df.shape),
                     "gt_columns": list(gt_df.columns),
                     "output_columns": list(tgt_df.columns),
+                    "fd_ratio": float(fd_ratio),
+                    "combined_score": float(combined_score),
+                    "debug": debug_dict,
                 },
                 "score_error": None,
             }
@@ -471,7 +439,6 @@ class Solver:
             return {
                 "score": None,
                 "score_fd": None,
-                "score_key": None,
                 "column_mapping_score": None,
                 "score_error": str(e),
             }
@@ -492,7 +459,6 @@ class Solver:
                     "output_csv_path": code_exec_result.get("output_csv_path"),
                     "score": code_exec_result.get("score"),
                     "score_fd": code_exec_result.get("score_fd"),
-                    "score_key": code_exec_result.get("score_key"),
                     "column_mapping_score": code_exec_result.get(
                         "column_mapping_score"
                     ),
