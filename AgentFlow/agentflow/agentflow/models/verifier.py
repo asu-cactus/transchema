@@ -313,7 +313,7 @@ Instructions:
 Final Determination:
 - If the pipeline is complete and correct:
   * Explain why
-  * Provide the pipeline_id to finalize (from the most recent Create_Pipeline_Tool or Modify_Pipeline_Tool result in memory)
+  * Provide the pipeline_id to finalize (from the most recent Create_New_Pipeline or Refine_Existing_Pipeline result in memory)
   * Conclude with "STOP"
 - If modifications are still needed:
   * Explain what's missing or incorrect
@@ -386,7 +386,7 @@ Instructions:
 Final Determination:
 - If the pipeline is complete, correct, and aligns with the additional context:
   * Explain why
-  * Provide the pipeline_id to finalize (from the most recent Create_Pipeline_Tool or Modify_Pipeline_Tool result in memory)
+  * Provide the pipeline_id to finalize (from the most recent Create_New_Pipeline or Refine_Existing_Pipeline result in memory)
   * Conclude with "STOP"
 - If modifications are still needed:
   * Explain what's missing or incorrect

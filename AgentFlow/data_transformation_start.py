@@ -178,8 +178,8 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
         # --- Select tools based on planner granularity ---
         if PLANNER_GRANULARITY == "pipeline":
             enabled_tools = [
-                "Create_Pipeline_Tool",
-                "Modify_Pipeline_Tool",
+                "Create_New_Pipeline",
+                "Refine_Existing_Pipeline",
                 "Code_Generator_Tool",
                 "Finalize_Pipeline_Tool",
             ]

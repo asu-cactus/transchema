@@ -196,7 +196,7 @@ class Initializer:
             current_dir_name = os.path.basename(root)
 
             for name, obj in inspect.getmembers(module):
-                if inspect.isclass(obj) and name.endswith('Tool') and name != 'BaseTool':
+                if inspect.isclass(obj) and name != 'BaseTool' and any(b.__name__ == 'BaseTool' for b in obj.__mro__[1:]):
                     try:
                         # Check if the tool requires specific llm engine
                         tool_index = -1
