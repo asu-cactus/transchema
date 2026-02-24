@@ -1,4 +1,5 @@
 import importlib
+import ast
 import json
 import os
 import re
@@ -146,6 +147,11 @@ Instructions:
 4.  Each `tool.execute()` call must be assigned to a variable named **`execution`**.
 5.  Please give the exact numbers and parameters should be used in the `tool.execute()` call.
 6.  IMPORTANT: For Configure_* tools (Join, Union, GroupBy_Aggregate), the query parameter MUST include the Operation History to avoid repeating previous operations and to understand the pipeline state.
+7.  Keep the response concise to avoid token-limit issues:
+    - `analysis`: at most 2 short bullet points (max 60 words total).
+    - `explanation`: at most 2 short bullet points (max 60 words total).
+    - `command`: output only the minimal executable Python needed for this step.
+8.  Do not include extra prose, repeated context, or long reasoning.
 
 Output Format:
 Present your response in the following structured format. Do not include any extra text or explanations.
@@ -180,8 +186,32 @@ Please follow the configuration prompt to genrate tool specific output.
         prompt_logger.debug("=" * 80)
 
         tool_command = self.llm_generate_tool_command(
-            prompt_generate_tool_command, response_format=ToolCommand
+            prompt_generate_tool_command, response_format=ToolCommand, max_tokens=900
         )
+
+        # Auto-recover when the model returns malformed Python.
+        _, _, generated_command = self.extract_explanation_and_command(tool_command)
+        is_valid, validation_error = self._validate_command_syntax(generated_command)
+        if not is_valid:
+            safe_command = self._build_safe_command(
+                tool_name=tool_name,
+                question=question,
+                context=context,
+                sub_goal=sub_goal,
+                memory=memory,
+            )
+            prompt_logger.warning(
+                f"[Step {step_count}] Invalid generated command recovered with deterministic fallback. "
+                f"Reason: {validation_error}"
+            )
+            tool_command = ToolCommand(
+                analysis="Recovered from malformed generated command.",
+                explanation=(
+                    "The original command was syntactically invalid. "
+                    "A deterministic safe command was generated."
+                ),
+                command=safe_command,
+            )
         if json_data is not None:
             json_data[f"tool_commander_{step_count}_prompt"] = (
                 prompt_generate_tool_command
@@ -270,6 +300,116 @@ Please follow the configuration prompt to genrate tool specific output.
         command = normalize_code(command)
 
         return analysis, explanation, command
+
+    def _validate_command_syntax(self, command: str) -> tuple:
+        if not isinstance(command, str) or not command.strip():
+            return False, "empty command"
+
+        if "tool.execute(" not in command or "execution" not in command:
+            return False, "missing required execution = tool.execute(...) pattern"
+
+        try:
+            ast.parse(command)
+        except SyntaxError as e:
+            return False, f"syntax error at line {e.lineno}: {e.msg}"
+        except Exception as e:
+            return False, f"parse error: {str(e)}"
+
+        return True, ""
+
+    def _find_pipeline_id(self, text: str) -> str:
+        if not text:
+            return ""
+        match = re.search(r"(pipeline_[a-zA-Z0-9]+)", text)
+        return match.group(1) if match else ""
+
+    def _extract_latest_pipeline_artifacts(self, memory: Any) -> Dict[str, str]:
+        artifacts = {"pipeline_id": "", "pipeline": "", "critique": ""}
+        if not memory:
+            return artifacts
+
+        try:
+            actions = memory.get_actions()
+        except Exception:
+            return artifacts
+
+        for action in reversed(list(actions.values())):
+            result = action.get("result")
+            items = []
+            if isinstance(result, list):
+                items = result
+            elif isinstance(result, dict):
+                items = [result]
+
+            for item in reversed(items):
+                if not isinstance(item, dict):
+                    continue
+                if item.get("pipeline_id"):
+                    artifacts["pipeline_id"] = item.get("pipeline_id", "")
+                    artifacts["pipeline"] = item.get("pipeline", "")
+                    artifacts["critique"] = item.get("critique", "")
+                    return artifacts
+
+        return artifacts
+
+    def _build_safe_command(
+        self,
+        tool_name: str,
+        question: str,
+        context: str,
+        sub_goal: str,
+        memory: Any = None,
+    ) -> str:
+        query = (context or question or "").strip()
+        if sub_goal:
+            query = f"{query}\n\nSub-Goal: {sub_goal}".strip()
+
+        if tool_name == "Create_Pipeline_Tool":
+            return f"execution = tool.execute(query={query!r})"
+
+        if tool_name == "Modify_Pipeline_Tool":
+            artifacts = self._extract_latest_pipeline_artifacts(memory)
+            pipeline_id = artifacts.get("pipeline_id", "") or self._find_pipeline_id(
+                sub_goal + "\n" + context
+            )
+            current_pipeline = artifacts.get("pipeline", "")
+            critique = artifacts.get("critique", "")
+            return (
+                "execution = tool.execute("
+                f"query={query!r}, "
+                f"pipeline_id={pipeline_id!r}, "
+                f"current_pipeline={current_pipeline!r}, "
+                f"critique={critique!r}, "
+                f"modification_goal={sub_goal!r})"
+            )
+
+        if tool_name == "Code_Generator_Tool":
+            memory_actions = ""
+            if memory:
+                try:
+                    memory_actions = str(memory.get_actions())
+                except Exception:
+                    memory_actions = ""
+            return (
+                "execution = tool.execute("
+                f"query={query!r}, "
+                f"memory_actions={memory_actions!r})"
+            )
+
+        if tool_name == "Finalize_Pipeline_Tool":
+            artifacts = self._extract_latest_pipeline_artifacts(memory)
+            pipeline_id = artifacts.get("pipeline_id", "") or self._find_pipeline_id(
+                sub_goal + "\n" + context
+            )
+            pipeline = artifacts.get("pipeline", "")
+            return (
+                "execution = tool.execute("
+                f"pipeline_id={pipeline_id!r}, "
+                f"pipeline={pipeline!r})"
+            )
+
+        # Generic safe fallback for query-driven tools.
+        return f"execution = tool.execute(query={query!r})"
 
     def execute_tool_command(self, tool_name: str, command: str) -> Any:
         """
@@ -372,6 +512,14 @@ Please follow the configuration prompt to genrate tool specific output.
             else:
                 return result_container["result"]
 
+        # Validate syntax before trying to execute.
+        is_valid, validation_error = self._validate_command_syntax(command)
+        if not is_valid:
+            return (
+                "Error in execute_tool_command: invalid command syntax before execution. "
+                f"{validation_error}"
+            )
+
         # Try to get tool from cache first
         tool = None
 
@@ -431,6 +579,11 @@ Please follow the configuration prompt to genrate tool specific output.
 
             # Split the command into blocks, execute each one and store execution results
             command_blocks = split_commands(command)
+            if not command_blocks:
+                return (
+                    "Error in execute_tool_command: no executable "
+                    "`execution = tool.execute(...)` block was found in command."
+                )
             executions = []
 
             for block in command_blocks:

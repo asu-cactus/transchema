@@ -1,0 +1,105 @@
+Case: 4_22
+Status: INCORRECT
+Timestamp: 2026-02-23T13:47:20.749328
+Duration: 42.93 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_22/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_22
+2. Target Schema: ['type_of_combined_shot': string, 'is_goal': float, 'shot_sum': integer, 'is_goal_count1': integer]
+3. Target Examples: There are 7624 available target examples:      type_of_combined_shot  is_goal  shot_sum  is_goal_count1
+6592              shot - 4      1.0       635            1143
+6460              shot - 4      1.0       635            1143
+2045              shot - 3      NaN      1828            4591
+2812              shot - 3      1.0      1828            4591
+878               shot - 3      0.0      1828            4591
+...                    ...      ...       ...             ...
+1624              shot - 3      NaN      1828            4591
+331               shot - 3      NaN      1828            4591
+3368              shot - 3      1.0      1828            4591
+3176              shot - 3      0.0      1828            4591
+4031              shot - 3      0.0      1828            4591
+
+[762 rows x 4 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_22_0
+	Source 0 Schema: ['match_event_id', 'location_x', 'location_y', 'remaining_min', 'power_of_shot', 'knockout_match', 'game_season', 'remaining_sec', 'distance_of_shot', 'is_goal', 'area_of_shot', 'shot_basics', 'range_of_shot', 'team_name', 'date_of_game', 'home/away', 'shot_id_number', 'lat/lng', 'type_of_shot', 'type_of_combined_shot', 'match_id', 'team_id', 'remaining_min.1', 'power_of_shot.1', 'knockout_match.1', 'remaining_sec.1', 'distance_of_shot.1']
+	Source 0 Examples: 	 Source 0 contains 15348 tuples, with examples as follows: 
+   match_event_id  location_x  location_y  remaining_min  power_of_shot  \
+0            10.0       167.0        72.0           10.0            1.0   
+1            12.0      -157.0         0.0           10.0            1.0   
+2            35.0      -101.0       135.0            7.0            1.0   
+
+   knockout_match game_season  remaining_sec  distance_of_shot  is_goal  \
+0             0.0     2000-01           27.0              38.0      NaN   
+1             0.0     2000-01           22.0              35.0      0.0   
+2             0.0     2000-01           45.0              36.0      1.0   
+
+           area_of_shot shot_basics range_of_shot          team_name  \
+0         Right Side(R)   Mid Range     16-24 ft.  Manchester United   
+1          Left Side(L)   Mid Range      8-16 ft.  Manchester United   
+2  Left Side Center(LC)   Mid Range     16-24 ft.  Manchester United   
+
+  date_of_game  home/away  shot_id_number                 lat/lng  \
+0   31-10-2000        1.0               1  45.539131, -122.651648   
+1   31-10-2000        1.0               2  45.539131, -122.651648   
+2   31-10-2000        NaN               3  45.539131, -122.651648   
+
+  type_of_shot type_of_combined_shot  match_id     team_id  remaining_min.1  \
+0    shot - 30                   NaN  20000012  1610612747            10.00   
+1    shot - 45                   NaN  20000012  1610612747            10.00   
+2    shot - 25                   NaN  20000012  1610612747            92.64   
+
+   power_of_shot.1  knockout_match.1  remaining_sec.1  distance_of_shot.1  
+0              1.0            50.608          54.2000                38.0  
+1              1.0            28.800          22.0000                35.0  
+2              1.0             0.000          63.7216                54.4  
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_22/test_0.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_22/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+import numpy as np
+
+# Step 1: Load source data
+source_path_0 = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_22/test_0.csv"
+df0 = pd.read_csv(source_path_0, index_col=0)
+
+# Step 2: UNION all source tables with the same schema
+# Only one source table is given, so this step is just df0 itself
+df_union = df0.copy()
+
+# Step 3: Prepare 'is_goal' column for aggregation
+# Replace NaN in 'is_goal' with 0 for counting and summing purposes
+df_union['is_goal'] = df_union['is_goal'].fillna(0).astype(float)
+
+# Step 4: Group by 'type_of_combined_shot' and aggregate
+agg_df = df_union.groupby('type_of_combined_shot').agg(
+    is_goal=('is_goal', 'sum'),               # sum of is_goal as float
+    shot_sum=('is_goal', 'count'),            # count of shots (rows)
+    is_goal_count1=('is_goal', lambda x: (x == 1).sum())  # count where is_goal == 1
+).reset_index()
+
+# Step 5: Ensure column types as per target schema
+agg_df['type_of_combined_shot'] = agg_df['type_of_combined_shot'].astype(str)
+agg_df['is_goal'] = agg_df['is_goal'].astype(float)
+agg_df['shot_sum'] = agg_df['shot_sum'].astype(int)
+agg_df['is_goal_count1'] = agg_df['is_goal_count1'].astype(int)
+
+# Step 6: Save the result to CSV
+output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_22/target_multisource_agentic.csv"
+agg_df.to_csv(output_path, index=False)
+```
