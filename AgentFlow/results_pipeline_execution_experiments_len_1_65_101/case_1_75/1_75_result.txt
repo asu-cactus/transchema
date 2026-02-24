@@ -1,0 +1,83 @@
+Case: 1_75
+Status: INCORRECT
+Timestamp: 2026-02-24T11:09:13.851006
+Duration: 363.96 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_65_101/case_1_75/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_75
+2. Target Schema: ['neighbourhood': string, 'id': integer, 'name': integer, 'host_id': integer, 'host_name': integer, 'neighbourhood_group': integer, 'latitude': integer, 'longitude': integer, 'room_type': integer, 'price': integer, 'minimum_nights': integer, 'number_of_reviews': integer, 'last_review': integer, 'reviews_per_month': integer, 'calculated_host_listings_count': integer, 'availability_365': integer]
+3. Target Examples: There are 70 available target examples:                  neighbourhood   id  name  host_id  host_name  \
+33                   el Carmel   30    30       30         30   
+4                        Horta   22    22       22         22   
+11                 Sant Andreu   29    29       29         29   
+61            la Trinitat Nova    2     2        2          2   
+29       el Besòs i el Maresme   86    86       86         86   
+32  el Camp de l'Arpa del Clot  166   166      166        166   
+57          la Sagrada Família  581   580      581        579   
+
+    neighbourhood_group  latitude  longitude  room_type  price  \
+33                   30        30         30         30     30   
+4                    22        22         22         22     22   
+11                   29        29         29         29     29   
+61                    2         2          2          2      2   
+29                   86        86         86         86     86   
+32                  166       166        166        166    166   
+57                  581       581        581        581    581   
+
+    minimum_nights  number_of_reviews  last_review  reviews_per_month  \
+33              30                 30           30                 30   
+4               22                 22           21                 21   
+11              29                 29           26                 26   
+61               2                  2            1                  1   
+29              86                 86           73                 73   
+32             166                166          156                156   
+57             581                581          531                531   
+
+    calculated_host_listings_count  availability_365  
+33                              30                30  
+4                               22                22  
+11                              29                29  
+61                               2                 2  
+29                              86                86  
+32                             166               166  
+57                             581               581  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_75_0
+	Source 0 Schema: ['id', 'name', 'host_id', 'host_name', 'neighbourhood_group', 'neighbourhood', 'latitude', 'longitude', 'room_type', 'price', 'minimum_nights', 'number_of_reviews', 'last_review', 'reviews_per_month', 'calculated_host_listings_count', 'availability_365']
+	Source 0 Examples: 	 Source 0 contains 9435 tuples, with examples as follows: 
+      id                                             name  host_id  \
+0  18666                          Flat with Sunny Terrace    71615   
+1  18674  Huge flat for 8 people close to Sagrada Familia    71615   
+2  21605                        Nice and sunny duble room    82522   
+
+          host_name neighbourhood_group               neighbourhood  \
+0  Mireia And Maria          Sant Martí  el Camp de l'Arpa del Clot   
+1  Mireia And Maria            Eixample          la Sagrada Família   
+2         Meritxell          Sant Martí                 el Poblenou   
+
+    latitude  longitude        room_type  price  minimum_nights  \
+0  41.408886   2.185545  Entire home/apt    130               3   
+1  41.404197   2.173058  Entire home/apt     55               1   
+2  41.405604   2.198205     Private room     33               2   
+
+   number_of_reviews last_review  reviews_per_month  \
+0                  1  2015-10-10               0.03   
+1                  5  2018-06-18               0.07   
+2                103  2018-11-30               3.26   
+
+   calculated_host_listings_count  availability_365  
+0                              34                20  
+1                              34                40  
+2                               3               290  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_75/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_75/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

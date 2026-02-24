@@ -1,0 +1,85 @@
+Case: 1_65
+Status: INCORRECT
+Timestamp: 2026-02-24T10:48:16.882931
+Duration: 303.55 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_65_101/case_1_65/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.5
+  matched_columns: ['1940-1960-1962']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_65
+2. Target Schema: ['year': integer, '0': integer]
+3. Target Examples: There are 53 available target examples:     year    0
+24  1988    8
+1   1960    1
+39  2003   97
+38  2002  104
+42  2006  112
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_65_0
+	Source 0 Schema: ['budget', 'genres', 'homepage', 'movie_id', 'keywords', 'original_language', 'original_title', 'overview', 'popularity', 'production_companies', 'production_countries', 'release_date', 'revenue', 'runtime', 'spoken_languages', 'status', 'tagline', 'title', 'vote_average', 'vote_count', 'year']
+	Source 0 Examples: 	 Source 0 contains 2401 tuples, with examples as follows: 
+      budget                                             genres  \
+0  237000000  [{"id": 28, "name": "Action"}, {"id": 12, "nam...   
+1  300000000  [{"id": 12, "name": "Adventure"}, {"id": 14, "...   
+2  245000000  [{"id": 28, "name": "Action"}, {"id": 12, "nam...   
+
+                                       homepage  movie_id  \
+0                   http://www.avatarmovie.com/     19995   
+1  http://disney.go.com/disneypictures/pirates/       285   
+2   http://www.sonypictures.com/movies/spectre/    206647   
+
+                                            keywords original_language  \
+0  [{"id": 1463, "name": "culture clash"}, {"id":...                en   
+1  [{"id": 270, "name": "ocean"}, {"id": 726, "na...                en   
+2  [{"id": 470, "name": "spy"}, {"id": 818, "name...                en   
+
+                             original_title  \
+0                                    Avatar   
+1  Pirates of the Caribbean: At World's End   
+2                                   Spectre   
+
+                                            overview  popularity  \
+0  In the 22nd century, a paraplegic Marine is di...  150.437577   
+1  Captain Barbossa, long believed to be dead, ha...  139.082615   
+2  A cryptic message from Bond’s past sends him o...  107.376788   
+
+                                production_companies  \
+0  [{"name": "Ingenious Film Partners", "id": 289...   
+1  [{"name": "Walt Disney Pictures", "id": 2}, {"...   
+2  [{"name": "Columbia Pictures", "id": 5}, {"nam...   
+
+                                production_countries release_date     revenue  \
+0  [{"iso_3166_1": "US", "name": "United States o...   2009-12-10  2787965087   
+1  [{"iso_3166_1": "US", "name": "United States o...   2007-05-19   961000000   
+2  [{"iso_3166_1": "GB", "name": "United Kingdom"...   2015-10-26   880674609   
+
+   runtime                                   spoken_languages    status  \
+0      162  [{"iso_639_1": "en", "name": "English"}, {"iso...  Released   
+1      169           [{"iso_639_1": "en", "name": "English"}]  Released   
+2      148  [{"iso_639_1": "fr", "name": "Fran\u00e7ais"},...  Released   
+
+                                          tagline  \
+0                     Enter the World of Pandora.   
+1  At the end of the world, the adventure begins.   
+2                           A Plan No One Escapes   
+
+                                      title  vote_average  vote_count  year  
+0                                    Avatar           7.2       11800  2009  
+1  Pirates of the Caribbean: At World's End           6.9        4500  2007  
+2                                   Spectre           6.3        4466  2015  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

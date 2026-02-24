@@ -1,0 +1,100 @@
+Case: 1_81
+Status: INCORRECT
+Timestamp: 2026-02-24T04:13:10.277069
+Duration: 35.08 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_81/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 1.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_81
+2. Target Schema: ['provider_zip_code': integer, 'provider_id': float, 'average_covered_charges': float, 'average_total_payments': float, 'average_medicare_payments': float]
+3. Target Examples: There are 2899 available target examples:       provider_zip_code  provider_id  average_covered_charges  \
+303               14215     330219.0             26743.853571   
+1180              38965     250061.0              6243.495000   
+2099              73801     370002.0             40601.926667   
+1642              54904     520132.0             22488.000800   
+638               27804     340147.0             30964.560577   
+...                 ...          ...                      ...   
+1199              39452     250036.0             10172.138750   
+2156              75090     670076.0             29195.610000   
+2445              84102     460003.0             73466.506667   
+2396              80701      60044.0             40115.132500   
+279               13203     330140.0             47044.114242   
+
+      average_total_payments  average_medicare_payments  
+303             15662.227857               10905.942143  
+1180             5125.925000                4226.480000  
+2099             8753.548333                7753.758333  
+1642             7926.987600                6607.142400  
+638              9662.339423                8183.070769  
+...                      ...                        ...  
+1199             6735.925000                5824.778750  
+2156            12242.630000               10579.910000  
+2445            21124.143333               16293.880000  
+2396            12235.695000               10736.537500  
+279             16845.985253               14660.385859  
+
+[290 rows x 5 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_81_0
+	Source 0 Schema: ['average_covered_charges', 'average_medicare_payments', 'average_total_payments', 'drg_definition', 'hospital_referral_region_hrr_description', 'provider_city', 'provider_id', 'provider_name', 'provider_state', 'provider_street_address', 'provider_zip_code', 'total_discharges']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   average_covered_charges  average_medicare_payments  average_total_payments  \
+0                 24683.90                    8551.79                 9546.01   
+1                 83232.11                   12731.96                15673.73   
+2                 47055.54                    7643.38                 8908.15   
+
+                                      drg_definition  \
+0     917 - POISONING & TOXIC EFFECTS OF DRUGS W MCC   
+1  470 - MAJOR JOINT REPLACEMENT OR REATTACHMENT ...   
+2  418 - LAPAROSCOPIC CHOLECYSTECTOMY W/O C.D.E. ...   
+
+  hospital_referral_region_hrr_description provider_city  provider_id  \
+0                               MI - Flint         FLINT       230141   
+1                        PA - Philadelphia   DREXEL HILL       390081   
+2                            TX - Victoria      VICTORIA       450023   
+
+                       provider_name provider_state  provider_street_address  \
+0                      MCLAREN FLINT             MI  401 S BALLENGER HIGHWAY   
+1  DELAWARE COUNTY MEMORIAL HOSPITAL             PA  501 NORTH LANSDOWNE AVE   
+2            CITIZENS MEDICAL CENTER             TX      2701 HOSPITAL DRIVE   
+
+   provider_zip_code  total_discharges  
+0              48532                72  
+1              19026                84  
+2              77901                13  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_81/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_81/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Load source data
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_81/test_0.csv"
+df_source = pd.read_csv(source_path, index_col=0)
+
+# Select required columns and cast to target types
+df_target = df_source[['provider_zip_code', 'provider_id', 'average_covered_charges', 'average_total_payments', 'average_medicare_payments']].copy()
+
+df_target['provider_zip_code'] = df_target['provider_zip_code'].astype(int)
+df_target['provider_id'] = df_target['provider_id'].astype(float)
+df_target['average_covered_charges'] = df_target['average_covered_charges'].astype(float)
+df_target['average_total_payments'] = df_target['average_total_payments'].astype(float)
+df_target['average_medicare_payments'] = df_target['average_medicare_payments'].astype(float)
+
+# Save to CSV
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_81/target_multisource_agentic.csv"
+df_target.to_csv(output_path, index=False)
+```

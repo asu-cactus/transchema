@@ -1,0 +1,124 @@
+Case: 1_37
+Status: INCORRECT
+Timestamp: 2026-02-24T01:38:21.429323
+Duration: 35.13 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_37/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.9279903826888399
+  matched_columns: ['10-10-10', '20140114-20140114-20140114', 'Routine - Unscheduled-Routine - Unscheduled-Routine - Unscheduled', '103119-103145-103154', 'Moderate Risk-Low Risk-Low Risk', 'Inadequate and inaccessible handwashing facilities-Improper storage of equipment utensils or linens-Unclean or degraded floors walls or ceilings']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_37
+2. Target Schema: ['business_id': integer, 'Score': float, 'date': integer, 'type': string, 'ViolationTypeID': integer, 'risk_category': string, 'description': string]
+3. Target Examples: There are 21475 available target examples:        business_id  Score      date                       type  \
+5765          2201   74.0  20150112      Routine - Unscheduled   
+4571          1833    NaN  20150128                  Complaint   
+19297        25572    NaN  20150427                  Complaint   
+487            247   94.0  20140304      Routine - Unscheduled   
+15659         7379    NaN  20131211                  Complaint   
+...            ...    ...       ...                        ...   
+3758          1568   85.0  20150126      Routine - Unscheduled   
+9750          3397    NaN  20140313  Non-inspection site visit   
+790            335    NaN  20160217      Reinspection/Followup   
+4002          1641   96.0  20130812      Routine - Unscheduled   
+10759         3699   94.0  20150326      Routine - Unscheduled   
+
+       ViolationTypeID  risk_category  \
+5765            103132  Moderate Risk   
+4571            103105      High Risk   
+19297           103142       Low Risk   
+487             103150       Low Risk   
+15659           103157       Low Risk   
+...                ...            ...   
+3758            103154       Low Risk   
+9750            103119  Moderate Risk   
+790             103154       Low Risk   
+4002            103157       Low Risk   
+10759           103150       Low Risk   
+
+                                             description  
+5765                           Improper thawing methods   
+4571                            Improper cooling methods  
+19297                   Unclean nonfood contact surfaces  
+487                       Improper or defective plumbing  
+15659  Food safety certificate or food handler card n...  
+...                                                  ...  
+3758        Unclean or degraded floors walls or ceilings  
+9750   Inadequate and inaccessible handwashing facili...  
+790         Unclean or degraded floors walls or ceilings  
+4002   Food safety certificate or food handler card n...  
+10759                     Improper or defective plumbing  
+
+[2148 rows x 7 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_37_0
+	Source 0 Schema: ['business_id', 'Score', 'date', 'type']
+	Source 0 Examples: 	 Source 0 contains 27285 tuples, with examples as follows: 
+   business_id  Score      date                   type
+0           10    NaN  20140807  Reinspection/Followup
+1           10   94.0  20140729  Routine - Unscheduled
+2           10    NaN  20140124  Reinspection/Followup
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_37_1
+	Source 1 Schema: ['business_id', 'date', 'ViolationTypeID', 'risk_category', 'description']
+	Source 1 Examples: 	 Source 1 contains 19860 tuples, with examples as follows: 
+   business_id      date  ViolationTypeID  risk_category  \
+0           10  20140114           103154       Low Risk   
+1           10  20140114           103119  Moderate Risk   
+2           10  20140114           103145       Low Risk   
+
+                                         description  
+0       Unclean or degraded floors walls or ceilings  
+1  Inadequate and inaccessible handwashing facili...  
+2   Improper storage of equipment utensils or linens  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_1.csv"
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/target_multisource_agentic.csv"
+
+# Read source files with index_col=0
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Step 1: JOIN on ['business_id', 'date'] using inner join
+df_joined = pd.merge(df0, df1, on=['business_id', 'date'], how='inner')
+
+# Step 2: HANDLE_MISSING - fill missing 'Score' with mean of available 'Score' values
+score_mean = df_joined['Score'].mean()
+df_joined['Score'] = df_joined['Score'].fillna(score_mean)
+
+# Step 3: ALIGN_COLUMNS - select and reorder columns to match target schema
+target_columns = ['business_id', 'Score', 'date', 'type', 'ViolationTypeID', 'risk_category', 'description']
+df_final = df_joined[target_columns]
+
+# Ensure correct dtypes as per target schema
+df_final = df_final.astype({
+    'business_id': 'int64',
+    'Score': 'float64',
+    'date': 'int64',
+    'type': 'string',
+    'ViolationTypeID': 'int64',
+    'risk_category': 'string',
+    'description': 'string'
+})
+
+# Step 4: OUTPUT - save to CSV
+df_final.to_csv(output_path, index=False)
+```

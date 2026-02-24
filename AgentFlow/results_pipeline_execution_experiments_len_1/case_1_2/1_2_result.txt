@@ -1,0 +1,197 @@
+Case: 1_2
+Status: CORRECT
+Timestamp: 2026-02-24T01:10:16.870730
+Duration: 79.71 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_2/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['tripduration', 'starttime', 'stoptime', 'start station id', 'start station name', 'start station latitude', 'start station longitude', 'end station id', 'end station name', 'end station latitude', 'end station longitude', 'bikeid', 'usertype', 'birth year', 'gender']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_2
+2. Target Schema: ['tripduration': integer, 'starttime': string, 'stoptime': string, 'start station id': integer, 'start station name': string, 'start station latitude': float, 'start station longitude': float, 'end station id': integer, 'end station name': string, 'end station latitude': float, 'end station longitude': float, 'bikeid': integer, 'usertype': string, 'birth year': integer, 'gender': integer]
+3. Target Examples: There are 54924 available target examples:        tripduration                 starttime                  stoptime  \
+23161           223  2018-05-12 02:16:02.2360  2018-05-12 02:19:45.6270   
+5129            280  2018-05-14 17:43:51.3730  2018-05-14 17:48:31.9910   
+37127          2675  2018-06-17 09:32:25.0270  2018-06-17 10:17:00.9480   
+32791           324  2018-05-30 18:42:14.6500  2018-05-30 18:47:39.5930   
+31974          2322  2018-05-07 20:24:21.9380  2018-05-07 21:03:04.8600   
+...             ...                       ...                       ...   
+49548           752  2018-06-18 08:56:09.3260  2018-06-18 09:08:41.5650   
+26346           141  2018-05-30 08:26:19.0590  2018-05-30 08:28:40.6460   
+44308           330  2018-06-30 09:38:37.1020  2018-06-30 09:44:07.4840   
+10700           439  2018-05-18 16:31:11.3390  2018-05-18 16:38:31.1080   
+29084           175  2018-05-13 16:18:01.2580  2018-05-13 16:20:56.2630   
+
+       start station id start station name  start station latitude  \
+23161              3267       Morris Canal               40.712419   
+5129               3186      Grove St PATH               40.719586   
+37127              3184        Paulus Hook               40.714145   
+32791              3639         Harborside               40.719252   
+31974              3639         Harborside               40.719252   
+...                 ...                ...                     ...   
+49548              3199       Newport Pkwy               40.728745   
+26346              3272       Jersey & 3rd               40.723332   
+44308              3187          Warren St               40.721124   
+10700              3195            Sip Ave               40.730743   
+29084              3278   Monmouth and 6th               40.725685   
+
+       start station longitude  end station id end station name  \
+23161               -74.038526            3275   Columbus Drive   
+5129                -74.043117            3275   Columbus Drive   
+37127               -74.033552            3184      Paulus Hook   
+32791               -74.034234            3203    Hamilton Park   
+31974               -74.034234            3199     Newport Pkwy   
+...                        ...             ...              ...   
+49548               -74.032108            3185        City Hall   
+26346               -74.045953            3186    Grove St PATH   
+44308               -74.038051            3481          York St   
+10700               -74.063784            3210   Pershing Field   
+29084               -74.048790            3209     Brunswick St   
+
+       end station latitude  end station longitude  bikeid    usertype  \
+23161             40.718355             -74.038914   29230  Subscriber   
+5129              40.718355             -74.038914   33600  Subscriber   
+37127             40.714145             -74.033552   26290  Subscriber   
+32791             40.727596             -74.044247   30987  Subscriber   
+31974             40.728745             -74.032108   33624  Subscriber   
+...                     ...                    ...     ...         ...   
+49548             40.717732             -74.043845   29442  Subscriber   
+26346             40.719586             -74.043117   26281  Subscriber   
+44308             40.716490             -74.041050   29277  Subscriber   
+10700             40.742677             -74.051789   33580  Subscriber   
+29084             40.724176             -74.050656   29625  Subscriber   
+
+       birth year  gender  
+23161        1991       1  
+5129         1978       2  
+37127        1978       1  
+32791        1954       1  
+31974        1991       1  
+...           ...     ...  
+49548        1980       2  
+26346        1973       1  
+44308        1986       1  
+10700        1979       1  
+29084        1977       1  
+
+[5492 rows x 15 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_2_0
+	Source 0 Schema: ['tripduration', 'starttime', 'stoptime', 'start station id', 'start station name', 'start station latitude', 'start station longitude', 'end station id', 'end station name', 'end station latitude', 'end station longitude', 'bikeid', 'usertype', 'birth year', 'gender']
+	Source 0 Examples: 	 Source 0 contains 20468 tuples, with examples as follows: 
+   tripduration                 starttime                  stoptime  \
+0           329  2018-06-01 07:07:00.2990  2018-06-01 07:12:30.2220   
+1           259  2018-06-01 08:24:43.8490  2018-06-01 08:29:03.8450   
+2           686  2018-06-01 09:17:49.5730  2018-06-01 09:29:16.1770   
+
+   start station id start station name  start station latitude  \
+0              3183     Exchange Place               40.716247   
+1              3183     Exchange Place               40.716247   
+2              3183     Exchange Place               40.716247   
+
+   start station longitude  end station id  end station name  \
+0               -74.033459            3276  Marin Light Rail   
+1               -74.033459            3267      Morris Canal   
+2               -74.033459            3202      Newport PATH   
+
+   end station latitude  end station longitude  bikeid    usertype  \
+0             40.714584             -74.042817   29513  Subscriber   
+1             40.712419             -74.038526   26221  Subscriber   
+2             40.727224             -74.033759   29266  Subscriber   
+
+   birth year  gender  
+0        1991       1  
+1        1989       2  
+2        1990       1  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_2_1
+	Source 1 Schema: ['tripduration', 'starttime', 'stoptime', 'start station id', 'start station name', 'start station latitude', 'start station longitude', 'end station id', 'end station name', 'end station latitude', 'end station longitude', 'bikeid', 'usertype', 'birth year', 'gender']
+	Source 1 Examples: 	 Source 1 contains 34456 tuples, with examples as follows: 
+   tripduration                 starttime                  stoptime  \
+0           131  2018-05-01 07:29:57.5490  2018-05-01 07:32:08.6160   
+1            73  2018-05-01 08:13:58.2560  2018-05-01 08:15:11.9230   
+2          4929  2018-05-01 08:17:21.3110  2018-05-01 09:39:31.0770   
+
+   start station id start station name  start station latitude  \
+0              3183     Exchange Place               40.716247   
+1              3183     Exchange Place               40.716247   
+2              3183     Exchange Place               40.716247   
+
+   start station longitude  end station id end station name  \
+0               -74.033459            3184      Paulus Hook   
+1               -74.033459            3184      Paulus Hook   
+2               -74.033459            3183   Exchange Place   
+
+   end station latitude  end station longitude  bikeid    usertype  \
+0             40.714145             -74.033552   29617  Subscriber   
+1             40.714145             -74.033552   29288  Subscriber   
+2             40.716247             -74.033459   29520    Customer   
+
+   birth year  gender  
+0        1966       1  
+1        1975       1  
+2        1969       0  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSVs
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/test_1.csv"
+
+# Output file path
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/target_multisource_agentic.csv"
+
+# Target schema columns and their types
+target_columns = [
+    'tripduration', 'starttime', 'stoptime', 'start station id', 'start station name',
+    'start station latitude', 'start station longitude', 'end station id', 'end station name',
+    'end station latitude', 'end station longitude', 'bikeid', 'usertype', 'birth year', 'gender'
+]
+
+# Read source CSV files with index_col=0
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Concatenate the two dataframes (union)
+df_union = pd.concat([df0, df1], ignore_index=True)
+
+# Ensure columns are in the target schema order
+df_union = df_union[target_columns]
+
+# Enforce data types according to target schema
+df_union = df_union.astype({
+    'tripduration': 'int64',
+    'starttime': 'string',
+    'stoptime': 'string',
+    'start station id': 'int64',
+    'start station name': 'string',
+    'start station latitude': 'float64',
+    'start station longitude': 'float64',
+    'end station id': 'int64',
+    'end station name': 'string',
+    'end station latitude': 'float64',
+    'end station longitude': 'float64',
+    'bikeid': 'int64',
+    'usertype': 'string',
+    'birth year': 'int64',
+    'gender': 'int64'
+})
+
+# Save the resulting dataframe to CSV
+df_union.to_csv(output_path, index=False)
+```

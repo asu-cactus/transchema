@@ -396,7 +396,7 @@ class Solver:
     def _calculate_pipeline_score(self, output_csv_path: str) -> dict:
         """Calculate score comparing pipeline output to ground truth using eval_score."""
         try:
-            from score import relative_csv_score
+            from score import relative_csv_score, summarize_score
         except ImportError as e:
             logger.warning(f"Could not import eval_score scoring functions: {e}")
             return {
@@ -419,19 +419,13 @@ class Solver:
                 relative_csv_score(tgt_df, gt_df)
             )
 
+            score_summary = summarize_score(debug_dict, true_combined_score, fd_f1, col_ratio)
+
             return {
                 "score": float(true_combined_score),
                 "score_fd": float(fd_f1),
                 "column_mapping_score": float(col_ratio),
-                "score_details": {
-                    "gt_shape": list(gt_df.shape),
-                    "output_shape": list(tgt_df.shape),
-                    "gt_columns": list(gt_df.columns),
-                    "output_columns": list(tgt_df.columns),
-                    "fd_ratio": float(fd_ratio),
-                    "combined_score": float(combined_score),
-                    "debug": debug_dict,
-                },
+                "score_summary": score_summary,
                 "score_error": None,
             }
         except Exception as e:

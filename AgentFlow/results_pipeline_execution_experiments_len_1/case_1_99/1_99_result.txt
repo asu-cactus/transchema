@@ -1,0 +1,92 @@
+Case: 1_99
+Status: CORRECT
+Timestamp: 2026-02-24T04:50:07.586973
+Duration: 40.22 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_99/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_99
+2. Target Schema: ['user_id': integer, 'timestamp': string, 'source': string, 'device': string, 'operative_system': string, 'test': integer, 'price': integer, 'converted': integer]
+3. Target Examples: There are 200000 available target examples:         user_id            timestamp          source  device operative_system  \
+156747   977233  2015-03-15 15:48:04      ads-google  mobile              iOS   
+87592    825322  2015-04-18 12:52:54      ads-google     web              mac   
+182858   576692  2015-03-08 08:43:30    ads_facebook  mobile              iOS   
+111676   706582  2015-05-08 11:47:31    ads_facebook     web          windows   
+35263    720604  2015-05-15 23:59:10        ads-bing  mobile          android   
+...         ...                  ...             ...     ...              ...   
+92278    223320  2015-05-05 10:38:02  direct_traffic     web          windows   
+127750   747049  2015-04-16 09:59:11        ads-bing  mobile              iOS   
+93089    499432  2015-04-26 09:41:38    ads_facebook     web          windows   
+178865   140425  2015-03-07 01:54:15    ads_facebook  mobile          android   
+88489    574213  2015-05-28 08:34:15      ads-google  mobile              iOS   
+
+        test  price  converted  
+156747     0     39          0  
+87592      1     59          0  
+182858     1     59          0  
+111676     0     39          0  
+35263      0     39          0  
+...      ...    ...        ...  
+92278      0     39          0  
+127750     0     39          0  
+93089      0     39          0  
+178865     0     39          0  
+88489      1     59          0  
+
+[20000 rows x 8 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_99_0
+	Source 0 Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   user_id            timestamp        source  device operative_system  test  \
+0   639459  2015-05-02 13:45:32  ads_facebook  mobile              iOS     0   
+1   285124  2015-03-26 18:28:13    seo-google  mobile            other     1   
+2   275927  2015-03-13 07:06:45    seo-google     web          windows     0   
+
+   price  converted  
+0     39          0  
+1     59          0  
+2     39          0  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_99/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_99/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Read the source CSV file with index_col=0
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_99/test_0.csv"
+df_source = pd.read_csv(source_path, index_col=0)
+
+# Ensure the dataframe columns match the target schema exactly and in order
+target_columns = ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']
+df_target = df_source[target_columns]
+
+# Enforce data types as per target schema
+df_target = df_target.astype({
+    'user_id': 'int64',
+    'timestamp': 'string',
+    'source': 'string',
+    'device': 'string',
+    'operative_system': 'string',
+    'test': 'int64',
+    'price': 'int64',
+    'converted': 'int64'
+})
+
+# Save the final dataframe to the specified CSV file path
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_99/target_multisource_agentic.csv"
+df_target.to_csv(output_path)
+```

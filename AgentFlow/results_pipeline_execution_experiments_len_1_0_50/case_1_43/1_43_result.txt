@@ -1,0 +1,52 @@
+Case: 1_43
+Status: INCORRECT
+Timestamp: 2026-02-24T10:18:53.940035
+Duration: 333.73 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_0_50/case_1_43/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 0.125
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_43
+2. Target Schema: ['fac_type': string, 'facid': integer, 'capacity': integer, 'fac_name': integer, 'fac_address': integer, 'city_state_zip': integer, 'owner': integer, 'operator': integer]
+3. Target Examples: There are 2 available target examples: Empty DataFrame
+Columns: [fac_type, facid, capacity, fac_name, fac_address, city_state_zip, owner, operator]
+Index: []
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_43_0
+	Source 0 Schema: ['facid', 'fac_type', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']
+	Source 0 Examples: 	 Source 0 contains 322 tuples, with examples as follows: 
+    facid fac_type  capacity                                         fac_name  \
+0  385008       NF      96.0               Presbyterian Community Care Center   
+1  385010       NF     159.0        Laurelhurst Village Rehabilitation Center   
+2  385015       NF     128.0  Regency Gresham Nursing & Rehabilitation Center   
+
+                fac_address      city_state_zip  \
+0          1085 N Oregon St   Ontario, OR 97914   
+1          3060 SE Stark St  Portland, OR 97214   
+2  5905 SE Powell Valley Rd   Gresham, OR 97080   
+
+                                               owner  \
+0                    Presbyterian Nursing Home, Inc.   
+1                        Laurelhurst Operations, LLC   
+2  Regency Gresham Nursing & Rehabilitation Cente...   
+
+                          operator  
+0  Presbyterian Nursing Home, Inc.  
+1      Laurelhurst Operations, LLC  
+2  Regency Pacific Management, LLC  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_43/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_43/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output
