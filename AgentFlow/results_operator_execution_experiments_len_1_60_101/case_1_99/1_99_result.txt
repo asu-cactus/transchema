@@ -1,0 +1,60 @@
+Case: 1_99
+Status: INCORRECT
+Timestamp: 2026-02-24T14:21:05.812831
+Duration: 229.23 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_99/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_99
+2. Target Schema: ['user_id': integer, 'timestamp': string, 'source': string, 'device': string, 'operative_system': string, 'test': integer, 'price': integer, 'converted': integer]
+3. Target Examples: There are 200000 available target examples:         user_id            timestamp          source  device operative_system  \
+171225   114265  2015-04-18 09:23:18  direct_traffic     web          windows   
+48709    573598  2015-04-02 15:08:22    ads_facebook  mobile              iOS   
+51367    116296  2015-05-02 17:50:50    ads_facebook  mobile          android   
+175523   149335  2015-03-29 17:22:10    seo_facebook     web          windows   
+186482   597572  2015-05-30 17:50:08       ads_other  mobile          android   
+...         ...                  ...             ...     ...              ...   
+92662     11124  2015-04-11 07:08:22  direct_traffic     web          windows   
+186088    89019  2015-03-08 22:10:27      ads-google     web          windows   
+71351    485067  2015-05-01 09:14:21  direct_traffic     web          windows   
+8027     836085  2015-04-30 13:52:48      ads-google  mobile              iOS   
+116761   343163  2015-04-25 16:19:19      seo-google  mobile          android   
+
+        test  price  converted  
+171225     1     59          0  
+48709      0     39          0  
+51367      0     39          0  
+175523     0     39          0  
+186482     1     59          0  
+...      ...    ...        ...  
+92662      1     59          0  
+186088     1     59          0  
+71351      1     59          0  
+8027       1     59          0  
+116761     0     39          0  
+
+[20000 rows x 8 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_99_0
+	Source 0 Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   user_id            timestamp        source  device operative_system  test  \
+0   639459  2015-05-02 13:45:32  ads_facebook  mobile              iOS     0   
+1   285124  2015-03-26 18:28:13    seo-google  mobile            other     1   
+2   275927  2015-03-13 07:06:45    seo-google     web          windows     0   
+
+   price  converted  
+0     39          0  
+1     59          0  
+2     39          0  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_99/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_99/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output
