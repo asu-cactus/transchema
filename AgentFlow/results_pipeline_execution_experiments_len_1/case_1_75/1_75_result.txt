@@ -1,0 +1,142 @@
+Case: 1_75
+Status: INCORRECT
+Timestamp: 2026-02-24T04:01:55.412930
+Duration: 113.41 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_75/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_75
+2. Target Schema: ['neighbourhood': string, 'id': integer, 'name': integer, 'host_id': integer, 'host_name': integer, 'neighbourhood_group': integer, 'latitude': integer, 'longitude': integer, 'room_type': integer, 'price': integer, 'minimum_nights': integer, 'number_of_reviews': integer, 'last_review': integer, 'reviews_per_month': integer, 'calculated_host_listings_count': integer, 'availability_365': integer]
+3. Target Examples: There are 70 available target examples:              neighbourhood    id  name  host_id  host_name  \
+64     la Verneda i la Pau    31    31       31         31   
+52       la Marina de Port    36    35       36         36   
+19           Sants - Badal    72    72       72         72   
+25                  Verdun    14    14       14         14   
+35                 el Coll    20    20       20         20   
+48  la Dreta de l'Eixample  1104  1103     1104       1104   
+1                Canyelles     3     3        3          3   
+
+    neighbourhood_group  latitude  longitude  room_type  price  \
+64                   31        31         31         31     31   
+52                   36        36         36         36     36   
+19                   72        72         72         72     72   
+25                   14        14         14         14     14   
+35                   20        20         20         20     20   
+48                 1104      1104       1104       1104   1104   
+1                     3         3          3          3      3   
+
+    minimum_nights  number_of_reviews  last_review  reviews_per_month  \
+64              31                 31           28                 28   
+52              36                 36           32                 32   
+19              72                 72           66                 66   
+25              14                 14           11                 11   
+35              20                 20           16                 16   
+48            1104               1104          990                990   
+1                3                  3            2                  2   
+
+    calculated_host_listings_count  availability_365  
+64                              31                31  
+52                              36                36  
+19                              72                72  
+25                              14                14  
+35                              20                20  
+48                            1104              1104  
+1                                3                 3  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_75_0
+	Source 0 Schema: ['id', 'name', 'host_id', 'host_name', 'neighbourhood_group', 'neighbourhood', 'latitude', 'longitude', 'room_type', 'price', 'minimum_nights', 'number_of_reviews', 'last_review', 'reviews_per_month', 'calculated_host_listings_count', 'availability_365']
+	Source 0 Examples: 	 Source 0 contains 9435 tuples, with examples as follows: 
+      id                                             name  host_id  \
+0  18666                          Flat with Sunny Terrace    71615   
+1  18674  Huge flat for 8 people close to Sagrada Familia    71615   
+2  21605                        Nice and sunny duble room    82522   
+
+          host_name neighbourhood_group               neighbourhood  \
+0  Mireia And Maria          Sant Martí  el Camp de l'Arpa del Clot   
+1  Mireia And Maria            Eixample          la Sagrada Família   
+2         Meritxell          Sant Martí                 el Poblenou   
+
+    latitude  longitude        room_type  price  minimum_nights  \
+0  41.408886   2.185545  Entire home/apt    130               3   
+1  41.404197   2.173058  Entire home/apt     55               1   
+2  41.405604   2.198205     Private room     33               2   
+
+   number_of_reviews last_review  reviews_per_month  \
+0                  1  2015-10-10               0.03   
+1                  5  2018-06-18               0.07   
+2                103  2018-11-30               3.26   
+
+   calculated_host_listings_count  availability_365  
+0                              34                20  
+1                              34                40  
+2                               3               290  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_75/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_75/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Step 1: Read the source CSV file with index_col=0
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_75/test_0.csv"
+df = pd.read_csv(source_path, index_col=0)
+
+# Step 2: Type conversions to match target schema
+# Target schema:
+# ['neighbourhood': string, 'id': integer, 'name': integer, 'host_id': integer, 'host_name': integer,
+#  'neighbourhood_group': integer, 'latitude': integer, 'longitude': integer, 'room_type': integer,
+#  'price': integer, 'minimum_nights': integer, 'number_of_reviews': integer, 'last_review': integer,
+#  'reviews_per_month': integer, 'calculated_host_listings_count': integer, 'availability_365': integer]
+
+# Convert 'neighbourhood' to string
+df['neighbourhood'] = df['neighbourhood'].astype(str)
+
+# Convert all other columns to integer
+int_columns = ['id', 'name', 'host_id', 'host_name', 'neighbourhood_group', 'latitude', 'longitude',
+               'room_type', 'price', 'minimum_nights', 'number_of_reviews', 'last_review',
+               'reviews_per_month', 'calculated_host_listings_count', 'availability_365']
+
+# Since some columns like 'name', 'host_name', 'neighbourhood_group', 'room_type', 'last_review', 'reviews_per_month'
+# are originally non-integer (string, date, float), we need to convert them to integer carefully.
+
+# For 'name', 'host_name', 'neighbourhood_group', 'room_type' which are strings, convert by mapping unique values to integers
+for col in ['name', 'host_name', 'neighbourhood_group', 'room_type']:
+    df[col] = df[col].astype('category').cat.codes
+
+# For 'last_review' (date), convert to integer as number of days since epoch or as YYYYMMDD integer
+# Here, convert to datetime and then to integer YYYYMMDD
+df['last_review'] = pd.to_datetime(df['last_review'], errors='coerce')
+df['last_review'] = df['last_review'].dt.strftime('%Y%m%d')
+df['last_review'] = pd.to_numeric(df['last_review'], errors='coerce').fillna(0).astype(int)
+
+# For 'reviews_per_month' (float), convert to integer by rounding
+df['reviews_per_month'] = df['reviews_per_month'].fillna(0).round().astype(int)
+
+# For the remaining integer columns, convert directly
+for col in ['id', 'host_id', 'price', 'minimum_nights', 'number_of_reviews',
+            'calculated_host_listings_count', 'availability_365', 'latitude', 'longitude']:
+    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+
+# Reorder columns to match target schema exactly
+target_columns = ['neighbourhood', 'id', 'name', 'host_id', 'host_name', 'neighbourhood_group',
+                  'latitude', 'longitude', 'room_type', 'price', 'minimum_nights', 'number_of_reviews',
+                  'last_review', 'reviews_per_month', 'calculated_host_listings_count', 'availability_365']
+
+df = df[target_columns]
+
+# Step 3: Save the transformed data to the target CSV file
+target_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_75/target_multisource_agentic.csv"
+df.to_csv(target_path, index=False)
+```

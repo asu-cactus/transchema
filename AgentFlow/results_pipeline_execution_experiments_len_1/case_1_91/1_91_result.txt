@@ -1,0 +1,161 @@
+Case: 1_91
+Status: INCORRECT
+Timestamp: 2026-02-24T04:35:24.162341
+Duration: 286.54 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_91/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_91
+2. Target Schema: ['Name': string, 'Position': string, 'Age': integer, 'Team_from': string, 'League_from': string, 'Team_to': string, 'League_to': string, 'Season': string, 'Market_value': float, 'Transfer_fee': integer]
+3. Target Examples: There are 2350 available target examples:                    Name            Position  Age       Team_from  \
+2305  abdul kader keita        Right Winger   27  Olympique Lyon   
+1104         john carew      Centre-Forward   24     Valencia CF   
+1243               fred      Centre-Forward   21        Cruzeiro   
+1201       claus jensen  Attacking Midfield   27        Charlton   
+690       hannu tihinen         Centre-Back   26       Viking FK   
+...                 ...                 ...  ...             ...   
+2251      michel bastos       Left Midfield   25      LOSC Lille   
+1354     darius vassell      Centre-Forward   25     Aston Villa   
+150        david hopkin      Right Midfield   29           Leeds   
+534          ricardinho  Attacking Midfield   26     Corinthians   
+1249    mohamed sissoko  Defensive Midfield   20     Valencia CF   
+
+         League_from         Team_to           League_to     Season  \
+2305         Ligue 1     Galatasaray           Süper Lig  2009-2010   
+1104          LaLiga        Besiktas           Süper Lig  2004-2005   
+1243         Série A  Olympique Lyon             Ligue 1  2005-2006   
+1201  Premier League          Fulham      Premier League  2004-2005   
+690      Eliteserien  RSC Anderlecht  Jupiler Pro League  2002-2003   
+...              ...             ...                 ...        ...   
+2251         Ligue 1  Olympique Lyon             Ligue 1  2009-2010   
+1354  Premier League        Man City      Premier League  2005-2006   
+150   Premier League   Bradford City      Premier League  2000-2001   
+534           Brazil       São Paulo              Brazil  2002-2003   
+1249          LaLiga       Liverpool      Premier League  2005-2006   
+
+      Market_value  Transfer_fee  
+2305     8000000.0       7500000  
+1104           NaN       3500000  
+1243     7500000.0      15600000  
+1201           NaN       1900000  
+690            NaN       1300000  
+...            ...           ...  
+2251    10000000.0      18000000  
+1354     5750000.0       3600000  
+150            NaN       3750000  
+534            NaN       7800000  
+1249     4000000.0      12000000  
+
+[235 rows x 10 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_91_0
+	Source 0 Schema: ['Name', 'Position', 'Age', 'Team_from', 'League_from', 'Team_to', 'League_to', 'Season', 'Market_value', 'Transfer_fee']
+	Source 0 Examples: 	 Source 0 contains 2350 tuples, with examples as follows: 
+            Name        Position  Age     Team_from     League_from  \
+0      Luís Figo    Right Winger   27  FC Barcelona          LaLiga   
+1  Hernán Crespo  Centre-Forward   25         Parma         Serie A   
+2  Marc Overmars     Left Winger   27       Arsenal  Premier League   
+
+        Team_to League_to     Season  Market_value  Transfer_fee  
+0   Real Madrid    LaLiga  2000-2001           NaN      60000000  
+1         Lazio   Serie A  2000-2001           NaN      56810000  
+2  FC Barcelona    LaLiga  2000-2001           NaN      40000000  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_91/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_91/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+import numpy as np
+
+def clean_string_column(series: pd.Series) -> pd.Series:
+    # Convert to string, strip whitespace, and standardize case (title case)
+    return series.astype(str).str.strip().str.title()
+
+def main():
+    # File paths
+    source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_91/test_0.csv"
+    output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_91/target_multisource_agentic.csv"
+
+    # Target schema columns and types
+    target_columns = ['Name', 'Position', 'Age', 'Team_from', 'League_from', 
+                      'Team_to', 'League_to', 'Season', 'Market_value', 'Transfer_fee']
+
+    # Read source data
+    df0 = pd.read_csv(source0_path, index_col=0)
+
+    # Since only one source is given, no UNION needed, just process df0
+
+    # Clean string columns: trim whitespace and standardize case
+    string_cols = ['Name', 'Position', 'Team_from', 'League_from', 'Team_to', 'League_to', 'Season']
+    for col in string_cols:
+        if col in df0.columns:
+            df0[col] = clean_string_column(df0[col])
+        else:
+            # If any string column missing, create with empty string
+            df0[col] = ""
+
+    # Handle missing values and validate numeric columns
+
+    # Age: integer, fill missing with median age (rounded), remove invalid ages (<=0 or >100)
+    if 'Age' in df0.columns:
+        # Convert to numeric, coerce errors to NaN
+        df0['Age'] = pd.to_numeric(df0['Age'], errors='coerce')
+        median_age = int(df0['Age'].median(skipna=True))
+        df0['Age'] = df0['Age'].fillna(median_age)
+        # Remove rows with invalid ages
+        df0 = df0[(df0['Age'] > 0) & (df0['Age'] <= 100)]
+        df0['Age'] = df0['Age'].astype(int)
+    else:
+        # If missing, create with median age 25 as default
+        df0['Age'] = 25
+
+    # Transfer_fee: integer, fill missing with 0, remove negative fees
+    if 'Transfer_fee' in df0.columns:
+        df0['Transfer_fee'] = pd.to_numeric(df0['Transfer_fee'], errors='coerce')
+        df0['Transfer_fee'] = df0['Transfer_fee'].fillna(0)
+        df0 = df0[df0['Transfer_fee'] >= 0]
+        df0['Transfer_fee'] = df0['Transfer_fee'].astype(int)
+    else:
+        df0['Transfer_fee'] = 0
+
+    # Market_value: float, fill missing with 0.0, remove negative values
+    if 'Market_value' in df0.columns:
+        df0['Market_value'] = pd.to_numeric(df0['Market_value'], errors='coerce')
+        df0['Market_value'] = df0['Market_value'].fillna(0.0)
+        df0 = df0[df0['Market_value'] >= 0]
+        df0['Market_value'] = df0['Market_value'].astype(float)
+    else:
+        df0['Market_value'] = 0.0
+
+    # Ensure all target columns exist, if not create with default empty or zero values
+    for col in target_columns:
+        if col not in df0.columns:
+            if col in string_cols:
+                df0[col] = ""
+            elif col == 'Age' or col == 'Transfer_fee':
+                df0[col] = 0
+            elif col == 'Market_value':
+                df0[col] = 0.0
+
+    # Reorder columns to target schema order
+    df0 = df0[target_columns]
+
+    # Save to CSV without the index
+    df0.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
+    main()
+```

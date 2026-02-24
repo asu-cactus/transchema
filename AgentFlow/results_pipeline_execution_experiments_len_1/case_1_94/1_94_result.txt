@@ -1,0 +1,146 @@
+Case: 1_94
+Status: INCORRECT
+Timestamp: 2026-02-24T04:40:52.321874
+Duration: 242.87 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_94/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 2.875
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_94
+2. Target Schema: ['Store': float, 'Dept': float, 'Date': string, 'Weekly_Sales': float, 'IsHoliday': string, 'ID': float, 'shop_id': float, 'item_id': float]
+3. Target Examples: There are 300000 available target examples:         Store  Dept        Date  Weekly_Sales IsHoliday        ID  shop_id  \
+76157    45.0   9.0  2010-08-20      16004.94     False       NaN      NaN   
+99783     3.0   4.0  2012-10-26       8459.82     False       NaN      NaN   
+241359    NaN   NaN         NaN           NaN       NaN  148605.0     59.0   
+172878    NaN   NaN         NaN           NaN       NaN  160831.0     56.0   
+172416    NaN   NaN         NaN           NaN       NaN  175715.0     35.0   
+...       ...   ...         ...           ...       ...       ...      ...   
+293996    NaN   NaN         NaN           NaN       NaN  163404.0     36.0   
+162045    NaN   NaN         NaN           NaN       NaN  126175.0     52.0   
+234492    NaN   NaN         NaN           NaN       NaN  113344.0     49.0   
+193379    NaN   NaN         NaN           NaN       NaN   75255.0     21.0   
+19002    18.0  26.0  2010-03-05      11817.15     False       NaN      NaN   
+
+        item_id  
+76157       NaN  
+99783       NaN  
+241359  12890.0  
+172878  20951.0  
+172416   9065.0  
+...         ...  
+293996   6088.0  
+162045  21973.0  
+234492   9786.0  
+193379  21443.0  
+19002       NaN  
+
+[30000 rows x 8 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_94_0
+	Source 0 Schema: ['Store', 'Dept', 'Date', 'Weekly_Sales', 'IsHoliday']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   Store  Dept        Date  Weekly_Sales  IsHoliday
+0     35     1  2010-06-04      15683.80      False
+1     22     7  2010-06-04      38291.05      False
+2     13    93  2010-04-16      45997.13      False
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_94_1
+	Source 1 Schema: ['ID', 'shop_id', 'item_id']
+	Source 1 Examples: 	 Source 1 contains 200000 tuples, with examples as follows: 
+       ID  shop_id  item_id
+0  202892       44    20462
+1   36681       12     4966
+2   68321       24    21828
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+def main():
+    # File paths
+    source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/test_0.csv"
+    source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/test_1.csv"
+    output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_94/target_multisource_agentic.csv"
+
+    # Read source CSV files with index_col=0 as instructed
+    df0 = pd.read_csv(source0_path, index_col=0)
+    df1 = pd.read_csv(source1_path, index_col=0)
+
+    # Ensure data types in source before join for consistency
+    # Source0 columns: ['Store', 'Dept', 'Date', 'Weekly_Sales', 'IsHoliday']
+    # Source1 columns: ['ID', 'shop_id', 'item_id']
+
+    # Cast join keys to consistent types for merge
+    # Store and shop_id should be float (as per target schema)
+    df0['Store'] = pd.to_numeric(df0['Store'], errors='coerce')
+    df0['Dept'] = pd.to_numeric(df0['Dept'], errors='coerce')
+    df1['shop_id'] = pd.to_numeric(df1['shop_id'], errors='coerce')
+    df1['item_id'] = pd.to_numeric(df1['item_id'], errors='coerce')
+
+    # Perform INNER JOIN on Store = shop_id AND Dept = item_id
+    merged = pd.merge(
+        df0,
+        df1,
+        how='inner',
+        left_on=['Store', 'Dept'],
+        right_on=['shop_id', 'item_id'],
+        suffixes=('', '_y')
+    )
+
+    # Select and reorder columns to match target schema:
+    # ['Store': float, 'Dept': float, 'Date': string, 'Weekly_Sales': float, 'IsHoliday': string, 'ID': float, 'shop_id': float, 'item_id': float]
+
+    # Cast columns to target types explicitly
+    # Date as string (object)
+    merged['Date'] = merged['Date'].astype(str)
+
+    # IsHoliday as string (some values might be boolean, convert to string)
+    merged['IsHoliday'] = merged['IsHoliday'].astype(str)
+
+    # Cast numeric columns to float
+    merged['Store'] = merged['Store'].astype(float)
+    merged['Dept'] = merged['Dept'].astype(float)
+    merged['Weekly_Sales'] = pd.to_numeric(merged['Weekly_Sales'], errors='coerce')
+    merged['ID'] = pd.to_numeric(merged['ID'], errors='coerce')
+    merged['shop_id'] = merged['shop_id'].astype(float)
+    merged['item_id'] = merged['item_id'].astype(float)
+
+    # Handle missing values:
+    # For numeric columns, keep NaN as is (pandas default)
+    # For string columns, fill NaN with empty string or 'False' if appropriate
+    merged['Date'] = merged['Date'].replace('nan', '')  # in case NaN converted to string 'nan'
+    merged['IsHoliday'] = merged['IsHoliday'].replace('nan', '')
+    # Alternatively, fillna with empty string for these columns
+    merged['Date'] = merged['Date'].fillna('')
+    merged['IsHoliday'] = merged['IsHoliday'].fillna('')
+
+    # If the joined dataset is larger than 300,000 rows, sample down to 300,000
+    target_row_count = 300000
+    if len(merged) > target_row_count:
+        merged = merged.sample(n=target_row_count, random_state=42).reset_index(drop=True)
+    else:
+        merged = merged.reset_index(drop=True)
+
+    # Final dataframe with exact column order
+    final_df = merged[['Store', 'Dept', 'Date', 'Weekly_Sales', 'IsHoliday', 'ID', 'shop_id', 'item_id']]
+
+    # Save to CSV without the index
+    final_df.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
+    main()
+```

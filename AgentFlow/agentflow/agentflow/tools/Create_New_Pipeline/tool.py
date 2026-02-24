@@ -18,6 +18,10 @@ _TRANSCHEMA_ROOT = Path(__file__).resolve().parents[5]
 if str(_TRANSCHEMA_ROOT) not in sys.path:
     sys.path.insert(0, str(_TRANSCHEMA_ROOT))
 
+_EVAL_SCORE_ROOT = str(_TRANSCHEMA_ROOT / "eval_score")
+if _EVAL_SCORE_ROOT not in sys.path:
+    sys.path.insert(0, _EVAL_SCORE_ROOT)
+
 
 # Tool name mapping - this defines the external name for this tool
 TOOL_NAME = "Create_New_Pipeline"
@@ -25,9 +29,7 @@ TOOL_NAME = "Create_New_Pipeline"
 
 LIMITATION = f"""
 The {TOOL_NAME} has several limitations:
-1) It designs the pipeline based on schemas, examples, and source information only — it does not execute transformations.
-2) The quality of the pipeline depends on how representative the provided target examples are.
-3) It generates a pipeline plan and a critique in a single step; the critique may miss edge cases that only appear during execution.
+1) The quality of the pipeline depends on how representative the provided target examples are.
 """
 
 
@@ -53,13 +55,33 @@ For each operation, provide:
 - Configuration: which tables/columns are involved and how
 
 Guidelines:
-- If multiple source tables share the same schema and the target also has the same schema, use UNION.
-- If m source tables share the same schema of k non-key columns but the target has k x m renamed non-key columns, use JOIN on the primary key.
-- Two tables may join on columns with different names but similar values (e.g., Code vs Country both containing country codes).
-- GROUP_BY columns must be non-float, unique-valued columns typically at the leftmost part of the target schema.
-- If target examples contain duplicate keys or duplicate rows, GROUP_BY should NOT be used.
-- All source tables must be used.
-- If some source tables share schemas, union them first, then join with the rest.
+- Given "source tables" and "target tables" information ("schema" as well as the "examples"), please determine the complete ordered sequence of operations (pipeline) needed to transform the source tables into the target table.
+
+- If any two source tables have different columns, DO NOT give the UNION operation.
+
+- If there are multiple source tables and the target table having exactly same columns, give Union operation first priority.
+
+- If there are two source tables with different schemas that share one or a few common columns, which exist in the target data, give Join operation first priority.
+
+- Note that some column names, e.g., purpose, may not match the values in the column, in this case consider the column to be aggregation, e.g., count per purpose.
+
+- If multiple source tables share the same schema while the target table (i.e., target examples) also share the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
+
+- If the given target examples contain duplicate keys or duplicate tuples, Group By should NOT be used.
+
+- All source tables have to be used in all cases. For example, given target examples with schema <XXXX_NUM>, and source tables with schemas A<ROW_WID,KEYWORDS_NUM>, B<ROW_WID,XXXX_NUM>, C<ROW_WID,TECHSUPPORT_NUM>, D<CANCELED,ROW_WID,ACCNT_LOC,ARPU,SES,HOME_PASSED,CUST_SINCE_DT,MONTHS_AGE,CANCEL_DT,CITY,POP>, E<CANCELED,ROW_WID,ACCNT_LOC,ARPU,SES,HOME_PASSED,CUST_SINCE_DT,MONTHS_AGE,CANCEL_DT,CITY,POP>, F<ROW_WID,INTERACTIONS_NUM>, G<ROW_WID,COLLECTION_EVENTS_NUM>, H<CANCELED,ROW_WID,ACCNT_LOC,ARPU,SES,HOME_PASSED,CUST_SINCE_DT,MONTHS_AGE,CANCEL_DT,CITY,POP>, I<CANCELED,ROW_WID,ACCNT_LOC,ARPU,SES,HOME_PASSED,CUST_SINCE_DT,MONTHS_AGE,CANCEL_DT,CITY,POP>, and J<ROW_WID,VISITS_NUM>, the pipeline should be: first, UNION all source tables that have the same schema, such as D, E, H, and I to form unioned_df. Then, JOIN unioned_df with A, B, C, F, G, J on the shared attribute ROW_WID. Finally, PROJECT the attribute XXXX_NUM. Note: projection must be applied at the last step, otherwise the join column ROW_WID would be removed before applying the join.
+
+- Similarly, if given target examples with schema that has all attributes <Attr-1, ..., Attr-K, XXXX_NUM, YYYY_NUM, ZZZZ_NUM>, and source tables with schemas A<ROW_WID,XXXX_NUM>, B<ROW_WID,YYYY_NUM>, C<ROW_WID,ZZZZ_NUM>, D<Attr-1, ..., Attr-K>, E<Attr-1, ..., Attr-K>, F<Attr-1, ..., Attr-K>, the pipeline should be: first, UNION all source tables that have the same schema, such as D, E, and F to form unioned_df. Then, JOIN unioned_df with A, B, C on the shared attribute ROW_WID. Finally, PROJECT all attributes Attr-1, ..., Attr-K, XXXX_NUM, YYYY_NUM, ZZZZ_NUM.
+
+- Two tables may join on columns that have different names but similar values. For example, in a source table called test_0.csv, there exists a Code column containing values such as AUS, AUT, BEL, CAN, FRA, while another source table called test_1.csv contains a column Country that has values such as FRA, BEL, GRA, USA, CAN. These source tables test_0 and test_1 can be joined on test_0.Code = test_1.Country. Similarly, if test_0 has a column Country having values Afghanistan, Albania, Algeria, Angola, etc, while test_2 has a column Host having similar country values such as France, Switzerland, United States, Germany, etc, the output of test_0 and test_1 df01 could join test_2 on df01.Country = test_2.Host. Furthermore, if test_2 contains a column Host City including values such as Paris, Bern, Albany, Berlin, and test_3 contains a column City also contains city names, they should be joined on HostCity=City.
+
+- Please make sure that ALL THE COLUMNS IN THE TARGET TABLE ARE ACCOUNTED FOR in the pipeline.
+
+- You should only use allowed operations in the pipeline.
+
+- Do not include redundant or repeated operations with the same configuration in the pipeline.
+
+- Return the complete pipeline as an ordered list of operations enclosed in $ quotes: $[OP_1, OP_2, ..., OP_N]$
 
 Format your response as:
 $PIPELINE:
@@ -89,11 +111,56 @@ Review the pipeline and provide:
 3. Suggested corrections with specific operator configurations.
 
 Hints to consider:
-- If the pipeline would produce more rows than expected: a GROUP_BY/AGGREGATE may be missing, or OUTER join should be INNER join.
-- If the pipeline would produce fewer rows than expected: INNER join should be OUTER join, or GROUP_BY should be removed.
-- All source tables must be used.
-- GROUP_BY columns are never float types.
-- Two tables may join on columns with different names but similar values.
+Hint 1:
+Note that some column names, e.g., purpose, funded_year, may not match the values in the column, e.g., 5 for purpose, 16844 for funded_year. In this case consider the column to be aggregation, e.g., count per purpose, and sum for funded_year. They should not be used in Group By columns.
+
+Hint 2:
+If the resulting data generated by the failed Python script has the same schema with the available target examples, but has more rows, it may indicate the following: (1) A Group By operator and Aggregate operators are missing. We would suggest adding a Group By operator using the left-most non-float, and unique attributes from the given target examples as GroupBy attributes and choosing the Aggregation operator such as count, average, medium, sum, etc., based on the range of valuesfor each of other columns. (2) If a Group By operator has been used, we would suggest remove some Group By attributes. (3) If OUTER join is used, it should be replaced by INNER join. (4) We shall remove rows that contain NaN values.
+
+Hint 3:
+If the output data from the last generated python script has the same schema with the target examples, however the key constraints exist in the target examples do not exist in the generated output data, please add a GroupBy to the last generated python script. The GroupBy attributes must be the primary key of the target examples (i.e., attributes serving as unique tuple identifer in the target examples).
+
+Hint 4:
+If the resulting data generated by the failed Python script has the same schema with the available target examples, but has fewer rows, it may indicate the following: (1) If INNER join is used, it should be replaced by OUTER join. (2) We shall keep rows that contain NaN values. (3) If Group By is used, it should be removed or use more Group By attributes.
+
+Hint 5:
+If multiple source tables share the same schema while the target table (i.e., target examples) also has the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
+
+Hint 5:
+Group By columns are never float types. These Group By columns correspond to columns that are UNIQUE and non-float in the target examples, which are usually at the leftmost part of the columns of the target examples.
+
+Hint 6:
+If the given target examples contain duplicate keys or duplicate rows, Group By should NOT be used.
+
+Hint 7:
+If the average value of a column in the target examples is significantly bigger than its average values in the source tables, sum aggregation should be applied to the column, and this column should be excluded from the Group By columns.
+
+Hint 8:
+If a column that usually has value range (such as year or funded_year) in the target table has abnormal values (e.g., 0 or 16888 for year or XXXX_year), an aggregation should be applied to the column and this column MUST be EXCLUDED from the Group By columns.
+
+Hint 9:
+JOIN is usually applied to two tables sharing the same primary key, or applied to two tables where one table has a column (i.e., foreign key) referencing to the primary key of the other table.
+
+Hint 10:
+Two different tables may join on shared columns that have different names but contain similar values. For example, in a source table called test_0.csv, there exists a Code column containing values such as AUS, AUT, BEL, CAN, FRA, while another source table called test_1.csv contains a column Country that has values such as FRA, BEL, GRA, USA, CAN. These source tables test_0 and test_1 can be joined on test_0.Code = test_1.Country. Similarly, if test_0 has a column Country having values Afghanistan, Albania, Algeria, Angola, etc, while test_2 has a column Host having similar country values such as France, Switzerland, United States, Germany, etc, the output of test_0 and test_1 df01 could join test_2 on df01.Country = test_2.Host.
+
+Hint 11:
+IMPORTANT: NEVER use all target columns as the GROUP BY columns!!!
+
+Hint 12:
+If in the target data examples, many columns have the same constant numerical values for each tuple, it may indicate a count is used after grouping data by the key of the target examples. 
+
+Hint 13:
+If in the target data examples, many columns have similar but different numerical values such as 5 5 4 5 4, in each row, it indicates that a COUNT DISTINCT is used.
+
+Hint 14:
+If the target data examples, some columns have the same constant values for all tuples, you may simply use the same constant value in the Python script for those columns.
+
+Hint 15:
+Consider applying string functions to certain columns that look similar but have different formats in the target and resulting data examples.
+
+Hint 16:
+Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
 
 Format your response as:
 $CRITIQUE:
@@ -406,6 +473,9 @@ class Create_New_Pipeline(BaseTool):
             execution_stdout = ""
             execution_stderr = ""
             score = None
+            score_fd = None
+            column_mapping_score = None
+            score_details = None
             score_error = None
 
             try:
@@ -455,18 +525,21 @@ class Create_New_Pipeline(BaseTool):
                             columns=unnamed_cols
                         )
 
-                    try:
-                        from auto_suggest_llm_util import (
-                            calculate_Score as calculate_score_fn,
-                        )
-                    except Exception:
-                        from auto_suggest_llm_util import (
-                            calculate_score as calculate_score_fn,
-                        )
+                    from score import relative_csv_score, summarize_score
 
-                    score = float(
-                        calculate_score_fn(ground_truth_df, generated_table_df)
-                    )
+                    (
+                        fd_ratio,
+                        col_ratio,
+                        combined_score,
+                        fd_f1,
+                        true_combined_score,
+                        debug_dict,
+                    ) = relative_csv_score(generated_table_df, ground_truth_df)
+
+                    score = float(true_combined_score)
+                    score_fd = float(fd_f1)
+                    column_mapping_score = float(col_ratio)
+                    score_details = summarize_score(debug_dict, true_combined_score, fd_f1, col_ratio)
                 except Exception as exc:
                     score_error = str(exc)
 
@@ -484,6 +557,9 @@ class Create_New_Pipeline(BaseTool):
                 "output_csv_path": output_csv_path,
                 "ground_truth_csv_path": ground_truth_csv_path,
                 "score": score,
+                "score_fd": score_fd,
+                "column_mapping_score": column_mapping_score,
+                "score_details": score_details,
                 "score_error": score_error,
                 "execution_error": execution_error,
                 "execution_stdout": execution_stdout,

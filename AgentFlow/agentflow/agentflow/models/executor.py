@@ -147,11 +147,14 @@ Instructions:
 4.  Each `tool.execute()` call must be assigned to a variable named **`execution`**.
 5.  Please give the exact numbers and parameters should be used in the `tool.execute()` call.
 6.  IMPORTANT: For Configure_* tools (Join, Union, GroupBy_Aggregate), the query parameter MUST include the Operation History to avoid repeating previous operations and to understand the pipeline state.
-7.  Keep the response concise to avoid token-limit issues:
+7.  CRITICAL: For `Refine_Existing_Pipeline` and `Finalize_Pipeline` tools, the `pipeline_id` parameter is REQUIRED and MUST be included. Extract the pipeline_id from the Operation History (look for `pipeline_id` in previous `Create_New_Pipeline` or `Refine_Existing_Pipeline` results). The command MUST follow this pattern:
+    - Refine_Existing_Pipeline: `execution = tool.execute(query=..., pipeline_id="pipeline_XXXX", current_pipeline=..., critique=..., modification_goal=...)`
+    - Finalize_Pipeline: `execution = tool.execute(pipeline_id="pipeline_XXXX", pipeline=...)`
+8.  Keep the response concise to avoid token-limit issues:
     - `analysis`: at most 2 short bullet points (max 60 words total).
     - `explanation`: at most 2 short bullet points (max 60 words total).
     - `command`: output only the minimal executable Python needed for this step.
-8.  Do not include extra prose, repeated context, or long reasoning.
+9.  Do not include extra prose, repeated context, or long reasoning.
 
 Output Format:
 Present your response in the following structured format. Do not include any extra text or explanations.
@@ -364,10 +367,10 @@ Please follow the configuration prompt to genrate tool specific output.
         if sub_goal:
             query = f"{query}\n\nSub-Goal: {sub_goal}".strip()
 
-        if tool_name == "Create_Pipeline_Tool":
+        if tool_name in ("Create_Pipeline_Tool", "Create_New_Pipeline"):
             return f"execution = tool.execute(query={query!r})"
 
-        if tool_name == "Modify_Pipeline_Tool":
+        if tool_name in ("Modify_Pipeline_Tool", "Refine_Existing_Pipeline"):
             artifacts = self._extract_latest_pipeline_artifacts(memory)
             pipeline_id = artifacts.get("pipeline_id", "") or self._find_pipeline_id(
                 sub_goal + "\n" + context
@@ -396,7 +399,7 @@ Please follow the configuration prompt to genrate tool specific output.
                 f"memory_actions={memory_actions!r})"
             )
 
-        if tool_name == "Finalize_Pipeline_Tool":
+        if tool_name in ("Finalize_Pipeline_Tool", "Finalize_Pipeline"):
             artifacts = self._extract_latest_pipeline_artifacts(memory)
             pipeline_id = artifacts.get("pipeline_id", "") or self._find_pipeline_id(
                 sub_goal + "\n" + context

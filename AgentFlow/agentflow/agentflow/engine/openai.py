@@ -17,6 +17,28 @@ from tenacity import (
 from typing import List, Union
 
 from .base import EngineLM, CachedEngine
+from .engine_utils import TOKEN_TRACKER
+
+
+def _record_usage(api_response, api_type: str = "chat"):
+    """Extract token usage from an API response object and add to TOKEN_TRACKER."""
+    try:
+        usage = getattr(api_response, "usage", None)
+        if usage is None:
+            return
+        if api_type == "responses":
+            # Responses API uses input_tokens / output_tokens
+            TOKEN_TRACKER.add(
+                getattr(usage, "input_tokens", 0),
+                getattr(usage, "output_tokens", 0),
+            )
+        else:
+            TOKEN_TRACKER.add(
+                getattr(usage, "prompt_tokens", 0),
+                getattr(usage, "completion_tokens", 0),
+            )
+    except Exception:
+        pass  # never break generation due to tracking errors
 
 import openai
 
@@ -160,7 +182,7 @@ class ChatOpenAI(EngineLM, CachedEngine):
                 
         # Chat models given structured output format
         if self.is_chat_model and self.support_structured_output and response_format is not None:
-            response = self.client.beta.chat.completions.parse(
+            api_response = self.client.beta.chat.completions.parse(
                 model=self.model_string,
                 messages=[
                     {"role": "system", "content": sys_prompt_arg},
@@ -174,11 +196,12 @@ class ChatOpenAI(EngineLM, CachedEngine):
                 top_p=top_p,
                 response_format=response_format
             )
-            response = response.choices[0].message.parsed
+            _record_usage(api_response)
+            response = api_response.choices[0].message.parsed
 
         # Chat models without structured outputs
         elif self.is_chat_model and (not self.support_structured_output or response_format is None):
-            response = self.client.chat.completions.create(
+            api_response = self.client.chat.completions.create(
                 model=self.model_string,
                 messages=[
                     {"role": "system", "content": sys_prompt_arg},
@@ -191,12 +214,13 @@ class ChatOpenAI(EngineLM, CachedEngine):
                 max_tokens=max_tokens,
                 top_p=top_p,
             )
-            response = response.choices[0].message.content
+            _record_usage(api_response)
+            response = api_response.choices[0].message.content
 
         # Reasoning models: currently only supports base response
         elif self.is_reasoning_model:
             print(f"Using reasoning model: {self.model_string}")
-            response = self.client.chat.completions.create(
+            api_response = self.client.chat.completions.create(
                 model=self.model_string,
                 messages=[
                     {"role": "user", "content": prompt},
@@ -204,22 +228,24 @@ class ChatOpenAI(EngineLM, CachedEngine):
                 max_completion_tokens=max_tokens,
                 reasoning_effort="medium"
             )
+            _record_usage(api_response)
             # Workaround for handling length finish reason
-            if "finishreason" in response.choices[0] and response.choices[0].finishreason == "length":
+            if "finishreason" in api_response.choices[0] and api_response.choices[0].finishreason == "length":
                 response = "Token limit exceeded"
             else:
-                response = response.choices[0].message.content
+                response = api_response.choices[0].message.content
 
         # Reasoning models: Pro models using v1/completions
         elif self.is_pro_reasoning_model:
-            response = self.client.responses.create(
+            api_response = self.client.responses.create(
                 model=self.model_string,
                 input=prompt,
                 reasoning={
                     "effort": "medium"
                 },
             )
-            response = response.output[1].content[0].text
+            _record_usage(api_response, api_type="responses")
+            response = api_response.output[1].content[0].text
 
         if self.use_cache:
             self._save_cache(cache_key, response)
@@ -274,6 +300,7 @@ class ChatOpenAI(EngineLM, CachedEngine):
                 top_p=top_p,
                 response_format=response_format
             )
+            _record_usage(response)
             response_text = response.choices[0].message.parsed
 
         # Chat models without structured outputs
@@ -288,6 +315,7 @@ class ChatOpenAI(EngineLM, CachedEngine):
                 max_tokens=max_tokens,
                 top_p=top_p,
             )
+            _record_usage(response)
             response_text = response.choices[0].message.content
 
         # Reasoning models: currently only supports base response
@@ -300,6 +328,7 @@ class ChatOpenAI(EngineLM, CachedEngine):
                 max_completion_tokens=max_tokens,
                 reasoning_effort="medium"
             )
+            _record_usage(response)
             # Workaround for handling length finish reason
             if "finishreason" in response.choices[0] and response.choices[0].finishreason == "length":
                 response_text = "Token limit exceeded"
@@ -315,6 +344,7 @@ class ChatOpenAI(EngineLM, CachedEngine):
                     "effort": "medium"
                 },
             )
+            _record_usage(response, api_type="responses")
             response_text = response.output[1].content[0].text
 
         if self.use_cache:

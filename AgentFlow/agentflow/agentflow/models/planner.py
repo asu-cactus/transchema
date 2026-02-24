@@ -116,7 +116,7 @@ Instructions:
 2. Determine whether this requires:
    a) Creating a NEW pipeline from scratch (no existing pipeline addresses this transformation), or
    b) Modifying an EXISTING pipeline (the transformation is partially addressed and needs adjustments).
-3. Identify the overall pipeline strategy: what sequence of high-level operations (joins, unions, aggregations, code generation) would achieve the target transformation.
+3. Choose the operation sequence to build the target table: which joins, unions, aggregations, etc. steps to apply, in what order.
 4. List ONLY the skills and tools that are actually available in the available tools list.
 5. Note any additional considerations at the pipeline level.
 
@@ -327,21 +327,29 @@ IMPORTANT: Be brief and precise. Focus ONLY on what can be achieved with the ava
         # Build score feedback section only when execute_pipeline is enabled
         if self.execute_pipeline:
             score_feedback_section = """
-5. **Score Feedback**: When a Code_Generator_Tool step in the previous results includes a `pipeline_execution` result with a score, use it to guide your decision:
-   - A high combined score (near 3.0, with score_fd, score_key, column_mapping_score all near 1.0) means the pipeline is correct — consider finalizing.
-   - Some of the modification you can try : If FD and key constaints are missing, you can try to add a group by and appropriate aggregations. If the pipeline has joins, you may change the join types[From inner to left and from left to inner.].
-   - A low score means the pipeline needs modification. Look at score_details (shape mismatch, column mismatch) to decide what to fix.
-   - If execution_error is present, the generated code has bugs — consider modifying the pipeline or regenerating code.
+5. **Score Understanding**: When a previous step result includes a `score_summary`, use it to determine whether to continue refining or finalize. The score measures how well the generated output matches the target across three components:
+
+   - **Functional Dependency Matching** (`functional_dependency_f1_score`): A functional dependency is a data constraint where one column determines another. If `score_summary.functional_dependencies.missed` is non-empty, the output is missing grouping constraints. Fix: add a GROUP BY using the key columns from the target with appropriate aggregations at the end of the pipeline.
+
+   - **Key Matching** (`score_summary.keys.missed_ground_truth_keys`): Keys are column sets that uniquely identify each row. If `missed_ground_truth_keys` is non-empty, the output has duplicate rows or wrong grouping. Fix: add a GROUP BY on the columns listed in `missed_ground_truth_keys` with appropriate aggregations.
+
+   - **Column Mapping** (`score_summary.column_mappings.missed_target_columns`): If `missed_target_columns` is non-empty, those columns are absent from the output. Fix: add JOINs with the source tables that contain those missing columns.
+
+   - The pipeline is complete ONLY when all three are satisfied: overall_score = 1.0, no missed functional dependencies, no missed ground truth keys, no missed target columns.
+
+   - If execution_error is present, the generated code has bugs — modify the pipeline or regenerate the code.
+   - If the pipeline has joins and row counts are wrong, try changing join types (inner to left or left to inner).
    - If the score is not improving across iterations, consider Start_Again_Tool.
+
 6. Formulate a specific, achievable **sub-goal** for the selected tool.
 7. Provide all necessary **context** (data, file names, variables) for the tool to function."""
-            code_gen_description = "**Code_Generator_Tool**: Use to generate executable Python code that materializes the pipeline. The code will be automatically executed and scored against the ground truth. Use when you want to test whether the current pipeline produces the correct output or when you need score feedback to decide what to fix next."
-            extra_reasoning = "\n- Use score feedback from Code_Generator_Tool executions to guide pipeline refinement."
+            # code_gen_description = "**Code_Generator_Tool**: Use to generate executable Python code that materializes the pipeline. The code will be automatically executed and scored against the ground truth. Use when you want to test whether the current pipeline produces the correct output or when you need score feedback to decide what to fix next."
+            extra_reasoning = ""
         else:
             score_feedback_section = """
 5. Formulate a specific, achievable **sub-goal** for the selected tool.
-6. Provide all necessary **context** (data, file names, variables) for the tool to function."""
-            code_gen_description = "**Code_Generator_Tool**: Use to visualize the current pipeline state. Generates executable Python code that materializes operations configured so far. Use when you need to verify the pipeline's combined effect before proceeding."
+6. Provide all necessary **context** (data, file snames, variables) for the tool to function."""
+            # code_gen_description = "**Code_Generator_Tool**: Use to visualize the current pipeline state. Generates executable Python code that materializes operations configured so far. Use when you need to verify the pipeline's combined effect before proceeding."
             extra_reasoning = ""
 
         prompt_generate_next_step = f"""
@@ -365,19 +373,14 @@ Context:
 Instructions:
 1. Review the query, the pipeline-level analysis, and all previous steps.
 2. Decide the pipeline-level action:
-   - If no pipeline exists yet (no previous steps or after a START_AGAIN), plan and begin creating a new pipeline.
-   - If a pipeline is in progress, evaluate whether it is on track or needs modification.
+   - If a pipeline is in progress, evaluate whether it is on track or needs refinement.
 3. Select the **single best tool** from the available tools list for the next step.
-4. Consider these special tools if available:
-   - {code_gen_description}
-   - **Critique_Pipeline_Tool**: Use when the pipeline is CLOSE to correct but needs 1-2 adjustments. Include all case info and operation history in the context.
-   - **Start_Again_Tool**: Use when the pipeline has gone fundamentally wrong and needs a complete restart.
 {score_feedback_section}
 
 Pipeline-Level Reasoning:
-- Think about the END-TO-END transformation needed, not just the next single operator.
+- Plan the end-to-end transformation from sources to target.
 - Consider the overall pipeline structure: what operations are needed, in what order, and how they connect.
-- When creating a new pipeline, plan the full sequence but execute one tool at a time.
+- When creating a new pipeline, plan the full sequence.
 - When modifying, identify exactly what is wrong and what change will fix it.{extra_reasoning}
 
 Response Format:

@@ -284,12 +284,22 @@ IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: 
         # Conditionally add score-based guidance when execute_pipeline is enabled
         if self.execute_pipeline:
             score_instruction = """
-4. **Score Feedback**: If any Code_Generator_Tool result in memory includes a `pipeline_execution` with a score:
-   - Score near 3.0 (score_fd, score_key, column_mapping_score all near 1.0) + successful execution → strong evidence the pipeline is correct → recommend STOP.
-   - Moderate score → modifications may help → recommend CONTINUE.
-   - Failed execution or low score → pipeline needs changes → recommend CONTINUE.
-   - IMPORTANT: A successful execution with a high score is STRONG evidence the pipeline is correct, even if the pipeline plan looks incomplete to you.
-5. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
+4. **Score Understanding**: The overall score (0.0 to 1.0, higher is better) compares the generated output table against the target table using three components. If a `score_summary` is present in any result in memory, interpret it as follows:
+
+   - **Functional Dependency Matching** (`functional_dependency_f1_score`): A functional dependency is a data constraint where knowing one set of column values determines another column's value (e.g., city determines country). If this score is below 1.0 and `functional_dependencies.missed` is non-empty, the output is missing grouping constraints that the target has. The correct fix is to add a GROUP BY using the key columns of the target table with appropriate aggregations at the end of the pipeline.
+
+   - **Key Matching** (`keys.missed_ground_truth_keys`): Keys are the minimal sets of columns that uniquely identify each row in the target. If `missed_ground_truth_keys` is non-empty, the output has duplicate rows or incorrect grouping. The correct fix is to add a GROUP BY on the columns listed in `missed_ground_truth_keys` with appropriate aggregations.
+
+   - **Column Mapping** (`column_mapping_score` and `column_mappings.missed_target_columns`): Checks whether all target columns are present in the output. If `missed_target_columns` is non-empty, those columns are absent from the output. The correct fix is to add JOINs with the source tables that contain those missing columns.
+
+   - **The pipeline is ONLY correct when ALL three components are satisfied**: overall_score = 1.0, no missed functional dependencies, no missed ground truth keys, and no missed target columns. If any of these items are present, the pipeline is incomplete and MUST be refined — do NOT stop.
+
+5. Score thresholds:
+   - overall_score = 1.0 AND `functional_dependencies.missed` is empty AND `keys.missed_ground_truth_keys` is empty AND `column_mappings.missed_target_columns` is empty → strong evidence the pipeline is correct → recommend STOP.
+   - Any missed item or low score → pipeline needs changes → recommend CONTINUE.
+   - Failed execution → pipeline has code errors → recommend CONTINUE.
+
+6. If the pipeline is complete and correct, identify the **pipeline_id** of the finalized pipeline from the memory."""
         else:
             score_instruction = """
 4. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
@@ -307,15 +317,15 @@ Context:
 Instructions:
 1. Review the query and the pipeline(s) created/modified in memory.
 2. Assess completeness: Does the latest pipeline fully address the target transformation?
-3. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready.
+3. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready. However, the critique alone is not sufficient — the score must also confirm correctness (see below).
 {score_instruction}
 
 Final Determination:
-- If the pipeline is complete and correct:
+- If the pipeline is complete and correct (critique says CORRECT AND score confirms all three components are satisfied):
   * Explain why
   * Provide the pipeline_id to finalize (from the most recent Create_New_Pipeline or Refine_Existing_Pipeline result in memory)
   * Conclude with "STOP"
-- If modifications are still needed:
+- If modifications are still needed (any score component has missed items, or execution failed, or no score yet):
   * Explain what's missing or incorrect
   * Conclude with "CONTINUE"
 
@@ -337,7 +347,9 @@ If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id t
         )
         if json_data is not None:
             json_data[f"verifier_pipeline_{step_count}_prompt"] = input_data
-            json_data[f"verifier_pipeline_{step_count}_response"] = str(stop_verification)
+            json_data[f"verifier_pipeline_{step_count}_response"] = str(
+                stop_verification
+            )
         return stop_verification
 
     def verificate_context_pipeline_with_additional_info(
@@ -353,12 +365,22 @@ If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id t
         # Conditionally add score-based guidance when execute_pipeline is enabled
         if self.execute_pipeline:
             score_instruction = """
-5. **Score Feedback**: If any Code_Generator_Tool result in memory includes a `pipeline_execution` with a score:
-   - Score near 3.0 (score_fd, score_key, column_mapping_score all near 1.0) + successful execution → strong evidence the pipeline is correct → recommend STOP.
-   - Moderate score → modifications may help → recommend CONTINUE.
-   - Failed execution or low score → pipeline needs changes → recommend CONTINUE.
-   - IMPORTANT: A successful execution with a high score is STRONG evidence the pipeline is correct.
-6. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
+5. **Score Understanding**: The overall score (0.0 to 1.0, higher is better) compares the generated output table against the target table using three components. If a `score_summary` is present in any result in memory, interpret it as follows:
+
+   - **Functional Dependency Matching** (`functional_dependency_f1_score`): A functional dependency is a data constraint where knowing one set of column values determines another column's value (e.g., city determines country). If this score is below 1.0 and `functional_dependencies.missed` is non-empty, the output is missing grouping constraints that the target has. The correct fix is to add a GROUP BY using the key columns of the target table with appropriate aggregations at the end of the pipeline.
+
+   - **Key Matching** (`keys.missed_ground_truth_keys`): Keys are the minimal sets of columns that uniquely identify each row in the target. If `missed_ground_truth_keys` is non-empty, the output has duplicate rows or incorrect grouping. The correct fix is to add a GROUP BY on the columns listed in `missed_ground_truth_keys` with appropriate aggregations.
+
+   - **Column Mapping** (`column_mapping_score` and `column_mappings.missed_target_columns`): Checks whether all target columns are present in the output. If `missed_target_columns` is non-empty, those columns are absent from the output. The correct fix is to add JOINs with the source tables that contain those missing columns.
+
+   - **The pipeline is ONLY correct when ALL three components are satisfied**: overall_score = 1.0, no missed functional dependencies, no missed ground truth keys, and no missed target columns. If any of these items are present, the pipeline is incomplete and MUST be refined — do NOT stop.
+
+6. Score thresholds:
+   - overall_score = 1.0 AND `functional_dependencies.missed` is empty AND `keys.missed_ground_truth_keys` is empty AND `column_mappings.missed_target_columns` is empty → strong evidence the pipeline is correct → recommend STOP.
+   - Any missed item or low score → pipeline needs changes → recommend CONTINUE.
+   - Failed execution → pipeline has code errors → recommend CONTINUE.
+
+7. If the pipeline is complete and correct, identify the **pipeline_id** of the finalized pipeline from the memory."""
         else:
             score_instruction = """
 5. If the pipeline is complete, identify the **pipeline_id** of the finalized pipeline from the memory."""
@@ -380,15 +402,15 @@ Instructions:
 1. Review the query and the pipeline(s) created/modified in memory.
 2. Compare with the additional context — does the pipeline align with the expected approach?
 3. Assess completeness: Does the latest pipeline fully address the target transformation?
-4. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready.
+4. Check the critique: If the latest pipeline's critique says CORRECT, the pipeline is likely ready. However, the critique alone is not sufficient — the score must also confirm correctness (see below).
 {score_instruction}
 
 Final Determination:
-- If the pipeline is complete, correct, and aligns with the additional context:
+- If the pipeline is complete, correct, and aligns with the additional context (critique says CORRECT AND score confirms all three components are satisfied):
   * Explain why
   * Provide the pipeline_id to finalize (from the most recent Create_New_Pipeline or Refine_Existing_Pipeline result in memory)
   * Conclude with "STOP"
-- If modifications are still needed:
+- If modifications are still needed (any score component has missed items, or execution failed, or no score yet):
   * Explain what's missing or incorrect
   * Conclude with "CONTINUE"
 
@@ -411,7 +433,9 @@ If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id t
             input_data, response_format=PipelineVerification
         )
         if json_data is not None:
-            json_data[f"verifier_pipeline_with_context_{step_count}_prompt"] = input_data
+            json_data[f"verifier_pipeline_with_context_{step_count}_prompt"] = (
+                input_data
+            )
             json_data[f"verifier_pipeline_with_context_{step_count}_response"] = str(
                 stop_verification
             )

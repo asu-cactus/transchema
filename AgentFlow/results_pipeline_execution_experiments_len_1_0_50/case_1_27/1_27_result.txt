@@ -1,0 +1,65 @@
+Case: 1_27
+Status: INCORRECT
+Timestamp: 2026-02-24T09:52:50.653304
+Duration: 180.38 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_0_50/case_1_27/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_27
+2. Target Schema: ['day_week': integer, 'ENTRIESn': float, 'EXITSn': float, 'ENTRIESn_hourly': float, 'EXITSn_hourly': float, 'hour': float, 'weekday': integer, 'latitude': float, 'longitude': float, 'fog': float, 'precipi': float, 'pressurei': float, 'rain': float, 'tempi': float, 'wspdi': float, 'meanprecipi': float, 'meanpressurei': float, 'meantempi': float, 'meanwspdi': float, 'weather_lat': float, 'weather_lon': float]
+3. Target Examples: There are 7 available target examples:    day_week      ENTRIESn        EXITSn  ENTRIESn_hourly  EXITSn_hourly  \
+0         0  4.133434e+07  2.858509e+07       2586.12317    1856.920471   
+
+       hour  weekday   latitude  longitude  fog   precipi  pressurei  \
+0  9.987941        1  40.740005 -73.939444  0.0  0.000606  29.992897   
+
+       rain      tempi     wspdi  meanprecipi  meanpressurei  meantempi  \
+0  0.220787  62.536893  8.040454     0.000606      29.992876   62.53809   
+
+   meanwspdi  weather_lat  weather_lon  
+0   8.040841    40.741223   -73.940124  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_27_0
+	Source 0 Schema: ['UNIT', 'DATEn', 'TIMEn', 'ENTRIESn', 'EXITSn', 'ENTRIESn_hourly', 'EXITSn_hourly', 'datetime', 'hour', 'day_week', 'weekday', 'station', 'latitude', 'longitude', 'conds', 'fog', 'precipi', 'pressurei', 'rain', 'tempi', 'wspdi', 'meanprecipi', 'meanpressurei', 'meantempi', 'meanwspdi', 'weather_lat', 'weather_lon']
+	Source 0 Examples: 	 Source 0 contains 21324 tuples, with examples as follows: 
+   UNIT     DATEn     TIMEn  ENTRIESn   EXITSn  ENTRIESn_hourly  \
+0  R003  05-01-11  00:00:00   4388333  2911002                0   
+1  R003  05-01-11  04:00:00   4388333  2911002                0   
+2  R003  05-01-11  12:00:00   4388333  2911002                0   
+
+   EXITSn_hourly             datetime  hour  day_week  weekday        station  \
+0              0  2011-05-01 00:00:00     0         6        0  CYPRESS HILLS   
+1              0  2011-05-01 04:00:00     4         6        0  CYPRESS HILLS   
+2              0  2011-05-01 12:00:00    12         6        0  CYPRESS HILLS   
+
+    latitude  longitude          conds  fog  precipi  pressurei  rain  tempi  \
+0  40.689945 -73.872564          Clear    0      0.0      30.22     0   55.9   
+1  40.689945 -73.872564  Partly Cloudy    0      0.0      30.25     0   52.0   
+2  40.689945 -73.872564  Mostly Cloudy    0      0.0      30.28     0   62.1   
+
+   wspdi  meanprecipi  meanpressurei  meantempi  meanwspdi  weather_lat  \
+0    3.5          0.0         30.258      55.98       7.86    40.700348   
+1    3.5          0.0         30.258      55.98       7.86    40.700348   
+2    6.9          0.0         30.258      55.98       7.86    40.700348   
+
+   weather_lon  
+0   -73.887177  
+1   -73.887177  
+2   -73.887177  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_27/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_27/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

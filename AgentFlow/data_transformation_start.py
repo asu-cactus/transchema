@@ -4,6 +4,7 @@ Cases are determined by (len_id, target_id) ranges using get_test_cases_ids.
 Queries are generated dynamically via get_prompt(prompt_type="get_case_info").
 """
 
+import csv
 import os
 import sys
 import json
@@ -16,6 +17,7 @@ if _TRANSCHEMA_ROOT not in sys.path:
     sys.path.insert(0, _TRANSCHEMA_ROOT)
 
 from agentflow.agentflow.solver import construct_solver, setup_logging
+from agentflow.engine.engine_utils import TOKEN_TRACKER
 from test_scope import get_test_cases_ids
 from util.utils import get_test_info
 from auto_suggest_llm_util import get_prompt
@@ -29,31 +31,33 @@ from auto_suggest_llm_util import get_prompt
 # Option B — Range of target IDs (for mass testing):
 #   Set TARGET_IDS to None and configure the range below.
 #
-LEN_ID = 4
-TARGET_IDS = [
-    # 16, 17, 18, 19, 
-    # 20, 21, 22, 23, 24, 25,
-    27, 28, 29,
-    # 32, 33,
-    # 36,
-    # 38,
-    # 40, 41, 42, 43,
-    # 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
-    # 59, 60, 61,
-    # 68,
-    # 70, 71,
-    # 75,
-    # 77, 78,
-    # 81,
-    # 84,
-    # 92, 93, 94, 95, 96,
-    # 100,
-]  # e.g. [4, 6, 48, 56] or None for range mode
+LEN_ID = 1
+TARGET_IDS = None  # [13]
+# 16, 17, 18, 19,
+# 20, 21, 22, 23, 24, 25,
+# 27,
+# 28,
+# 29,
+# 32, 33,
+# 36,
+# 38,
+# 40, 41, 42, 43,
+# 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+# 59, 60, 61,
+# 68,
+# 70, 71,
+# 75,
+# 77, 78,
+# 81,
+# 84,
+# 92, 93, 94, 95, 96,
+# 100,
+# ]  # e.g. [4, 6, 48, 56] or None for range mode
 
 # Range mode settings (only used when TARGET_IDS is None)
-MAX_LEN_ID = 4
-TARGET_ID_START = 1
-TARGET_ID_END = 60
+MAX_LEN_ID = 1
+TARGET_ID_START = 65
+TARGET_ID_END = 101
 # ============================================================
 
 # Paths
@@ -65,7 +69,7 @@ BENCHMARKS_DIR = os.path.join(
 RESULTS_DIR = os.path.join(
     _TRANSCHEMA_ROOT,
     "AgentFlow",
-    "results_pipeline_execution_experiments_len_4_failed_cases",
+    "results_pipeline_execution_experiments_len_1_65_101",
 )
 
 # Model / solver configuration
@@ -77,7 +81,7 @@ LLM_ENGINE_NAME = "gpt-4.1-mini"
 PLANNER_GRANULARITY = "pipeline"
 
 # Pipeline execution + scoring inside the agentic loop
-EXECUTE_PIPELINE = False
+EXECUTE_PIPELINE = True
 
 # Start Again Tool behavior
 START_AGAIN_CLEAR_HISTORY = False
@@ -89,15 +93,39 @@ if TARGET_IDS is not None:
     # Option A: explicit list
     CASES_TO_RUN = [f"{LEN_ID}_{tid}" for tid in TARGET_IDS]
 else:
-    # Option B: range via get_test_cases_ids
-    task_list = get_test_cases_ids(
+    # Option B: range via get_test_cases_ids (both MS and SS)
+    task_list_ms = get_test_cases_ids(
         JSON_FILE_PATH_MS, LEN_ID, MAX_LEN_ID, TARGET_ID_START, TARGET_ID_END
     )
-    CASES_TO_RUN = sorted(set(t[6:] for t in task_list))
+    task_list_ss = get_test_cases_ids(
+        JSON_FILE_PATH_SS, LEN_ID, MAX_LEN_ID, TARGET_ID_START, TARGET_ID_END
+    )
+    CASES_TO_RUN = sorted(set(t[6:] for t in task_list_ms + task_list_ss))
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 print(f"Cases selected to run: {CASES_TO_RUN}\n")
+
+# ============================================================
+# Results CSV — written incrementally after each case
+# ============================================================
+RESULTS_CSV_PATH = os.path.join(RESULTS_DIR, "results_summary.csv")
+_CSV_FIELDS = [
+    "case_id",
+    "status",
+    "is_correct",
+    "score",
+    "score_fd",
+    "column_mapping_score",
+    "average_similarity",
+    "latency_seconds",
+    "cost",
+    "timestamp",
+    "error",
+]
+
+with open(RESULTS_CSV_PATH, "w", newline="") as _f:
+    csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writeheader()
 
 # ============================================================
 # Process each case
@@ -113,6 +141,9 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
     case_results_dir = os.path.join(RESULTS_DIR, f"case_{case_id}")
     case_logs_dir = os.path.join(case_results_dir, "logs")
     os.makedirs(case_logs_dir, exist_ok=True)
+
+    # Reset token tracker for this case
+    TOKEN_TRACKER.reset()
 
     try:
         # Setup logging
@@ -273,6 +304,33 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
         print(f"{status_icon} Full output saved to: {json_output_file}")
         print(f"{status_icon} Logs saved to: {case_logs_dir}/")
 
+        # Append row to results CSV
+        final_score = output.get("final_score") or {}
+        verification = output.get("verification_result") or {}
+        _token_totals = TOKEN_TRACKER.get_totals()
+        _cost = TOKEN_TRACKER.compute_cost(LLM_ENGINE_NAME)
+        _csv_row = {
+            "case_id": case_id,
+            "status": case_status,
+            "is_correct": is_correct,
+            "score": final_score.get("score"),
+            "score_fd": final_score.get("score_fd"),
+            "column_mapping_score": final_score.get("column_mapping_score"),
+            "average_similarity": verification.get("average_similarity"),
+            "latency_seconds": round(duration, 2),
+            "cost": round(_cost, 6) if _cost is not None else "N/A",
+            "timestamp": start_time.isoformat(),
+            "error": "",
+        }
+        with open(RESULTS_CSV_PATH, "a", newline="") as _f:
+            csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_csv_row)
+        print(
+            f"{status_icon} Tokens — prompt: {_token_totals['prompt_tokens']}, completion: {_token_totals['completion_tokens']}, calls: {_token_totals['num_calls']} | Cost: ${_cost:.6f}"
+            if _cost is not None
+            else f"{status_icon} Tokens — {_token_totals} | Cost: N/A (unknown model)"
+        )
+        print(f"{status_icon} CSV updated: {RESULTS_CSV_PATH}")
+
         results_summary.append(
             {
                 "case": case_id,
@@ -295,6 +353,24 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
             f.write(f"Case: {case_id}\n")
             f.write(f"Timestamp: {datetime.now().isoformat()}\n")
             f.write(f"Error: {e}\n\nTraceback:\n{error_tb}\n")
+
+        # Append error row to results CSV
+        _cost = TOKEN_TRACKER.compute_cost(LLM_ENGINE_NAME)
+        _csv_row = {
+            "case_id": case_id,
+            "status": "error",
+            "is_correct": False,
+            "score": None,
+            "score_fd": None,
+            "column_mapping_score": None,
+            "average_similarity": None,
+            "latency_seconds": None,
+            "cost": round(_cost, 6) if _cost is not None else "N/A",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e),
+        }
+        with open(RESULTS_CSV_PATH, "a", newline="") as _f:
+            csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_csv_row)
 
         results_summary.append(
             {
@@ -336,5 +412,6 @@ for result in results_summary:
         suffix = f" - {result.get('error', 'Unknown error')}"
     print(f"  {icon} {result['case']}: {result['status'].upper()}{suffix}")
 
+print(f"\nResults CSV: {RESULTS_CSV_PATH}")
 print(f"\n{'='*80}")
 print("Done!")
