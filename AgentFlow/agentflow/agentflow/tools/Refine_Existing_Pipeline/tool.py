@@ -1,4 +1,4 @@
-# agentflow/tools/modify_pipeline/tool.py
+# agentflow/tools/Refine_Existing_Pipeline/tool.py
 
 import os
 import re
@@ -19,7 +19,7 @@ if str(_TRANSCHEMA_ROOT) not in sys.path:
 
 
 # Tool name mapping - this defines the external name for this tool
-TOOL_NAME = "Modify_Pipeline_Tool"
+TOOL_NAME = "Refine_Existing_Pipeline"
 
 
 LIMITATION = f"""
@@ -390,7 +390,7 @@ $
     return prompt
 
 
-class Modify_Pipeline_Tool(BaseTool):
+class Refine_Existing_Pipeline(BaseTool):
     require_llm_engine = True
 
     def __init__(self, model_string: str = "gpt-4o-mini"):
@@ -400,7 +400,7 @@ class Modify_Pipeline_Tool(BaseTool):
             tool_version="1.0.0",
             input_types={
                 "query": "str - Transformation case information including Target Table, Source Information, current pipeline definition, and its critique.",
-                "pipeline_id": "str - The ID of the pipeline to modify (from a previous Create_Pipeline_Tool result).",
+                "pipeline_id": "str - The ID of the pipeline to modify (from a previous Create_New_Pipeline result).",
                 "current_pipeline": "str - The current pipeline definition to modify.",
                 "critique": "str - The critique of the current pipeline identifying issues.",
                 "modification_goal": "str - Description of what modification should be made.",
@@ -581,7 +581,7 @@ class Modify_Pipeline_Tool(BaseTool):
 
 
 if __name__ == "__main__":
-    tool = Modify_Pipeline_Tool(model_string="gpt-4.1-mini")
+    tool = Refine_Existing_Pipeline(model_string="gpt-4.1-mini")
     print(
         tool.execute(
             query="""

@@ -1,4 +1,4 @@
-# agentflow/tools/create_pipeline/tool.py
+# agentflow/tools/Create_New_Pipeline/tool.py
 
 import os
 import re
@@ -20,7 +20,7 @@ if str(_TRANSCHEMA_ROOT) not in sys.path:
 
 
 # Tool name mapping - this defines the external name for this tool
-TOOL_NAME = "Create_Pipeline_Tool"
+TOOL_NAME = "Create_New_Pipeline"
 
 
 LIMITATION = f"""
@@ -330,7 +330,7 @@ $
     return prompt
 
 
-class Create_Pipeline_Tool(BaseTool):
+class Create_New_Pipeline(BaseTool):
     require_llm_engine = True
 
     def __init__(self, model_string: str = "gpt-4.1-mini"):
@@ -505,7 +505,7 @@ class Create_Pipeline_Tool(BaseTool):
 
 
 if __name__ == "__main__":
-    tool = Create_Pipeline_Tool(model_string="gpt-4o-mini")
+    tool = Create_New_Pipeline(model_string="gpt-4o-mini")
     print(
         tool.execute(
             query="""
