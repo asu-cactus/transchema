@@ -8,20 +8,30 @@ import tiktoken
 from pathlib import Path
 from typing import Optional, Union
 from hints.hint_v3 import get_column_equivalence
-from auto_suggest_llm_util import get_source, get_target_samples, get_filtered_functional_dependency, calculate_score
+from auto_suggest_llm_util import (
+    get_source,
+    get_target_samples,
+    get_filtered_functional_dependency,
+    calculate_score,
+)
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import compare_lists_matching, is_column_numerical
+from validation.hard_match import compare_lists_matching, compare_tables_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
 from log_util.log_util import create_logger
 
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
-from rag_pipeline.feature_extractor import compute_from_data, load_source_target_from_folder
+from rag_pipeline.feature_extractor import (
+    compute_from_data,
+    load_source_target_from_folder,
+)
 
 
-def resolve_rag_examples_base(rag_examples_base: Optional[Union[str, Path]] = None) -> Path:
+def resolve_rag_examples_base(
+    rag_examples_base: Optional[Union[str, Path]] = None,
+) -> Path:
     """
     Resolve the path to the rag-examples-w-pipeline directory.
 
@@ -69,6 +79,7 @@ def resolve_rag_examples_base(rag_examples_base: Optional[Union[str, Path]] = No
             return base_path
         # If env is set but path invalid, warn but continue to fallback
         import warnings
+
         warnings.warn(
             f"RAG_EXAMPLES_BASE is set but path does not exist: {env_path}. "
             "Using automatic fallback.",
@@ -77,7 +88,9 @@ def resolve_rag_examples_base(rag_examples_base: Optional[Union[str, Path]] = No
         )
 
     # 3. Smart fallback: transchema/ first, then workspace root
-    transchema_dir = Path(__file__).resolve().parent.parent  # transchema/methods -> transchema
+    transchema_dir = (
+        Path(__file__).resolve().parent.parent
+    )  # transchema/methods -> transchema
     workspace_root = transchema_dir.parent  # transchema -> workspace root
 
     base_path = transchema_dir / "rag-examples-w-pipeline"
@@ -95,7 +108,16 @@ def resolve_rag_examples_base(rag_examples_base: Optional[Union[str, Path]] = No
     )
 
 
-def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_examples_base: Optional[Union[str, Path]] = None):
+def critique(
+    args,
+    length,
+    id_,
+    log_dir_,
+    flags,
+    is_def,
+    operation_history,
+    rag_examples_base: Optional[Union[str, Path]] = None,
+):
     """
     Run critique on a data-pipeline transformation using RAG few-shot examples.
 
@@ -128,10 +150,20 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         >>> result = critique(args, 4, 32, log_dir, flags, 0, history,
         ...                   rag_examples_base="/path/to/rag-examples-w-pipeline")
     """
+    validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
-    
+
     with open(prompt_file, mode="r") as f:
         query = f.read()
+
+    static_hints_read = ""
+    with open("prompts/static_hints_critique.txt", mode="r") as f:
+        static_hints_read = f.read()
+
+    if args.static_hints:
+        query = query.replace("$STATIC_HINTS$", static_hints_read)
+    else:
+        query = query.replace("$STATIC_HINTS$", "")
 
     log_dir = log_dir_
 
@@ -160,7 +192,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
     # few_shot_flag = flags[3]
 
     fd, metadata_flag, anon_flag, few_shot_flag = flags
-    
+
     len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
     token_tracker = TokenUsageTracker()
@@ -171,27 +203,29 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         type_ = "DEF_CRITIQUE"
     else:
         type_ = "NEW_CRITIQUE"
-    
+
     logger = create_logger(type_, log_dir, len_id, target_id, max_target_id)
-    
+
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
-    
+
     rag_db = None
     feature_rag_db = None
     if args.few_shot:
         if getattr(args, "rag_retrieval_strategy", "text") == "feature":
             feature_rag_db = FeatureRAGDB(
                 uri=args.rag_db_uri,
-                collection=getattr(args, "rag_feature_collection", "plan_docs_features"),
+                collection=getattr(
+                    args, "rag_feature_collection", "plan_docs_features"
+                ),
             )
         else:
             rag_db = RAGDB(
                 uri=args.rag_db_uri,
                 model_id=args.rag_embedding_model,
                 collection=args.rag_db_collection,
-                max_len=args.rag_embedding_dim
+                max_len=args.rag_embedding_dim,
             )
-    
+
     # get schema
     (
         target_data_name,
@@ -203,7 +237,6 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         source_data_schema_list,
         source_samples_list,
     ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
-    
 
     # get model encoding
     if args.model == "gpt-4.1-mini":
@@ -213,7 +246,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         encoding = tiktoken.get_encoding("cl100k_base")
     else:
         encoding = tiktoken.encoding_for_model(args.model)
-    
+
     num_tokens = args.token_limit
 
     num_target_samples = args.target_length
@@ -221,43 +254,53 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
     num_source_samples = args.source_length
 
     # get target examples
-    target_samples = get_target_samples(main_folder, len_idx_target_idx, 0, False, num_target_samples, num_tokens, len(encoding.encode(query)), encoding)
-    if (target_data_schema_with_types):
+    target_samples = get_target_samples(
+        main_folder,
+        len_idx_target_idx,
+        0,
+        False,
+        num_target_samples,
+        num_tokens,
+        len(encoding.encode(query)),
+        encoding,
+    )
+    if target_data_schema_with_types:
         query = query.replace("$SCHEMA$", target_data_schema_with_types)
     else:
         query = query.replace("$SCHEMA$", target_data_schema)
     query = query.replace("$EXAMPLES$", target_samples)
-    
 
     # get source examples
     source_information = get_source(
-                             file_count, 
-                             source_data_name_list, 
-                             source_data_schema_list, 
-                             main_folder, 
-                             len_idx_target_idx,
-                             num_source_samples,
-                             num_tokens,
-                             encoding
-                         )
+        file_count,
+        source_data_name_list,
+        source_data_schema_list,
+        main_folder,
+        len_idx_target_idx,
+        num_source_samples,
+        num_tokens,
+        encoding,
+    )
 
     query = query.replace("$SRC_INFO$", source_information)
-    
+
     ground_truth_location = (
         "{main_folder}/length{len_idx_target_idx}/target.csv".format(
             main_folder=main_folder, len_idx_target_idx=len_idx_target_idx
         )
     )
     try:
-       df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
-       df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-       query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
-       if args.critique_type == "history":
-           query = replace_history_info(query, operation_history)
-           result_path = get_result_path(args, main_folder, len_idx_target_idx)
-           query = replace_result_info(query, num_target_samples, result_path)
+        df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
+        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+        query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
+        if args.critique_type == "history":
+            query = replace_history_info(query, operation_history)
+            result_path = get_result_path(args, main_folder, len_idx_target_idx)
+            query = replace_result_info(query, num_target_samples, result_path)
     except Exception as e:
-       query = query.replace("$NUM_TUPLES$", "Last python script failed to produce any output.")
+        query = query.replace(
+            "$NUM_TUPLES$", "Last python script failed to produce any output."
+        )
 
     if fd == 1:
         df_ground_truth_fd = df_ground_truth.sample(
@@ -272,17 +315,18 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
     else:
         query = query.replace("$FD_HINT$", "")
 
-
     if metadata_flag == 1:
-        query = query.replace("$METADATA$", "If the target data schema does not make sense, please suggest new column names that better represent the semantics of the columns.")
-    
+        query = query.replace(
+            "$METADATA$",
+            "If the target data schema does not make sense, please suggest new column names that better represent the semantics of the columns.",
+        )
 
     if few_shot_flag == 1:
         # Resolve rag-examples base path early (needed for feature strategy to load docs from disk)
         rag_examples_base_path = resolve_rag_examples_base(rag_examples_base)
-        #try:
+        # try:
         #    logger.info(f"Using rag-examples-w-pipeline at: {rag_examples_base_path}")
-        #except Exception:
+        # except Exception:
         #    pass
 
         output_fields = args.rag_output_fields.split(",")
@@ -294,7 +338,9 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
             task_folder = Path(main_folder) / f"length{len_idx_target_idx}"
             try:
                 source_dfs, target_df = load_source_target_from_folder(task_folder)
-                query_vector = compute_from_data(source_dfs, target_df, pipeline_operator_list=None)
+                query_vector = compute_from_data(
+                    source_dfs, target_df, pipeline_operator_list=None
+                )
             except Exception as e:
                 try:
                     logger.warning(f"Feature extraction failed, using zero vector: {e}")
@@ -315,7 +361,9 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
                 results=rag_results,
                 output_fields=["id", "case_id"],
             )
-            rag_json_results = [d for d in rag_json_results if d.get("case_id") != len_idx_target_idx]
+            rag_json_results = [
+                d for d in rag_json_results if d.get("case_id") != len_idx_target_idx
+            ]
             seen_case_ids = set()
             deduped = []
             for d in rag_json_results:
@@ -331,10 +379,14 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
                 cid = d.get("case_id")
                 doc_text = ""
                 if cid:
-                    doc_path = rag_examples_base_path / f"Length{cid}" / f"Length{cid}.txt"
+                    doc_path = (
+                        rag_examples_base_path / f"Length{cid}" / f"Length{cid}.txt"
+                    )
                     if doc_path.exists():
                         try:
-                            doc_text = doc_path.read_text(encoding="utf-8", errors="ignore").strip()
+                            doc_text = doc_path.read_text(
+                                encoding="utf-8", errors="ignore"
+                            ).strip()
                         except Exception:
                             pass
                 d["doc"] = doc_text
@@ -352,7 +404,9 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
                 results=rag_results,
                 output_fields=output_fields,
             )
-            rag_json_results = [d for d in rag_json_results if d.get("case_id") != len_idx_target_idx]
+            rag_json_results = [
+                d for d in rag_json_results if d.get("case_id") != len_idx_target_idx
+            ]
             seen_case_ids = set()
             deduped = []
             for d in rag_json_results:
@@ -367,7 +421,11 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         # Log retrieved documents explicitly (so we can audit retrieval without digging into the prompt).
         try:
             strategy = getattr(args, "rag_retrieval_strategy", "text")
-            coll = args.rag_db_collection if strategy == "text" else getattr(args, "rag_feature_collection", "plan_docs_features")
+            coll = (
+                args.rag_db_collection
+                if strategy == "text"
+                else getattr(args, "rag_feature_collection", "plan_docs_features")
+            )
             logger.info(
                 f"RAG_RETRIEVAL: strategy={strategy} uri={args.rag_db_uri} collection={coll} top_k={args.rag_topk}"
             )
@@ -400,48 +458,53 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
             # Build folder path: case_id "4_24" → "Length4_24"
             folder_name = f"Length{case_id}"  # e.g., "Length4_24"
             case_folder = rag_examples_base_path / folder_name
-            
+
             # Read pipeline and Python code files
             pipeline_content = ""
             python_code = ""
-            
+
             pipeline_path = case_folder / "operator_pipeline.txt"
             python_path = case_folder / "python_recovered.py"
-            
+
             try:
                 if pipeline_path.exists():
-                    pipeline_content = pipeline_path.read_text(encoding="utf-8", errors="ignore").strip()
+                    pipeline_content = pipeline_path.read_text(
+                        encoding="utf-8", errors="ignore"
+                    ).strip()
                 else:
-                    logger.warning(f"Pipeline file not found for case {case_id}: {pipeline_path}")
+                    logger.warning(
+                        f"Pipeline file not found for case {case_id}: {pipeline_path}"
+                    )
             except Exception as e:
                 logger.warning(f"Could not read pipeline for case {case_id}: {e}")
-            
+
             try:
                 if python_path.exists():
-                    python_code = python_path.read_text(encoding="utf-8", errors="ignore").strip()
+                    python_code = python_path.read_text(
+                        encoding="utf-8", errors="ignore"
+                    ).strip()
                 else:
-                    logger.warning(f"Python code file not found for case {case_id}: {python_path}")
+                    logger.warning(
+                        f"Python code file not found for case {case_id}: {python_path}"
+                    )
             except Exception as e:
                 logger.warning(f"Could not read Python code for case {case_id}: {e}")
-            
+
             # Build formatted block for this example
-            block_parts = [
-                f"Few-shot Example {idx + 1}:",
-                doc_text
-            ]
-            
+            block_parts = [f"Few-shot Example {idx + 1}:", doc_text]
+
             if pipeline_content:
                 block_parts.append(f"\nPipeline for this few-shot example:")
                 block_parts.append(pipeline_content)
-            
+
             if python_code:
                 block_parts.append(f"\nPython code for this few-shot example:")
                 block_parts.append("```python")
                 block_parts.append(python_code)
                 block_parts.append("```")
-            
+
             few_shot_blocks.append("\n".join(block_parts))
-        
+
         # Join all blocks
         few_shot_prompt = "\n\n".join(few_shot_blocks)
         few_shot_prompt = "Here are some few shot examples:\n\n" + few_shot_prompt
@@ -455,9 +518,10 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
     cost = token_tracker.cost_summary()
     logger.info(cost)
 
-    try: 
+    try:
         with open(
-            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py", mode="r"
+            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
+            mode="r",
         ) as f:
             python_code = f.read()
     except Exception as e:
@@ -470,7 +534,9 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         + args.critique_type
         + ".csv"
     )
-    query_generator = """Based on the LLM response, can you refine the python code.
+    query_generator = """Based on the LLM response, can you refine the python code."""
+    if args.static_hints:
+        query_generator += """
 
 Hint 1:
 Note that some column names, e.g., purpose, funded_year, may not match the values in the column, e.g., 5 for purpose, 16844 for funded_year. In this case consider the column to be aggregation, e.g., count per purpose, and sum for funded_year. They should not be used in Group By columns.
@@ -522,8 +588,8 @@ Consider applying string functions to certain columns that look similar but have
 
 Hint 16:
 Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
-
-
+"""
+    query_generator += """
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
     - Please keep the final output columns the same as it was in the python script given. [Strictly do not add prefix or suffix to the column names]
@@ -548,6 +614,13 @@ Please look at the target examples, and ensure the generated data has the same t
     match = pattern.search(res_gen[0])
     script = match.group(1).strip()
 
+    if script:
+        with open(
+            f"{main_folder}/length{length}_{id_}/python_recovered.py",
+            "w",
+        ) as file:
+            file.write(script)
+
     logger.info(query_generator)
     logger.info(res_gen[0])
     logger.info(token_tracker.cost_summary())
@@ -567,9 +640,15 @@ Please look at the target examples, and ensure the generated data has the same t
             is_correct,
             similarity_scores,
             shared_columns,
-        ) = compare_lists_matching(df_critique, df_ground_truth)
-        if (is_correct==False and len(shared_columns)>0 and len(df_ground_truth)==len(df_critique)):
-            print("TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:")
+        ) = validate_fn(df_critique, df_ground_truth)
+        if (
+            is_correct == False
+            and len(shared_columns) > 0
+            and len(df_ground_truth) == len(df_critique)
+        ):
+            print(
+                "TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:"
+            )
             sorted_df_critique = df_critique.sort_values(by=shared_columns)
             sorted_df_ground_truth = df_ground_truth.sort_values(by=shared_columns)
             new_header_critique = []
@@ -580,9 +659,15 @@ Please look at the target examples, and ensure the generated data has the same t
                 else:
                     print("is not float")
                     first_three_values = sorted_df_critique[col].head(3)
-                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
+                concatenated_header = (
+                    str(first_three_values.iloc[0])
+                    + "-"
+                    + str(first_three_values.iloc[1])
+                    + "-"
+                    + str(first_three_values.iloc[2])
+                )
                 new_header_critique.append(concatenated_header)
-            sorted_df_critique.columns=new_header_critique
+            sorted_df_critique.columns = new_header_critique
             new_header_ground_truth = []
             for col in sorted_df_ground_truth.columns:
                 if "float" in str(sorted_df_ground_truth[col].dtype):
@@ -591,9 +676,15 @@ Please look at the target examples, and ensure the generated data has the same t
                 else:
                     print("is not float")
                     first_three_values = sorted_df_ground_truth[col].head(3)
-                concatenated_header = str(first_three_values.iloc[0])+"-"+str(first_three_values.iloc[1])+"-"+str(first_three_values.iloc[2])
+                concatenated_header = (
+                    str(first_three_values.iloc[0])
+                    + "-"
+                    + str(first_three_values.iloc[1])
+                    + "-"
+                    + str(first_three_values.iloc[2])
+                )
                 new_header_ground_truth.append(concatenated_header)
-            sorted_df_ground_truth.columns=new_header_ground_truth
+            sorted_df_ground_truth.columns = new_header_ground_truth
             print("OUR RESPONSE:")
             print(sorted_df_critique)
             print("GROUND TRUTH:")
@@ -603,7 +694,7 @@ Please look at the target examples, and ensure the generated data has the same t
                 is_correct,
                 similarity_scores,
                 shared_columns,
-            ) = compare_lists_matching(sorted_df_critique, sorted_df_ground_truth)
+            ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
             score = calculate_score(sorted_df_ground_truth, sorted_df_critique)
         else:
             score = calculate_score(df_ground_truth, df_critique)
@@ -621,7 +712,6 @@ Please look at the target examples, and ensure the generated data has the same t
         score,
     )
     return crit_info
-
 
 
 def replace_history_info(query, operation_history):

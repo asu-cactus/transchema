@@ -8,13 +8,14 @@ import pdb
 from auto_suggest_llm_util import get_filtered_functional_dependency, calculate_score
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import compare_lists_matching
+from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
 from log_util.log_util import create_logger
 
 
 def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     log_dir = log_dir_
+    validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
 
     path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
@@ -118,7 +119,7 @@ Previous Python Code : ```Python
                 is_correct,
                 similarity_scores,
                 validation_error,
-            ) = compare_lists_matching(df_ground_truth, df_critique)
+            ) = validate_fn(df_ground_truth, df_critique)
             # need to change the definition, the sequence in the definition is incorrect
             (
                 case_accuracy_soft,
