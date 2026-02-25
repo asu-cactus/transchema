@@ -32,7 +32,32 @@ from auto_suggest_llm_util import get_prompt
 #   Set TARGET_IDS to None and configure the range below.
 #
 LEN_ID = 1
-TARGET_IDS = None  # [13]
+TARGET_IDS = [
+    1,
+    7,
+    10,
+    14,
+    21,
+    26,
+    32,
+    36,
+    38,
+    39,
+    45,
+    50,
+    51,
+    57,
+    62,
+    65,
+    66,
+    74,
+    75,
+    79,
+    85,
+    89,
+    90,
+    96,
+]  # None  # [13]
 # 16, 17, 18, 19,
 # 20, 21, 22, 23, 24, 25,
 # 27,
@@ -69,7 +94,7 @@ BENCHMARKS_DIR = os.path.join(
 RESULTS_DIR = os.path.join(
     _TRANSCHEMA_ROOT,
     "AgentFlow",
-    "results_operator_execution_experiments_len_1_60_101",
+    "results_operator_execution_experiments_len_1_failed",
 )
 
 # Model / solver configuration
