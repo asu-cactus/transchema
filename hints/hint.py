@@ -19,8 +19,8 @@ def get_hints(
     hint_flag,
     hints_truncate,
 ):
-    hints = []
-    if hint_source.startswith("none"):
+    hints = [""]
+    if not hint_source:
         return hints
     if hint_source.startswith("v1"):
         if prompt_type == "join":

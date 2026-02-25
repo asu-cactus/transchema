@@ -174,7 +174,7 @@ def get_prompt(
         )
 
         # print("Hints received")
-        print(hints)
+        # print(hints)
         # hints = [""]
 
         if target_data_schema_with_types:
@@ -256,7 +256,7 @@ def get_prompt(
         # print(str(len(encoding.encode(prompt))))
 
     elif prompt_type == "join":
-        print("get hints")
+        # print("get hints")
         hints = get_hints(
             "join",
             hint_source,
@@ -274,7 +274,7 @@ def get_prompt(
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            print(target_data_schema)
+            # print(target_data_schema)
 
         static_prompt = get_join_prompt(
             allowed_operation_list,
@@ -408,7 +408,7 @@ def get_prompt(
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            print(target_data_schema)
+            # print(target_data_schema)
 
         source_information_with_location = get_source_with_location(
             file_count,
@@ -468,7 +468,7 @@ def get_prompt(
     # print(len(encoding.encode(prompt)))
     prompt_len = len(encoding.encode(prompt))
     if prompt_len > max_tokens:
-        print(prompt)
+        # print(prompt)
         raise Exception(f"Prompt length {prompt_len} exceeds maximum tokens.")
 
     return prompt
@@ -886,7 +886,7 @@ def get_key_column_hints(keys, step):
             hints = f"No clear key columns found in the intermediate_step{step} table."
         else:
             hints = f"Key columns discovered from the intermediate_step{step} table : {keys}\n"
-    print(hints)
+    # print(hints)
     return hints
 
 
@@ -911,7 +911,7 @@ def get_column_matching_hints(intermediate_df, target_df, step):
         hint = ""
         for col1, col2 in match_columns:
             hint += f"Column {col1} from intermediate_step{step} table matches with column {col2} from target table.\n"
-        print(hint)
+        # print(hint)
         return hint
     else:
         return f"\n\nNo matching columns found between intermediate_step{step} table and target tables.\n\n"
