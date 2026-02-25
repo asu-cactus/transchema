@@ -168,7 +168,7 @@ Final Determination:
 - Conclude **STOP** only when `Code_Gen_And_Score_Tool` has been run AND the score is 1.0 with no missed items.
 - Conclude **CONTINUE** in all other cases (operators still missing, code not yet generated, score < 1.0, or execution failed).
 
-IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: CONTINUE".
+IMPORTANT: Keep your response brief (2-3 sentences max). The response must end with either "Conclusion: STOP" or "Conclusion: CONTINUE".
 """
 
         input_data = [prompt_memory_verification]

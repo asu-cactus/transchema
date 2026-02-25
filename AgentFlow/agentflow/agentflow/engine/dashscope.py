@@ -102,11 +102,7 @@ class ChatDashScope(EngineLM, CachedEngine):
             print(f"Error in generate method: {str(e)}")
             print(f"Error type: {type(e).__name__}")
             print(f"Error details: {e.args}")
-            return {
-                "error": type(e).__name__,
-                "message": str(e),
-                "details": getattr(e, 'args', None)
-            }
+            raise
         
     def _generate_text(
         self, prompt, system_prompt=None, temperature=0, max_tokens=2048, top_p=0.99, response_format=None

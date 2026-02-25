@@ -1,0 +1,154 @@
+Case: 1_10
+Status: INCORRECT
+Timestamp: 2026-02-25T09:28:26.159017
+Duration: 287.05 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_failed/case_1_10/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 2.8333333333333335
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_10
+2. Target Schema: ['PRECINCT': string, 'ELIGIBLE_VOTERS': integer, 'POLLS': integer, 'EARLY_VOING': integer, 'ABSENTEE': integer, 'PROVISIONAL': integer]
+3. Target Examples: There are 560 available target examples:                 PRECINCT  ELIGIBLE_VOTERS  POLLS  EARLY_VOING  ABSENTEE  \
+485              027-014             2343   1020          417        68   
+452              026-014              715    313           33         6   
+55               002-028              295    104           95         7   
+72               003-013             4574   2013         1074       335   
+246              009-012             3104   1346          541       115   
+291              011-019             2590   1018          777        47   
+462              026-024             1957    600          487        36   
+280              011-008             2005   1017          390        65   
+302              012-003             3704   1764          502        74   
+431              025-012             1212    510           35        16   
+529              027-058              596    173          129         9   
+218              008-013             2587   1370          492       126   
+513              027-042             1642    800          315       135   
+406              021-003             1631    709          137        25   
+546              028-008             1428    419          341        58   
+293              011-021              662    314          130        15   
+271              010-007              678    284          157        45   
+239              009-005             6413   2877         1408       525   
+526              027-055              793    274           85         7   
+212              008-007             3947   1742          477       103   
+165              006-020             2880   1119          868       182   
+310              012-011             4071   1655          598        62   
+555              029-002             1557    970          156        60   
+300              012-001             8642   4532         1164       392   
+245              009-011             2751   1076          511       194   
+461              026-023             1097    407          206        16   
+204              007-027             3061   1031          963       167   
+398              020-007             1958    590          446        42   
+552              028-014              545    214          120         6   
+3                001-003            14068   6283         3236       512   
+276              011-004             2298   1002          625        81   
+125              005-015             1072    553          215        64   
+556              029-003             1163    690          121        43   
+376              016-008              875    287          148        15   
+31               002-004            12739   5385         3090       366   
+433              025-014              992    371           27         5   
+559  Unable to Determine                0      0            0         0   
+439              026-001              313    143            4         3   
+366              015-025             3360   1539          672        76   
+260              009-026             1369    680          226        98   
+451              026-013              805    349           36         9   
+374              016-006             1553    557          261        35   
+444              026-006              927    386           71        24   
+133              005-023             1395    553          413        80   
+413              023-003             2032    991          159        89   
+99               004-015             2820   1449          476       133   
+123              005-013             1880    971          379       120   
+170              006-025             1675    878          326       126   
+465              026-027             1326    421          361        32   
+282              011-010             2979   1163          819        92   
+58               002-031             2257    748          774        45   
+160              006-015             3706   1626          818       147   
+379              016-011              654    263           82        10   
+17               001-017             5307   2050         1266       107   
+294              011-022             3665   1288         1313       182   
+75               003-016             2128   1092          295        48   
+
+     PROVISIONAL  
+485           47  
+452           13  
+55            20  
+72            60  
+246          107  
+291           46  
+462           70  
+280           23  
+302           80  
+431           12  
+529           29  
+218           32  
+513           24  
+406           91  
+546           25  
+293           10  
+271            3  
+239           98  
+526           41  
+212          114  
+165           43  
+310          159  
+555           21  
+300          113  
+245           74  
+461           23  
+204           36  
+398           52  
+552           19  
+3            258  
+276          133  
+125           15  
+556           13  
+376           44  
+31           233  
+433           58  
+559         2266  
+439            9  
+366           93  
+260           27  
+451           14  
+374           40  
+444           18  
+133           22  
+413           44  
+99            58  
+123           32  
+170           15  
+465           52  
+282           42  
+58            37  
+160           83  
+379           52  
+17           132  
+294           34  
+75            26  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_10_0
+	Source 0 Schema: ['LBE', 'CONGRESSIONAL_DISTRICT_CODE', 'LEGISLATIVE_DISTRICT_CODE', 'PRECINCT', 'PARTY', 'POLLS', 'EARLY_VOING', 'ABSENTEE', 'PROVISIONAL', 'ELIGIBLE_VOTERS']
+	Source 0 Examples: 	 Source 0 contains 6042 tuples, with examples as follows: 
+        LBE  CONGRESSIONAL_DISTRICT_CODE LEGISLATIVE_DISTRICT_CODE PRECINCT  \
+0  Allegany                          6.0                       01C  001-000   
+1  Allegany                          6.0                       01C  001-000   
+2  Allegany                          6.0                       01C  001-000   
+
+         PARTY  POLLS  EARLY_VOING  ABSENTEE  PROVISIONAL  ELIGIBLE_VOTERS  
+0     DEMOCRAT     83            9         4            1            126.0  
+1        GREEN      1            0         0            1              2.0  
+2  LIBERTARIAN      3            0         0            0              3.0  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_10/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_10/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

@@ -1,0 +1,51 @@
+Case: 1_21
+Status: CORRECT
+Timestamp: 2026-02-25T09:34:31.267172
+Duration: 52.59 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_failed/case_1_21/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Major_category', 'Median']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_21
+2. Target Schema: ['Major_category': string, 'Median': float]
+3. Target Examples: There are 9 available target examples:            Major_category        Median
+1  Biology & Life Science  51833.333333
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_21_0
+	Source 0 Schema: ['Major_code', 'Major', 'Major_category', 'Total', 'Employed', 'Employed_full_time_year_round', 'Unemployed', 'Unemployment_rate', 'Median', 'P25th', 'P75th']
+	Source 0 Examples: 	 Source 0 contains 86 tuples, with examples as follows: 
+   Major_code                                  Major  \
+0        1100                    GENERAL AGRICULTURE   
+1        1101  AGRICULTURE PRODUCTION AND MANAGEMENT   
+2        1102                 AGRICULTURAL ECONOMICS   
+
+                    Major_category   Total  Employed  \
+0  Agriculture & Natural Resources  128148     90245   
+1  Agriculture & Natural Resources   95326     76865   
+2  Agriculture & Natural Resources   33955     26321   
+
+   Employed_full_time_year_round  Unemployed  Unemployment_rate  Median  \
+0                          74078        2423           0.026147   50000   
+1                          64240        2266           0.028636   54000   
+2                          22810         821           0.030248   63000   
+
+   P25th  P75th  
+0  34000  80000  
+1  36000  80000  
+2  40000  98000  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_21/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output
