@@ -3,6 +3,7 @@ import argparse
 import json
 import csv
 import pdb
+import shutil
 
 # from methods.precursor import precursor
 from methods.multi_step import multi_step
@@ -216,6 +217,7 @@ def get_parser():
 
     parser.add_argument(
         "--static-hints",
+        default=True,
         action="store_true",
         help="Add general purpose static hints to the prompt",
     )
@@ -432,19 +434,19 @@ if __name__ == "__main__":
     cases = list(range(start, end))
 
     # failed cases
-    cases = [
-        73,
-        74,
-        76,
-        82,
-        90,
-        91,
-        92,
-        93,
-        95,
-        97,
-        100,
-    ]
+    # cases = [
+    #     73,
+    #     74,
+    #     76,
+    #     82,
+    #     90,
+    #     91,
+    #     92,
+    #     93,
+    #     95,
+    #     97,
+    #     100,
+    # ]
 
     processed_without_exceptions = 0
 
@@ -479,12 +481,28 @@ if __name__ == "__main__":
                 # critique iff ms is wrong
 
                 crit_info = crit(args, length, case, operation_history)
+
+                # do the copy of the script only if critique is successful, meaning the critique judged the script to be correct after fixing the issues
+                if crit_info[0]:
+                    # copy python_recovered.py to python_recovered_successful.py
+                    src = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered.py"
+                    dst = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered_successful.py"
+                    shutil.copy2(src, dst)
+
+                    print("Success!")
+
                 average_crit_path = f"{args.result_directory}/final_critique.csv"
                 with open(average_crit_path, "a", newline="") as f:
                     writer = csv.writer(f)
                     writer.writerow(crit_info)
 
             else:
+
+                # copy python_recovered.py to python_recovered_successful.py
+                src = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered.py"
+                dst = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered_successful.py"
+                shutil.copy2(src, dst)
+
                 print("Success!")
 
             processed_without_exceptions += 1

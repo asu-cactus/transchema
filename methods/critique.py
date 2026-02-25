@@ -314,6 +314,13 @@ Please look at the target examples, and ensure the generated data has the same t
     match = pattern.search(res_gen[0])
     script = match.group(1).strip()
 
+    if script:
+        with open(
+            f"{main_folder}/length{length}_{id_}/python_recovered.py",
+            "w",
+        ) as file:
+            file.write(script)
+
     logger.info(query_generator)
     logger.info(res_gen[0])
     logger.info(token_tracker.cost_summary())
