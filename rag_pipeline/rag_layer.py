@@ -5,7 +5,8 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from torch import Tensor
-import uuid, os, json
+import os, json
+from typing import Dict, Optional, List, Any
 from transformers import AutoTokenizer, AutoModel
 
 
@@ -79,6 +80,7 @@ class EmbeddingLayer:
 class RAGDB:
     def __init__(self, uri="milvus.db", collection="rag_min",
                  model_id="Qwen/Qwen3-Embedding-0.6B", max_len=8192, device="auto"):
+        self.uri = uri
         self.client = MilvusClient(uri)
         self.collection = collection
         self.embedder = EmbeddingLayer(embedding_model=model_id, max_seq_length=max_len, device=device)
@@ -91,28 +93,88 @@ class RAGDB:
             self.client.create_collection(collection_name=collection, dimension=dim,
                                           metric_type="COSINE", 
                                           auto_id=True, enable_dynamic_field=True)
-            # self.client.create_index(collection_name=collection,
-            #                          index_params={"index_type": "HNSW", "metric_type": "COSINE",
-            #                                        "params": {"M": 16, "efConstruction": 200}})
         try:
             self.client.load_collection(collection)
         except Exception:
             pass
 
-    def insert_texts(self, texts):
+    def insert_texts(self, texts, case_ids=None):
+        """
+        Insert texts into the database.
+        
+        Args:
+            texts: List of text strings to insert
+            case_ids: Optional list of case_id strings (e.g., ["4_24", "4_32"])
+                      If provided, must be same length as texts
+        """
         vecs = self._embed(texts)
-        # ids = [str(uuid.uuid4()) for _ in texts]
-        rows = [{"doc": texts[i], "vector": vecs[i].tolist()} for i in range(len(texts))]
+
+        rows = [
+            {
+                "doc": texts[i], 
+                "vector": vecs[i].tolist(),
+                "case_id": case_ids[i] if case_ids and i < len(case_ids) else None,
+            } 
+            for i in range(len(texts))
+        ]
         self.client.insert(collection_name=self.collection, data=rows)
         return True
 
-    def search(self, queries, top_k=5, batch_size=32):
+    def search(self, queries, top_k=5, batch_size=32, output_fields=None, exclude_case_id: Optional[str] = None):
+        """
+        Search for similar documents using vector similarity.
+
+        Args:
+            queries: List of query strings
+            top_k: Number of results to return
+            batch_size: Batch size for embedding
+            output_fields: Optional list of fields to return. Defaults to ["id", "doc", "case_id"]
+            exclude_case_id: Optional case_id to exclude (e.g., "4_52" for self-retrieval prevention).
+                Uses Milvus filter when supported; caller should still post-filter as fallback.
+                When set, requests top_k + 5 results to compensate for filtered/excluded hits.
+        """
         qvecs = self._embed(queries, bs=batch_size)
-        return self.client.search(collection_name=self.collection,
-                                  data=qvecs.tolist(),
-                                  limit=top_k,
-                                  output_fields=["id", "doc"],
-                                  search_params={"params": {"ef": 64}})
+
+        if output_fields is None:
+            output_fields = ["id", "doc", "case_id"]
+
+        # When excluding same-case, request extra results to compensate (caller will post-filter)
+        limit = top_k + 5 if exclude_case_id else top_k
+
+        # Smart fallback: try Milvus filter first, fall back to unfiltered search if it fails
+        filter_expr = ""
+        if exclude_case_id:
+            # Escape quotes in case_id if needed
+            safe_id = str(exclude_case_id).replace('"', '\\"')
+            filter_expr = f'case_id != "{safe_id}"'
+
+        try:
+            if filter_expr:
+                return self.client.search(
+                    collection_name=self.collection,
+                    data=qvecs.tolist(),
+                    filter=filter_expr,
+                    limit=limit,
+                    output_fields=output_fields,
+                    search_params={"params": {"ef": 64}}
+                )
+            else:
+                return self.client.search(
+                    collection_name=self.collection,
+                    data=qvecs.tolist(),
+                    limit=limit,
+                    output_fields=output_fields,
+                    search_params={"params": {"ef": 64}}
+                )
+        except Exception:
+            # Fallback: Milvus filter not supported (e.g., case_id not filterable) - search without filter
+            return self.client.search(
+                collection_name=self.collection,
+                data=qvecs.tolist(),
+                limit=limit,
+                output_fields=output_fields,
+                search_params={"params": {"ef": 64}}
+            )
 
     # ----- tiny helper -----
     def _embed(self, texts, bs=32):
@@ -125,30 +187,100 @@ class RAGDB:
         return x
 
 
+# ---------------------------------------------------------------------------
+# Feature-based retrieval (23-dim vectors, no embedder)
+# ---------------------------------------------------------------------------
+
+FEATURE_DIM = 23  # must match feature_extractor.FEATURE_DIM
+
+
+class FeatureRAGDB:
+    """
+    Milvus collection for 23-dim feature vectors. Use for retrieval when
+    rag_retrieval_strategy == "feature". Same DB file as RAGDB, different collection.
+    """
+
+    def __init__(
+        self,
+        uri: str = "milvus.db",
+        collection: str = "plan_docs_features",
+    ):
+        self.uri = uri
+        self.client = MilvusClient(uri)
+        self.collection = collection
+        if not self.client.has_collection(collection):
+            self.client.create_collection(
+                collection_name=collection,
+                dimension=FEATURE_DIM,
+                metric_type="COSINE",
+                auto_id=True,
+                enable_dynamic_field=True,
+            )
+        try:
+            self.client.load_collection(collection)
+        except Exception:
+            pass
+
+    def insert_vectors(self, case_ids: List[str], vectors: List[List[float]]) -> bool:
+        """Insert (case_id, vector) rows. vectors must be list of 23-dim lists."""
+        if len(case_ids) != len(vectors):
+            raise ValueError("case_ids and vectors must have same length")
+        rows = [
+            {"vector": vectors[i], "case_id": case_ids[i]}
+            for i in range(len(case_ids))
+        ]
+        self.client.insert(collection_name=self.collection, data=rows)
+        return True
+
+    def search(
+        self,
+        query_vectors: List[List[float]],
+        top_k: int = 5,
+        output_fields: Optional[List[str]] = None,
+        exclude_case_id: Optional[str] = None,
+    ):
+        """Search by feature vector. Returns same shape as RAGDB.search for drop-in use."""
+        if output_fields is None:
+            output_fields = ["id", "case_id"]
+        limit = top_k + 5 if exclude_case_id else top_k
+        filter_expr = ""
+        if exclude_case_id:
+            safe_id = str(exclude_case_id).replace('"', '\\"')
+            filter_expr = f'case_id != "{safe_id}"'
+        try:
+            if filter_expr:
+                return self.client.search(
+                    collection_name=self.collection,
+                    data=query_vectors,
+                    filter=filter_expr,
+                    limit=limit,
+                    output_fields=output_fields,
+                    search_params={"params": {"ef": 64}},
+                )
+            return self.client.search(
+                collection_name=self.collection,
+                data=query_vectors,
+                limit=limit,
+                output_fields=output_fields,
+                search_params={"params": {"ef": 64}},
+            )
+        except Exception:
+            return self.client.search(
+                collection_name=self.collection,
+                data=query_vectors,
+                limit=limit,
+                output_fields=output_fields,
+                search_params={"params": {"ef": 64}},
+            )
+
+
 if __name__ == "__main__":
-    # try:
-    #     os.remove("rag_pipeline/test_dummy/milvus_demo_0.db")
-    # except:
-    #     pass
-
-
     db = RAGDB(
-        uri="rag_pipeline/test_dummy/milvus_demo_4.db",
+        uri="rag_pipeline/db/milvus_demo_4.db",
         collection="plan_docs",
         model_id="Qwen/Qwen3-Embedding-0.6B",
-        # max_len=8192,
         device="auto",
     )
-
-    # 2) Insert docs
-    # docs = [
-    #     "Beijing is the capital of China.",
-    #     "Phoenix is the capital of Arizona.",
-    #     "Gravity is a force that attracts two bodies toward each other.",
-    #     "Tucson is a city in Arizona.",
-    # ]
-    # ok = db.insert_texts(docs)
-    # print(f"Inserted {len(docs)} docs: {ok}")
 
     # Search
     queries = [
@@ -159,20 +291,3 @@ if __name__ == "__main__":
     print("\n--- Normalized hits (first query) ---")
     norm = milvus_results_to_json(results, output_fields=["doc"])
     print(json.dumps(norm, indent=2))
-
-    # print("\n--- Milvus search results ---")
-    # for qi, hits in enumerate(results):
-    #     print(f"\nQuery: {queries[qi]}")
-    #     for rank, hit in enumerate(hits, start=1):
-    #         # fields available: id, distance, entity (with stored fields)
-    #         text = hit.get("entity", {}).get("doc")
-    #         print(f"  {rank}. id={hit.get('id')}  score={hit.get('distance'):.4f}  doc={text}")
-
-    # # Cosine sanity check using the same embedder
-    # embedder = db.embedder
-    # q_vecs = concat_chunks(embedder.encode(queries, is_query=True, batch_size=8))
-    # d_vecs = concat_chunks(embedder.encode(docs,    is_query=False, batch_size=8))
-    # sims = q_vecs @ d_vecs.T  # L2-normalized → dot = cosine
-    # print("\n--- Cosine similarity matrix (queries x docs) ---")
-    # np.set_printoptions(precision=3, suppress=True)
-    # print(sims)

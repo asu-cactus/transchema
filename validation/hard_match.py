@@ -56,7 +56,7 @@ def compare_numerical_columns(pred_column, gold_column):
     matches = sum(
         1
         for p, g in zip(pred_column, gold_column)
-        if p - g < 0.01 or (math.isnan(p) == True and math.isnan(g) == True)
+        if abs(p - g) < 0.01 or (math.isnan(p) == True and math.isnan(g) == True)
     )
     print("num matches:", matches)
     total = len(pred_column)
@@ -117,10 +117,7 @@ def intersection_high_precision_floats(list1, list2, rel_tol=1e-09, abs_tol=0.0)
 
 
 def compare_lists_matching(generated_sql_df, ground_truth_df):
-    # print("Sorting")
-    # generated_sql_df = generated_sql_df.loc[
-    #   :, ~generated_sql_df.columns.duplicated()
-    # ].copy()
+    # Drop duplicate columns
     generated_duplicate_cols = generated_sql_df.columns[
         generated_sql_df.columns.duplicated()
     ]
@@ -134,13 +131,14 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
     generated_sql_df = generated_sql_df.drop_duplicates()
     ground_truth_df = ground_truth_df.drop_duplicates()
 
+    # Drop index artifacts upfront — cleaner than the mid-loop find() hack
     try:
         generated_sql_df = generated_sql_df.drop("Unnamed: 0", axis=1)
-    except:
+    except KeyError:
         pass
     try:
         ground_truth_df = ground_truth_df.drop("Unnamed: 0", axis=1)
-    except:
+    except KeyError:
         pass
 
     if len(generated_sql_df.columns) == 0 or len(ground_truth_df.columns) == 0:
@@ -151,6 +149,29 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
             ["Mismatch - No columns in one or both DataFrames"],
             [],
         )
+
+    # Column schema mismatch — compute partial credit on intersection, but always return False
+    col_mismatch = False
+    if len(generated_sql_df.columns) != len(ground_truth_df.columns):
+        print(
+            f"Mismatch - Column counts differ (pred:{len(generated_sql_df.columns)} v.s. gold:{len(ground_truth_df.columns)})"
+        )
+        col_mismatch = True
+    elif set(generated_sql_df.columns) != set(ground_truth_df.columns):
+        pred_extra = set(generated_sql_df.columns) - set(ground_truth_df.columns)
+        gold_extra = set(ground_truth_df.columns) - set(generated_sql_df.columns)
+        print(
+            f"Mismatch - Column names differ (pred_extra:{pred_extra} v.s. gold_extra:{gold_extra})"
+        )
+        col_mismatch = True
+
+    if col_mismatch:
+        # Restrict to columns present in both — missing gold columns score 0 via num_cols denominator
+        shared_cols = set(generated_sql_df.columns) & set(ground_truth_df.columns)
+        generated_sql_df = generated_sql_df[list(shared_cols)]
+        num_cols = len(
+            ground_truth_df.columns
+        )  # denominator is gold schema size, not intersection
 
     half_comparison = False
 
@@ -176,15 +197,13 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     similarities = []
     all_matches = []
-    num_cols = len(generated_sql_df.columns)
+    num_cols = (
+        len(ground_truth_df.columns) if col_mismatch else len(generated_sql_df.columns)
+    )
 
     for col in generated_sql_df.columns:
 
         print(col)
-        if col.find("Unnamed: 0") >= 0:
-            # print("skip " + col)
-            num_cols -= 1
-            continue
 
         pred_column = generated_sql_df[col].tolist()
         if col in ground_truth_df.columns:
@@ -200,8 +219,6 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
         is_gold_numerical = is_column_numerical(ground_truth_df[col])
         is_numerical = is_generated_numerical and is_gold_numerical
         print(is_numerical)
-
-        # Use the updated compare_columns function
 
         if half_comparison:
             s1 = {
@@ -233,7 +250,7 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
     print("COLUMN SIMILARITY:")
     print(similarities)
     average_similarity = sum(similarities) / num_cols
-    res = average_similarity == 1
+    res = average_similarity == 1 and not col_mismatch
 
     print("AVERAGE COLUMN SIMILARITY:", str(average_similarity))
     return average_similarity, res, similarities, all_matches
