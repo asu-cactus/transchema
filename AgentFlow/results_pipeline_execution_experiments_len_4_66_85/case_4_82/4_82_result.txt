@@ -1,0 +1,96 @@
+Case: 4_82
+Status: CORRECT
+Timestamp: 2026-02-25T12:29:33.650609
+Duration: 60.12 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_82/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Institution', '(Fall 2011)', '(Fall 2012)', '(Fall 2013)', '(Fall 2014)', 'persist 2014', 'persist 2015', 'persist 2016', 'Cohort 2014', 'Cohort 2015', 'Cohort 2016']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_82
+2. Target Schema: ['Institution': string, '(Fall 2011)': float, '(Fall 2012)': float, '(Fall 2013)': float, '(Fall 2014)': float, 'persist 2014': integer, 'persist 2015': integer, 'persist 2016': integer, 'Cohort 2014': integer, 'Cohort 2015': integer, 'Cohort 2016': integer]
+3. Target Examples: There are 16 available target examples:                                      Institution  (Fall 2011)  (Fall 2012)  \
+15             Texas A&M University at Galveston        0.442        0.546   
+6   The University of Texas of the Permian Basin        0.648        0.663   
+
+    (Fall 2013)  (Fall 2014)  persist 2014  persist 2015  persist 2016  \
+15        0.581        0.589           294           303           236   
+6         0.691        0.678           278           327           295   
+
+    Cohort 2014  Cohort 2015  Cohort 2016  
+15          499          535          439  
+6           410          478          452  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_82_0
+	Source 0 Schema: ['Institution', 'year 2016']
+	Source 0 Examples: 	 Source 0 contains 35 tuples, with examples as follows: 
+                   Institution  year 2016
+0      Angelo State University        949
+1             Lamar University        931
+2  Midwestern State University        477
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_82/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_82_1
+	Source 1 Schema: ['Institution', 'year 2014']
+	Source 1 Examples: 	 Source 1 contains 33 tuples, with examples as follows: 
+                   Institution  year 2014
+0      Angelo State University        798
+1             Lamar University        828
+2  Midwestern State University        573
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_82/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_82_2
+	Source 2 Schema: ['Institution', '(Fall 2000)', '(Fall 2001)', '(Fall 2002)', '(Fall 2003)', '(Fall 2004)', '(Fall 2005)', '(Fall 2006)', '(Fall 2007)', '(Fall 2008)', '(Fall 2009)', '(Fall 2010)', '(Fall 2011)', '(Fall 2012)', '(Fall 2013)', '(Fall 2014)']
+	Source 2 Examples: 	 Source 2 contains 20 tuples, with examples as follows: 
+                              Institution  (Fall 2000)  (Fall 2001)  \
+0    The University of Texas at Arlington        0.680        0.656   
+1       The University of Texas at Austin        0.910        0.905   
+2  The University of Texas at Brownsville        0.468        0.425   
+
+   (Fall 2002)  (Fall 2003)  (Fall 2004)  (Fall 2005)  (Fall 2006)  \
+0        0.664        0.604        0.689        0.646        0.612   
+1        0.914        0.927        0.927        0.921        0.914   
+2        0.023        0.000        1.000        0.000        0.000   
+
+   (Fall 2007)  (Fall 2008)  (Fall 2009)  (Fall 2010)  (Fall 2011)  \
+0        0.582        0.647        0.700        0.711        0.713   
+1        0.904        0.920        0.912        0.889        0.926   
+2        0.657        0.557        0.353        0.389        0.555   
+
+   (Fall 2012)  (Fall 2013)  (Fall 2014)  
+0        0.702        0.680        0.702  
+1        0.935        0.930        0.935  
+2        0.651        0.711        0.000  
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_82/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_82_3
+	Source 3 Schema: ['Institution', 'year 2015']
+	Source 3 Examples: 	 Source 3 contains 34 tuples, with examples as follows: 
+                   Institution  year 2015
+0      Angelo State University        889
+1             Lamar University        963
+2  Midwestern State University        571
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_82/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_82_4
+	Source 4 Schema: ['Institution', 'Cohort 2014', 'Cohort 2015', 'Cohort 2016']
+	Source 4 Examples: 	 Source 4 contains 37 tuples, with examples as follows: 
+                   Institution  Cohort 2014  Cohort 2015  Cohort 2016
+0      Angelo State University       1285.0       1336.0       1452.0
+1             Lamar University       1411.0       1505.0       1457.0
+2  Midwestern State University        834.0        818.0        728.0
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_82/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_82/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

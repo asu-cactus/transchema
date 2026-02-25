@@ -1,0 +1,59 @@
+Case: 4_50
+Status: INCORRECT
+Timestamp: 2026-02-25T11:57:55.795632
+Duration: 342.97 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_46_65/case_4_50/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 0.9166666666666666
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_50
+2. Target Schema: ['Outcome': integer, 'WarID': integer, 'PolityID': integer, 'PolityName': integer, 'StartMonth': integer, 'StartDay': integer, 'StartYear': integer, 'EndMonth': integer, 'EndDay': integer, 'EndYear': integer, 'Initiator': integer, 'Deaths': integer]
+3. Target Examples: There are 6 available target examples:    Outcome  WarID  PolityID  PolityName  StartMonth  StartDay  StartYear  \
+3        4     56        24          48          28        26         28   
+
+   EndMonth  EndDay  EndYear  Initiator  Deaths  
+3        28      28       28         56      26  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_50_0
+	Source 0 Schema: ['WarNum', 'WarName', 'WarType', 'CcodeA', 'SideA', 'CcodeB', 'SideB', 'Intnl', 'StartMonth1', 'StartDay1', 'StartYear1', 'EndMonth1', 'EndDay1', 'EndYear1', 'StartMonth2', 'StartDay2', 'StartYear2', 'EndMonth2', 'EndDay2', 'EndYear2', 'TransFrom', 'WhereFought', 'Initiator', 'Outcome', 'TransTo', 'SideADeaths', 'SideBDeaths', 'Version']
+	Source 0 Examples: 	 Source 0 contains 221 tuples, with examples as follows: 
+   WarNum             WarName  WarType  CcodeA    SideA  CcodeB  \
+0     500      First Caucasus        5   365.0   Russia     NaN   
+1     501      Sidon-Damascus        6     NaN    Sidon     NaN   
+2     502  First Two Sicilies        4   300.0  Austria     NaN   
+
+                              SideB  Intnl  StartMonth1  StartDay1  \
+0  Georgians, Dhagestania, Chechens      0          6.0       10.0   
+1                 Damascus & Aleppo      0          6.0        NaN   
+2                               NaN      1          3.0        NaN   
+
+   StartYear1  EndMonth1  EndDay1  EndYear1  StartMonth2  StartDay2  \
+0        1818        NaN      NaN    1822.0          NaN        NaN   
+1        1820        7.0     21.0    1821.0          NaN        NaN   
+2        1821        3.0     23.0    1821.0          NaN        NaN   
+
+   StartYear2  EndMonth2  EndDay2  EndYear2  TransFrom  WhereFought Initiator  \
+0         NaN        NaN      NaN       NaN        NaN            2  Chechens   
+1         NaN        NaN      NaN       NaN        NaN            6     Sidon   
+2         NaN        NaN      NaN       NaN        NaN            2  Liberals   
+
+   Outcome  TransTo SideADeaths SideBDeaths  Version  
+0        1      NaN        5000        6000      4.1  
+1        2      NaN         NaN         NaN      4.1  
+2        1      NaN         NaN         NaN      4.1  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_50/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_50/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

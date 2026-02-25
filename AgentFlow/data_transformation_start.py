@@ -31,33 +31,8 @@ from auto_suggest_llm_util import get_prompt
 # Option B — Range of target IDs (for mass testing):
 #   Set TARGET_IDS to None and configure the range below.
 #
-LEN_ID = 1
-TARGET_IDS = [
-    1,
-    7,
-    10,
-    14,
-    21,
-    26,
-    32,
-    36,
-    38,
-    39,
-    45,
-    50,
-    51,
-    57,
-    62,
-    65,
-    66,
-    74,
-    75,
-    79,
-    85,
-    89,
-    90,
-    96,
-]  # None  # [13]
+LEN_ID = 4
+TARGET_IDS = None  # None  # [13]
 # 16, 17, 18, 19,
 # 20, 21, 22, 23, 24, 25,
 # 27,
@@ -80,9 +55,9 @@ TARGET_IDS = [
 # ]  # e.g. [4, 6, 48, 56] or None for range mode
 
 # Range mode settings (only used when TARGET_IDS is None)
-MAX_LEN_ID = 1
-TARGET_ID_START = 60
-TARGET_ID_END = 101
+MAX_LEN_ID = 4
+TARGET_ID_START = 86
+TARGET_ID_END = 100
 # ============================================================
 
 # Paths
@@ -94,7 +69,7 @@ BENCHMARKS_DIR = os.path.join(
 RESULTS_DIR = os.path.join(
     _TRANSCHEMA_ROOT,
     "AgentFlow",
-    "results_operator_execution_experiments_len_1_failed",
+    "results_pipeline_execution_experiments_len_4_86_100",
 )
 
 # Model / solver configuration
@@ -103,7 +78,7 @@ LLM_ENGINE_NAME = "gpt-4.1-mini"
 # Planner granularity:
 #   "operator" = operator-level planning
 #   "pipeline" = pipeline-level planning
-PLANNER_GRANULARITY = "operator"
+PLANNER_GRANULARITY = "pipeline"
 
 # Pipeline execution + scoring inside the agentic loop
 EXECUTE_PIPELINE = True
