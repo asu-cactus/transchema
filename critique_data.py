@@ -364,6 +364,21 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--rag_retrieval_strategy",
+        type=str,
+        choices=["text", "feature"],
+        default="text",
+        help="Retrieval strategy: 'text' (embed query, search text collection) or 'feature' (compute 23-dim, search feature collection)."
+    )
+
+    parser.add_argument(
+        "--rag_feature_collection",
+        type=str,
+        default="plan_docs_features",
+        help="Milvus collection name for feature vectors (used when rag_retrieval_strategy=feature)."
+    )
+
+    parser.add_argument(
         "--intermediate_materialization",
         action="store_true",
         help="Materialize intermediate results",
