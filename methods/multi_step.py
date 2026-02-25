@@ -1,7 +1,7 @@
 import time
 from dataclasses import dataclass
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import is_column_numerical, compare_lists_matching
+from validation.hard_match import is_column_numerical, compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
@@ -157,6 +157,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     op_hist_ = ""
     hint_source = args.hint_source
     len_id = length
+    validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     max_len_id = length
     target_id = id_
     max_target_id = id_
@@ -533,7 +534,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                             is_correct,
                             similarity_scores,
                             shared_columns,
-                        ) = compare_lists_matching(df_our_response, df_ground_truth)
+                        ) = validate_fn(df_our_response, df_ground_truth)
                         if (
                             is_correct == False
                             and len(shared_columns) > 0
@@ -601,7 +602,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                                 is_correct,
                                 similarity_scores,
                                 shared_columns,
-                            ) = compare_lists_matching(
+                            ) = validate_fn(
                                 sorted_df_our_response, sorted_df_ground_truth
                             )
                         else:

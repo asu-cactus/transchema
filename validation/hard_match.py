@@ -1,5 +1,6 @@
 import math
 from util.utils import are_elements_equal
+from validation.autopipeline_match import compare_tables
 
 
 def is_string_nan(s):
@@ -254,3 +255,16 @@ def compare_lists_matching(generated_sql_df, ground_truth_df):
 
     print("AVERAGE COLUMN SIMILARITY:", str(average_similarity))
     return average_similarity, res, similarities, all_matches
+
+
+def compare_tables_matching(df_generate, df_target):
+    """Adapter that wraps compare_tables() to return the same 4-tuple as
+    compare_lists_matching: (average_similarity, is_correct, similarity_scores, matched_cols).
+
+    Note: compare_tables is binary (no per-column partial credit), so
+    average_similarity and similarity_scores are always 1.0 or 0.0.
+    """
+    is_match, matched_cols = compare_tables(df_generate, df_target)
+    average_similarity = 1.0 if is_match else 0.0
+    similarity_scores = [average_similarity] * len(df_target.columns)
+    return average_similarity, is_match, similarity_scores, matched_cols

@@ -16,7 +16,7 @@ from auto_suggest_llm_util import (
 )
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import compare_lists_matching, is_column_numerical
+from validation.hard_match import compare_lists_matching, compare_tables_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
 from log_util.log_util import create_logger
 
@@ -150,6 +150,7 @@ def critique(
         >>> result = critique(args, 4, 32, log_dir, flags, 0, history,
         ...                   rag_examples_base="/path/to/rag-examples-w-pipeline")
     """
+    validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
 
     with open(prompt_file, mode="r") as f:
@@ -639,7 +640,7 @@ Please look at the target examples, and ensure the generated data has the same t
             is_correct,
             similarity_scores,
             shared_columns,
-        ) = compare_lists_matching(df_critique, df_ground_truth)
+        ) = validate_fn(df_critique, df_ground_truth)
         if (
             is_correct == False
             and len(shared_columns) > 0
@@ -693,7 +694,7 @@ Please look at the target examples, and ensure the generated data has the same t
                 is_correct,
                 similarity_scores,
                 shared_columns,
-            ) = compare_lists_matching(sorted_df_critique, sorted_df_ground_truth)
+            ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
             score = calculate_score(sorted_df_ground_truth, sorted_df_critique)
         else:
             score = calculate_score(df_ground_truth, df_critique)

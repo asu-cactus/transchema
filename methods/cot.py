@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import compare_lists_matching
+from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
@@ -42,7 +42,7 @@ def _extract_script_from_response(resp_text: str) -> str:
 
 
 def _try_hard_match_with_fallback(
-    df_our_response: pd.DataFrame, df_ground_truth: pd.DataFrame
+    df_our_response: pd.DataFrame, df_ground_truth: pd.DataFrame, validate_fn=None
 ):
     """
     Apply the comparison flow used in multistep.py:
@@ -51,8 +51,10 @@ def _try_hard_match_with_fallback(
          synthesize headers from first 3 values, re-compare.
     Returns: (case_accuracy, is_correct, similarity_scores)
     """
+    if validate_fn is None:
+        validate_fn = compare_lists_matching
     case_accuracy, is_correct, similarity_scores, shared_columns = (
-        compare_lists_matching(df_our_response, df_ground_truth)
+        validate_fn(df_our_response, df_ground_truth)
     )
 
     if (
@@ -83,7 +85,7 @@ def _try_hard_match_with_fallback(
         print("GROUND TRUTH:")
         print(sorted_df_gt)
 
-        case_accuracy, is_correct, similarity_scores, _ = compare_lists_matching(
+        case_accuracy, is_correct, similarity_scores, _ = validate_fn(
             sorted_df_our, sorted_df_gt
         )
 
@@ -101,6 +103,7 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
     case_path = f"{length}_{id_}"
     is_correct = False
     score = 0
+    validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     cost_summary = []
     start_time = time.time()
     token_tracker = TokenUsageTracker()
@@ -285,7 +288,7 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
                         is_correct,
                         similarity_scores,
                         shared_columns,
-                    ) = compare_lists_matching(df_our_response, df_ground_truth)
+                    ) = validate_fn(df_our_response, df_ground_truth)
                     """
                         print(
                             case_accuracy, is_correct, similarity_scores, shared_columns
@@ -330,7 +333,7 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
                             is_correct,
                             similarity_scores,
                             shared_columns,
-                        ) = compare_lists_matching(
+                        ) = validate_fn(
                             sorted_df_our_response, sorted_df_ground_truth
                         )
                     else:

@@ -24,7 +24,7 @@ from util.utils import (
     execute_python,
 )
 
-from validation.hard_match import compare_lists_matching
+from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
 
 # import auto_suggest_llm_prompts as prt
@@ -326,7 +326,7 @@ def verify_result(target_file_location, ground_truth_location, config):
             hard_is_correct,
             hard_similarity_scores,
             _,
-        ) = compare_lists_matching(df_our_response, df_ground_truth)
+        ) = config.get("validate_fn", compare_lists_matching)(df_our_response, df_ground_truth)
 
     except Exception as e:
         hard_avg_similarity = 0.0
@@ -423,6 +423,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["token_tracker"] = token_tracker
     config["logger"] = logger
     config["llm_client"] = llm_client
+    config["validate_fn"] = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     config["source_space_dir"] = source_space_dir
     config["len_idx_target_idx"] = len_idx_target_idx
     config["target_data_name"] = target_data_name

@@ -216,10 +216,19 @@ def get_parser():
     )
 
     parser.add_argument(
-        "--static-hints",
-        default=True,
+        "--no-static-hints",
+        dest="no_static_hints",
         action="store_true",
-        help="Add general purpose static hints to the prompt",
+        default=False,
+        help="Disable general purpose static hints in the prompt",
+    )
+
+    parser.add_argument(
+        "--validation",
+        type=str,
+        default="hard_match",
+        choices=["hard_match", "autopipeline"],
+        help="Validation method: 'hard_match' uses compare_lists_matching (partial credit), 'autopipeline' uses compare_tables (binary match)",
     )
 
     parser.add_argument(
@@ -431,6 +440,7 @@ def get_parser():
 if __name__ == "__main__":
 
     args = get_parser().parse_args()
+    args.static_hints = not args.no_static_hints
     args.majority_voting = args.no_of_runs // 2 + 1
 
     # set up logging
