@@ -1,0 +1,57 @@
+Case: 4_69
+Status: CORRECT
+Timestamp: 2026-02-25T11:44:43.432100
+Duration: 40.01 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_69/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_69
+2. Target Schema: ['user_id': integer, 'year_school': string, 'floor': string, 'party': string, 'libcon': string, 'fav_music': string]
+3. Target Examples: There are 42 available target examples:     user_id year_school   floor  party libcon fav_music
+41       42   Sophomore  f282.3  TYPEc  TYPEd     TYPEb
+5         6   Sophomore  f282.3  TYPEa  TYPEg     TYPEf
+13       14   Sophomore  f282.3  TYPEc  TYPEd     TYPEj
+40       41    Freshman  f282.4  TYPEa  TYPEf     TYPEa
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_69_0
+	Source 0 Schema: ['user_id', 'year_school', 'floor']
+	Source 0 Examples: 	 Source 0 contains 42 tuples, with examples as follows: 
+   user_id  year_school   floor
+0        1  GRT / Other  f282.2
+1        2     Freshman  f282.4
+2        3    Sophomore  f282.4
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_69/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_69_1
+	Source 1 Schema: ['user_id', 'party', 'libcon']
+	Source 1 Examples: 	 Source 1 contains 73 tuples, with examples as follows: 
+   user_id  party libcon
+0       55  TYPEc  TYPEc
+1       36  TYPEb  TYPEb
+2       39  TYPEa  TYPEe
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_69/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_69_2
+	Source 2 Schema: ['user_id', 'fav_music']
+	Source 2 Examples: 	 Source 2 contains 83 tuples, with examples as follows: 
+   user_id fav_music
+0        0     TYPEf
+1        1     TYPEd
+2        2     TYPEa
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_69/test_2.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_69/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output
