@@ -1,0 +1,536 @@
+Case: 4_38
+Status: INCORRECT
+Timestamp: 2026-02-25T12:49:00.183039
+Duration: 69.89 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_15_45/case_4_38/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_38
+2. Target Schema: ['placeID': integer, 'Rpayment': string, 'latitude': float, 'longitude': float, 'the_geom_meter': string, 'name': string, 'address': string, 'city': string, 'state': string, 'country': string, 'fax': string, 'zip': string, 'alcohol': string, 'smoking_area': string, 'dress_code': string, 'accessibility': string, 'price': string, 'url': string, 'Rambience': string, 'franchise': string, 'area': string, 'other_services': string, 'Rcuisine': string, 'hours': string, 'days': string, 'parking_lot': string]
+3. Target Examples: There are 540 available target examples:      placeID             Rpayment   latitude   longitude  \
+36    135086  MasterCard-Eurocard  22.141421 -101.013955   
+344   135025                 VISA  22.149550 -100.977970   
+50    135079     American_Express  22.156376 -100.998355   
+449   132875                 VISA  22.149901 -100.993779   
+460   132872                 cash  22.173596 -100.994603   
+355   135018                 cash  18.859803  -99.222164   
+223   135049                 cash  22.135011 -101.028600   
+59    135074                 VISA  22.149689 -100.999525   
+237   135046                 cash  22.141282 -101.002958   
+519   132854     bank_debit_cards  22.137863 -100.938327   
+238   135046                 cash  22.141282 -101.002958   
+248   135044                 cash  22.141848 -100.997475   
+111   135071     American_Express  22.126375 -100.910926   
+105   135071  MasterCard-Eurocard  22.126375 -100.910926   
+16    135104                 VISA  23.752982  -99.168434   
+218   135052  MasterCard-Eurocard  22.150981 -100.977412   
+302   135032                 VISA  22.152481 -100.973486   
+309   135030                 cash  22.147880 -100.989472   
+256   135042                 cash  22.159357 -100.973411   
+386   132958                 cash  22.144979 -101.005683   
+509   132858                 cash  22.131292 -100.937194   
+297   135032                 VISA  22.152481 -100.973486   
+365   135018     bank_debit_cards  18.859803  -99.222164   
+334   135027  MasterCard-Eurocard  22.147145 -100.974494   
+129   135058                 VISA  22.165587 -101.001273   
+280   135034                 cash  22.140517 -101.021422   
+471   132866                 cash  22.141220 -100.931311   
+518   132854                 VISA  22.137863 -100.938327   
+278   135035     American_Express  22.145813 -101.018032   
+477   132862                 cash  22.150643 -100.987015   
+295   135032                 cash  22.152481 -100.973486   
+534   132834                 cash  22.156469 -100.985540   
+63    135073                 cash  22.147175 -100.974269   
+224   135049                 cash  22.135011 -101.028600   
+169   135053                 cash  22.178931 -101.012861   
+174   135053                 cash  22.178931 -101.012861   
+156   135055     American_Express  22.148854 -101.008472   
+230   135048                 VISA  22.142017 -100.999246   
+47    135079                 cash  22.156376 -100.998355   
+496   132861                 VISA  22.148097 -101.017302   
+350   135025     American_Express  22.149550 -100.977970   
+510   132856                 cash  22.151378 -100.974634   
+46    135079                 cash  22.156376 -100.998355   
+536   132834                 cash  22.156469 -100.985540   
+517   132854                 VISA  22.137863 -100.938327   
+249   135043                 cash  22.185756 -100.944518   
+127   135058                 cash  22.165587 -101.001273   
+288   135034     American_Express  22.140517 -101.021422   
+228   135048                 VISA  22.142017 -100.999246   
+293   135032                 cash  22.152481 -100.973486   
+287   135034  MasterCard-Eurocard  22.140517 -101.021422   
+348   135025     American_Express  22.149550 -100.977970   
+154   135055  MasterCard-Eurocard  22.148854 -101.008472   
+250   135043                 cash  22.185756 -100.944518   
+
+                                        the_geom_meter  \
+36   0101000020957F0000FA1A0E5A9B4858C17C884C4173AE...   
+344  0101000020957F0000C7080D105C4858C108B4006AB4A3...   
+50   0101000020957F00009FF49E27C04658C1BA8689941CA9...   
+449  0101000020957F00008A2A0747DE4758C11EB31D2A31A8...   
+460  0101000020957F0000942C3434384458C1C2D3499804A7...   
+355  0101000020957F0000C015D38251795AC1D8D396893A55...   
+223  0101000020957F00005DAD35642E4958C11BBCDE4A02B3...   
+59   0101000020957F0000CDA37BD8BD4758C1F4FBE3D2D7A9...   
+237  0101000020957F000011DFB4E3EE4858C13F78758452AB...   
+519  0101000020957F0000FEC3FB453E4B58C19B4A46361799...   
+238  0101000020957F000011DFB4E3EE4858C13F78758452AB...   
+248  0101000020957F0000C8B62F9EFF4858C14FA6C296B9A9...   
+111  0101000020957F0000E3A742BFC14D58C1F4E529A7F391...   
+105  0101000020957F0000E3A742BFC14D58C1F4E529A7F391...   
+16   0101000020957F00007CDF5EAFC58157C1645743B23E4F...   
+218  0101000020957F0000B72147F1274858C189A406ED75A3...   
+302  0101000020957F000017D69FF5084858C1A8F2188740A2...   
+309  0101000020957F0000C57C76034C4858C10E437A7E15A7...   
+256  0101000020957F0000C66BB014FC4658C17CFE8D93D2A1...   
+386  0101000020957F000049095EB34A4858C15CB4BD1EE1AB...   
+509  0101000020957F0000608CF6D8474C58C1DBF7C5002899...   
+297  0101000020957F000017D69FF5084858C1A8F2188740A2...   
+365  0101000020957F0000C015D38251795AC1D8D396893A55...   
+334  0101000020957F000087BEDDE8D24858C1B20CDB33DBA2...   
+129  0101000020957F0000EB71019D424558C15CC5404365A9...   
+280  0101000020957F000026D92BB4894858C161A7552DA2B0...   
+471  0101000020957F000013871838EC4A58C1B5DF74F8E396...   
+518  0101000020957F0000FEC3FB453E4B58C19B4A46361799...   
+278  0101000020957F00004DDB874CD24758C1F29E91E259AF...   
+477  0101000020957F0000AF95272CF14758C165B2F91238A6...   
+295  0101000020957F000017D69FF5084858C1A8F2188740A2...   
+534  0101000020957F00007768135A174758C155D318CB73A5...   
+63   0101000020957F0000D010A853D34858C116A1EA51CAA2...   
+224  0101000020957F00005DAD35642E4958C11BBCDE4A02B3...   
+169  0101000020957F0000B3C05AB5E54258C180F99573E7AB...   
+174  0101000020957F0000B3C05AB5E54258C180F99573E7AB...   
+156  0101000020957F00006610DA0F9F4758C12ED00BA771AC...   
+230  0101000020957F00008032636EEC4858C16CDF265038AA...   
+47   0101000020957F00009FF49E27C04658C1BA8689941CA9...   
+496  0101000020957F000074BBAF047E4758C1424B73C701AF...   
+350  0101000020957F0000C7080D105C4858C108B4006AB4A3...   
+510  0101000020957F0000C1B7D30B2C4858C1CE557111A5A2...   
+46   0101000020957F00009FF49E27C04658C1BA8689941CA9...   
+536  0101000020957F00007768135A174758C155D318CB73A5...   
+517  0101000020957F0000FEC3FB453E4B58C19B4A46361799...   
+249  0101000020957F00006B9D7207BE4358C12419118D0598...   
+127  0101000020957F0000EB71019D424558C15CC5404365A9...   
+288  0101000020957F000026D92BB4894858C161A7552DA2B0...   
+228  0101000020957F00008032636EEC4858C16CDF265038AA...   
+293  0101000020957F000017D69FF5084858C1A8F2188740A2...   
+287  0101000020957F000026D92BB4894858C161A7552DA2B0...   
+348  0101000020957F0000C7080D105C4858C108B4006AB4A3...   
+154  0101000020957F00006610DA0F9F4758C12ED00BA771AC...   
+250  0101000020957F00006B9D7207BE4358C12419118D0598...   
+
+                                        name  \
+36               Mcdonalds Parque Tangamanga   
+344               El Rincon de San Francisco   
+50                                Koye Sushi   
+449                                shi ro ie   
+460                          Pizzeria Julios   
+355                         El Oceano Dorado   
+223      Restaurante de Mariscos la Langosta   
+59         Restaurante la Parroquia Potosina   
+237                  Restaurante El Reyecito   
+519                                  Sirlone   
+238                  Restaurante El Reyecito   
+248                    Restaurant Wu Zhuo Yi   
+111                   Restaurante la Cantina   
+105                   Restaurante la Cantina   
+16                                      vips   
+218                   La Cantina Restaurante   
+302       Cafeteria y Restaurant El Pacifico   
+309                 Preambulo Wifi Zone Cafe   
+256              Restaurant Oriental Express   
+386                       tacos los volcanes   
+509                Hamburguesas Valle Dorado   
+297       Cafeteria y Restaurant El Pacifico   
+365                         El Oceano Dorado   
+334                     Restaurant Orizatlan   
+129                     Restaurante Tiberius   
+280               Michiko Restaurant Japones   
+471                                  Chaires   
+518                                  Sirlone   
+278                     El Mundo de la Pasta   
+477                     La Posada del Virrey   
+295       Cafeteria y Restaurant El Pacifico   
+534                      Gorditas Doa Gloria   
+63              Restaurante Bar El Gallinero   
+224      Restaurante de Mariscos la Langosta   
+169    La Fontana Pizza Restaurante and Cafe   
+174    La Fontana Pizza Restaurante and Cafe   
+156  la Cochinita Pibil Restaurante Yucateco   
+230                   Restaurante Bar Fu-hao   
+47                                Koye Sushi   
+496                                 Carls Jr   
+350               El Rincon de San Francisco   
+510                            Unicols Pizza   
+46                                Koye Sushi   
+536                      Gorditas Doa Gloria   
+517                                  Sirlone   
+249                            pizza clasica   
+127                     Restaurante Tiberius   
+288               Michiko Restaurant Japones   
+228                   Restaurante Bar Fu-hao   
+293       Cafeteria y Restaurant El Pacifico   
+287               Michiko Restaurant Japones   
+348               El Rincon de San Francisco   
+154  la Cochinita Pibil Restaurante Yucateco   
+250                            pizza clasica   
+
+                                         address             city  \
+36           Lateral Salvador Nava Martinez 3145  San Luis Potosi   
+344                              1a. de Lozada 1  San Luis Potosi   
+50         Nereo Rodriguez Barragan 450 E Centro  San Luis Potosi   
+449                                            ?                ?   
+460                                            ?            s.l.p   
+355        Libramiento Burgos Colonia Las Animas       Cuernavaca   
+223       Cordillera de Los Alpes 675 Loma Verde  San Luis Potosi   
+59                Venustiano Carranza 303 Centro  San Luis Potosi   
+237                    Agricultura 595 del Valle  San Luis Potosi   
+519                                 carr. mexico  San Luis Potosi   
+238                    Agricultura 595 del Valle  San Luis Potosi   
+248                   Himno Nacional 100 Avenida  San Luis Potosi   
+111      De La Estrella 2005 Estrella de Oriente  San Luis Potosi   
+105      De La Estrella 2005 Estrella de Oriente  San Luis Potosi   
+16                                             ?                ?   
+218                    Ignacio Aldama 300 Centro  San Luis Potosi   
+302                      Constitucion 200 Centro  San Luis Potosi   
+309                                  Anahuac 805  San Luis Potosi   
+256                      Tangamanga 7 Tangamanga  San Luis Potosi   
+386                       avenida hivno nacional  san luis potosi   
+509                                    Av. Coral  San Luis Potosi   
+297                      Constitucion 200 Centro  San Luis Potosi   
+365        Libramiento Burgos Colonia Las Animas       Cuernavaca   
+334                     Pascual M. Hernandez 240  San Luis Potosi   
+129                              Munoz Sn Centro  San Luis Potosi   
+280  Cordillera de Los Alpes 160 Lomas 2 Seccion  San Luis Potosi   
+471                             Ricardo B. Anaya  San Luis Potosi   
+518                                 carr. mexico  San Luis Potosi   
+278     Rio Papaloapan 265 Lomas de San Luis (3)  San Luis Potosi   
+477                              Av. V. Carranza  San Luis Potosi   
+295                      Constitucion 200 Centro  San Luis Potosi   
+534                       sevilla y olmedo 715 a  san luis potosi   
+63               Pascual M. Hernandez 210 Centro  San Luis Potosi   
+224       Cordillera de Los Alpes 675 Loma Verde  San Luis Potosi   
+169                        Satelite 606 Satelite  San Luis Potosi   
+174                        Satelite 606 Satelite  San Luis Potosi   
+156              Venustiano Carranza 2175 Jardin  San Luis Potosi   
+230               Jesus Goytortua 390 Tangamanga  San Luis Potosi   
+47         Nereo Rodriguez Barragan 450 E Centro  San Luis Potosi   
+496                              Av. V. Carranza  San Luis Potosi   
+350                              1a. de Lozada 1  San Luis Potosi   
+510                             Plaza del Carmen  San Luis Potosi   
+46         Nereo Rodriguez Barragan 450 E Centro  San Luis Potosi   
+536                       sevilla y olmedo 715 a  san luis potosi   
+517                                 carr. mexico  San Luis Potosi   
+249              524 Soledad de Graciano Sanchez          Soledad   
+127                              Munoz Sn Centro  San Luis Potosi   
+288  Cordillera de Los Alpes 160 Lomas 2 Seccion  San Luis Potosi   
+228               Jesus Goytortua 390 Tangamanga  San Luis Potosi   
+293                      Constitucion 200 Centro  San Luis Potosi   
+287  Cordillera de Los Alpes 160 Lomas 2 Seccion  San Luis Potosi   
+348                              1a. de Lozada 1  San Luis Potosi   
+154              Venustiano Carranza 2175 Jardin  San Luis Potosi   
+250              524 Soledad de Graciano Sanchez          Soledad   
+
+               state country fax    zip            alcohol   smoking_area  \
+36               SLP  Mexico   ?  78290  No_Alcohol_Served  not permitted   
+344              SLP  Mexico   ?      ?  No_Alcohol_Served           none   
+50               SLP  Mexico   ?  78000  No_Alcohol_Served           none   
+449                ?       ?   ?      ?          Wine-Beer        section   
+460           mexico       ?   ?      ?  No_Alcohol_Served  not permitted   
+355          Morelos  Mexico   ?      ?           Full_Bar      permitted   
+223              SLP  Mexico   ?  78214  No_Alcohol_Served           none   
+59               SLP  Mexico   ?  78000          Wine-Beer        section   
+237              SLP  Mexico   ?  78200  No_Alcohol_Served           none   
+519  San Luis Potosi  Mexico   ?      ?          Wine-Beer           none   
+238              SLP  Mexico   ?  78200  No_Alcohol_Served           none   
+248              SLP  Mexico   ?  78240  No_Alcohol_Served           none   
+111              SLP  Mexico   ?  78396           Full_Bar        section   
+105              SLP  Mexico   ?  78396           Full_Bar        section   
+16                 ?       ?   ?      ?           Full_Bar  not permitted   
+218              SLP  Mexico   ?  78000           Full_Bar           none   
+302              SLP  Mexico   ?  78000          Wine-Beer        section   
+309              SLP  Mexico   ?      ?  No_Alcohol_Served           none   
+256              SLP  Mexico   ?  78269  No_Alcohol_Served           none   
+386   san luis potos  mexico   ?      ?  No_Alcohol_Served           none   
+509  San Luis Potosi  Mexico   ?      ?  No_Alcohol_Served           none   
+297              SLP  Mexico   ?  78000          Wine-Beer        section   
+365          Morelos  Mexico   ?      ?           Full_Bar      permitted   
+334              SLP  Mexico   ?      ?          Wine-Beer           none   
+129              SLP  Mexico   ?  64000  No_Alcohol_Served           none   
+280              SLP  Mexico   ?  78210  No_Alcohol_Served           none   
+471  San Luis Potosi  Mexico   ?      ?  No_Alcohol_Served  not permitted   
+518  San Luis Potosi  Mexico   ?      ?          Wine-Beer           none   
+278              SLP  Mexico   ?  78210  No_Alcohol_Served        section   
+477  San Luis Potosi  Mexico   ?      ?          Wine-Beer           none   
+295              SLP  Mexico   ?  78000          Wine-Beer        section   
+534  san luis potosi  mexico   ?  78349  No_Alcohol_Served  not permitted   
+63               SLP  Mexico   ?  78000          Wine-Beer        section   
+224              SLP  Mexico   ?  78214  No_Alcohol_Served           none   
+169              SLP  Mexico   ?  62460  No_Alcohol_Served        section   
+174              SLP  Mexico   ?  62460  No_Alcohol_Served        section   
+156              SLP  Mexico   ?  78270  No_Alcohol_Served        section   
+230              SLP  Mexico   ?  78269          Wine-Beer           none   
+47               SLP  Mexico   ?  78000  No_Alcohol_Served           none   
+496  San Luis Potosi  Mexico   ?      ?  No_Alcohol_Served  not permitted   
+350              SLP  Mexico   ?      ?  No_Alcohol_Served           none   
+510  San Luis Potosi  Mexico   ?      ?          Wine-Beer           none   
+46               SLP  Mexico   ?  78000  No_Alcohol_Served           none   
+536  san luis potosi  mexico   ?  78349  No_Alcohol_Served  not permitted   
+517  San Luis Potosi  Mexico   ?      ?          Wine-Beer           none   
+249              SLP  Mexico   ?      ?  No_Alcohol_Served           none   
+127              SLP  Mexico   ?  64000  No_Alcohol_Served           none   
+288              SLP  Mexico   ?  78210  No_Alcohol_Served           none   
+228              SLP  Mexico   ?  78269          Wine-Beer           none   
+293              SLP  Mexico   ?  78000          Wine-Beer        section   
+287              SLP  Mexico   ?  78210  No_Alcohol_Served           none   
+348              SLP  Mexico   ?      ?  No_Alcohol_Served           none   
+154              SLP  Mexico   ?  78270  No_Alcohol_Served        section   
+250              SLP  Mexico   ?      ?  No_Alcohol_Served           none   
+
+    dress_code     accessibility   price                 url Rambience  \
+36    informal  no_accessibility  medium                   ?  familiar   
+344   informal  no_accessibility  medium                   ?  familiar   
+50    informal  no_accessibility    high                   ?  familiar   
+449   informal  no_accessibility    high                   ?  familiar   
+460   informal         partially  medium                   ?  familiar   
+355   informal        completely  medium  eloceanodorado.com  familiar   
+223   informal  no_accessibility  medium                   ?  familiar   
+59    informal  no_accessibility    high                   ?  familiar   
+237   informal  no_accessibility  medium        reyecito.com  familiar   
+519   informal        completely  medium                   ?  familiar   
+238   informal  no_accessibility  medium        reyecito.com  familiar   
+248   informal  no_accessibility  medium                   ?  familiar   
+111   informal  no_accessibility  medium                   ?  familiar   
+105   informal  no_accessibility  medium                   ?  familiar   
+16    informal        completely  medium                   ?  familiar   
+218   informal  no_accessibility    high    lacantinaslp.com  familiar   
+302   informal  no_accessibility  medium                   ?  familiar   
+309   informal  no_accessibility  medium                   ?     quiet   
+256   informal  no_accessibility  medium                   ?  familiar   
+386   informal        completely     low                   ?     quiet   
+509   informal        completely     low                   ?  familiar   
+297   informal  no_accessibility  medium                   ?  familiar   
+365   informal        completely  medium  eloceanodorado.com  familiar   
+334   informal  no_accessibility  medium                   ?  familiar   
+129   informal  no_accessibility  medium                   ?  familiar   
+280   informal  no_accessibility  medium                   ?  familiar   
+471   informal        completely  medium                   ?  familiar   
+518   informal        completely  medium                   ?  familiar   
+278   informal  no_accessibility    high                   ?  familiar   
+477     casual        completely    high                   ?  familiar   
+295   informal  no_accessibility  medium                   ?  familiar   
+534     casual  no_accessibility     low                   ?  familiar   
+63    informal  no_accessibility    high                   ?  familiar   
+224   informal  no_accessibility  medium                   ?  familiar   
+169   informal  no_accessibility    high                   ?  familiar   
+174   informal  no_accessibility    high                   ?  familiar   
+156   informal  no_accessibility    high                   ?  familiar   
+230   informal  no_accessibility    high                   ?  familiar   
+47    informal  no_accessibility    high                   ?  familiar   
+496   informal        completely  medium                   ?  familiar   
+350   informal  no_accessibility  medium                   ?  familiar   
+510   informal        completely     low                   ?  familiar   
+46    informal  no_accessibility    high                   ?  familiar   
+536     casual  no_accessibility     low                   ?  familiar   
+517   informal        completely  medium                   ?  familiar   
+249   informal  no_accessibility  medium                   ?  familiar   
+127   informal  no_accessibility  medium                   ?  familiar   
+288   informal  no_accessibility  medium                   ?  familiar   
+228   informal  no_accessibility    high                   ?  familiar   
+293   informal  no_accessibility  medium                   ?  familiar   
+287   informal  no_accessibility  medium                   ?  familiar   
+348   informal  no_accessibility  medium                   ?  familiar   
+154   informal  no_accessibility    high                   ?  familiar   
+250   informal  no_accessibility  medium                   ?  familiar   
+
+    franchise    area other_services          Rcuisine         hours  \
+36          t  closed           none           Burgers  08:00-23:00;   
+344         f  closed           none           Mexican  00:00-00:00;   
+50          f  closed           none           Chinese  13:30-22:30;   
+449         t    open       Internet          Japanese  00:00-23:30;   
+460         f  closed           none          American  09:30-21:00;   
+355         f    open        variety           Mexican  00:00-00:00;   
+223         f  closed           none           Seafood  12:00-20:00;   
+59          f  closed           none      Contemporary  07:00-23:30;   
+237         f  closed           none         Fast_Food  08:30-21:00;   
+519         f  closed           none     International  10:30-22:00;   
+238         f  closed           none         Fast_Food  08:30-21:00;   
+248         f  closed           none           Chinese  13:00-22:30;   
+111         f  closed           none               Bar  13:00-23:30;   
+105         f  closed           none               Bar  13:00-23:30;   
+16          t  closed        variety           Mexican  00:00-23:30;   
+218         f  closed           none               Bar  08:00-23:30;   
+302         f  closed           none      Contemporary  07:00-23:30;   
+309         f  closed       Internet  Cafe-Coffee_Shop  00:00-00:00;   
+256         f  closed           none           Chinese  11:00-21:30;   
+386         t  closed           none          American  10:00-23:30;   
+509         f  closed           none           Burgers  18:30-23:30;   
+297         f  closed           none         Cafeteria  07:00-23:30;   
+365         f    open        variety           Mexican  00:00-00:00;   
+334         f  closed           none           Mexican  08:00-23:00;   
+129         t  closed           none          Pizzeria  13:00-23:00;   
+280         f  closed           none          Japanese  13:30-23:00;   
+471         f  closed           none            Bakery  09:00-22:00;   
+518         f  closed           none     International  10:30-22:00;   
+278         f  closed           none           Italian  13:30-18:30;   
+477         f  closed           none     International  09:30-23:30;   
+295         f  closed           none      Contemporary  07:00-23:30;   
+534         f  closed           none           Mexican  08:30-15:00;   
+63          f  closed           none               Bar  09:30-23:30;   
+224         f  closed           none           Seafood  12:00-20:00;   
+169         f  closed           none         Cafeteria  11:00-22:00;   
+174         f  closed           none          Pizzeria  11:00-22:00;   
+156         f  closed           none           Mexican  14:00-22:00;   
+230         f  closed           none               Bar  11:00-22:30;   
+47          f  closed           none           Chinese  13:30-22:30;   
+496         t  closed           none           Burgers  10:00-23:30;   
+350         f  closed           none           Mexican  00:00-00:00;   
+510         f  closed           none           Italian  10:30-22:30;   
+46          f  closed           none           Chinese  13:30-22:30;   
+536         f  closed           none           Mexican  00:00-23:30;   
+517         f  closed           none     International  10:30-22:00;   
+249         f  closed           none         Fast_Food  00:00-00:00;   
+127         t  closed           none          Pizzeria  13:00-23:00;   
+288         f  closed           none          Japanese  13:30-23:00;   
+228         f  closed           none               Bar  11:00-22:30;   
+293         f  closed           none         Cafeteria  07:00-23:30;   
+287         f  closed           none          Japanese  13:30-19:00;   
+348         f  closed           none           Mexican  18:00-23:30;   
+154         f  closed           none           Mexican  14:00-22:00;   
+250         f  closed           none         Fast_Food  00:00-00:00;   
+
+                     days    parking_lot  
+36   Mon;Tue;Wed;Thu;Fri;            yes  
+344                  Sun;           none  
+50                   Sun;           none  
+449                  Sun;  valet parking  
+460                  Sat;         public  
+355                  Sat;            yes  
+223                  Sat;           none  
+59                   Sun;         public  
+237  Mon;Tue;Wed;Thu;Fri;            yes  
+519  Mon;Tue;Wed;Thu;Fri;            yes  
+238                  Sat;            yes  
+248                  Sun;           none  
+111  Mon;Tue;Wed;Thu;Fri;            yes  
+105  Mon;Tue;Wed;Thu;Fri;            yes  
+16                   Sat;            yes  
+218                  Sun;           none  
+302                  Sun;         public  
+309  Mon;Tue;Wed;Thu;Fri;           none  
+256                  Sat;           none  
+386                  Sun;           none  
+509                  Sun;           none  
+297  Mon;Tue;Wed;Thu;Fri;         public  
+365                  Sun;            yes  
+334                  Sat;           none  
+129  Mon;Tue;Wed;Thu;Fri;         public  
+280                  Sat;           none  
+471  Mon;Tue;Wed;Thu;Fri;            yes  
+518                  Sun;            yes  
+278                  Sun;            yes  
+477  Mon;Tue;Wed;Thu;Fri;  valet parking  
+295                  Sat;         public  
+534  Mon;Tue;Wed;Thu;Fri;         public  
+63   Mon;Tue;Wed;Thu;Fri;            yes  
+224                  Sun;           none  
+169                  Sat;            yes  
+174  Mon;Tue;Wed;Thu;Fri;            yes  
+156  Mon;Tue;Wed;Thu;Fri;            yes  
+230                  Sun;            yes  
+47                   Sun;           none  
+496                  Sat;            yes  
+350                  Sun;           none  
+510  Mon;Tue;Wed;Thu;Fri;           none  
+46                   Sat;           none  
+536                  Sun;         public  
+517                  Sat;            yes  
+249  Mon;Tue;Wed;Thu;Fri;           none  
+127                  Sat;         public  
+288  Mon;Tue;Wed;Thu;Fri;           none  
+228  Mon;Tue;Wed;Thu;Fri;            yes  
+293                  Sun;         public  
+287                  Sun;           none  
+348  Mon;Tue;Wed;Thu;Fri;           none  
+154                  Sat;            yes  
+250                  Sat;           none  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_38_0
+	Source 0 Schema: ['placeID', 'latitude', 'longitude', 'the_geom_meter', 'name', 'address', 'city', 'state', 'country', 'fax', 'zip', 'alcohol', 'smoking_area', 'dress_code', 'accessibility', 'price', 'url', 'Rambience', 'franchise', 'area', 'other_services']
+	Source 0 Examples: 	 Source 0 contains 130 tuples, with examples as follows: 
+   placeID   latitude   longitude  \
+0   134999  18.915421  -99.184871   
+1   132825  22.147392 -100.983092   
+2   135106  22.149709 -100.976093   
+
+                                      the_geom_meter  \
+0  0101000020957F000088568DE356715AC138C0A525FC46...   
+1  0101000020957F00001AD016568C4858C1243261274BA5...   
+2  0101000020957F0000649D6F21634858C119AE9BF528A3...   
+
+                         name                                 address  \
+0             Kiku Cuernavaca                              Revolucion   
+1             puesto de tacos  esquina santos degollado y leon guzman   
+2  El Rincón de San Francisco                         Universidad 169   
+
+              city            state country fax    zip            alcohol  \
+0       Cuernavaca          Morelos  Mexico   ?      ?  No_Alcohol_Served   
+1           s.l.p.           s.l.p.  mexico   ?  78280  No_Alcohol_Served   
+2  San Luis Potosi  San Luis Potosi  Mexico   ?  78000          Wine-Beer   
+
+  smoking_area dress_code     accessibility   price                    url  \
+0         none   informal  no_accessibility  medium  kikucuernavaca.com.mx   
+1         none   informal        completely     low                      ?   
+2  only at bar   informal         partially  medium                      ?   
+
+  Rambience franchise    area other_services  
+0  familiar         f  closed           none  
+1  familiar         f    open           none  
+2  familiar         f    open           none  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_38/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_38_1
+	Source 1 Schema: ['placeID', 'parking_lot']
+	Source 1 Examples: 	 Source 1 contains 702 tuples, with examples as follows: 
+   placeID parking_lot
+0   135111      public
+1   135110        none
+2   135109        none
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_38/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_38_2
+	Source 2 Schema: ['placeID', 'Rcuisine']
+	Source 2 Examples: 	 Source 2 contains 916 tuples, with examples as follows: 
+   placeID        Rcuisine
+0   135110         Spanish
+1   135109         Italian
+2   135107  Latin_American
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_38/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_38_3
+	Source 3 Schema: ['placeID', 'Rpayment']
+	Source 3 Examples: 	 Source 3 contains 1314 tuples, with examples as follows: 
+   placeID             Rpayment
+0   135110                 cash
+1   135110                 VISA
+2   135110  MasterCard-Eurocard
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_38/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_38_4
+	Source 4 Schema: ['placeID', 'hours', 'days']
+	Source 4 Examples: 	 Source 4 contains 1169 tuples, with examples as follows: 
+   placeID         hours                  days
+0   135111  00:00-23:30;  Mon;Tue;Wed;Thu;Fri;
+1   135111  00:00-23:30;                  Sat;
+2   135111  00:00-23:30;                  Sun;
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_38/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_38/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output
