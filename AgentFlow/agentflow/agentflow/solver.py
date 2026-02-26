@@ -107,6 +107,7 @@ class Solver:
         start_again_clear_history: bool = False,
         execute_pipeline: bool = False,
         ground_truth_csv: str = None,
+        validation: str = "hard_match",
     ):
         self.planner = planner
         self.verifier = verifier
@@ -120,6 +121,7 @@ class Solver:
         self.start_again_clear_history = start_again_clear_history
         self.execute_pipeline = execute_pipeline
         self.ground_truth_csv = ground_truth_csv
+        self.validation = validation
 
         self.output_types = output_types.lower().split(",")
         self.temperature = temperature
@@ -492,14 +494,14 @@ class Solver:
 
     def _verify_results(self, output_csv_path: str) -> Optional[dict]:
         """
-        Verify pipeline output against ground truth using compare_lists_matching.
+        Verify pipeline output against ground truth.
 
-        Imitates the validation logic from methods/multi_step.py:
-        1. Run compare_lists_matching
-        2. If not correct but shared_columns exist and lengths match,
-           retry with column header renaming (value-based headers)
-        3. Compute calculate_score as a fallback metric
-        4. Always return is_correct
+        Validation method is controlled by self.validation:
+        - "hard_match" (default): compare_lists_matching with partial credit and
+          value-based column header retry (same logic as methods/multi_step.py).
+        - "autopipeline": compare_tables_matching — binary exact match via
+          compare_tables() from validation.autopipeline_match (same as multi_step.py
+          when --validation autopipeline is passed).
         """
         from auto_suggest_llm_util import calculate_score
 
@@ -510,8 +512,6 @@ class Solver:
         shared_columns = []
 
         try:
-            from validation.hard_match import compare_lists_matching
-
             gt_df = pd.read_csv(self.ground_truth_csv, low_memory=False)
             output_df = pd.read_csv(output_csv_path, low_memory=False)
 
@@ -524,62 +524,76 @@ class Solver:
             if unnamed_cols:
                 output_df.drop(columns=unnamed_cols, inplace=True)
 
-            try:
-                (
-                    case_accuracy,
-                    is_correct,
-                    similarity_scores,
-                    shared_columns,
-                ) = compare_lists_matching(output_df, gt_df)
-
-                if (
-                    is_correct is False
-                    and len(shared_columns) > 0
-                    and len(output_df) == len(gt_df)
-                ):
-                    # Retry: ignore column headers, sort and rename by first 3 values
-                    logger.info(
-                        "Retrying with value-based column headers for better comparison"
-                    )
-                    sorted_output = output_df.sort_values(by=shared_columns)
-                    sorted_gt = gt_df.sort_values(by=shared_columns)
-
-                    def _rename_columns_by_values(df):
-                        new_headers = []
-                        for col in df.columns:
-                            if "float" in str(df[col].dtype):
-                                first_three = df[col].head(3).astype(int)
-                            else:
-                                first_three = df[col].head(3)
-                            header = (
-                                str(first_three.iloc[0])
-                                + "-"
-                                + str(first_three.iloc[1])
-                                + "-"
-                                + str(first_three.iloc[2])
-                            )
-                            new_headers.append(header)
-                        df.columns = new_headers
-                        return df
-
-                    sorted_output = _rename_columns_by_values(sorted_output)
-                    sorted_gt = _rename_columns_by_values(sorted_gt)
-
+            if self.validation == "autopipeline":
+                from validation.hard_match import compare_tables_matching
+                try:
                     (
                         case_accuracy,
                         is_correct,
                         similarity_scores,
                         shared_columns,
-                    ) = compare_lists_matching(sorted_output, sorted_gt)
-                else:
-                    # Calculate score as fallback metric
-                    try:
-                        score = calculate_score(gt_df, output_df)
-                    except Exception:
-                        score = 0
-            except Exception as e:
-                logger.error(f"Error in compare_lists_matching: {e}")
-                is_correct = False
+                    ) = compare_tables_matching(output_df, gt_df)
+                except Exception as e:
+                    logger.error(f"Error in compare_tables_matching: {e}")
+                    is_correct = False
+            else:
+                from validation.hard_match import compare_lists_matching
+                try:
+                    (
+                        case_accuracy,
+                        is_correct,
+                        similarity_scores,
+                        shared_columns,
+                    ) = compare_lists_matching(output_df, gt_df)
+
+                    if (
+                        is_correct is False
+                        and len(shared_columns) > 0
+                        and len(output_df) == len(gt_df)
+                    ):
+                        # Retry: ignore column headers, sort and rename by first 3 values
+                        logger.info(
+                            "Retrying with value-based column headers for better comparison"
+                        )
+                        sorted_output = output_df.sort_values(by=shared_columns)
+                        sorted_gt = gt_df.sort_values(by=shared_columns)
+
+                        def _rename_columns_by_values(df):
+                            new_headers = []
+                            for col in df.columns:
+                                if "float" in str(df[col].dtype):
+                                    first_three = df[col].head(3).astype(int)
+                                else:
+                                    first_three = df[col].head(3)
+                                header = (
+                                    str(first_three.iloc[0])
+                                    + "-"
+                                    + str(first_three.iloc[1])
+                                    + "-"
+                                    + str(first_three.iloc[2])
+                                )
+                                new_headers.append(header)
+                            df.columns = new_headers
+                            return df
+
+                        sorted_output = _rename_columns_by_values(sorted_output)
+                        sorted_gt = _rename_columns_by_values(sorted_gt)
+
+                        (
+                            case_accuracy,
+                            is_correct,
+                            similarity_scores,
+                            shared_columns,
+                        ) = compare_lists_matching(sorted_output, sorted_gt)
+                    else:
+                        # Calculate score as fallback metric
+                        try:
+                            score = calculate_score(gt_df, output_df)
+                        except Exception:
+                            score = 0
+                except Exception as e:
+                    logger.error(f"Error in compare_lists_matching: {e}")
+                    is_correct = False
 
         except Exception as e:
             logger.error(f"Error during result verification: {e}")
@@ -1324,6 +1338,7 @@ def construct_solver(
     planner_granularity: str = "operator",
     execute_pipeline: bool = False,
     ground_truth_csv: str = None,
+    validation: str = "hard_match",
 ):
 
     logger.info("Constructing solver...")
@@ -1431,6 +1446,7 @@ def construct_solver(
         start_again_clear_history=start_again_clear_history,
         execute_pipeline=execute_pipeline,
         ground_truth_csv=ground_truth_csv,
+        validation=validation,
     )
 
     logger.info("Solver construction completed")

@@ -3,8 +3,10 @@ import fdtool.fdtool as fdtool
 import column_map_utils
 from column_map_utils import get_column_map
 
+
 def serialize_fd_list(fd_list):
     return [{"lhs": list(lhs), "rhs": rhs} for lhs, rhs in fd_list]
+
 
 def serialize_equivalences(e_list):
     safe = []
@@ -16,6 +18,7 @@ def serialize_equivalences(e_list):
             safe.append(str(item))
     return safe
 
+
 def serialize_column_map(col_map):
     serialized = []
     for candidate_group in col_map:
@@ -24,18 +27,19 @@ def serialize_column_map(col_map):
         right_col = candidate_group[0].col_r.col_name
         candidates = []
         for pair in candidate_group:
-            candidates.append({
-                "left_column": pair.col_l.col_name,
-                "right_column": pair.col_r.col_name,
-                "jaccard": pair.jaccard_value,
-                "range_overlap": pair.range_overlap,
-                "pattern_value": pair.pattern_value,
-            })
-        serialized.append({
-            "right_column": right_col,
-            "candidates": candidates
-        })
+            candidates.append(
+                {
+                    "left_column": pair.col_l.col_name,
+                    "right_column": pair.col_r.col_name,
+                    "jaccard": pair.jaccard_value,
+                    "range_overlap": pair.range_overlap,
+                    "pattern_value": pair.pattern_value,
+                }
+            )
+        serialized.append({"right_column": right_col, "candidates": candidates})
     return serialized
+
+
 def relative_csv_score(df_a, df_b):
     # Truncate to cap scoring time
     df_a = df_a.iloc[:2000, :15]
@@ -119,13 +123,15 @@ def relative_csv_score(df_a, df_b):
             "ratio": col_ratio,
         },
         "combined_score": combined_score,
-        "true_combined_score": true_combined_score
+        "true_combined_score": true_combined_score,
     }
 
     return fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict
 
 
-def summarize_score(debug_dict: dict, score: float, fd_f1: float, col_ratio: float) -> dict:
+def summarize_score(
+    debug_dict: dict, score: float, fd_f1: float, col_ratio: float
+) -> dict:
     """Convert raw score debug dict into a clean, LLM-readable summary.
 
     Returns a dict with counts and missed items for functional dependencies,
@@ -139,8 +145,12 @@ def summarize_score(debug_dict: dict, score: float, fd_f1: float, col_ratio: flo
     gt_fd_count = fd_section.get("B", {}).get("count", 0)
     output_keys = fd_section.get("A", {}).get("keys", [])
     gt_keys = fd_section.get("B", {}).get("keys", [])
-    missed_fds = fd_section.get("false_negatives", [])   # in ground truth but not in output
-    unexpected_fds = fd_section.get("false_positives", [])  # in output but not in ground truth
+    missed_fds = fd_section.get(
+        "false_negatives", []
+    )  # in ground truth but not in output
+    unexpected_fds = fd_section.get(
+        "false_positives", []
+    )  # in output but not in ground truth
 
     def format_fd(fd):
         lhs = ", ".join(fd["lhs"])
@@ -186,4 +196,3 @@ def summarize_score(debug_dict: dict, score: float, fd_f1: float, col_ratio: flo
             "missed_target_columns": missed_target_columns,
         },
     }
-

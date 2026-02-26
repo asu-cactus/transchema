@@ -3,6 +3,7 @@ import argparse
 import json
 import csv
 import pdb
+import shutil
 
 # from methods.precursor import precursor
 from methods.multi_step import multi_step
@@ -213,6 +214,23 @@ def get_parser():
     parser.add_argument(
         "--anon-flag", action="store_true", help="Set anon_flag to True"
     )
+
+    parser.add_argument(
+        "--no-static-hints",
+        dest="no_static_hints",
+        action="store_true",
+        default=False,
+        help="Disable general purpose static hints in the prompt",
+    )
+
+    parser.add_argument(
+        "--validation",
+        type=str,
+        default="hard_match",
+        choices=["hard_match", "autopipeline"],
+        help="Validation method: 'hard_match' uses compare_lists_matching (partial credit), 'autopipeline' uses compare_tables (binary match)",
+    )
+
     parser.add_argument(
         "--no-anon",
         dest="anon_flag",
@@ -247,21 +265,27 @@ def get_parser():
         "--join-hints-truncate",
         type=float,
         nargs="+",
-        default=[
-            0.027387593197926163,
-            0.8763891522960383,
-            0.6923226156693141,
-            0.8946066635038473,
-            0.14038693859523377,
-            0.8007445686755367,
-        ],
+        # 0 : high threshold for distinct value ratio from at least one of the columns
+        # 1 : high threshold for jaccard similarity
+        # 2 : high threshold for jaccard containment
+        # 3 : high threshold for value-overlap in case of numerical columns
+        # 4 : high leftness
+        # 5 : high sortedness
+        default=[0.8, 0.8, 0.8, 0.8, 0.8, 0.8],
         help="Join hints truncate thresholds",
     )
     parser.add_argument(
         "--aggregate-hints-truncate",
         type=float,
         nargs="+",
-        default=[0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, 0.1],
+        # aht = [
+        # dvr_ub, dvr_lb,
+        # leftness_ub, leftness_lb,
+        # emptiness_ub, emptiness_lb,
+        # peak_frequency_ub, peak_frequency_lb,
+        # value_range_ub, value_range_lb
+        # ]
+        default=[0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2],
         help="Aggregate hints truncate thresholds",
     )
 
@@ -367,6 +391,21 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--rag_retrieval_strategy",
+        type=str,
+        choices=["text", "feature"],
+        default="text",
+        help="Retrieval strategy: 'text' (embed query, search text collection) or 'feature' (compute 23-dim, search feature collection).",
+    )
+
+    parser.add_argument(
+        "--rag_feature_collection",
+        type=str,
+        default="plan_docs_features",
+        help="Milvus collection name for feature vectors (used when rag_retrieval_strategy=feature).",
+    )
+
+    parser.add_argument(
         "--intermediate_materialization",
         action="store_true",
         help="Materialize intermediate results",
@@ -401,6 +440,7 @@ def get_parser():
 if __name__ == "__main__":
 
     args = get_parser().parse_args()
+    args.static_hints = not args.no_static_hints
     args.majority_voting = args.no_of_runs // 2 + 1
 
     # set up logging
@@ -417,6 +457,21 @@ if __name__ == "__main__":
     end = args.max_target_id
 
     cases = list(range(start, end))
+
+    # failed cases
+    # cases = [
+    #     73,
+    #     74,
+    #     76,
+    #     82,
+    #     90,
+    #     91,
+    #     92,
+    #     93,
+    #     95,
+    #     97,
+    #     100,
+    # ]
 
     processed_without_exceptions = 0
 
@@ -451,12 +506,28 @@ if __name__ == "__main__":
                 # critique iff ms is wrong
 
                 crit_info = crit(args, length, case, operation_history)
+
+                # do the copy of the script only if critique is successful, meaning the critique judged the script to be correct after fixing the issues
+                if crit_info[0]:
+                    # copy python_recovered.py to python_recovered_successful.py
+                    src = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered.py"
+                    dst = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered_successful.py"
+                    shutil.copy2(src, dst)
+
+                    print("Success!")
+
                 average_crit_path = f"{args.result_directory}/final_critique.csv"
                 with open(average_crit_path, "a", newline="") as f:
                     writer = csv.writer(f)
                     writer.writerow(crit_info)
 
             else:
+
+                # copy python_recovered.py to python_recovered_successful.py
+                src = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered.py"
+                dst = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered_successful.py"
+                shutil.copy2(src, dst)
+
                 print("Success!")
 
             processed_without_exceptions += 1

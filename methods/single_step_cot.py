@@ -1,6 +1,6 @@
 import time
 from llm.llm_models import TokenUsageTracker, LLMClient
-from validation.hard_match import compare_lists_matching
+from validation.hard_match import compare_lists_matching, compare_tables_matching
 from util.utils import get_test_info
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import    calculate_score
@@ -25,6 +25,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
     case_accuracy_ = 0
     score = 0
     case_accuracy = 0
+    validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     cost_summary = []
     start_time = time.time()
     token_tracker = TokenUsageTracker()
@@ -166,7 +167,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
                         is_correct,
                         similarity_scores,
                         shared_columns,
-                    ) = compare_lists_matching(df_our_response, df_ground_truth)
+                    ) = validate_fn(df_our_response, df_ground_truth)
                     if (
                         is_correct == False
                         and len(shared_columns) > 0
@@ -230,7 +231,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
                             is_correct,
                             similarity_scores,
                             shared_columns,
-                        ) = compare_lists_matching(
+                        ) = validate_fn(
                             sorted_df_our_response, sorted_df_ground_truth
                         )
                     else:
