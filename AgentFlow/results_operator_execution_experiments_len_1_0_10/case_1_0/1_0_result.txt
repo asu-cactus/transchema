@@ -1,0 +1,64 @@
+Case: 1_0
+Status: CORRECT
+Timestamp: 2026-02-26T11:18:10.314822
+Duration: 71.15 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_0_10/case_1_0/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['State', 'AverageTemperature']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_0
+2. Target Schema: ['State': string, 'AverageTemperature': float]
+3. Target Examples: There are 241 available target examples:               State  AverageTemperature
+212           Tver'            3.576789
+240        Zhejiang           16.185409
+185    Saskatchewan           -0.905390
+183  Santa Catarina           18.125947
+232         Wyoming            4.998968
+193        Smolensk            4.201663
+22          Beijing            9.373997
+21    Bashkortostan            0.928393
+80      Kaliningrad            6.312862
+191         Sichuan            8.424961
+209         Tripura           24.659606
+198      Sverdlovsk           -0.520233
+186         Sergipe           25.198910
+162           Penza            4.238496
+205           Texas           17.640251
+159        Orenburg            3.776487
+144  North Carolina           15.329076
+111         Manipur           21.179861
+50            Gansu            5.195841
+49           Fujian           19.113628
+218   Uttar Pradesh           24.752605
+195  South Carolina           16.941963
+178          Rostov            8.356533
+130        Nagaland           21.463714
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_0_0
+	Source 0 Schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+           dt  AverageTemperature  AverageTemperatureUncertainty    State  \
+0  2002-11-01               4.190                          0.187   Rostov   
+1  1923-11-01              26.761                          0.413  Sergipe   
+2  1994-09-01              25.560                          0.245  Manipur   
+
+  Country  
+0  Russia  
+1  Brazil  
+2   India  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

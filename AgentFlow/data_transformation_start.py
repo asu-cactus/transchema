@@ -4,6 +4,7 @@ Cases are determined by (len_id, target_id) ranges using get_test_cases_ids.
 Queries are generated dynamically via get_prompt(prompt_type="get_case_info").
 """
 
+import argparse
 import csv
 import os
 import sys
@@ -23,6 +24,30 @@ from util.utils import get_test_info
 from auto_suggest_llm_util import get_prompt
 
 # ============================================================
+# CLI Arguments
+# ============================================================
+_parser = argparse.ArgumentParser(description="Run AgentFlow data transformation cases.")
+_parser.add_argument("--len-id", type=int, default=1,
+                     help="Length ID for the test cases (default: 1)")
+_parser.add_argument("--max-len-id", type=int, default=1,
+                     help="Maximum length ID for range mode (default: 1)")
+_parser.add_argument("--target-id-start", type=int, default=0,
+                     help="Start of target ID range, inclusive (default: 0)")
+_parser.add_argument("--target-id-end", type=int, default=10,
+                     help="End of target ID range, inclusive (default: 10)")
+_parser.add_argument("--llm-engine", type=str, default="gpt-4.1-mini",
+                     help="LLM engine name (default: gpt-4.1-mini)")
+_parser.add_argument("--planner-granularity", type=str, default="operator",
+                     choices=["operator", "pipeline"],
+                     help="Planner granularity: 'operator' or 'pipeline' (default: operator)")
+_parser.add_argument("--execute-pipeline", action=argparse.BooleanOptionalAction,
+                     default=True,
+                     help="Enable/disable pipeline execution and scoring in the agentic loop (default: True)")
+_parser.add_argument("--result-dir", type=str, default="run",
+                     help="Base name for the results directory under AgentFlow/results/ (a timestamp is appended)")
+_args = _parser.parse_args()
+
+# ============================================================
 # CASE CONFIGURATION
 # ============================================================
 # Option A — Explicit list of target IDs (for case-based testing):
@@ -31,7 +56,7 @@ from auto_suggest_llm_util import get_prompt
 # Option B — Range of target IDs (for mass testing):
 #   Set TARGET_IDS to None and configure the range below.
 #
-LEN_ID = 4
+LEN_ID = _args.len_id
 TARGET_IDS = None  # None  # [13]
 # 16, 17, 18, 19,
 # 20, 21, 22, 23, 24, 25,
@@ -55,9 +80,9 @@ TARGET_IDS = None  # None  # [13]
 # ]  # e.g. [4, 6, 48, 56] or None for range mode
 
 # Range mode settings (only used when TARGET_IDS is None)
-MAX_LEN_ID = 4
-TARGET_ID_START = 86
-TARGET_ID_END = 100
+MAX_LEN_ID = _args.max_len_id
+TARGET_ID_START = _args.target_id_start
+TARGET_ID_END = _args.target_id_end
 # ============================================================
 
 # Paths
@@ -66,22 +91,21 @@ JSON_FILE_PATH_SS = os.path.join(_TRANSCHEMA_ROOT, "data", "chatgpt_github_ss.js
 BENCHMARKS_DIR = os.path.join(
     _TRANSCHEMA_ROOT, "autopipeline-benchmarks", "github-pipelines"
 )
+_RUN_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 RESULTS_DIR = os.path.join(
-    _TRANSCHEMA_ROOT,
-    "AgentFlow",
-    "results_pipeline_execution_experiments_len_4_86_100",
+    _TRANSCHEMA_ROOT, "AgentFlow", "results", f"{_args.result_dir}_{_RUN_TIMESTAMP}"
 )
 
 # Model / solver configuration
-LLM_ENGINE_NAME = "gpt-4.1-mini"
+LLM_ENGINE_NAME = _args.llm_engine
 
 # Planner granularity:
 #   "operator" = operator-level planning
 #   "pipeline" = pipeline-level planning
-PLANNER_GRANULARITY = "pipeline"
+PLANNER_GRANULARITY = _args.planner_granularity
 
 # Pipeline execution + scoring inside the agentic loop
-EXECUTE_PIPELINE = True
+EXECUTE_PIPELINE = _args.execute_pipeline
 
 # Start Again Tool behavior
 START_AGAIN_CLEAR_HISTORY = False
