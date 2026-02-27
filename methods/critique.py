@@ -18,7 +18,11 @@ from log_util.log_util import create_logger
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
-from rag_pipeline.feature_extractor import compute_from_data, load_source_target_from_folder
+from rag_pipeline.feature_extractor import (
+    compute_from_data,
+    load_source_target_from_folder,
+    parse_operation_history_for_query,
+)
 
 
 def resolve_rag_examples_base(rag_examples_base: Optional[Union[str, Path]] = None) -> Path:
@@ -292,9 +296,20 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history, rag_
         if feature_rag_db is not None:
             # Feature-based retrieval: compute 23-dim from current task, search feature collection
             task_folder = Path(main_folder) / f"length{len_idx_target_idx}"
+            pipeline_list = parse_operation_history_for_query(operation_history)
+            try:
+                logger.info(
+                    "RAG_FEATURE_PIPELINE_AT_QUERY: operation_history=%s parsed_pipeline_list=%s",
+                    operation_history,
+                    pipeline_list,
+                )
+            except Exception:
+                pass
             try:
                 source_dfs, target_df = load_source_target_from_folder(task_folder)
-                query_vector = compute_from_data(source_dfs, target_df, pipeline_operator_list=None)
+                query_vector = compute_from_data(
+                    source_dfs, target_df, pipeline_operator_list=pipeline_list or None
+                )
             except Exception as e:
                 try:
                     logger.warning(f"Feature extraction failed, using zero vector: {e}")

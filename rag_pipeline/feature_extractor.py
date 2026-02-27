@@ -6,13 +6,23 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import pandas as pd
 
 FEATURE_DIM = 23
 OPERATOR_BINS = ["groupby", "merge", "union", "pivot", "unpivot", "other"]
 OPERATOR_ALIASES = {"concat": "union"}
+# Map multi_step operation names (from critique operation_history) to OPERATOR_BINS
+OPERATION_HISTORY_TO_BIN = {
+    "join": "merge",
+    "group_by/aggregate": "groupby",
+    "groupby": "groupby",
+    "union": "union",
+    "concat": "union",
+    "pivot": "pivot",
+    "unpivot": "unpivot",
+}
 TYPE_BINS = ["int", "float", "str", "datetime", "bool"]
 
 
@@ -58,6 +68,73 @@ def _parse_operator_pipeline(content: str) -> List[str]:
         return [str(x) for x in parsed] if isinstance(parsed, list) else []
     except Exception:
         return []
+
+
+def parse_operation_history_for_query(
+    operation_history: Optional[Union[str, list]],
+) -> List[str]:
+    """
+    Parse operation_history from the critique flow (failed pipeline) into a list of
+    operator names suitable for compute_from_data(..., pipeline_operator_list=...).
+
+    operation_history is typically the string form of a list, e.g. from ms_info[-1]:
+      "['JOIN : [\"col1\", \"col2\"]', 'GROUP_BY/AGGREGATE', 'UNION : [\"t1\", \"t2\"]']"
+    Each element may be "OP" or "OP : ...". We take the part before " : " and map
+    multi_step names (JOIN, GROUP_BY/AGGREGATE, UNION, PIVOT, UNPIVOT) to
+    OPERATOR_BINS (merge, groupby, union, pivot, unpivot, other).
+
+    Returns:
+        List of operator names (e.g. ["merge", "groupby", "union"]) for the histogram.
+    """
+    if operation_history is None:
+        return []
+    raw_list: List[str] = []
+    if isinstance(operation_history, list):
+        raw_list = [str(x) for x in operation_history]
+    elif isinstance(operation_history, str):
+        s = operation_history.strip()
+        if not s:
+            return []
+        try:
+            parsed = ast.literal_eval(s)
+            raw_list = [str(x) for x in parsed] if isinstance(parsed, list) else []
+        except Exception:
+            return []
+    else:
+        return []
+    result: List[str] = []
+    for item in raw_list:
+        item = (item or "").strip()
+        if not item:
+            continue
+        # Take prefix before " : " (e.g. "JOIN : [...]" -> "JOIN")
+        if " : " in item:
+            op_raw = item.split(" : ", 1)[0].strip()
+        else:
+            op_raw = item
+        op_lower = op_raw.lower()
+        full_lower = item.lower()  # use full item for fallback (e.g. "group_by" = ..., "aggregations" = ...)
+        mapped = OPERATION_HISTORY_TO_BIN.get(op_lower)
+        if mapped is None:
+            # GROUP_BY/AGGREGATE may appear as prefix or in full string (e.g. "aggregations")
+            if ("group" in full_lower and "aggregate" in full_lower) or (
+                "group" in full_lower and "aggregations" in full_lower
+            ):
+                mapped = "groupby"
+            elif "join" in full_lower:
+                mapped = "merge"
+            elif "union" in full_lower or "concat" in full_lower:
+                mapped = "union"
+            elif "pivot" in full_lower:
+                mapped = "pivot"
+            elif "unpivot" in full_lower:
+                mapped = "unpivot"
+            elif "no_more_operation" in full_lower or not op_raw:
+                continue  # skip sentinel / empty
+            else:
+                mapped = "other"
+        result.append(mapped)
+    return result
 
 
 def _schema_overlap(source_column_sets: List[set], target_columns: List[str]) -> float:
