@@ -9,6 +9,7 @@ def get_python_script(
     csv_save_path,
     error_string,
     all_intermediate_results,
+    static_hints=False,
 ):
     if all_intermediate_results:
         return get_python_script_with_intermediate_materialization(
@@ -39,6 +40,7 @@ def get_python_script(
             source_information_with_location,
             csv_save_path,
             error_string,
+            static_hints,
         )
 
 
@@ -50,6 +52,7 @@ def get_python_script_simple(
     source_information_with_location,
     csv_save_path,
     error_string,
+    static_hints=False,
 ):
     prompt = f"""
     You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table and STRICTLY follow the sequence of the operations mentioned in 'operation_history' list . The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way.
@@ -67,7 +70,9 @@ def get_python_script_simple(
     Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that will be used.
 
     Please quote the Python script between one single "```Python" and "```".
-
+    """
+    if static_hints:
+        prompt += f"""
     Hints to be considered for Python code generation:
  - Your code should only take the CSV file paths given in the Source Data Information as inputs.
  - Please ensure all operation output contributed (or used) by the final output.
@@ -88,8 +93,8 @@ def get_python_script_simple(
  - Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
  - Please do not use source files that are not mentioned in this prompt.
- Please quote the Python script between one single "```Python" and "```".
-
+ Please quote the Python script between one single "```Python" and "```"."""
+    prompt += f"""
  Errors in previous Attempts : {error_string}
 
     """
@@ -104,6 +109,7 @@ def get_python_script_for_single_step_cot(
     source_information_with_location,
     csv_save_path,
     error_string,
+    static_hints=False,
 ):
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. Before generating the code, please think step by step about the transformation plan to convert the source tables to the target table.
 
@@ -116,7 +122,9 @@ def get_python_script_for_single_step_cot(
     Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that will be used.
 
     Please quote the Python script between one single "```Python" and "```".
-
+    """
+    if static_hints:
+        prompt += f"""
     Hints to be considered for Python code generation:
  - Your code should only take the CSV file paths given in the Source Data Information as inputs.
  - Please ensure all operation output contributed (or used) by the final output.
@@ -194,7 +202,8 @@ Most source files have a numerical index column, which is always the first colum
 
 
 Please quote the Python script between one single "```Python" and "```".
-
+"""
+    prompt += f"""
 Errors in previous Attempts : {error_string}
     """
     return [prompt]
@@ -209,6 +218,7 @@ def get_python_script_with_intermediate_materialization(
     csv_save_path,
     error_string,
     all_intermediate_results,
+    static_hints=False,
 ):
     # assert len(all_intermediate_results) + 1 == len(
     #   operation_history
@@ -238,10 +248,11 @@ The intermediate results of the past operations are as follows:
         )
     ]
     prompt_middle = "\n".join(subprompts_middle)
+    prompt_last = ""
+    if static_hints:
+        prompt_last += f"""
 
-    prompt_last = f"""
-
-    ints to be considered for Python code generation:
+    Hints to be considered for Python code generation:
  - Please write python code to execute the next operation {next_operation}. 
  - Your code should only take the CSV file paths given in the Source Data Information as inputs.
  - Please ensure all operation output contributed (or used) by the final output.
@@ -262,7 +273,8 @@ The intermediate results of the past operations are as follows:
  - Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
  - Note that each source file has a header. The first line of the csv file is a header, which should be considered before performing queries such as concat (union).
  - Please do not use source files that are not mentioned in this prompt.
-
+"""
+    prompt_last += f"""
   Errors in previous Attempts : {error_string}
     """
     return [f"{prompt_start}{prompt_middle}{prompt_last}"]

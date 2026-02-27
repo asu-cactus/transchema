@@ -164,6 +164,8 @@ def get_join_hints(
     # at the end sort the dictionary based on length of values satisfied.
     feat_dict = {}
 
+    # print("Generating join hints...")
+
     for table_name1, table_name2 in combinations(tables.keys(), 2):
         table1 = tables[table_name1]
         table2 = tables[table_name2]
@@ -213,7 +215,7 @@ def get_join_hints(
                                 table_name1
                                 + "."
                                 + col1
-                                + "<->"
+                                + " <-> "
                                 + table_name2
                                 + "."
                                 + col2
@@ -254,6 +256,9 @@ def get_join_hints(
         # process column-pair based features
 
         # process column based features
+
+        # print(feat_dict)
+
         if hint_source == "v1_kv":
             cnt = 0
             for k in sorted(
@@ -298,8 +303,8 @@ def get_join_hints(
                 hint = hint[:-3] + " }"
                 # print(hint)
                 hints += hint + "\n"
-                if cnt > 10:
-                    break
+                # if cnt > 10:
+                #     break
 
         # add the hint string
         # print(feat_dict)
@@ -312,6 +317,7 @@ def get_join_hints(
 
 def get_truncated_join_feature(f, join_flag, jht):
     feature_list = {}
+    # print(join_flag, jht)
     if join_flag:
         if f[0] >= jht[0] or f[1] >= jht[0]:
             feature_list["dvr"] = {}
@@ -354,7 +360,7 @@ def get_truncated_join_feature(f, join_flag, jht):
 def check_feature_join(f, join_flag, jht):
     if join_flag:
         # distinct_value_ratio
-        if f[0] < jht[0] or f[1] < jht[0]:
+        if f[0] < jht[0] and f[1] < jht[0]:
             return False
 
         # value overlap
@@ -598,8 +604,8 @@ def get_groupby_aggregate_hints(
                         hint += f"{ky} : {v} , "
                     hint = hint[:-3] + " }\n"
                     hints += hint
-                    if cnt > 10:
-                        break
+                    # if cnt > 10:
+                    #     break
 
             hints += "Aggregation Candidates : \n"
             cnt = 0
@@ -615,8 +621,8 @@ def get_groupby_aggregate_hints(
                         hint += f"{ky} : {v} , "
                     hint = hint[:-3] + " }"
                     hints += hint
-                    if cnt > 10:
-                        break
+                    # if cnt > 10:
+                    #     break
     # print(hints)
     return [hints]
     # return dict(sorted(feat_dict_gb.items(), key=lambda item: len(item[1]), reverse=True)),dict(sorted(feat_dict_aggregate.items(), key=lambda item: len(item[1]), reverse=True))

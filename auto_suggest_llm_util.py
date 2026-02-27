@@ -65,6 +65,7 @@ def get_prompt(
     combine_ask_and_configure=False,
     no_thinking=False,
     few_shot=False,
+    static_hints=False,
 ):
     """
     Args:
@@ -173,8 +174,8 @@ def get_prompt(
         )
 
         # print("Hints received")
-
-        hints = [""]
+        # print(hints)
+        # hints = [""]
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
@@ -205,6 +206,7 @@ def get_prompt(
                 source_information,
                 fd_hints,
                 hints,
+                static_hints=static_hints,
             )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -245,6 +247,7 @@ def get_prompt(
                 fd_hints,
                 hints,
                 all_intermediate_results,
+                static_hints,
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -253,9 +256,8 @@ def get_prompt(
         # print(str(len(encoding.encode(prompt))))
 
     elif prompt_type == "join":
-        print("get hints")
-        hints = ""
-        get_hints(
+        # print("get hints")
+        hints = get_hints(
             "join",
             hint_source,
             target_data_schema,
@@ -268,9 +270,11 @@ def get_prompt(
             join_hints_truncate,
         )
 
+        # print(hints)
+
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            print(target_data_schema)
+            # print(target_data_schema)
 
         static_prompt = get_join_prompt(
             allowed_operation_list,
@@ -282,6 +286,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -304,6 +309,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
 
     elif prompt_type == "group_by_aggregate":
@@ -334,6 +340,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -356,6 +363,7 @@ def get_prompt(
             source_information,
             hints,
             fd_hints,
+            static_hints,
         )[0]
 
     elif prompt_type == "union":
@@ -372,6 +380,7 @@ def get_prompt(
             "",
             file_count,
             source_information,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -392,13 +401,14 @@ def get_prompt(
             target_samples,
             file_count,
             source_information,
+            static_hints,
         )[0]
 
     elif prompt_type == "python_script":
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            print(target_data_schema)
+            # print(target_data_schema)
 
         source_information_with_location = get_source_with_location(
             file_count,
@@ -424,6 +434,7 @@ def get_prompt(
             csv_save_path,
             error_string,
             all_intermediate_results,
+            static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -448,6 +459,7 @@ def get_prompt(
             csv_save_path,
             error_string,
             all_intermediate_results,
+            static_hints,
         )[0]
     else:
         raise ValueError(f"Invalid prompt type {prompt_type}.")
@@ -456,7 +468,7 @@ def get_prompt(
     # print(len(encoding.encode(prompt)))
     prompt_len = len(encoding.encode(prompt))
     if prompt_len > max_tokens:
-        print(prompt)
+        # print(prompt)
         raise Exception(f"Prompt length {prompt_len} exceeds maximum tokens.")
 
     return prompt
@@ -874,7 +886,7 @@ def get_key_column_hints(keys, step):
             hints = f"No clear key columns found in the intermediate_step{step} table."
         else:
             hints = f"Key columns discovered from the intermediate_step{step} table : {keys}\n"
-    print(hints)
+    # print(hints)
     return hints
 
 
@@ -899,7 +911,7 @@ def get_column_matching_hints(intermediate_df, target_df, step):
         hint = ""
         for col1, col2 in match_columns:
             hint += f"Column {col1} from intermediate_step{step} table matches with column {col2} from target table.\n"
-        print(hint)
+        # print(hint)
         return hint
     else:
         return f"\n\nNo matching columns found between intermediate_step{step} table and target tables.\n\n"
