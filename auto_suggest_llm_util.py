@@ -28,6 +28,8 @@ from prompts.configuration_prompts import (
     get_union_prompt,
 )
 from prompts.code_generation_prompt import get_python_script
+from prompts.mcts_expand import get_mcts_expand_prompt
+from prompts.mcts_simulate import get_mcts_simulate_prompt
 
 # from prompts.next_operator_prompt_with_intermediate_materialization import (
 #     get_next_operator_prompt_with_intermediate_materialization,
@@ -65,6 +67,7 @@ def get_prompt(
     combine_ask_and_configure=False,
     no_thinking=False,
     few_shot=False,
+    mcts_expand_k=3,
 ):
     """
     Args:
@@ -489,6 +492,90 @@ def get_prompt(
             error_string,
             all_intermediate_results,
         )[0]
+    elif prompt_type == "mcts_expand":
+        # Shared fd_hints logic (already computed above if fd_flag==1)
+        if target_data_schema_with_types:
+            target_data_schema = target_data_schema_with_types
+
+        static_prompt = get_mcts_expand_prompt(
+            allowed_operation_list,
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            "",
+            file_count,
+            source_information,
+            fd_hints,
+            k=mcts_expand_k,
+        )[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(
+            directory,
+            len_idx_target_idx,
+            target_perc,
+            is_perc,
+            target_length,
+            max_tokens,
+            static_prompt_length,
+            encoding,
+        )
+        prompt = get_mcts_expand_prompt(
+            allowed_operation_list,
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            target_samples,
+            file_count,
+            source_information,
+            fd_hints,
+            k=mcts_expand_k,
+        )[0]
+
+    elif prompt_type == "mcts_simulate":
+        if target_data_schema_with_types:
+            target_data_schema = target_data_schema_with_types
+
+        source_information_with_location = get_source_with_location(
+            file_count,
+            source_data_name_list,
+            source_data_schema_list,
+            source_length,
+            directory,
+            len_idx_target_idx,
+            max_tokens,
+            encoding,
+        )
+
+        static_prompt = get_mcts_simulate_prompt(
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            "",
+            source_information_with_location,
+            csv_save_path,
+            error_string,
+        )[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(
+            directory,
+            len_idx_target_idx,
+            target_perc,
+            is_perc,
+            target_length,
+            max_tokens,
+            static_prompt_length,
+            encoding,
+        )
+        prompt = get_mcts_simulate_prompt(
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            target_samples,
+            source_information_with_location,
+            csv_save_path,
+            error_string,
+        )[0]
+
     else:
         raise ValueError(f"Invalid prompt type {prompt_type}.")
 
@@ -710,6 +797,83 @@ def get_all_intermediate(
     return all_intermediate_results
 
 
+def get_mcts_candidates(response: str, operator_types: list) -> list:
+    """
+    Parse an mcts_expand LLM response into a ranked list of
+    (operator_type, configured_op_string) tuples.
+
+    Expected block format produced by get_mcts_expand_prompt():
+        $CANDIDATE N$
+        OPERATOR: <TYPE>
+        TABLES:       ...   (JOIN or UNION)
+        COLUMNS:      ...   (JOIN, may be multi-value)
+        GROUP_BY:     ...   (GROUP_BY/AGGREGATE)
+        AGGREGATIONS: ...   (GROUP_BY/AGGREGATE)
+        $END$
+
+    Returns candidates in rank order (most promising first).
+    Malformed or unrecognised blocks are silently skipped.
+    """
+    candidates = []
+    blocks = re.findall(
+        r"\$CANDIDATE\s+\d+\$(.*?)\$END\$", response, re.DOTALL | re.IGNORECASE
+    )
+
+    for block in blocks:
+        lines = [l.strip() for l in block.strip().split("\n") if l.strip()]
+        if not lines:
+            continue
+
+        # ── Extract OPERATOR type ──────────────────────────────────────────
+        op_type = None
+        for line in lines:
+            m = re.match(r"OPERATOR:\s*(.+)", line, re.IGNORECASE)
+            if m:
+                op_type = m.group(1).strip()
+                break
+
+        if not op_type or op_type not in operator_types:
+            continue
+
+        # No-configuration operators
+        if op_type in ("PIVOT", "UNPIVOT", "NO_MORE_OPERATION"):
+            candidates.append((op_type, op_type))
+            continue
+
+        # ── Build config dict from key: value lines ────────────────────────
+        cfg: dict = {}
+        for line in lines:
+            m = re.match(r"([A-Z_/]+):\s*(.+)", line, re.IGNORECASE)
+            if m and m.group(1).upper() != "OPERATOR":
+                key = m.group(1).upper()
+                val = m.group(2).strip()
+                # Accumulate multi-line values (e.g., wrapped COLUMNS)
+                cfg[key] = cfg.get(key, "") + (" " if key in cfg else "") + val
+
+        # ── Build configured_op string matching operation_history format ───
+        if op_type == "JOIN":
+            tables = cfg.get("TABLES", "")
+            columns = cfg.get("COLUMNS", "")
+            configured_op = f"JOIN : {tables}"
+            if columns:
+                configured_op += f" columns={columns}"
+        elif op_type == "UNION":
+            tables = cfg.get("TABLES", "")
+            configured_op = f"UNION : {tables}"
+        elif op_type == "GROUP_BY/AGGREGATE":
+            group_by = cfg.get("GROUP_BY", "")
+            aggs = cfg.get("AGGREGATIONS", "")
+            configured_op = (
+                f'GROUP_BY/AGGREGATE : "group_by" = {group_by}, "aggregations" = {aggs}'
+            )
+        else:
+            configured_op = op_type
+
+        candidates.append((op_type, configured_op))
+
+    return candidates
+
+
 def get_operation(s):
     match = re.search(r"\$(.*?)\$", s)
     if match:
@@ -779,12 +943,14 @@ def increment_count(q):
 def query_gpt(
     llm_model, model, prompt, q_count, logger, cost_summary, token_tracker, type
 ):
+    # Accept either a plain string or a single-element list (pass-by-ref pattern)
+    prompt_str = prompt[0] if isinstance(prompt, list) else prompt
     start_time = time.time()
     logger.info("Query of Type : {type_}".format(type_=type))
     # run the prompt and get the result
-    res = llm_model.gpt(prompt)
+    res = llm_model.gpt(prompt_str)
     # log the prompt
-    logger.info("Prompt to ask for operator : {prompt}".format(prompt=prompt))
+    logger.info("Prompt to ask for operator : {prompt}".format(prompt=prompt_str))
     # log the result
     logger.info("Result Recieved :  {res}".format(res=res[0]))
     end_time = time.time()

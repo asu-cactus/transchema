@@ -49,7 +49,8 @@ class MCTSGraphState(TypedDict):
 
     # ── MCTS iteration control ────────────────────────────────────────────────
     iteration: int                   # current iteration index (0-based, incremented by backpropagate)
-    max_iterations: int              # budget (total number of MCTS iterations)
+    max_iterations: int              # hard budget cap (safety limit)
+    terminal_found: bool             # True once a NO_MORE_OPERATION node has been simulated
 
     # ── Selection phase ───────────────────────────────────────────────────────
     # Set by mcts_select; consumed by next_operator_step + backpropagate.
@@ -67,6 +68,7 @@ class MCTSGraphState(TypedDict):
     current_script: str              # Python code generated this iteration
     current_score: float             # calculate_score reward for this iteration
     current_response: str            # "Success" or error string from execute_python
+    current_full_history: List[str]  # complete pipeline parsed from $PLAN$ block (may be [] if unparseable)
 
     # ── Best result across all iterations ─────────────────────────────────────
     best_script: str

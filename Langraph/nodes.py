@@ -40,9 +40,7 @@ if _ROOT not in sys.path:
 
 from auto_suggest_llm_util import (
     calculate_score,
-    get_columns,
-    get_columns_join,
-    get_operation,
+    get_mcts_candidates,
     get_prompt,
     query_gpt,
 )
@@ -54,145 +52,6 @@ from util.utils import execute_python
 _MAX_SELECT_DEPTH = 15
 # Maximum code-generation retries inside simulate
 _MAX_CODE_TRIALS = 5
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helper: ask LLM for next operator
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _ask_operator(state: MCTSGraphState, operation_history: List[str]) -> str:
-    """
-    Call the LLM to select the next operator given current operation_history.
-    Returns one of the OPERATOR_TYPES strings, or "NO_MORE_OPERATION" on error.
-    """
-    config = state["config"]
-    try:
-        prompt = get_prompt(
-            prompt_type="get_next_operator",
-            max_tokens=config.token_limit,
-            model=config.model,
-            allowed_operation_list=OPERATOR_TYPES,
-            operation_history=operation_history,
-            target_data_name=config.target_data_name,
-            target_data_schema=config.target_data_schema,
-            target_data_schema_with_types=config.target_data_schema_with_types,
-            target_samples=config.target_samples,
-            file_count=config.file_count,
-            source_data_name_list=config.source_data_name_list,
-            source_data_schema_list=config.source_data_schema_list,
-            directory=config.directory,
-            len_idx_target_idx=config.len_idx_target_idx,
-            target_perc=config.target_perc,
-            is_perc=config.is_perc,
-            target_length=config.target_length,
-            source_length=config.source_length,
-            hint_source=config.hint_source,
-            few_shot=state.get("few_shot", 0),
-        )
-    except Exception:
-        config.logger.warning(f"[_ask_operator] get_prompt raised: {traceback.format_exc()}")
-        return "NO_MORE_OPERATION"
-
-    res = query_gpt(
-        config.llm_client,
-        config.model,
-        prompt,
-        config.q_count,
-        config.logger,
-        config.cost_summary,
-        config.token_tracker,
-        type="MCTS Ask Operator",
-    )
-    operation = get_operation(res[0])
-    if operation not in OPERATOR_TYPES or not operation:
-        config.logger.warning(
-            f"[_ask_operator] Unexpected operator '{operation}', defaulting to NO_MORE_OPERATION"
-        )
-        return "NO_MORE_OPERATION"
-    return operation
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helper: configure the chosen operator
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _configure_operator(
-    state: MCTSGraphState, operator_type: str, operation_history: List[str]
-) -> str:
-    """
-    Ask the LLM to configure the given operator.
-    Returns the full operation string to append to operation_history.
-    E.g. "JOIN : [col_a = col_b]" or "GROUP_BY/AGGREGATE : {...}"
-    """
-    config = state["config"]
-
-    # Operators that need no LLM configuration
-    if operator_type in ("PIVOT", "UNPIVOT", "NO_MORE_OPERATION"):
-        return operator_type
-
-    prompt_type_map = {
-        "JOIN": "join",
-        "UNION": "union",
-        "GROUP_BY/AGGREGATE": "group_by_aggregate",
-    }
-    prompt_type = prompt_type_map.get(operator_type)
-    if not prompt_type:
-        return operator_type
-
-    try:
-        prompt = get_prompt(
-            prompt_type=prompt_type,
-            max_tokens=config.token_limit,
-            model=config.model,
-            allowed_operation_list=OPERATOR_TYPES,
-            operation_history=operation_history,
-            target_data_name=config.target_data_name,
-            target_data_schema=config.target_data_schema,
-            target_data_schema_with_types=config.target_data_schema_with_types,
-            target_samples=config.target_samples,
-            file_count=config.file_count,
-            source_data_name_list=config.source_data_name_list,
-            source_data_schema_list=config.source_data_schema_list,
-            directory=config.directory,
-            len_idx_target_idx=config.len_idx_target_idx,
-            target_perc=config.target_perc,
-            is_perc=config.is_perc,
-            target_length=config.target_length,
-            source_length=config.source_length,
-            join_flag=state.get("join_flag", 0),
-            join_hints_truncate=state.get("join_hints_truncate", []),
-            aggregate_flag=state.get("aggregate_flag", 0),
-            aggregate_hints_truncate=state.get("aggregate_hints_truncate", []),
-            hint_source=config.hint_source,
-        )
-    except Exception:
-        config.logger.warning(
-            f"[_configure_operator] get_prompt raised for {operator_type}: {traceback.format_exc()}"
-        )
-        return operator_type  # fallback: just use bare operator name
-
-    res = query_gpt(
-        config.llm_client,
-        config.model,
-        prompt,
-        config.q_count,
-        config.logger,
-        config.cost_summary,
-        config.token_tracker,
-        type=f"MCTS Configure {operator_type}",
-    )
-
-    raw = res[0]
-    if operator_type == "JOIN":
-        detail = get_columns_join(raw)
-        return f"JOIN : {detail}"
-    elif operator_type == "GROUP_BY/AGGREGATE":
-        # The group_by_aggregate prompt returns a JSON blob
-        return re.sub(r"```json\n|\n|```", "", raw).strip()
-    elif operator_type == "UNION":
-        detail = get_columns(raw)
-        return f"UNION : {detail}"
-    return operator_type
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -226,7 +85,7 @@ def mcts_select(state: MCTSGraphState) -> dict:
     config.logger.info(
         f"[MCTS Select] Iter {state['iteration']}: "
         f"selected depth={len(path) - 1}, op={node.operator_type}, "
-        f"visits={node.visits}, untried={node.untried_operators()}"
+        f"visits={node.visits}, children={len(node.children)}/{MCTSNode.MAX_CHILDREN}"
     )
 
     return {
@@ -246,57 +105,149 @@ def mcts_select(state: MCTSGraphState) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Node 2: next_operator_step  (EXPANSION only — one operator per iteration)
+# Node 2: next_operator_step  (EXPANSION — single mcts_expand LLM call)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def next_operator_step(state: MCTSGraphState) -> dict:
     """
-    EXPANSION: ask the LLM for one operator, configure it, add it to the tree.
+    EXPANSION (Option B — batch expand, single simulate):
+    One mcts_expand LLM call returns k ranked candidates. ALL new candidates
+    are immediately added to the tree as children (0 visits each). Only the
+    LLM's #1 priority candidate is simulated this iteration; the rest wait
+    for future UCB1 selection.
 
-    This is the only operator-selection call per MCTS iteration.
-    After this, simulate() immediately takes the expanded history and generates
-    a complete pipeline + code — no further operator steps occur.
-
-    Tree update logic
-    -----------------
-    - If the LLM suggests an operator type not yet tried at selected_node
-      → create a new child node (true expansion).
-    - If the operator type already has a child (tried in a previous iteration)
-      → follow the existing branch (the simulation will still run from here,
-        providing a fresh reward sample for backpropagation).
+    Logic
+    -----
+    1. Ask the LLM for MAX_CHILDREN candidates (always, to fill all slots).
+    2. Add every candidate whose configured_step is not already a child.
+    3. If no new configs were added, mark node saturated.
+    4. Simulate only candidates[0] (top priority), whether it is new or existing.
+    5. Ultimate fallback (empty/unparseable response): NO_MORE_OPERATION + saturated.
     """
     config = state["config"]
-    rollout_history: List[str] = state["rollout_history"]   # selected_node.operation_history
+    rollout_history: List[str] = state["rollout_history"]
     selected_node: MCTSNode = state["selected_node"]
     selection_path: List[MCTSNode] = state["selection_path"]
 
-    # Ask LLM for the next operator type
-    operator_type = _ask_operator(state, rollout_history)
+    # Always ask for MAX_CHILDREN candidates so we can fill all tree slots at once.
+    k = MCTSNode.MAX_CHILDREN
+
+    # ── Single LLM call: get k ranked candidates with configurations ──────
+    try:
+        prompt = get_prompt(
+            prompt_type="mcts_expand",
+            max_tokens=config.token_limit,
+            model=config.model,
+            allowed_operation_list=OPERATOR_TYPES,
+            operation_history=rollout_history,
+            target_data_name=config.target_data_name,
+            target_data_schema=config.target_data_schema,
+            target_data_schema_with_types=config.target_data_schema_with_types,
+            target_samples=config.target_samples,
+            file_count=config.file_count,
+            source_data_name_list=config.source_data_name_list,
+            source_data_schema_list=config.source_data_schema_list,
+            directory=config.directory,
+            len_idx_target_idx=config.len_idx_target_idx,
+            target_perc=config.target_perc,
+            is_perc=config.is_perc,
+            target_length=config.target_length,
+            source_length=config.source_length,
+            hint_source=config.hint_source,
+            fd_flag=int(config.fd_flag),
+            mcts_expand_k=k,
+        )
+    except Exception:
+        config.logger.warning(
+            f"[expand] get_prompt (mcts_expand) raised: {traceback.format_exc()}"
+        )
+        prompt = None
+
+    if prompt is not None:
+        res = query_gpt(
+            config.llm_client,
+            config.model,
+            [prompt],
+            config.q_count,
+            config.logger,
+            config.cost_summary,
+            config.token_tracker,
+            type="MCTS Expand",
+        )
+        candidates = get_mcts_candidates(res[0], OPERATOR_TYPES)
+    else:
+        candidates = []
 
     config.logger.info(
-        f"[expand] Iter {state['iteration']}: op={operator_type}, "
-        f"depth={len(rollout_history)}"
+        f"[expand] Iter {state['iteration']}: "
+        f"candidates={[(op, cfg[:50]) for op, cfg in candidates]}"
     )
 
-    # Configure the operator (adds join cols, group-by spec, etc.)
-    configured_op = _configure_operator(state, operator_type, rollout_history)
-    new_history = rollout_history + [configured_op]
+    # ── Batch-add all new candidates to the tree ──────────────────────────
+    # Children are keyed by the FULL configured_step string.
+    existing_configs: set = set(selected_node.children.keys())
+    new_configs_added: List[str] = []
 
-    # Add to / follow the tree
-    if operator_type not in selected_node.children:
-        new_node = selected_node.add_child(operator_type, new_history)
-        config.logger.info(f"[expand] New child created: op={operator_type}")
+    for op_type, cfg in candidates:
+        if cfg not in existing_configs:
+            child_history = rollout_history + [cfg]
+            selected_node.add_child(cfg, child_history, operator_type=op_type)
+            new_configs_added.append(cfg)
+            existing_configs.add(cfg)  # keep local set consistent
+            config.logger.info(
+                f"[expand] Iter {state['iteration']}: added child op={op_type} "
+                f"cfg={cfg[:60]} "
+                f"(tree now has {len(selected_node.children)}/{MCTSNode.MAX_CHILDREN} children)"
+            )
+
+    # Saturation: LLM returned no new configs — mark so selection descends past this node
+    if not new_configs_added and candidates:
+        selected_node.saturated = True
+        config.logger.info(
+            f"[expand] Iter {state['iteration']}: all candidates already in tree — "
+            f"node marked saturated"
+        )
+
+    # ── Simulation target: always the LLM's #1 priority candidate ─────────
+    if candidates:
+        chosen_op, chosen_cfg = candidates[0]
     else:
-        new_node = selected_node.children[operator_type]
-        config.logger.info(f"[expand] Following existing child: op={operator_type}")
+        # Ultimate fallback: no parseable candidates at all
+        chosen_op = "NO_MORE_OPERATION"
+        chosen_cfg = "NO_MORE_OPERATION"
+        selected_node.saturated = True
+        config.logger.warning(
+            f"[expand] Iter {state['iteration']}: no valid candidates parsed, "
+            f"node marked saturated, falling back to NO_MORE_OPERATION"
+        )
+
+    config.logger.info(
+        f"[expand] Iter {state['iteration']}: simulating top-priority op={chosen_op} "
+        f"| cfg={chosen_cfg[:80]} "
+        f"({len(new_configs_added)} new child(ren) added this iteration)"
+    )
+
+    new_history = rollout_history + [chosen_cfg]
+
+    # Navigate to the top-priority child (guaranteed to exist after batch-add above)
+    if chosen_cfg not in selected_node.children:
+        new_node = selected_node.add_child(chosen_cfg, new_history, operator_type=chosen_op)
+    else:
+        new_node = selected_node.children[chosen_cfg]
+
+    is_terminal_expansion = (chosen_op == "NO_MORE_OPERATION")
 
     return {
         "rollout_history": new_history,
         "rollout_step": len(new_history),
-        "current_operator": operator_type,
+        "current_operator": chosen_op,
         "in_rollout": True,
         "selection_path": selection_path + [new_node],
         "selected_node": new_node,
+        "terminal_found": state["terminal_found"] or is_terminal_expansion,
+        "log_messages": state["log_messages"] + [
+            f"[EXPAND] iter={state['iteration']} op={chosen_op} configured={chosen_cfg}"
+        ],
     }
 
 
@@ -339,7 +290,7 @@ def simulate(state: MCTSGraphState) -> dict:
     for trial in range(_MAX_CODE_TRIALS):
         try:
             prompt = get_prompt(
-                prompt_type="python_script",
+                prompt_type="mcts_simulate",
                 max_tokens=config.token_limit,
                 model=config.model,
                 allowed_operation_list=OPERATOR_TYPES,
@@ -370,7 +321,7 @@ def simulate(state: MCTSGraphState) -> dict:
         res = query_gpt(
             config.llm_client,
             config.model,
-            prompt,
+            [prompt],
             config.q_count,
             config.logger,
             config.cost_summary,
@@ -402,9 +353,37 @@ def simulate(state: MCTSGraphState) -> dict:
             f"Last response: '{response}'"
         )
 
+    _trials = trial + 1  # trial retains last loop value; range(5) guarantees it is set
+    _result = "Success" if response == "Success" else "FAILED"
+
+    # Parse the $PLAN$...$END_PLAN$ block from the last LLM response.
+    # This is the LLM's complete operation sequence (partial history + any extra steps
+    # it reasoned about + NO_MORE_OPERATION). Fall back to [] if absent or unparseable.
+    full_history: List[str] = []
+    if res:
+        plan_match = re.search(r"\$PLAN\$(.*?)\$END_PLAN\$", res[0], re.DOTALL)
+        if plan_match:
+            full_history = [
+                line.strip()
+                for line in plan_match.group(1).strip().splitlines()
+                if line.strip()
+            ]
+            config.logger.info(
+                f"[simulate] Parsed complete plan: {full_history}"
+            )
+        else:
+            config.logger.warning(
+                f"[simulate] No $PLAN$ block found in LLM response (iter {state['iteration']})"
+            )
+
     return {
         "current_script": script,
         "current_response": response,
+        "current_full_history": full_history,
+        "log_messages": state["log_messages"] + [
+            f"[SIMULATE] iter={state['iteration']} trials={_trials} result={_result} "
+            f"plan_steps={len(full_history)}"
+        ],
     }
 
 
@@ -444,14 +423,23 @@ def execute_and_score(state: MCTSGraphState) -> dict:
         f"score={score:.4f}, history={rollout_history}"
     )
 
-    # Update global best
+    # Update global best.
+    # Use the LLM's complete plan (current_full_history) as the operation history when
+    # available — it captures the full pipeline the LLM reasoned about (including steps
+    # beyond rollout_history). Fall back to rollout_history if the plan block was absent.
     best_score = state["best_score"]
     best_script = state["best_script"]
     best_op_hist = state["best_operation_history"]
+    full_history = state["current_full_history"] or list(rollout_history)
+
     if score > best_score:
         best_score = score
         best_script = state["current_script"]
-        best_op_hist = list(rollout_history)
+        best_op_hist = full_history
+        config.logger.info(
+            f"[execute_and_score] New best: score={score:.4f}, "
+            f"complete_plan={full_history}"
+        )
 
     return {
         "current_score": score,
@@ -575,8 +563,19 @@ def is_selected_terminal(state: MCTSGraphState) -> str:
 
 def check_budget(state: MCTSGraphState) -> str:
     """
-    After backpropagate: continue MCTS if budget remains, otherwise extract best.
+    After backpropagate: stop when a NO_MORE_OPERATION terminal has been reached,
+    or when the hard iteration cap is exhausted. Continue otherwise.
     """
+    config = state["config"]
+    if state["terminal_found"]:
+        config.logger.info(
+            f"[check_budget] Terminal node reached at iter {state['iteration']} — stopping."
+        )
+        return "done"
     if state["iteration"] >= state["max_iterations"]:
+        config.logger.warning(
+            f"[check_budget] Hard cap ({state['max_iterations']} iterations) reached "
+            f"without finding a terminal node — stopping."
+        )
         return "done"
     return "iterate"

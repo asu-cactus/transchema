@@ -62,6 +62,7 @@ from validation.hard_match import compare_lists_matching
 from mcts_node import MCTSNode
 from state import MCTSGraphState
 from graph import build_mcts_graph
+from viz import write_action_trace, write_tree_viz
 
 # ──────────────────────────────────────────────────────────────────────────────
 _MAIN_FOLDER = "autopipeline-benchmarks/github-pipelines"
@@ -251,6 +252,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             # Iteration control
             "iteration": 0,
             "max_iterations": max_iterations,
+            "terminal_found": False,
             # Selection phase (initialised to root)
             "selection_path": [root],
             "selected_node": root,
@@ -263,6 +265,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "current_script": "",
             "current_score": 0.0,
             "current_response": "",
+            "current_full_history": [],
             # Best result
             "best_script": "",
             "best_score": 0.0,
@@ -295,6 +298,23 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             f"root.visits={root.visits}"
         )
 
+        # ── Write visualization files ──────────────────────────────────────
+        trace_path = write_action_trace(
+            final_state["log_messages"],
+            len_idx_target_idx,
+            log_dir_,
+            best_score=best_score,
+            best_history=final_state["best_operation_history"],
+        )
+        tree_path = write_tree_viz(
+            root,
+            len_idx_target_idx,
+            log_dir_,
+            best_history=final_state["best_operation_history"],
+        )
+        logger.info(f"[MCTS] Action trace → {trace_path}")
+        logger.info(f"[MCTS] Tree viz     → {tree_path}")
+
         # ── Hard accuracy evaluation on best script ────────────────────────
         if best_script:
             try:
@@ -321,15 +341,29 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Quick smoke-test (run directly: python Langraph/mcts_search.py)
+# Batch runner (python Langraph/mcts_search.py --length 1 --id_start 0 --id_end 100
+#                                               --experiment_name my_run)
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
-    parser.add_argument("--length", type=int, default=2)
-    parser.add_argument("--id", type=int, default=5, dest="id_")
+    parser.add_argument(
+        "--length", type=int, default=2, help="Length bucket (e.g. 1, 2, 3)"
+    )
+    parser.add_argument(
+        "--id_start", type=int, default=0, help="First case id (inclusive)"
+    )
+    parser.add_argument(
+        "--id_end", type=int, default=0, help="Last case id (inclusive)"
+    )
+    parser.add_argument(
+        "--experiment_name",
+        type=str,
+        default="mcts_run",
+        help="Experiment label; logs go to logs_langraph/<experiment_name>/",
+    )
     parser.add_argument("--model", type=str, default="gpt-4.1-mini")
     parser.add_argument("--token_limit", type=int, default=128000)
     parser.add_argument("--hint_source", type=str, default="none")
@@ -339,7 +373,7 @@ if __name__ == "__main__":
     parser.add_argument("--source_length", type=int, default=3)
     parser.add_argument("--anon_flag", type=bool, default=False)
     parser.add_argument("--fd_flag", type=int, default=0)
-    parser.add_argument("--mcts_iterations", type=int, default=10)
+    parser.add_argument("--mcts_iterations", type=int, default=15)
     parser.add_argument("--join_flag", type=int, default=0)
     parser.add_argument("--aggregate_flag", type=int, default=0)
     parser.add_argument("--few_shot", type=int, default=0)
@@ -350,12 +384,28 @@ if __name__ == "__main__":
     # Change to project root so relative imports work
     os.chdir(_ROOT)
 
-    result = mcts_search(
-        args,
-        length=args.length,
-        id_=args.id_,
-        log_dir_="logs_langraph/",
-        experiment_name="mcts_smoke_test",
-        i_=0,
-    )
-    print("Result:", result)
+    # All logs for this run go under a single experiment directory
+    log_dir_ = os.path.join("logs_langraph", args.experiment_name)
+    os.makedirs(log_dir_, exist_ok=True)
+
+    results = {}
+    for case_id in range(args.id_start, args.id_end + 1):
+        print(f"\n[MCTS] === length={args.length}  id={case_id} ===")
+        try:
+            result = mcts_search(
+                args,
+                length=args.length,
+                id_=case_id,
+                log_dir_=log_dir_,
+                experiment_name=args.experiment_name,
+                i_=case_id,
+            )
+            results[case_id] = result
+            print(f"[MCTS] Case {case_id} done: {result}")
+        except Exception:
+            print(f"[MCTS] Case {case_id} FAILED:\n{traceback.format_exc()}")
+            results[case_id] = None
+
+    print("\n[MCTS] === Summary ===")
+    for case_id, result in results.items():
+        print(f"  id={case_id}: {result}")
