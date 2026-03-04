@@ -67,11 +67,8 @@ def get_prompt(
     combine_ask_and_configure=False,
     no_thinking=False,
     few_shot=False,
-<<<<<<< HEAD
     mcts_expand_k=3,
-=======
     static_hints=False,
->>>>>>> origin/main
 ):
     """
     Args:

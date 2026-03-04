@@ -1,4 +1,4 @@
-from hints.hints_static import get_hints_section, PYTHON_SCRIPT_HINT_IDS
+from hints.hints_static import get_hints_section, PIPELINE_HINT_IDS, PYTHON_SCRIPT_HINT_IDS
 
 
 def get_python_script(
@@ -108,10 +108,9 @@ def get_python_script_for_single_step_cot(
 
     Please quote the Python script between one single "```Python" and "```".
     """
-    if static_hints:
-        prompt += f"""
-    Hints to be considered for Python code generation:
-{get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="numbered")}
+    prompt += f"""
+Hints to be considered for Python code generation:
+{get_hints_section(PIPELINE_HINT_IDS, fmt="numbered")}
 
 Please quote the Python script between one single "```Python" and "```".
 """

@@ -1,6 +1,7 @@
 """
 mcts_expand.py — MCTS Expansion prompt.
 
+
 Combines operator selection AND configuration into a single LLM call.
 Returns up to k ranked candidate next operators, each with its full configuration,
 so no separate "configure" call is needed.
@@ -23,6 +24,19 @@ Output format parsed by get_mcts_candidates() in auto_suggest_llm_util.py:
     OPERATOR: NO_MORE_OPERATION
     $END$
 """
+
+import sys
+from pathlib import Path
+
+_TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[1])
+if _TRANSCHEMA_ROOT not in sys.path:
+    sys.path.insert(0, _TRANSCHEMA_ROOT)
+from hints.hints_static import (
+    get_hints_section,
+    NEXT_OPERATOR_HINT_IDS,
+    JOIN_HINT_IDS,
+    GROUPBY_AGG_HINT_IDS,
+)
 
 
 def get_mcts_expand_prompt(
@@ -68,10 +82,9 @@ def get_mcts_expand_prompt(
     list[str]  — single-element list containing the prompt string.
     """
 
-    prompt = f"""You are building a data-pipeline to transform multiple source tables into the target table.
+    prompt = f"""You are generating a data-pipeline to transform multiple source tables to the target table and you need to answer "what operation should be performed next?". Take this decision based on "Operation History", the schema of the source, target tables, and examples in the target table.
 
-Your task: given the current "Operation History", propose up to {k} ALTERNATIVE candidates for
-the SINGLE NEXT operation step, ranked from most to least promising.
+Your task: propose up to {k} ALTERNATIVE candidates for the SINGLE NEXT operation step, ranked from most to least promising.
 
 CRITICAL: Each candidate is an INDEPENDENT ALTERNATIVE for the same next step.
 They are NOT sequential — candidate 2 does NOT build on candidate 1.
@@ -95,12 +108,7 @@ CONFIGURATION RULES — one section per operator type
 ══════════════════════════════════════════════════════
 
 JOIN — join two tables on shared columns
-  • Tables typically join on a shared primary/foreign key.
-  • Columns may have DIFFERENT NAMES but similar values
-    (e.g., test_0.Code = test_1.Country; test_0.Country = test_2.Host).
-  • If many sources have different schemas, identify a "dimension table"
-    (the one with the most attributes) and join the "aspect tables" to it
-    on their shared columns.
+{get_hints_section(JOIN_HINT_IDS, fmt="bullet")}
   • You should only use columns that actually exist in the source tables.
   Format:
     TABLES: [[table1, table2]]
@@ -114,17 +122,7 @@ UNION — stack tables that have IDENTICAL schemas
     TABLES: [table1, table2, table3, ...]
 
 GROUP_BY/AGGREGATE — group rows and apply aggregate functions
-  • Group-by columns are NEVER float-typed.
-  • Group-by columns have UNIQUE integer or string values in target examples
-    and are usually the LEFTMOST columns of the target schema.
-  • Exclude any column that has float values in target examples from group-by.
-  • If target examples show duplicate keys or duplicate rows, do NOT use GROUP_BY.
-  • Choose aggregate functions by inspecting value ranges:
-      – COUNT for many similar small integers in target
-      – SUM if target values are much larger than source values
-      – AVG if source has integer values but target has float values for that column
-      – COUNT DISTINCT if many similar but slightly different integer values
-  • A group-by column MUST NOT also be an aggregation column.
+{get_hints_section(GROUPBY_AGG_HINT_IDS, fmt="bullet")}
   Format:
     GROUP_BY: [table.col1, table.col2, ...]
     AGGREGATIONS: [COUNT(table.col), SUM(table.col2), AVG(table.col3), ...]
@@ -138,24 +136,9 @@ NO_MORE_OPERATION — the pipeline is complete
 ══════════════════════════════════════════════════════
 SELECTION GUIDANCE (apply these rules when ranking candidates)
 ══════════════════════════════════════════════════════
-- If any two source tables have DIFFERENT columns → do NOT propose UNION.
-- If multiple source tables have EXACTLY the same column names as each other AND as the target
-  → propose UNION first (highest priority).
-- If two sources share a few common columns that also appear in the target
-  → propose JOIN first.
-- If m source tables share the same schema with k non-key columns but the target has k×m non-key
-  columns (each non-key column is renamed per source) → propose JOIN on the primary key.
-- If target examples contain duplicate keys or duplicate rows → do NOT propose GROUP_BY/AGGREGATE.
-- NEVER include ALL target columns as group-by columns.
-- ALL source tables must be included somewhere in the pipeline.
+{get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet")}
 - If the operation history already covers all needed transformations → propose NO_MORE_OPERATION.
 - Do NOT repeat an operation+configuration already present in the operation history.
-- Confirm that ALL columns in the target schema are accounted for by the proposed operations.
-- Note: some column names (e.g., "purpose", "funded_year") may not reflect the actual column values
-  (e.g., integers 5 or 16844). In such cases, treat the column as an aggregation target (count, sum),
-  not a group-by column.
-- All source tables have to be used. For example, if source schemas include D, E, H, I with the same
-  schema, union them first, then join the result with the remaining tables on the shared key.
 
 ══════════════════════════════════════════════════════
 OUTPUT FORMAT  (follow exactly)
