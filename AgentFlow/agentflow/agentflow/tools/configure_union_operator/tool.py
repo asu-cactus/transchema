@@ -11,21 +11,6 @@ from agentflow.tools.base import BaseTool
 TOOL_NAME = "Configure_Union_Operator_Tool"
 
 
-LIMITATION = f"""
-The {TOOL_NAME} has several limitations:
-1) It proposes which tables to UNION based on schema similarity; ambiguous schemas may lead to wrong suggestions.
-2) It does not execute UNIONs; it only suggests which tables should be unioned.
-3) If operation history is incomplete, it may propose repeated union configurations.
-"""
-
-
-BEST_PRACTICE = f"""
-For optimal results with the {TOOL_NAME}:
-1) Provide all source tables (names + schemas) and target schema/examples.
-2) Include operation history so the tool avoids repeating unions.
-3) Prefer exact schema matches for UNION (no renaming).
-"""
-
 
 def get_union_prompt(transformation_case_info: str) -> str:
     """Generate union prompt using the provided transformation case information."""
@@ -84,7 +69,6 @@ class Configure_Union_Operator_Tool(BaseTool):
                     "description": "Configure a UNION from transformation case information.",
                 }
             ],
-            user_metadata={"limitations": LIMITATION, "best_practices": BEST_PRACTICE},
         )
 
         self.llm_engine = create_llm_engine(

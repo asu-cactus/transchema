@@ -10,21 +10,6 @@ from agentflow.tools.base import BaseTool
 TOOL_NAME = "Critique_Pipeline_Tool"
 
 
-LIMITATION = f"""
-The {TOOL_NAME} has several limitations:
-1) It critiques the current pipeline based on schemas, examples, and operation history only.
-2) It does not execute transformations; it only suggests what operators/configurations need to change.
-3) If the target examples are not representative, the critique may be inaccurate.
-"""
-
-
-BEST_PRACTICE = f"""
-For optimal results with the {TOOL_NAME}:
-1) Provide full source and target schemas with representative examples.
-2) Include the complete operation history so the tool can identify what went wrong.
-3) Use this tool when the pipeline is close to completion but needs 1-2 corrections.
-"""
-
 
 def get_critique_prompt(transformation_case_info: str) -> str:
     """Generate the critique prompt using the provided transformation case information."""
@@ -108,7 +93,6 @@ class Critique_Pipeline_Tool(BaseTool):
                     "description": "Critique a pipeline that is close to completion.",
                 }
             ],
-            user_metadata={"limitations": LIMITATION, "best_practices": BEST_PRACTICE},
         )
 
         self.llm_engine = create_llm_engine(

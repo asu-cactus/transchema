@@ -804,20 +804,36 @@ class Solver:
 
                     self._log_tool_result(tool_name, result, step_count)
 
-                    # [4b] Execute generated code and calculate score (when enabled)
-                    # if (
-                    #     self.execute_pipeline
-                    #     and isinstance(result, list)
-                    #     and len(result) > 0
-                    # ):
-                    #     code_exec_result = self._execute_and_score_pipeline(
-                    #         result, step_count
-                    #     )
-                    #     if code_exec_result:
-                    #         result = self._merge_code_result_with_score(
-                    #             result, code_exec_result
-                    #         )
-                    #         result = make_json_serializable_truncated(result)
+                    # [4b] For Code_Gen_And_Score_Tool in operator mode: execute and score
+                    if (
+                        tool_name == "Code_Gen_And_Score_Tool"
+                        and self.execute_pipeline
+                        and self.planner.granularity == "operator"
+                    ):
+                        code_exec_result = self._execute_and_score_pipeline(
+                            result, step_count
+                        )
+                        if code_exec_result:
+                            score_fields = {
+                                "execution_success": code_exec_result.get(
+                                    "execution_success", False
+                                ),
+                                "output_csv_path": code_exec_result.get("output_csv_path"),
+                                "score": code_exec_result.get("score"),
+                                "score_fd": code_exec_result.get("score_fd"),
+                                "column_mapping_score": code_exec_result.get(
+                                    "column_mapping_score"
+                                ),
+                                "score_summary": code_exec_result.get("score_summary"),
+                                "execution_error": code_exec_result.get("execution_error"),
+                            }
+                            # make_json_serializable_truncated wraps dicts in a list —
+                            # merge into the first list item if that's what we have
+                            if isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+                                result[0] = {**result[0], **score_fields}
+                            elif isinstance(result, dict):
+                                result = {**result, **score_fields}
+                            result = make_json_serializable_truncated(result)
 
                     json_data[f"tool_result_{step_count}"] = result
 
@@ -1208,34 +1224,76 @@ class Solver:
                     json_data["is_correct"] = False
 
             else:
-                # Non-pipeline mode: keep existing behavior
-                if "final" in self.output_types:
-                    self._log_llm_call(
-                        "generate_final_output",
-                        {"question": question, "image_path": image_path},
-                    )
-                    final_output = self.planner.generate_final_output(
-                        question, image_path, self.memory
-                    )
-                    self._log_llm_response(
-                        "generate_final_output", final_output
-                    )
-                    json_data["final_output"] = final_output
-                    print(f"\n==> 🐙 Detailed Solution:\n\n{final_output}")
+                # Operator mode: extract final generated code from memory and verify
+                final_code = self._get_finalized_pipeline_code()
 
-                if "direct" in self.output_types:
-                    self._log_llm_call(
-                        "generate_direct_output",
-                        {"question": question, "image_path": image_path},
+                if final_code:
+                    json_data["final_code"] = final_code
+                    json_data["final_code_source"] = "memory"
+
+                    if self.ground_truth_csv:
+                        if self.verbose:
+                            print(
+                                f"\n==> ⚙️ Executing final operator-pipeline code and verifying results..."
+                            )
+
+                        final_exec_result = self._execute_and_score_pipeline(
+                            [{"generated_code": final_code}],
+                            step_count=step_count + 1,
+                        )
+
+                        if final_exec_result:
+                            json_data["final_score"] = (
+                                make_json_serializable_truncated(final_exec_result)
+                            )
+                            if self.verbose:
+                                print(
+                                    f"\n==> 📊 Final Score: {final_exec_result.get('score')}"
+                                )
+
+                            if (
+                                final_exec_result.get("execution_success")
+                                and final_exec_result.get("output_csv_path")
+                            ):
+                                verification = self._verify_results(
+                                    final_exec_result["output_csv_path"]
+                                )
+                                if verification:
+                                    json_data["verification_result"] = (
+                                        make_json_serializable_truncated(verification)
+                                    )
+                                    is_correct = verification.get("is_correct", False)
+                                    json_data["is_correct"] = is_correct
+                                    if self.verbose:
+                                        status = "CORRECT" if is_correct else "INCORRECT"
+                                        print(
+                                            f"\n==> {'✅' if is_correct else '❌'} Verification: {status}"
+                                        )
+                                        print(
+                                            f"    Average Similarity: {verification.get('average_similarity')}"
+                                        )
+                                        print(
+                                            f"    Matched Columns: {verification.get('all_matched_columns')}"
+                                        )
+                                        print(
+                                            f"    Calculate Score: {verification.get('calculate_score')}"
+                                        )
+                            else:
+                                json_data["is_correct"] = False
+                                if self.verbose:
+                                    print(
+                                        f"\n==> ❌ Verification: FAILED (no output CSV produced)"
+                                    )
+                    else:
+                        logger.warning(
+                            "No ground truth CSV available for scoring/verification"
+                        )
+                        json_data["is_correct"] = False
+                else:
+                    logger.warning(
+                        "No final code found in memory for operator-mode verification"
                     )
-                    direct_output = self.planner.generate_direct_output(
-                        question, image_path, self.memory
-                    )
-                    self._log_llm_response(
-                        "generate_direct_output", direct_output
-                    )
-                    json_data["direct_output"] = direct_output
-                    print(f"\n==> 🐙 Final Answer:\n\n{direct_output}")
+                    json_data["is_correct"] = False
 
             print(f"\n[Total Time]: {total_time}s")
             print(f"\n==> ✅ Query Solved!")

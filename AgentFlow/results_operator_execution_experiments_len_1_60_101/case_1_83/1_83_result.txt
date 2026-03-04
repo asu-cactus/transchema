@@ -1,0 +1,127 @@
+Case: 1_83
+Status: CORRECT
+Timestamp: 2026-02-24T13:46:57.282911
+Duration: 194.81 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_83/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Country', 'Region', 'Happiness_Rank_15', 'Happiness_Score_15', 'Standard_Error_15', 'Economy_15', 'Family_15', 'Life_Expectancy_15', 'Freedom_15', 'Trust_15', 'Generosity_15', 'Dystopia_15', 'Happiness_Rank_17', 'Happiness_Score_17', 'Whisker_High_17', 'Whisker_Low_17', 'Economy_17', 'Family_17', 'Life_Expectancy_17', 'Freedom_17', 'Generosity_17', 'Trust_17', 'Dystopia_17']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_83
+2. Target Schema: ['Country': string, 'Region': string, 'Happiness_Rank_15': integer, 'Happiness_Score_15': float, 'Standard_Error_15': float, 'Economy_15': float, 'Family_15': float, 'Life_Expectancy_15': float, 'Freedom_15': float, 'Trust_15': float, 'Generosity_15': float, 'Dystopia_15': float, 'Happiness_Rank_17': integer, 'Happiness_Score_17': float, 'Whisker_High_17': float, 'Whisker_Low_17': float, 'Economy_17': float, 'Family_17': float, 'Life_Expectancy_17': float, 'Freedom_17': float, 'Generosity_17': float, 'Trust_17': float, 'Dystopia_17': float]
+3. Target Examples: There are 75 available target examples:       Country                       Region  Happiness_Rank_15  \
+44    Ecuador  Latin America and Caribbean                 48   
+39  Guatemala  Latin America and Caribbean                 43   
+68    Estonia   Central and Eastern Europe                 73   
+65     Kosovo   Central and Eastern Europe                 69   
+35      Malta               Western Europe                 37   
+2     Denmark               Western Europe                  3   
+21  Venezuela  Latin America and Caribbean                 23   
+67  Mauritius           Sub-Saharan Africa                 71   
+
+    Happiness_Score_15  Standard_Error_15  Economy_15  Family_15  \
+44               5.975            0.04528     0.86402    0.99903   
+39               6.123            0.05224     0.74553    1.04356   
+68               5.429            0.04013     1.15174    1.22791   
+65               5.589            0.05018     0.80148    0.81198   
+35               6.302            0.04206     1.20740    1.30203   
+2                7.527            0.03328     1.32548    1.36058   
+21               6.810            0.06476     1.04424    1.25596   
+67               5.477            0.07197     1.00761    0.98521   
+
+    Life_Expectancy_15  Freedom_15  Trust_15  Generosity_15  Dystopia_15  \
+44             0.79075     0.48574   0.18090        0.11541      2.53942   
+39             0.64425     0.57733   0.09472        0.27489      2.74255   
+68             0.77361     0.44888   0.15184        0.08680      1.58782   
+65             0.63132     0.24749   0.04741        0.28310      2.76579   
+35             0.88721     0.60365   0.13586        0.51752      1.64880   
+2              0.87464     0.64938   0.48357        0.34139      2.49204   
+21             0.72052     0.42908   0.11069        0.05841      3.19131   
+67             0.70950     0.56066   0.07521        0.37744      1.76145   
+
+    Happiness_Rank_17  Happiness_Score_17  Whisker_High_17  Whisker_Low_17  \
+44                 44               6.008         6.105848        5.910152   
+39                 29               6.454         6.566874        6.341126   
+68                 66               5.611         5.688140        5.533860   
+65                 78               5.279         5.364848        5.193152   
+35                 27               6.527         6.598397        6.455603   
+2                   2               7.522         7.581728        7.462272   
+21                 82               5.250         5.370032        5.129968   
+67                 64               5.629         5.729862        5.528138   
+
+    Economy_17  Family_17  Life_Expectancy_17  Freedom_17  Generosity_17  \
+44    1.000820   1.286169            0.685636    0.455198       0.150112   
+39    0.872002   1.255585            0.540240    0.531311       0.283488   
+68    1.320879   1.476671            0.695168    0.479131       0.098891   
+65    0.951484   1.137854            0.541452    0.260288       0.319931   
+35    1.343280   1.488412            0.821944    0.588767       0.574731   
+2     1.482383   1.551122            0.792566    0.626007       0.355280   
+21    1.128431   1.431338            0.617144    0.153997       0.065020   
+67    1.189396   1.209561            0.638007    0.491247       0.360934   
+
+    Trust_17  Dystopia_17  
+44  0.140135     2.290353  
+39  0.077223     2.893891  
+68  0.183249     1.357509  
+65  0.057472     2.010541  
+35  0.153066     1.556863  
+2   0.400770     2.313707  
+21  0.064491     1.789464  
+67  0.042182     1.697584  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_83_0
+	Source 0 Schema: ['Country', 'Region', 'Happiness Rank', 'Happiness Score', 'Standard Error', 'Economy (GDP per Capita)', 'Family', 'Health (Life Expectancy)', 'Freedom', 'Trust (Government Corruption)', 'Generosity', 'Dystopia Residual']
+	Source 0 Examples: 	 Source 0 contains 79 tuples, with examples as follows: 
+       Country          Region  Happiness Rank  Happiness Score  \
+0  Switzerland  Western Europe               1            7.587   
+1      Iceland  Western Europe               2            7.561   
+2      Denmark  Western Europe               3            7.527   
+
+   Standard Error  Economy (GDP per Capita)   Family  \
+0         0.03411                   1.39651  1.34951   
+1         0.04884                   1.30232  1.40223   
+2         0.03328                   1.32548  1.36058   
+
+   Health (Life Expectancy)  Freedom  Trust (Government Corruption)  \
+0                   0.94143  0.66557                        0.41978   
+1                   0.94784  0.62877                        0.14145   
+2                   0.87464  0.64938                        0.48357   
+
+   Generosity  Dystopia Residual  
+0     0.29678            2.51738  
+1     0.43630            2.70201  
+2     0.34139            2.49204  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_83_1
+	Source 1 Schema: ['Country', 'Happiness_Rank_17', 'Happiness_Score_17', 'Whisker_High_17', 'Whisker_Low_17', 'Economy_17', 'Family_17', 'Life_Expectancy_17', 'Freedom_17', 'Generosity_17', 'Trust_17', 'Dystopia_17']
+	Source 1 Examples: 	 Source 1 contains 155 tuples, with examples as follows: 
+   Country  Happiness_Rank_17  Happiness_Score_17  Whisker_High_17  \
+0   Norway                  1               7.537         7.594445   
+1  Denmark                  2               7.522         7.581728   
+2  Iceland                  3               7.504         7.622030   
+
+   Whisker_Low_17  Economy_17  Family_17  Life_Expectancy_17  Freedom_17  \
+0        7.479556    1.616463   1.533524            0.796667    0.635423   
+1        7.462272    1.482383   1.551122            0.792566    0.626007   
+2        7.385970    1.480633   1.610574            0.833552    0.627163   
+
+   Generosity_17  Trust_17  Dystopia_17  
+0       0.362012  0.315964     2.277027  
+1       0.355280  0.400770     2.313707  
+2       0.475540  0.153527     2.322715  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

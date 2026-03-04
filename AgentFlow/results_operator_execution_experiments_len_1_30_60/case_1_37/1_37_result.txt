@@ -1,0 +1,75 @@
+Case: 1_37
+Status: CORRECT
+Timestamp: 2026-02-24T13:06:32.612808
+Duration: 48.62 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_30_60/case_1_37/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['business_id', 'Score', 'date', 'type', 'ViolationTypeID', 'risk_category', 'description']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_37
+2. Target Schema: ['business_id': integer, 'Score': float, 'date': integer, 'type': string, 'ViolationTypeID': integer, 'risk_category': string, 'description': string]
+3. Target Examples: There are 21475 available target examples:        business_id  Score      date                   type  ViolationTypeID  \
+12105         4559   96.0  20131216  Routine - Unscheduled           103150   
+7466          2732   76.0  20130701  Routine - Unscheduled           103103   
+17294        10877   90.0  20150319  Routine - Unscheduled           103152   
+7383          2716   57.0  20160323  Routine - Unscheduled           103131   
+15077         6643    NaN  20150106  Routine - Unscheduled           103103   
+...            ...    ...       ...                    ...              ...   
+3869          1604   86.0  20150601  Routine - Unscheduled           103131   
+16455         7796   71.0  20140515  Routine - Unscheduled           103108   
+16199         7711   90.0  20141103  Routine - Unscheduled           103162   
+5898          2252   92.0  20140811  Routine - Unscheduled           103150   
+20080        32654   80.0  20150226  Routine - Unscheduled           103139   
+
+       risk_category                                        description  
+12105       Low Risk                     Improper or defective plumbing  
+7466       High Risk                High risk food holding temperature   
+17294       Low Risk  Unclean unmaintained or improperly constructed...  
+7383   Moderate Risk                   Moderate risk vermin infestation  
+15077      High Risk                High risk food holding temperature   
+...              ...                                                ...  
+3869   Moderate Risk                   Moderate risk vermin infestation  
+16455      High Risk                   Contaminated or adulterated food  
+16199       Low Risk                           Other low risk violation  
+5898        Low Risk                     Improper or defective plumbing  
+20080       Low Risk                              Improper food storage  
+
+[2148 rows x 7 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_37_0
+	Source 0 Schema: ['business_id', 'Score', 'date', 'type']
+	Source 0 Examples: 	 Source 0 contains 27285 tuples, with examples as follows: 
+   business_id  Score      date                   type
+0           10    NaN  20140807  Reinspection/Followup
+1           10   94.0  20140729  Routine - Unscheduled
+2           10    NaN  20140124  Reinspection/Followup
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_37_1
+	Source 1 Schema: ['business_id', 'date', 'ViolationTypeID', 'risk_category', 'description']
+	Source 1 Examples: 	 Source 1 contains 19860 tuples, with examples as follows: 
+   business_id      date  ViolationTypeID  risk_category  \
+0           10  20140114           103154       Low Risk   
+1           10  20140114           103119  Moderate Risk   
+2           10  20140114           103145       Low Risk   
+
+                                         description  
+0       Unclean or degraded floors walls or ceilings  
+1  Inadequate and inaccessible handwashing facili...  
+2   Improper storage of equipment utensils or linens  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

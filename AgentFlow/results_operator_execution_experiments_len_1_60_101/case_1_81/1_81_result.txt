@@ -1,0 +1,81 @@
+Case: 1_81
+Status: CORRECT
+Timestamp: 2026-02-24T13:44:05.611216
+Duration: 76.34 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_81/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['provider_zip_code', 'provider_id', 'average_covered_charges', 'average_total_payments', 'average_medicare_payments']
+  calculate_score: 2.8
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_81
+2. Target Schema: ['provider_zip_code': integer, 'provider_id': float, 'average_covered_charges': float, 'average_total_payments': float, 'average_medicare_payments': float]
+3. Target Examples: There are 2899 available target examples:       provider_zip_code    provider_id  average_covered_charges  \
+1413              46256  150169.196078             50158.816275   
+1500              48342  230207.000000             23907.589000   
+1700              57402  430097.000000             18468.948571   
+2528              88130  320084.000000             14335.940000   
+1280              43054  360266.000000             71355.148571   
+...                 ...            ...                      ...   
+167                8079  310091.000000             50187.794286   
+1550              49735  230133.000000             18695.548000   
+2236              76508  450054.000000             49588.809829   
+2885              98948  500037.000000             30012.155000   
+301               14210  330005.000000             44685.097407   
+
+      average_total_payments  average_medicare_payments  
+1413            12600.682157               10711.284902  
+1500            11801.180500                9966.045000  
+1700             7346.535714                5255.625714  
+2528             7793.476000                6697.368000  
+1280            20436.402857               15575.894286  
+...                      ...                        ...  
+167              6574.343333                5617.484286  
+1550             9799.273000                8499.344000  
+2236            14618.948034               11573.376496  
+2885            11892.790000               10274.430000  
+301             19246.485062               16509.805062  
+
+[290 rows x 5 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_81_0
+	Source 0 Schema: ['average_covered_charges', 'average_medicare_payments', 'average_total_payments', 'drg_definition', 'hospital_referral_region_hrr_description', 'provider_city', 'provider_id', 'provider_name', 'provider_state', 'provider_street_address', 'provider_zip_code', 'total_discharges']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   average_covered_charges  average_medicare_payments  average_total_payments  \
+0                 24683.90                    8551.79                 9546.01   
+1                 83232.11                   12731.96                15673.73   
+2                 47055.54                    7643.38                 8908.15   
+
+                                      drg_definition  \
+0     917 - POISONING & TOXIC EFFECTS OF DRUGS W MCC   
+1  470 - MAJOR JOINT REPLACEMENT OR REATTACHMENT ...   
+2  418 - LAPAROSCOPIC CHOLECYSTECTOMY W/O C.D.E. ...   
+
+  hospital_referral_region_hrr_description provider_city  provider_id  \
+0                               MI - Flint         FLINT       230141   
+1                        PA - Philadelphia   DREXEL HILL       390081   
+2                            TX - Victoria      VICTORIA       450023   
+
+                       provider_name provider_state  provider_street_address  \
+0                      MCLAREN FLINT             MI  401 S BALLENGER HIGHWAY   
+1  DELAWARE COUNTY MEMORIAL HOSPITAL             PA  501 NORTH LANSDOWNE AVE   
+2            CITIZENS MEDICAL CENTER             TX      2701 HOSPITAL DRIVE   
+
+   provider_zip_code  total_discharges  
+0              48532                72  
+1              19026                84  
+2              77901                13  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_81/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_81/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

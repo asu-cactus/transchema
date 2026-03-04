@@ -134,8 +134,24 @@ Conclusion: CONTINUE
 IMPORTANT: Your response MUST end with either 'Conclusion: STOP' or 'Conclusion: CONTINUE' and nothing else. Ensure your explanation thoroughly justifies this conclusion.
 """
         else:
+            # Operator mode: check whether generated code exists in memory and score is satisfactory
+            if self.execute_pipeline:
+                score_check_section = """
+3. **Code and Score Check** — Look for results from `Code_Gen_And_Score_Tool` in memory:
+   - If a `Code_Gen_And_Score_Tool` result is present AND `score = 1.0` AND `score_summary` shows no missed functional dependencies, no missed ground-truth keys, and no missed target columns → conclude **STOP**.
+   - If a `Code_Gen_And_Score_Tool` result is present but `score < 1.0` OR there are missed items in any category → conclude **CONTINUE** (more operators or critique are needed).
+   - If no `Code_Gen_And_Score_Tool` result is in memory yet → the pipeline has not been verified; conclude **CONTINUE**.
+   - If `execution_success = False` in the last `Code_Gen_And_Score_Tool` result → code execution failed; conclude **CONTINUE**.
+"""
+            else:
+                score_check_section = """
+3. **Code Check** — Look for results from `Code_Gen_And_Score_Tool` in memory:
+   - If generated code is present and the pipeline looks complete → conclude **STOP**.
+   - Otherwise conclude **CONTINUE**.
+"""
+
             prompt_memory_verification = f"""
-Task: Evaluate if the current memory is complete and accurate enough to answer the query, or if more tools are needed.
+Task: Evaluate whether the operator-driven transformation pipeline has produced a correct and complete result, or whether more steps are needed.
 
 Context:
 - **Query:** {question}
@@ -145,16 +161,12 @@ Context:
 - **Memory (Tools Used & Results):** {memory.get_actions()}
 
 Instructions:
-1.  Review the query, initial analysis, and memory.
-2.  Assess the completeness of the memory: Does it fully address all parts of the query?
-3.  Check for potential issues:
-    -   Are there any inconsistencies or contradictions?
-    -   Is any information ambiguous or in need of verification?
-4.  Determine if any unused tools could provide missing information.
-
+1. Review the query, the operator configurations in memory (Join, Union, GroupBy, Pivot, Unpivot), and any code generation results.
+2. Identify whether all necessary operators have been configured to produce the target schema.
+{score_check_section}
 Final Determination:
--   If the memory is sufficient, explain why and conclude with "STOP".
--   If more information is needed, explain what's missing, which tools could help, and conclude with "CONTINUE".
+- Conclude **STOP** only when `Code_Gen_And_Score_Tool` has been run AND the score is 1.0 with no missed items.
+- Conclude **CONTINUE** in all other cases (operators still missing, code not yet generated, score < 1.0, or execution failed).
 
 IMPORTANT: The response must end with either "Conclusion: STOP" or "Conclusion: CONTINUE".
 """
