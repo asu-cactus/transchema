@@ -1,0 +1,53 @@
+MCTS Action Trace — case 1_0
+============================================================
+
+── Iteration 0 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=GROUP_BY/AGGREGATE
+            → GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     3.0000  ★ NEW BEST
+            history: ['GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]']
+  BACKPROP  reward=3.0000
+
+── Iteration 1 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=NO_MORE_OPERATION
+            → NO_MORE_OPERATION
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     3.0000
+            history: ['NO_MORE_OPERATION']
+  BACKPROP  reward=3.0000
+
+── Iteration 2 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=GROUP_BY/AGGREGATE
+            → GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     3.0000
+            history: ['GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]']
+  BACKPROP  reward=3.0000
+
+── Iteration 3 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=GROUP_BY/AGGREGATE
+            → GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     3.0000
+            history: ['GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]']
+  BACKPROP  reward=3.0000
+
+── Iteration 4 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=GROUP_BY/AGGREGATE
+            → GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     3.0000
+            history: ['GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]']
+  BACKPROP  reward=3.0000
+
+============================================================
+SUMMARY
+  Total iterations : 5
+  Best score       : 3.0000
+  Best history     : ['GROUP_BY/AGGREGATE : "group_by" = [Source1_0_0.State], "aggregations" = [AVG(Source1_0_0.AverageTemperature)]']

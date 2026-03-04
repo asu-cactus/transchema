@@ -1,0 +1,16 @@
+MCTS Tree Visualization — case 2_18
+============================================================
+
+[ROOT]  visits=  5  q=1.000  best=1.000
+    ├── JOIN                       visits=  2  q=1.000  best=1.000  ★ BEST RESULT
+    ├── NO_MORE_OPERATION          visits=  2  q=1.000  best=1.000  [TERMINAL]
+    └── GROUP_BY/AGGREGATE         visits=  1  q=1.000  best=1.000
+        ├── JOIN                       visits=  1  q=1.000  best=1.000
+        └── NO_MORE_OPERATION          visits=  0  q=0.000  best=0.000  [TERMINAL]
+
+Legend
+  visits  number of simulations that passed through this node
+  q       average reward (total_reward / visits)
+  best    highest single reward seen from any simulation through this node
+  ·       on the path to the best result
+  ★       the node whose simulation produced the best overall result

@@ -2,10 +2,17 @@
 
 import ast
 import re
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from agentflow.engine.factory import create_llm_engine
 from agentflow.tools.base import BaseTool
+
+_TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[5])
+if _TRANSCHEMA_ROOT not in sys.path:
+    sys.path.insert(0, _TRANSCHEMA_ROOT)
+from hints.hints_static import get_hints_section, GROUPBY_AGG_HINT_IDS
 
 
 TOOL_NAME = "Configure_GroupBy_Aggregate_Operator_Tool"
@@ -63,13 +70,7 @@ You are generating a data-pipeline to transform multiple source tables to target
 {transformation_case_info}
 
 - Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used.
-- GroupBy columns should NEVER have float types in the given target examples. These GroupBy columns always contain UNIQUE and integer or string values in the given target examples. GroupBy columns are usually at the leftmost part of the columns of target examples.
-- If a column is part of a group by operation, it will NOT be part of an aggregation operation.
-- Note that some column names, e.g., purpose, funded_year, may not match the values in the column, e.g., 5 for purpose, 16844 for funded_year. In this case consider the column to be aggregation, e.g., count per purpose, and sum for funded_year. They should not be used in Group By columns.
-- If many columns in the target table have similar integer values, it probably suggests a count aggregation should be used.
-- If a column (such as user_id or age) has float values (such as 1211.2234 or 33.17) in the given target examples, while having integer values (such as 1001 or 35) in the given source tables, it suggests that an "average" aggregation should be applied to the column, no matter whether the column sounds like an ID. Importantly, this column MUST BE EXCLUDED from the GroupBy columns.
-- If a column that usually has value ranges (such as year or funded_year) in the target table has abnormal values (e.g., 0 or > 3000 for year or XXXX_year), an aggregation should be applied to the column. Then, this column MUST be EXCLUDED from the Group By columns.
-- If in the target data examples, many columns have similar but different numerical values such as 5 5 4 5 4, in each row, it indicates that a COUNT DISTINCT is used.
+{get_hints_section(GROUPBY_AGG_HINT_IDS, fmt="bullet")}
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.
 - The final answer should be in the following format. lists where first list should be group by columns, next list should cover aggregation function and on which columns aggregations should be performed.

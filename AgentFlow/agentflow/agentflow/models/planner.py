@@ -2,6 +2,8 @@ import json
 import os
 import re
 import logging
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from PIL import Image
@@ -9,6 +11,11 @@ from PIL import Image
 from agentflow.engine.factory import create_llm_engine
 from agentflow.models.formatters import NextStep, QueryAnalysis
 from agentflow.models.memory import Memory
+
+_TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[4])
+if _TRANSCHEMA_ROOT not in sys.path:
+    sys.path.insert(0, _TRANSCHEMA_ROOT)
+from hints.hints_static import get_hints_section, NEXT_OPERATOR_HINT_IDS
 
 # Get the prompt logger
 prompt_logger = logging.getLogger("agentflow.prompts")
@@ -549,6 +556,9 @@ CRITICAL CONSTRAINT: You can ONLY use tools from the available tools list. Do NO
   * The pipeline is close to correct but 1-2 operators need adjustment.
 
 {score_feedback_section}
+=== DOMAIN HINTS FOR OPERATOR SELECTION ===
+{get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet")}
+
 Context:
 - **Query:** {question}
 - **Query Analysis:** {query_analysis}

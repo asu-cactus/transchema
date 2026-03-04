@@ -1,0 +1,140 @@
+MCTS Action Trace — case 5_6
+============================================================
+
+── Iteration 0 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=UNION
+            → UNION : [Source5_6_0, Source5_6_2]
+  SIMULATE  ✗ FAILED plan_steps=8  (trials used: 5)
+  SCORE     0.0000
+            history: ['UNION : [Source5_6_0, Source5_6_2]']
+  BACKPROP  reward=0.0000
+
+── Iteration 1 ──────────────────────────────────────────────
+  SELECT    depth=1  parent_op=JOIN
+  EXPAND    op=UNION
+            → UNION : [Source5_6_0, Source5_6_2]
+  SIMULATE  ✗ Success plan_steps=3  (trials used: 1)
+  SCORE     2.5000  ★ NEW BEST
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]']
+  BACKPROP  reward=2.5000
+
+── Iteration 2 ──────────────────────────────────────────────
+  SELECT    depth=1  parent_op=JOIN
+  EXPAND    op=UNION
+            → UNION : [Source5_6_0, Source5_6_2]
+  SIMULATE  ✗ Success plan_steps=5  (trials used: 3)
+  SCORE     2.5000
+            history: ['JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]']
+  BACKPROP  reward=2.5000
+
+── Iteration 3 ──────────────────────────────────────────────
+  SELECT    depth=2  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[Source5_6_0, Source5_6_2]] columns=[[Source5_6_0.state, Source5_6_2.state], [Source5_6_0.date.substr(0,4), Source5_6_2.date.substr(0,4)]]
+  SIMULATE  ✗ Success plan_steps=5  (trials used: 2)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'GROUP_BY/AGGREGATE : "group_by" = [Source5_6_0.state, Source5_6_0.date.substr(0,4)], "aggregations" = [SUM(Source5_6_0.draw_sales)]', 'JOIN : [[Source5_6_0, Source5_6_2]] columns=[[Source5_6_0.state, Source5_6_2.state], [Source5_6_0.date.substr(0,4), Source5_6_2.date.substr(0,4)]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 4 ──────────────────────────────────────────────
+  SELECT    depth=2  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[(Result of last GROUP_BY/AGGREGATE on Source5_6_2), Source5_6_1]] columns=[[(Result).state, Source5_6_1.state], [(Result).date.substr(0,4), Source5_6_1.year]]
+  SIMULATE  ✗ Success plan_steps=4  (trials used: 3)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]', 'GROUP_BY/AGGREGATE : "group_by" = [Source5_6_2.state, Source5_6_2.date.substr(0,4)], "aggregations" = [SUM(Source5_6_2.draw_sales)]', 'JOIN : [[(Result of last GROUP_BY/AGGREGATE on Source5_6_2), Source5_6_1]] columns=[[(Result).state, Source5_6_1.state], [(Result).date.substr(0,4), Source5_6_1.year]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 5 ──────────────────────────────────────────────
+  SELECT    depth=2  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]
+  SIMULATE  ✗ Success plan_steps=5  (trials used: 1)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'GROUP_BY/AGGREGATE : "group_by" = [Source5_6_2.state, Source5_6_2.date.substr(0,4)], "aggregations" = [SUM(Source5_6_2.draw_sales)]', 'JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 6 ──────────────────────────────────────────────
+  SELECT    depth=2  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[(Result of previous GROUP_BY/AGGREGATE), Source5_6_1]] columns=[[(Result).state, Source5_6_1.state], [(Result).year, Source5_6_1.year]]
+  SIMULATE  ✗ Success plan_steps=8  (trials used: 3)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]', 'GROUP_BY/AGGREGATE : "group_by" = [Source5_6_0.state, Source5_6_0.date.substr(0,4)], "aggregations" = [SUM(Source5_6_0.draw_sales)]', 'JOIN : [[(Result of previous GROUP_BY/AGGREGATE), Source5_6_1]] columns=[[(Result).state, Source5_6_1.state], [(Result).year, Source5_6_1.year]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 7 ──────────────────────────────────────────────
+  SELECT    depth=2  parent_op=UNION
+  EXPAND    op=JOIN
+            → JOIN : [[UnionResult, Source5_6_1]] columns=[[UnionResult.state, Source5_6_1.state], [UnionResult.year, Source5_6_1.year]]
+  SIMULATE  ✗ Success plan_steps=4  (trials used: 2)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'JOIN : [[UnionResult, Source5_6_1]] columns=[[UnionResult.state, Source5_6_1.state], [UnionResult.year, Source5_6_1.year]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 8 ──────────────────────────────────────────────
+  SELECT    depth=2  parent_op=UNION
+  EXPAND    op=JOIN
+            → JOIN : [[UNION(Source5_6_0, Source5_6_2), Source5_6_1]] columns=[[UNION.state, Source5_6_1.state], [UNION.date.substr(0,4), Source5_6_1.year]]
+  SIMULATE  ✗ Success plan_steps=4  (trials used: 1)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'JOIN : [[UNION(Source5_6_0, Source5_6_2), Source5_6_1]] columns=[[UNION.state, Source5_6_1.state], [UNION.date.substr(0,4), Source5_6_1.year]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 9 ──────────────────────────────────────────────
+  SELECT    depth=3  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[UnionResult, Source5_6_1]] columns=[[UnionResult.state, Source5_6_1.state], [UnionResult.date.substr(0,4), Source5_6_1.year]]
+  SIMULATE  ✗ Success plan_steps=6  (trials used: 3)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'GROUP_BY/AGGREGATE : "group_by" = [UnionResult.state, UnionResult.date.substr(0,4)], "aggregations" = [SUM(UnionResult.draw_sales)]', 'JOIN : [[UnionResult, Source5_6_1]] columns=[[UnionResult.state, Source5_6_1.state], [UnionResult.date.substr(0,4), Source5_6_1.year]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 10 ─────────────────────────────────────────────
+  SELECT    depth=3  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[(result of last GROUP_BY/AGGREGATE on Source5_6_0 and Source5_6_2), Source5_6_1]] columns=[[state, state], [year, year]]
+  SIMULATE  ✗ Success plan_steps=4  (trials used: 1)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'GROUP_BY/AGGREGATE : "group_by" = [Source5_6_0.state, Source5_6_0.date.substr(0,4)], "aggregations" = [SUM(Source5_6_0.draw_sales)]', 'JOIN : [[(result of last GROUP_BY/AGGREGATE on Source5_6_0 and Source5_6_2), Source5_6_1]] columns=[[state, state], [year, year]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 11 ─────────────────────────────────────────────
+  SELECT    depth=3  parent_op=NO_MORE_OPERATION
+  EXPAND    (skipped — terminal re-simulation)
+  SIMULATE  ✗ Success plan_steps=3  (trials used: 2)
+  SCORE     2.5000
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'NO_MORE_OPERATION']
+  BACKPROP  reward=2.5000
+
+── Iteration 12 ─────────────────────────────────────────────
+  SELECT    depth=3  parent_op=NO_MORE_OPERATION
+  EXPAND    (skipped — terminal re-simulation)
+  SIMULATE  ✗ Success plan_steps=4  (trials used: 3)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'NO_MORE_OPERATION']
+  BACKPROP  reward=1.0000
+
+── Iteration 13 ─────────────────────────────────────────────
+  SELECT    depth=3  parent_op=NO_MORE_OPERATION
+  EXPAND    (skipped — terminal re-simulation)
+  SIMULATE  ✗ Success plan_steps=4  (trials used: 2)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'NO_MORE_OPERATION']
+  BACKPROP  reward=1.0000
+
+── Iteration 14 ─────────────────────────────────────────────
+  SELECT    depth=3  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[(Result of last GROUP_BY/AGGREGATE on Source5_6_2), Source5_6_1]] columns=[[state, state], [year, year]]
+  SIMULATE  ✗ Success plan_steps=4  (trials used: 2)
+  SCORE     1.0000
+            history: ['JOIN : [[Source5_6_2, Source5_6_1]] columns=[[Source5_6_2.state, Source5_6_1.state], [Source5_6_2.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'GROUP_BY/AGGREGATE : "group_by" = [Source5_6_2.state, Source5_6_2.date.substr(0,4)], "aggregations" = [SUM(Source5_6_2.draw_sales)]', 'JOIN : [[(Result of last GROUP_BY/AGGREGATE on Source5_6_2), Source5_6_1]] columns=[[state, state], [year, year]]']
+  BACKPROP  reward=1.0000
+
+============================================================
+SUMMARY
+  Total iterations : 15
+  Best score       : 2.5000
+  Best history     : ['JOIN : [[Source5_6_0, Source5_6_1]] columns=[[Source5_6_0.state, Source5_6_1.state], [Source5_6_0.date.substr(0,4), Source5_6_1.year]]', 'UNION : [Source5_6_0, Source5_6_2]', 'NO_MORE_OPERATION']

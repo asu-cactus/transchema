@@ -1,0 +1,53 @@
+MCTS Action Trace — case 5_5
+============================================================
+
+── Iteration 0 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source5_5_0, Source5_5_1]] columns=[[Source5_5_0.CountyID, Source5_5_1.CountyID], [Source5_5_0.Year, Source5_5_1.Year], [Source5_5_0.ID, Source5_5_1.ID]]
+  SIMULATE  ✓ Success  (trials used: 3)
+  SCORE     3.0000  ★ NEW BEST
+            history: ['JOIN : [[Source5_5_0, Source5_5_1]] columns=[[Source5_5_0.CountyID, Source5_5_1.CountyID], [Source5_5_0.Year, Source5_5_1.Year], [Source5_5_0.ID, Source5_5_1.ID]]']
+  BACKPROP  reward=3.0000
+
+── Iteration 1 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source5_5_4, Source5_5_0]] columns=[[Source5_5_4.CountyID, Source5_5_0.CountyID], [Source5_5_4.Year, Source5_5_0.Year]]
+  SIMULATE  ✗ FAILED  (trials used: 5)
+  SCORE     0.0000
+            history: ['JOIN : [[Source5_5_4, Source5_5_0]] columns=[[Source5_5_4.CountyID, Source5_5_0.CountyID], [Source5_5_4.Year, Source5_5_0.Year]]']
+  BACKPROP  reward=0.0000
+
+── Iteration 2 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source5_5_0, Source5_5_1]] columns=[[Source5_5_0.CountyID, Source5_5_1.CountyID], [Source5_5_0.Year, Source5_5_1.Year], [Source5_5_0.ID, Source5_5_1.ID]]
+  SIMULATE  ✓ Success  (trials used: 3)
+  SCORE     3.0000
+            history: ['JOIN : [[Source5_5_0, Source5_5_1]] columns=[[Source5_5_0.CountyID, Source5_5_1.CountyID], [Source5_5_0.Year, Source5_5_1.Year], [Source5_5_0.ID, Source5_5_1.ID]]']
+  BACKPROP  reward=3.0000
+
+── Iteration 3 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source5_5_4, Source5_5_2]] columns=[[Source5_5_4.CountyID, Source5_5_2.CountyID], [Source5_5_4.Year, Source5_5_2.Year], [Source5_5_4.CountyName, Source5_5_2.CountyName]]
+  SIMULATE  ✓ Success  (trials used: 2)
+  SCORE     3.0000
+            history: ['JOIN : [[Source5_5_4, Source5_5_2]] columns=[[Source5_5_4.CountyID, Source5_5_2.CountyID], [Source5_5_4.Year, Source5_5_2.Year], [Source5_5_4.CountyName, Source5_5_2.CountyName]]']
+  BACKPROP  reward=3.0000
+
+── Iteration 4 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source5_5_0, Source5_5_1]] columns=[[Source5_5_0.CountyID, Source5_5_1.CountyID], [Source5_5_0.Year, Source5_5_1.Year]]
+  SIMULATE  ✗ FAILED  (trials used: 5)
+  SCORE     0.0000
+            history: ['JOIN : [[Source5_5_0, Source5_5_1]] columns=[[Source5_5_0.CountyID, Source5_5_1.CountyID], [Source5_5_0.Year, Source5_5_1.Year]]']
+  BACKPROP  reward=0.0000
+
+============================================================
+SUMMARY
+  Total iterations : 5
+  Best score       : 3.0000
+  Best history     : ['JOIN : [[Source5_5_0, Source5_5_1]] columns=[[Source5_5_0.CountyID, Source5_5_1.CountyID], [Source5_5_0.Year, Source5_5_1.Year], [Source5_5_0.ID, Source5_5_1.ID]]']

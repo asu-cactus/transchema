@@ -1,0 +1,53 @@
+MCTS Action Trace — case 5_6
+============================================================
+
+── Iteration 0 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=UNION
+            → UNION : [Source5_6_0, Source5_6_2]
+  SIMULATE  ✓ Success  (trials used: 4)
+  SCORE     2.5000  ★ NEW BEST
+            history: ['UNION : [Source5_6_0, Source5_6_2]']
+  BACKPROP  reward=2.5000
+
+── Iteration 1 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[UnionResult, Source5_6_1]] columns=[[UnionResult.state, Source5_6_1.state]]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000
+            history: ['JOIN : [[UnionResult, Source5_6_1]] columns=[[UnionResult.state, Source5_6_1.state]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 2 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=GROUP_BY/AGGREGATE
+            → GROUP_BY/AGGREGATE : "group_by" = [Source5_6_1.state, Source5_6_1.year], "aggregations" = [SUM(union_result.draw_sales), MAX(Source5_6_1.full_state), MAX(Source5_6_1.pop)]
+  SIMULATE  ✓ Success  (trials used: 4)
+  SCORE     1.0000
+            history: ['GROUP_BY/AGGREGATE : "group_by" = [Source5_6_1.state, Source5_6_1.year], "aggregations" = [SUM(union_result.draw_sales), MAX(Source5_6_1.full_state), MAX(Source5_6_1.pop)]']
+  BACKPROP  reward=1.0000
+
+── Iteration 3 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=UNION
+            → UNION : [Source5_6_0, Source5_6_2]
+  SIMULATE  ✗ FAILED  (trials used: 5)
+  SCORE     0.0000
+            history: ['UNION : [Source5_6_0, Source5_6_2]']
+  BACKPROP  reward=0.0000
+
+── Iteration 4 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=UNION
+            → UNION : [Source5_6_0, Source5_6_2]
+  SIMULATE  ✓ Success  (trials used: 4)
+  SCORE     1.0000
+            history: ['UNION : [Source5_6_0, Source5_6_2]']
+  BACKPROP  reward=1.0000
+
+============================================================
+SUMMARY
+  Total iterations : 5
+  Best score       : 2.5000
+  Best history     : ['UNION : [Source5_6_0, Source5_6_2]']

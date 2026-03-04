@@ -1,3 +1,6 @@
+from hints.hints_static import get_hints_section, JOIN_HINT_IDS, GROUPBY_AGG_HINT_IDS
+
+
 def get_join_prompt(
     allowed_operation_list,
     operation_history,
@@ -41,11 +44,7 @@ Hint : {hints}
         fd_hints=fd_hints,
     )
     if static_hints:
-        prompt += f"""
-- Usually tables will be joined on shared columns. In some popular cases, the shared column(s) is/are the primary key of each table to be joined. In some other popular cases, the shared column(s) is/are the primary key of one table to be joined and the foreign key of the other table to be joined.
-- If many source tables have different schemas (columns), look for a dimension table that has a lot of attributes and join it with each of the rest tables (aspect tables) on shared attributes. For example, test_5.csv has columns: ,Fecha,Mes,IdAhogado,IdPersona,Localidad,Provincia,CCAA,Hora,Latitud_inc,Longitud_inc,Sexo,Edad,Nacionalidad,Origen,Extraccion,Causa,TipoAhogamiento,Factor,Intervencion,Pronostico,Localizacion,Riesgo,Reanimacion,Vigilancia,Actividad,Deteccion,ID,Estacion,Estado,Latitud_est,Longitud_est,T_med,T_max,T_min,Precipitaciones,Presion,Dir. vi.,V_Viento,Nubosidad,ProfNievecm,InsolacHoras,Distancia, test_0.csv has columns ,IdOrigen,Origen, it means test_5 may join with test_0 on Origen. Then, test_1.csv has columns ,IdPronostico,Pronostico,Mortal, so test_5 will also join with test_1 on Pronostico. Similarly, test_5 will join with test_2 (IdDeteccion,Deteccion) on Deteccion, join with test_3 (IdTipo,TipoAhogamiento) on TipoAhogamiento, join with test_4 (IdInterv,Intervencion) on Intervencion, join with test_6 (IdActividad,Actividad) on Actividad, join with test_7 (IdCausa,Causa) on Causa, and join with test_8 (IdReanima,Reanimacion) on Reanimacion.
-- Two different tables may join on shared columns that have different names. For example, in a source table called test_0.csv, there exists a Code column containing values such as AUS, AUT, BEL, CAN, FRA, while another source table called test_1.csv contains a column Country that has values such as FRA, BEL, GRA, USA, CAN. These source tables test_0 and test_1 can be joined on test_0.Code = test_1.Country. Similarly, if test_0 has a column Country having values Afghanistan, Albania, Algeria, Angola, etc, while test_2 has a column Host having similar country values such as France, Switzerland, United States, Germany, etc, the output of test_0 and test_1 df01 could join test_2 on df01.Country = test_2.Host.
-"""
+        prompt += get_hints_section(JOIN_HINT_IDS, fmt="bullet") + "\n"
     prompt += f"""
 - You should only answer from available columns of the source tables.
 - Only return two tables that should be joined and on which columns.
@@ -88,7 +87,7 @@ Allowed Operations: {allowed_operation_list}.
 Hint : {hints}
 {fd_hints}
 
-- Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used. 
+- Please answer on which columns "Group By" operation should be performed, on which columns aggregation should be performed and which aggregation functions should be used.
 """.format(
         allowed_operation_list=allowed_operation_list,
         operation_history=operation_history,
@@ -100,15 +99,7 @@ Hint : {hints}
         fd_hints=fd_hints,
     )
     if static_hints:
-        prompt += f"""
-- GroupBy columns should NEVER have float types in the given target examples. These GroupBy columns always contain UNIQUE and integer or string values in the given target examples. GroupBy columns are usually at the leftmost part of the columns of target examples.
-- If a column is part of a group by operation, it will NOT be part of an aggregation operation.
-- Note that some column names, e.g., purpose, funded_year, may not match the values in the column, e.g., 5 for purpose, 16844 for funded_year. In this case consider the column to be aggregation, e.g., count per purpose, and sum for funded_year. They should not be used in Group By columns.
-- If many columns in the target table have similar integer values, it probably suggests a count aggregation should be used. 
-- If a column (such as user_id or age) has float values (such as 1211.2234 or 33.17) in the given target examples, while having integer values (such as 1001 or 35) in the given source tables, it suggests that an "average" aggregation should be applied to the column, no matter whether the column sounds like an ID. Importantly, this column MUST BE EXCLUDED from the GroupBy columns.
-- If a column that usually has value ranges (such as year or funded_year) in the target table has abnormal values (e.g., 0 or > 3000 for year or XXXX_year), an aggregation should be applied to the column. Then, this column MUST be EXCLUDED from the Group By columns. 
-- If in the target data examples, many columns have similar but different numerical values such as 5 5 4 5 4, in each row, it indicates that a COUNT DISTINCT is used.
-"""
+        prompt += get_hints_section(GROUPBY_AGG_HINT_IDS, fmt="bullet") + "\n"
     prompt += f"""
 - You should only answer from available columns of the source tables.
 - Please don't write your reasoning with the answer, just the answer would suffice.

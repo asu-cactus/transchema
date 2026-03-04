@@ -1,9 +1,16 @@
 # agentflow/tools/critique_pipeline/tool.py
 
+import sys
+from pathlib import Path
 from typing import Any, Dict
 
 from agentflow.engine.factory import create_llm_engine
 from agentflow.tools.base import BaseTool
+
+_TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[5])
+if _TRANSCHEMA_ROOT not in sys.path:
+    sys.path.insert(0, _TRANSCHEMA_ROOT)
+from hints.hints_static import get_hints_section, CRITIQUE_HINT_IDS
 
 
 # Tool name mapping - this defines the external name for this tool
@@ -28,41 +35,7 @@ For each operator you suggest, provide clear configuration:
 
 Please pay attention to the following hints and apply relevant ones:
 
-Hint 1:
-Some column names (e.g., purpose, funded_year) may not match the values in the column (e.g., 5, 16844). In this case consider the column to be an aggregation target (e.g., count per purpose, sum for funded_year). They should not be used in Group By columns.
-
-Hint 2:
-If the pipeline produces more rows than expected: (1) A Group By/Aggregate may be missing. (2) An existing Group By may have too many attributes. (3) OUTER join should be replaced by INNER join. (4) Remove rows with NaN values.
-
-Hint 3:
-If the pipeline produces fewer rows than expected: (1) INNER join should be replaced by OUTER join. (2) Keep rows with NaN values. (3) Group By should be removed or use more Group By attributes.
-
-Hint 4:
-If multiple source tables share the same schema and the target also has the same schema, UNION must be used. However if m source tables share the same schema of k non-key columns, but the target has k x m non-key columns (renamed), JOIN should be applied on the primary key.
-
-Hint 5:
-Group By columns are never float types. They correspond to UNIQUE, non-float columns usually at the leftmost part of the target schema.
-
-Hint 6:
-If target examples contain duplicate keys or duplicate rows, Group By should NOT be used.
-
-Hint 7:
-If a column's average in target is significantly bigger than in sources, sum aggregation should be applied and this column excluded from Group By.
-
-Hint 8:
-JOIN is usually applied to two tables sharing the same primary key, or where one table has a foreign key referencing the other's primary key.
-
-Hint 9:
-Two tables may join on columns with different names but similar values (e.g., Code vs Country both containing country codes).
-
-Hint 10:
-All source tables must be used. If some share schemas, union them first, then join with the rest.
-
-Hint 11:
-NEVER use all target columns as GROUP BY columns.
-
-Hint 12:
-If target columns have constant numerical values per tuple, it may indicate a count aggregation after grouping.
+{get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered")}
 
 Based on your analysis, provide:
 1. What is wrong with the current pipeline (if anything).

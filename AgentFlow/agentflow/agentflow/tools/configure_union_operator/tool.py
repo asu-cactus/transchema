@@ -2,10 +2,16 @@
 
 import ast
 import re
+import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from agentflow.engine.factory import create_llm_engine
 from agentflow.tools.base import BaseTool
+
+_TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[5])
+if _TRANSCHEMA_ROOT not in sys.path:
+    sys.path.insert(0, _TRANSCHEMA_ROOT)
 
 
 TOOL_NAME = "Configure_Union_Operator_Tool"
@@ -15,7 +21,7 @@ TOOL_NAME = "Configure_Union_Operator_Tool"
 def get_union_prompt(transformation_case_info: str) -> str:
     """Generate union prompt using the provided transformation case information."""
     prompt = f"""
-You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be Union-ed?". Take this decision based on the transformation case information provided below.
+You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be Union-ed?". Take this decision based on "Operation History",few shot examples, "Source" and "Target" (table schema as well as the examples) information provided below.
 
 {transformation_case_info}
 

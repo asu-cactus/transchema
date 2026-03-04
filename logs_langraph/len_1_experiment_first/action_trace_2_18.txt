@@ -1,0 +1,51 @@
+MCTS Action Trace — case 2_18
+============================================================
+
+── Iteration 0 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source2_18_0, Source2_18_1]] columns=[[Source2_18_0.city, Source2_18_1.city]]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000  ★ NEW BEST
+            history: ['JOIN : [[Source2_18_0, Source2_18_1]] columns=[[Source2_18_0.city, Source2_18_1.city]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 1 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source2_18_0, Source2_18_1]] columns=[[Source2_18_0.city, Source2_18_1.city]]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000
+            history: ['JOIN : [[Source2_18_0, Source2_18_1]] columns=[[Source2_18_0.city, Source2_18_1.city]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 2 ──────────────────────────────────────────────
+  SELECT    depth=1  parent_op=NO_MORE_OPERATION
+  EXPAND    (skipped — terminal re-simulation)
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000
+            history: ['NO_MORE_OPERATION']
+  BACKPROP  reward=1.0000
+
+── Iteration 3 ──────────────────────────────────────────────
+  SELECT    depth=1  parent_op=GROUP_BY/AGGREGATE
+  EXPAND    op=JOIN
+            → JOIN : [[Source2_18_0, Source2_18_1]] columns=[[Source2_18_0.city, Source2_18_1.city]]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000
+            history: ['GROUP_BY/AGGREGATE : "group_by" = [Source2_18_0.city, Source2_18_0.ride_id], "aggregations" = [AVG(Source2_18_0.fare)]', 'JOIN : [[Source2_18_0, Source2_18_1]] columns=[[Source2_18_0.city, Source2_18_1.city]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 4 ──────────────────────────────────────────────
+  SELECT    depth=1  parent_op=NO_MORE_OPERATION
+  EXPAND    (skipped — terminal re-simulation)
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000
+            history: ['NO_MORE_OPERATION']
+  BACKPROP  reward=1.0000
+
+============================================================
+SUMMARY
+  Total iterations : 5
+  Best score       : 1.0000
+  Best history     : ['JOIN : [[Source2_18_0, Source2_18_1]] columns=[[Source2_18_0.city, Source2_18_1.city]]']
