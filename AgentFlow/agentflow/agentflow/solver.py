@@ -107,6 +107,7 @@ class Solver:
         start_again_clear_history: bool = False,
         execute_pipeline: bool = False,
         ground_truth_csv: str = None,
+        validation: str = "hard_match",
     ):
         self.planner = planner
         self.verifier = verifier
@@ -120,6 +121,7 @@ class Solver:
         self.start_again_clear_history = start_again_clear_history
         self.execute_pipeline = execute_pipeline
         self.ground_truth_csv = ground_truth_csv
+        self.validation = validation
 
         self.output_types = output_types.lower().split(",")
         self.temperature = temperature
@@ -492,14 +494,13 @@ class Solver:
 
     def _verify_results(self, output_csv_path: str) -> Optional[dict]:
         """
-        Verify pipeline output against ground truth using compare_lists_matching.
+        Verify pipeline output against ground truth.
 
-        Imitates the validation logic from methods/multi_step.py:
-        1. Run compare_lists_matching
-        2. If not correct but shared_columns exist and lengths match,
-           retry with column header renaming (value-based headers)
-        3. Compute calculate_score as a fallback metric
-        4. Always return is_correct
+        Validation method is controlled by self.validation:
+        - "hard_match"    : compare_lists_matching (partial credit, with column-rename retry)
+        - "autopipeline"  : compare_tables_matching (binary match, same as autopipeline)
+
+        Imitates the validation logic from methods/multi_step.py.
         """
         from auto_suggest_llm_util import calculate_score
 
@@ -510,7 +511,9 @@ class Solver:
         shared_columns = []
 
         try:
-            from validation.hard_match import compare_lists_matching
+            from validation.hard_match import compare_lists_matching, compare_tables_matching
+
+            validate_fn = compare_tables_matching if self.validation == "autopipeline" else compare_lists_matching
 
             gt_df = pd.read_csv(self.ground_truth_csv, low_memory=False)
             output_df = pd.read_csv(output_csv_path, low_memory=False)
@@ -530,10 +533,11 @@ class Solver:
                     is_correct,
                     similarity_scores,
                     shared_columns,
-                ) = compare_lists_matching(output_df, gt_df)
+                ) = validate_fn(output_df, gt_df)
 
                 if (
-                    is_correct is False
+                    self.validation == "hard_match"
+                    and is_correct is False
                     and len(shared_columns) > 0
                     and len(output_df) == len(gt_df)
                 ):
@@ -570,7 +574,7 @@ class Solver:
                         is_correct,
                         similarity_scores,
                         shared_columns,
-                    ) = compare_lists_matching(sorted_output, sorted_gt)
+                    ) = validate_fn(sorted_output, sorted_gt)
                 else:
                     # Calculate score as fallback metric
                     try:
@@ -578,7 +582,7 @@ class Solver:
                     except Exception:
                         score = 0
             except Exception as e:
-                logger.error(f"Error in compare_lists_matching: {e}")
+                logger.error(f"Error in {validate_fn.__name__}: {e}")
                 is_correct = False
 
         except Exception as e:
@@ -1324,6 +1328,7 @@ def construct_solver(
     planner_granularity: str = "operator",
     execute_pipeline: bool = False,
     ground_truth_csv: str = None,
+    validation: str = "hard_match",
 ):
 
     logger.info("Constructing solver...")
@@ -1431,6 +1436,7 @@ def construct_solver(
         start_again_clear_history=start_again_clear_history,
         execute_pipeline=execute_pipeline,
         ground_truth_csv=ground_truth_csv,
+        validation=validation,
     )
 
     logger.info("Solver construction completed")

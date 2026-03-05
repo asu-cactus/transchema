@@ -45,6 +45,9 @@ _parser.add_argument("--execute-pipeline", action=argparse.BooleanOptionalAction
                      help="Enable/disable pipeline execution and scoring in the agentic loop (default: True)")
 _parser.add_argument("--result-dir", type=str, default="run",
                      help="Base name for the results directory under AgentFlow/results/ (a timestamp is appended)")
+_parser.add_argument("--validation", type=str, default="hard_match",
+                     choices=["hard_match", "autopipeline"],
+                     help="Validation method: 'hard_match' uses compare_lists_matching (partial credit), 'autopipeline' uses compare_tables_matching (binary match) (default: hard_match)")
 _args = _parser.parse_args()
 
 # ============================================================
@@ -106,6 +109,9 @@ PLANNER_GRANULARITY = _args.planner_granularity
 
 # Pipeline execution + scoring inside the agentic loop
 EXECUTE_PIPELINE = _args.execute_pipeline
+
+# Validation method: "hard_match" or "autopipeline"
+VALIDATION = _args.validation
 
 # Start Again Tool behavior
 START_AGAIN_CLEAR_HISTORY = False
@@ -269,6 +275,7 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
             planner_granularity=PLANNER_GRANULARITY,
             execute_pipeline=EXECUTE_PIPELINE,
             ground_truth_csv=ground_truth_csv,
+            validation=VALIDATION,
         )
 
         print(f"Starting solver...")

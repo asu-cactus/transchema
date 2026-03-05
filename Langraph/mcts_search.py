@@ -57,7 +57,7 @@ from llm.llm_models import LLMClient, TokenUsageTracker
 from log_util.log_util import create_logger
 from test_scope import get_test_cases_ids
 from util.utils import get_test_info
-from validation.hard_match import compare_lists_matching
+from validation.hard_match import compare_lists_matching, compare_tables_matching
 
 from mcts_node import MCTSNode
 from state import MCTSGraphState
@@ -138,6 +138,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     anon_flag = args.anon_flag
     fd_flag = args.fd_flag
     max_iterations = getattr(args, "mcts_iterations", 10)
+    validation = getattr(args, "validation", "hard_match")
     join_flag = getattr(args, "join_flag", 0)
     aggregate_flag = getattr(args, "aggregate_flag", 0)
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
@@ -318,10 +319,15 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         # ── Hard accuracy evaluation on best script ────────────────────────
         if best_script:
             try:
+                validate_fn = (
+                    compare_tables_matching
+                    if validation == "autopipeline"
+                    else compare_lists_matching
+                )
                 df_output = pd.read_csv(target_file_location, low_memory=False)
                 df_gt = pd.read_csv(ground_truth_location, low_memory=False)
                 df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-                _, is_correct, _, _ = compare_lists_matching(df_output, df_gt)
+                _, is_correct, _, _ = validate_fn(df_output, df_gt)
             except Exception:
                 logger.warning(
                     f"[MCTS] Hard accuracy eval failed: {traceback.format_exc()}"
@@ -347,6 +353,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
 
 if __name__ == "__main__":
     import argparse
+    import csv
+    from datetime import datetime
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
@@ -373,10 +381,23 @@ if __name__ == "__main__":
     parser.add_argument("--source_length", type=int, default=3)
     parser.add_argument("--anon_flag", type=bool, default=False)
     parser.add_argument("--fd_flag", type=int, default=0)
-    parser.add_argument("--mcts_iterations", type=int, default=15)
+    parser.add_argument("--mcts_iterations", type=int, default=5)
     parser.add_argument("--join_flag", type=int, default=0)
     parser.add_argument("--aggregate_flag", type=int, default=0)
     parser.add_argument("--few_shot", type=int, default=0)
+    parser.add_argument(
+        "--validation",
+        type=str,
+        default="hard_match",
+        choices=["hard_match", "autopipeline"],
+        help="Validation method: 'hard_match' uses compare_lists_matching (partial credit), 'autopipeline' uses compare_tables_matching (binary match)",
+    )
+    parser.add_argument(
+        "--result_dir",
+        type=str,
+        default="results_langraph",
+        help="Base directory for results (a timestamped subdirectory is created inside)",
+    )
     args = parser.parse_args()
     args.join_hints_truncate = []
     args.aggregate_hints_truncate = []
@@ -388,9 +409,35 @@ if __name__ == "__main__":
     log_dir_ = os.path.join("logs_langraph", args.experiment_name)
     os.makedirs(log_dir_, exist_ok=True)
 
+    # Results directory and CSV
+    _run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_dir = os.path.join(
+        _HERE, args.result_dir, f"{args.experiment_name}_{_run_timestamp}"
+    )
+    os.makedirs(results_dir, exist_ok=True)
+    results_csv_path = os.path.join(results_dir, "results_summary.csv")
+
+    _CSV_FIELDS = [
+        "case_id",
+        "is_correct",
+        "cost",
+        "latency_seconds",
+        "best_score",
+        "operation_history",
+        "timestamp",
+        "status",
+        "error",
+    ]
+    with open(results_csv_path, "w", newline="") as _f:
+        csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writeheader()
+
+    print(f"[MCTS] Results will be written to: {results_csv_path}")
+
     results = {}
     for case_id in range(args.id_start, args.id_end + 1):
         print(f"\n[MCTS] === length={args.length}  id={case_id} ===")
+        case_label = f"{args.length}_{case_id}"
+        _ts = datetime.now().isoformat()
         try:
             result = mcts_search(
                 args,
@@ -401,11 +448,39 @@ if __name__ == "__main__":
                 i_=case_id,
             )
             results[case_id] = result
+            is_correct, total_cost, time_elapsed, best_score, op_hist_ = result
             print(f"[MCTS] Case {case_id} done: {result}")
+            _row = {
+                "case_id": case_label,
+                "is_correct": is_correct,
+                "cost": round(total_cost, 6) if total_cost is not None else "N/A",
+                "latency_seconds": round(time_elapsed, 2),
+                "best_score": round(best_score, 4),
+                "operation_history": op_hist_,
+                "timestamp": _ts,
+                "status": "correct" if is_correct else "incorrect",
+                "error": "",
+            }
         except Exception:
-            print(f"[MCTS] Case {case_id} FAILED:\n{traceback.format_exc()}")
+            tb = traceback.format_exc()
+            print(f"[MCTS] Case {case_id} FAILED:\n{tb}")
             results[case_id] = None
+            _row = {
+                "case_id": case_label,
+                "is_correct": False,
+                "cost": "N/A",
+                "latency_seconds": "N/A",
+                "best_score": "N/A",
+                "operation_history": "",
+                "timestamp": _ts,
+                "status": "error",
+                "error": tb.strip().splitlines()[-1],
+            }
+        with open(results_csv_path, "a", newline="") as _f:
+            csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_row)
+        print(f"[MCTS] CSV updated: {results_csv_path}")
 
     print("\n[MCTS] === Summary ===")
     for case_id, result in results.items():
         print(f"  id={case_id}: {result}")
+    print(f"\n[MCTS] Results CSV: {results_csv_path}")
