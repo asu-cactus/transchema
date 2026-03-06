@@ -13,7 +13,13 @@ from pathlib import Path
 from pymilvus import MilvusClient
 from tqdm.auto import tqdm
 
-from .feature_extractor import FEATURE_DIM, compute_from_case_folder
+from .feature_extractor import (
+    FEATURE_DIM,
+    compute_from_case_folder,
+    compute_norm_stats,
+    save_norm_stats,
+    zscore_normalize,
+)
 
 
 def _resolve_rag_examples_base(base: str) -> Path:
@@ -62,6 +68,12 @@ def get_args():
         action="store_true",
         dest="drop_collection",
         help="Drop the feature collection before ingesting (clean start).",
+    )
+    p.add_argument(
+        "--norm-stats-path",
+        type=str,
+        default=None,
+        help="Path to save feature_norm_stats.json. Defaults to rag_pipeline/feature_norm_stats.json.",
     )
     return p.parse_args()
 
@@ -116,12 +128,20 @@ def main():
         print("[WARN] No vectors to insert.")
         return
 
+    # Compute and save z-score normalization stats from all raw vectors
+    stats = compute_norm_stats(vectors)
+    stats_path = save_norm_stats(stats, path=args.norm_stats_path)
+    print(f"[INFO] Saved z-score norm stats ({len(vectors)} cases) to {stats_path}")
+
+    # Normalize all vectors before insertion
+    normalized_vectors = [zscore_normalize(v, stats) for v in vectors]
+
     rows = [
-        {"vector": vectors[i], "case_id": case_ids[i]}
-        for i in range(len(vectors))
+        {"vector": normalized_vectors[i], "case_id": case_ids[i]}
+        for i in range(len(normalized_vectors))
     ]
     client.insert(collection_name=args.collection, data=rows)
-    print(f"Inserted {len(rows)} feature vectors into {args.collection} (skipped {skipped})")
+    print(f"Inserted {len(rows)} z-score normalized feature vectors into {args.collection} (skipped {skipped})")
 
 
 if __name__ == "__main__":

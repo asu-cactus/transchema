@@ -360,9 +360,10 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     max_target_id = id_
     log_dir = log_dir_
 
-    main_folder = "autopipeline-benchmarks/github-pipelines"
-
-    path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
+    # Benchmark selector: github | monteprep
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
         1
@@ -373,10 +374,10 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     # print(file_count)
 
-    if file_count > 1:
-        json_file_path = "data/chatgpt_github_ms.json"
+    if benchmark == "monteprep":
+        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
     else:
-        json_file_path = "data/chatgpt_github_ss.json"
+        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
     source_space_dir = create_source_space(main_folder, len_id, target_id)
 

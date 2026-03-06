@@ -5,8 +5,10 @@ per transformation case. Used for feature-based retrieval alongside or instead o
 from __future__ import annotations
 
 import ast
+import json
+import math
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
@@ -267,6 +269,71 @@ def compute_from_data(
     )
     assert len(vec) == FEATURE_DIM, f"expected {FEATURE_DIM} dims, got {len(vec)}"
     return vec
+
+
+# ---------------------------------------------------------------------------
+# Z-score normalization for 23-dim feature vectors
+# ---------------------------------------------------------------------------
+
+_EPSILON = 1e-8
+
+DEFAULT_NORM_STATS_PATH = Path(__file__).resolve().parent / "feature_norm_stats.json"
+
+
+def compute_norm_stats(vectors: List[List[float]]) -> Dict[str, List[float]]:
+    """
+    Compute per-dimension mean and std from a collection of raw 23-dim vectors.
+    Returns {"mean": [23 floats], "std": [23 floats]}.
+    """
+    n = len(vectors)
+    if n == 0:
+        return {"mean": [0.0] * FEATURE_DIM, "std": [1.0] * FEATURE_DIM}
+    dim = len(vectors[0])
+    means = [0.0] * dim
+    for v in vectors:
+        for j in range(dim):
+            means[j] += v[j]
+    means = [m / n for m in means]
+
+    variances = [0.0] * dim
+    for v in vectors:
+        for j in range(dim):
+            variances[j] += (v[j] - means[j]) ** 2
+    stds = [math.sqrt(var / n) for var in variances]
+
+    return {"mean": means, "std": stds}
+
+
+def save_norm_stats(stats: Dict[str, List[float]], path: Optional[Path] = None) -> Path:
+    """Save norm stats to JSON. Returns the path written to."""
+    path = Path(path) if path else DEFAULT_NORM_STATS_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(stats, f, indent=2)
+    return path
+
+
+def load_norm_stats(path: Optional[Union[str, Path]] = None) -> Dict[str, List[float]]:
+    """
+    Load norm stats from JSON.  Falls back to DEFAULT_NORM_STATS_PATH if no
+    path is given.  Returns None-safe defaults (zero mean, unit std) if the
+    file does not exist so that callers can degrade gracefully.
+    """
+    path = Path(path) if path else DEFAULT_NORM_STATS_PATH
+    if not path.exists():
+        return {"mean": [0.0] * FEATURE_DIM, "std": [1.0] * FEATURE_DIM}
+    with open(path) as f:
+        return json.load(f)
+
+
+def zscore_normalize(
+    vec: List[float],
+    stats: Dict[str, List[float]],
+) -> List[float]:
+    """Apply per-dimension z-score: v'_j = (v_j - mean_j) / (std_j + eps)."""
+    mean = stats["mean"]
+    std = stats["std"]
+    return [(vec[j] - mean[j]) / (std[j] + _EPSILON) for j in range(len(vec))]
 
 
 def load_source_target_from_folder(folder_path: Path) -> Tuple[List[pd.DataFrame], Optional[pd.DataFrame]]:

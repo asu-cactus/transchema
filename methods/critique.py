@@ -25,8 +25,10 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
 from rag_pipeline.feature_extractor import (
     compute_from_data,
+    load_norm_stats,
     load_source_target_from_folder,
     parse_operation_history_for_query,
+    zscore_normalize,
 )
 
 
@@ -94,17 +96,17 @@ def resolve_rag_examples_base(
     )  # transchema/methods -> transchema
     workspace_root = transchema_dir.parent  # transchema -> workspace root
 
-    base_path = transchema_dir / "rag-examples-w-pipeline"
+    base_path = transchema_dir / "examples_length_5_new"
     if base_path.exists():
         return base_path
-    base_path = workspace_root / "rag-examples-w-pipeline"
+    base_path = workspace_root / "examples_length_5_new"
     if base_path.exists():
         return base_path
 
     raise FileNotFoundError(
-        "Could not find rag-examples-w-pipeline directory. "
-        f"Tried: {transchema_dir / 'rag-examples-w-pipeline'}, "
-        f"{workspace_root / 'rag-examples-w-pipeline'}. "
+        "Could not find examples_length_5_new directory. "
+        f"Tried: {transchema_dir / 'examples_length_5_new'}, "
+        f"{workspace_root / 'examples_length_5_new'}. "
         "Provide the path via rag_examples_base parameter or RAG_EXAMPLES_BASE environment variable."
     )
 
@@ -168,7 +170,10 @@ def critique(
 
     log_dir = log_dir_
 
-    path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
+    # Benchmark selector: github | monteprep
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
         1
@@ -178,15 +183,14 @@ def critique(
     )
 
     ##print(file_count)
-    if file_count > 1:
-        json_file_path = "data/chatgpt_github_ms.json"
+    if benchmark == "monteprep":
+        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
     else:
-        json_file_path = "data/chatgpt_github_ss.json"
+        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
     len_id = length
     target_id = id_
     max_target_id = id_
-    main_folder = "autopipeline-benchmarks/github-pipelines"
     # anon_flag = flags[2]
     # fd = flags[0]
     # metadata_flag = flags[1]
@@ -211,6 +215,7 @@ def critique(
 
     rag_db = None
     feature_rag_db = None
+    feature_norm_stats = None
     if args.few_shot:
         if getattr(args, "rag_retrieval_strategy", "text") == "feature":
             feature_rag_db = FeatureRAGDB(
@@ -218,6 +223,9 @@ def critique(
                 collection=getattr(
                     args, "rag_feature_collection", "plan_docs_features"
                 ),
+            )
+            feature_norm_stats = load_norm_stats(
+                getattr(args, "feature_norm_stats_path", None)
             )
         else:
             rag_db = RAGDB(
@@ -357,8 +365,10 @@ def critique(
                 except Exception:
                     pass
                 query_vector = [0.0] * 23
+            if feature_norm_stats is not None:
+                query_vector = zscore_normalize(query_vector, feature_norm_stats)
             try:
-                logger.info(f"RAG_FEATURE_QUERY_VECTOR: {query_vector}")
+                logger.info(f"RAG_FEATURE_QUERY_VECTOR (z-score normalized): {query_vector}")
             except Exception:
                 pass
             rag_results = feature_rag_db.search(
@@ -474,7 +484,7 @@ def critique(
             python_code = ""
 
             pipeline_path = case_folder / "operator_pipeline.txt"
-            python_path = case_folder / "python_recovered.py"
+            python_path = case_folder / "python_recovered_successful.py"
 
             try:
                 if pipeline_path.exists():
@@ -530,7 +540,7 @@ def critique(
 
     try:
         with open(
-            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
+            main_folder + "/length" + len_idx_target_idx + "/python_recovered_successful.py",
             mode="r",
         ) as f:
             python_code = f.read()

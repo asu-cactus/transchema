@@ -13,10 +13,6 @@ import os
 import traceback
 
 
-main_folder = "autopipeline-benchmarks/github-pipelines"
-
-
-
 def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
     # Initialize required variables
     case_path = f"{length}_{id_}"
@@ -50,6 +46,9 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
     fd_flag = args.fd_flag
     token_limit = args.token_limit
     model = args.model
+    # Benchmark selector: github | monteprep
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
@@ -59,10 +58,10 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
         if file.startswith("test")
     )
 
-    if file_count > 1:
-        json_file_path = "data/chatgpt_github_ms.json"
+    if benchmark == "monteprep":
+        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
     else:
-        json_file_path = "data/chatgpt_github_ss.json"
+        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
     log_dir = log_dir_
 
