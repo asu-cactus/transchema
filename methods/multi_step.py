@@ -6,13 +6,13 @@ from validation.soft_match import compare_lists_matching_soft
 from util.utils import get_test_info, execute_python
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import (
-    calculate_score,
     get_prompt,
     query_gpt,
     get_operation,
     get_columns,
     get_columns_join,
 )
+from eval_score.score import relative_csv_score
 
 from log_util.log_util import create_logger
 
@@ -606,7 +606,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                                 sorted_df_our_response, sorted_df_ground_truth
                             )
                         else:
-                            score = calculate_score(df_ground_truth, df_our_response)
+                            _, _, _, _, score, _ = relative_csv_score(df_our_response, df_ground_truth)
                     except Exception as e:
                         print("".join(traceback.format_exc()))
                         is_correct = False

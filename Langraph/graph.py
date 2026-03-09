@@ -27,7 +27,11 @@ Graph topology
                                           [execute_and_score]
                                         calculate_score → reward
                                                     │
-                                                    ▼
+                              score<1.0 + "simulate" mode?
+                                   yes ──► [mcts_critique]
+                                   no  ──────────┐
+                                                 │
+                                                 ▼
                                             [backpropagate]
                                        update visits + rewards
                                                     │
@@ -58,8 +62,10 @@ from nodes import (
     execute_and_score,
     extract_best,
     is_selected_terminal,
+    mcts_critique,
     mcts_select,
     next_operator_step,
+    should_critique,
     simulate,
 )
 from state import MCTSGraphState
@@ -81,6 +87,7 @@ def build_mcts_graph():
     graph.add_node("next_operator_step", next_operator_step)
     graph.add_node("simulate", simulate)
     graph.add_node("execute_and_score", execute_and_score)
+    graph.add_node("mcts_critique", mcts_critique)
     graph.add_node("backpropagate", backpropagate)
     graph.add_node("extract_best", extract_best)
 
@@ -101,9 +108,17 @@ def build_mcts_graph():
     # No rollout loop — simulate() completes the pipeline from the expanded history
     graph.add_edge("next_operator_step", "simulate")
 
-    # ── Simulation pipeline: score the result ─────────────────────────────────
+    # ── Simulation pipeline: score → optional critique → backpropagate ────────
     graph.add_edge("simulate", "execute_and_score")
-    graph.add_edge("execute_and_score", "backpropagate")
+    graph.add_conditional_edges(
+        "execute_and_score",
+        should_critique,
+        {
+            "critique": "mcts_critique",
+            "backpropagate": "backpropagate",
+        },
+    )
+    graph.add_edge("mcts_critique", "backpropagate")
 
     # ── MCTS iteration loop: continue or finish ────────────────────────────────
     graph.add_conditional_edges(

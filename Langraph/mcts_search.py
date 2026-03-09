@@ -53,6 +53,9 @@ if _ROOT not in sys.path:
 from dataclasses import dataclass
 from typing import Any, List
 
+import tiktoken
+
+from auto_suggest_llm_util import get_source, get_filtered_functional_dependency
 from llm.llm_models import LLMClient, TokenUsageTracker
 from log_util.log_util import create_logger
 from test_scope import get_test_cases_ids
@@ -103,6 +106,11 @@ class Config:
     token_tracker: Any
     model: str
     token_limit: int
+    # Critique support
+    source_information: str   # pre-formatted $SRC_INFO$ string
+    static_hints: bool        # True (default) = inject static hints; False = suppress (--no_static_hints)
+    fd_hints: str             # pre-formatted FD hint string (empty if fd_flag=0)
+    mcts_critique_mode: str   # "none" | "simulate" | "best"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -206,6 +214,36 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         )
         ground_truth_location = f"{_MAIN_FOLDER}/length{len_idx_target_idx}/target.csv"
 
+        # ── Critique support: pre-compute source_information and fd_hints ────
+        mcts_critique_mode = getattr(args, "mcts_critique_mode", "none")
+        try:
+            if model == "gpt-4.1-mini":
+                _enc = tiktoken.get_encoding("o200k_base")
+            elif model in ("o4-mini", "o3"):
+                _enc = tiktoken.get_encoding("cl100k_base")
+            else:
+                _enc = tiktoken.encoding_for_model(model)
+        except Exception:
+            _enc = tiktoken.get_encoding("cl100k_base")
+
+        source_information = get_source(
+            file_count, source_data_name_list, source_data_schema_list,
+            _MAIN_FOLDER, len_idx_target_idx, source_length, token_limit, _enc,
+        )
+
+        fd_hints_str = ""
+        if fd_flag:
+            try:
+                df_gt_fd = pd.read_csv(ground_truth_location, low_memory=False)
+                df_gt_fd = df_gt_fd.drop(columns=df_gt_fd.columns[0], axis=1)
+                df_gt_fd = df_gt_fd.sample(
+                    n=min(1000, df_gt_fd.shape[0]), replace=False
+                ).iloc[:, :15]
+                key, fd__ = get_filtered_functional_dependency(df_gt_fd)
+                fd_hints_str = "Keys : " + str(key) + "\nFunctional Dependencies : " + str(fd__)
+            except Exception:
+                pass
+
         config = Config(
             target_data_name=target_data_name,
             target_data_schema=target_data_schema,
@@ -229,6 +267,10 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             model=model,
             token_limit=token_limit,
             directory=_MAIN_FOLDER,
+            source_information=source_information,
+            static_hints=not getattr(args, "no_static_hints", False),
+            fd_hints=fd_hints_str,
+            mcts_critique_mode=mcts_critique_mode,
         )
 
         # ── Build initial MCTS state ──────────────────────────────────────
@@ -271,6 +313,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "best_script": "",
             "best_score": 0.0,
             "best_operation_history": [],
+            # Critique
+            "critique_attempted": False,
             # Logging
             "log_messages": [],
         }
@@ -385,6 +429,19 @@ if __name__ == "__main__":
     parser.add_argument("--join_flag", type=int, default=0)
     parser.add_argument("--aggregate_flag", type=int, default=0)
     parser.add_argument("--few_shot", type=int, default=0)
+    parser.add_argument(
+        "--mcts_critique_mode",
+        type=str,
+        default="none",
+        choices=["none", "simulate", "best"],
+        help="Critique mode: 'none'=disabled, 'simulate'=after each iteration when score<1.0, 'best'=once on final best script",
+    )
+    parser.add_argument(
+        "--no_static_hints",
+        action="store_true",
+        default=False,
+        help="Suppress static hints (CRITIQUE_HINT_IDS) from the critique prompt (hints are on by default)",
+    )
     parser.add_argument(
         "--validation",
         type=str,

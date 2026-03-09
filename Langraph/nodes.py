@@ -38,12 +38,18 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+# eval_score/score.py uses relative imports (fdtool, column_map_utils) that
+# live inside the eval_score/ directory, so add it to sys.path as well.
+_EVAL_SCORE = os.path.join(_ROOT, "eval_score")
+if _EVAL_SCORE not in sys.path:
+    sys.path.insert(0, _EVAL_SCORE)
+
 from auto_suggest_llm_util import (
-    calculate_score,
     get_mcts_candidates,
     get_prompt,
     query_gpt,
 )
+from eval_score.score import relative_csv_score
 from mcts_node import MCTSNode, OPERATOR_TYPES
 from state import MCTSGraphState
 from util.utils import execute_python
@@ -57,6 +63,7 @@ _MAX_CODE_TRIALS = 5
 # ─────────────────────────────────────────────────────────────────────────────
 # Node 1: mcts_select
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def mcts_select(state: MCTSGraphState) -> dict:
     """
@@ -98,7 +105,9 @@ def mcts_select(state: MCTSGraphState) -> dict:
         "current_script": "",
         "current_score": 0.0,
         "current_response": "",
-        "log_messages": state["log_messages"] + [
+        "critique_attempted": False,  # reset each iteration
+        "log_messages": state["log_messages"]
+        + [
             f"Iter {state['iteration']}: selected node depth={len(path)-1} op={node.operator_type}"
         ],
     }
@@ -107,6 +116,7 @@ def mcts_select(state: MCTSGraphState) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Node 2: next_operator_step  (EXPANSION — single mcts_expand LLM call)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def next_operator_step(state: MCTSGraphState) -> dict:
     """
@@ -231,11 +241,13 @@ def next_operator_step(state: MCTSGraphState) -> dict:
 
     # Navigate to the top-priority child (guaranteed to exist after batch-add above)
     if chosen_cfg not in selected_node.children:
-        new_node = selected_node.add_child(chosen_cfg, new_history, operator_type=chosen_op)
+        new_node = selected_node.add_child(
+            chosen_cfg, new_history, operator_type=chosen_op
+        )
     else:
         new_node = selected_node.children[chosen_cfg]
 
-    is_terminal_expansion = (chosen_op == "NO_MORE_OPERATION")
+    is_terminal_expansion = chosen_op == "NO_MORE_OPERATION"
 
     return {
         "rollout_history": new_history,
@@ -245,7 +257,8 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         "selection_path": selection_path + [new_node],
         "selected_node": new_node,
         "terminal_found": state["terminal_found"] or is_terminal_expansion,
-        "log_messages": state["log_messages"] + [
+        "log_messages": state["log_messages"]
+        + [
             f"[EXPAND] iter={state['iteration']} op={chosen_op} configured={chosen_cfg}"
         ],
     }
@@ -254,6 +267,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 # Node 3: simulate  (SIMULATION phase)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def simulate(state: MCTSGraphState) -> dict:
     """
@@ -275,7 +289,7 @@ def simulate(state: MCTSGraphState) -> dict:
     Updates: current_script, current_response.
     """
     config = state["config"]
-    rollout_history: List[str] = state["rollout_history"]   # expanded node's history
+    rollout_history: List[str] = state["rollout_history"]  # expanded node's history
     target_file_location: str = state["target_file_location"]
 
     config.logger.info(
@@ -341,9 +355,7 @@ def simulate(state: MCTSGraphState) -> dict:
         response = execute_python(script)
         error_str += response + "\n"
 
-        config.logger.info(
-            f"[simulate] Trial {trial}: execute_python='{response}'"
-        )
+        config.logger.info(f"[simulate] Trial {trial}: execute_python='{response}'")
 
         if response == "Success":
             break
@@ -368,9 +380,7 @@ def simulate(state: MCTSGraphState) -> dict:
                 for line in plan_match.group(1).strip().splitlines()
                 if line.strip()
             ]
-            config.logger.info(
-                f"[simulate] Parsed complete plan: {full_history}"
-            )
+            config.logger.info(f"[simulate] Parsed complete plan: {full_history}")
         else:
             config.logger.warning(
                 f"[simulate] No $PLAN$ block found in LLM response (iter {state['iteration']})"
@@ -380,7 +390,8 @@ def simulate(state: MCTSGraphState) -> dict:
         "current_script": script,
         "current_response": response,
         "current_full_history": full_history,
-        "log_messages": state["log_messages"] + [
+        "log_messages": state["log_messages"]
+        + [
             f"[SIMULATE] iter={state['iteration']} trials={_trials} result={_result} "
             f"plan_steps={len(full_history)}"
         ],
@@ -391,10 +402,11 @@ def simulate(state: MCTSGraphState) -> dict:
 # Node 4: execute_and_score
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def execute_and_score(state: MCTSGraphState) -> dict:
     """
     Load the CSV written by the generated script, compare with ground truth
-    using calculate_score, and use the result as the MCTS reward.
+    using relative_csv_score, and use the result as the MCTS reward.
 
     Updates: current_score, best_score, best_script, best_operation_history.
     """
@@ -411,7 +423,7 @@ def execute_and_score(state: MCTSGraphState) -> dict:
             df_gt = pd.read_csv(ground_truth_location, low_memory=False)
             # Drop the pandas auto-index column
             df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-            score = calculate_score(df_gt, df_output)
+            _, _, _, _, score, _ = relative_csv_score(df_output, df_gt)
         except Exception:
             config.logger.warning(
                 f"[execute_and_score] Scoring failed: {traceback.format_exc()}"
@@ -446,15 +458,15 @@ def execute_and_score(state: MCTSGraphState) -> dict:
         "best_score": best_score,
         "best_script": best_script,
         "best_operation_history": best_op_hist,
-        "log_messages": state["log_messages"] + [
-            f"Iter {state['iteration']}: score={score:.4f} history={rollout_history}"
-        ],
+        "log_messages": state["log_messages"]
+        + [f"Iter {state['iteration']}: score={score:.4f} history={rollout_history}"],
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Node 5: backpropagate
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def backpropagate(state: MCTSGraphState) -> dict:
     """
@@ -491,15 +503,15 @@ def backpropagate(state: MCTSGraphState) -> dict:
 
     return {
         "iteration": new_iteration,
-        "log_messages": state["log_messages"] + [
-            f"Backprop iter {state['iteration']}: reward={reward:.4f}"
-        ],
+        "log_messages": state["log_messages"]
+        + [f"Backprop iter {state['iteration']}: reward={reward:.4f}"],
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Node 6: extract_best
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def extract_best(state: MCTSGraphState) -> dict:
     """
@@ -523,6 +535,28 @@ def extract_best(state: MCTSGraphState) -> dict:
     )
     config.logger.info(f"[MCTS Tree] {root.to_dict()}")
 
+    # "best" mode: critique the best script once before saving
+    if (
+        getattr(config, "mcts_critique_mode", "none") == "best"
+        and best_script
+        and best_score < 1.0
+    ):
+        config.logger.info(
+            f"[extract_best] Running 'best' mode critique on final script "
+            f"(score={best_score:.4f})"
+        )
+        crit_script, crit_score, _ = _run_critique_llm(state, best_script)
+        if crit_score > best_score:
+            config.logger.info(
+                f"[extract_best] Critique improved score: {best_score:.4f} → {crit_score:.4f}"
+            )
+            best_score = crit_score
+            best_script = crit_script
+        else:
+            config.logger.info(
+                f"[extract_best] Critique did not improve score ({crit_score:.4f} ≤ {best_score:.4f}), keeping original"
+            )
+
     # Save best script
     if best_script:
         script_dir = os.path.join(main_folder, f"length{case_id}", "script_archive")
@@ -537,7 +571,8 @@ def extract_best(state: MCTSGraphState) -> dict:
         config.logger.info(f"[extract_best] Scripts saved to {archive_path}")
 
     return {
-        "log_messages": state["log_messages"] + [
+        "log_messages": state["log_messages"]
+        + [
             f"MCTS complete after {state['iteration']} iterations. "
             f"Best score={best_score:.4f}"
         ],
@@ -545,8 +580,195 @@ def extract_best(state: MCTSGraphState) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Critique helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _build_critique_prompt(state: MCTSGraphState, script: str) -> str:
+    """
+    Build the single-call critique prompt by filling in all $PLACEHOLDERS$.
+    Uses config fields populated in mcts_search.py (source_information, fd_hints, etc.).
+    Returns the filled prompt string, or empty string on error.
+    """
+    config = state["config"]
+    target_file_location = state["target_file_location"]
+    ground_truth_location = state["ground_truth_location"]
+    rollout_history = state["rollout_history"]
+
+    prompt_path = os.path.join(_ROOT, "prompts", "mcts_critique.txt")
+    try:
+        with open(prompt_path) as f:
+            prompt = f.read()
+    except Exception:
+        config.logger.warning(f"[critique] Could not read prompt file: {prompt_path}")
+        return ""
+
+    prompt = prompt.replace(
+        "$SRC_INFO$", getattr(config, "source_information", "") or ""
+    )
+    prompt = prompt.replace(
+        "$SCHEMA$",
+        config.target_data_schema_with_types or config.target_data_schema,
+    )
+    prompt = prompt.replace("$EXAMPLES$", config.target_samples)
+    prompt = prompt.replace("$OPERATIONS$", "\n".join(rollout_history))
+    prompt = prompt.replace("$CURRENT_SCRIPT$", script)
+    prompt = prompt.replace("$CSV_SAVE_PATH$", target_file_location)
+    prompt = prompt.replace("$FD_HINT$", getattr(config, "fd_hints", "") or "")
+
+    # Ground truth row count
+    try:
+        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        prompt = prompt.replace("$NUM_TUPLES$", str(len(df_gt)))
+    except Exception:
+        prompt = prompt.replace("$NUM_TUPLES$", "N/A")
+
+    # Current output info (may not exist if script failed entirely)
+    try:
+        df_res = pd.read_csv(target_file_location, low_memory=False)
+        prompt = prompt.replace("$RES_SCHEMA$", ", ".join(df_res.columns))
+        prompt = prompt.replace("$NUM_RES_TUPLES$", str(len(df_res)))
+        prompt = prompt.replace(
+            "$RES_EXAMPLES$",
+            df_res.head(config.target_length).to_string(index=False),
+        )
+    except Exception:
+        prompt = prompt.replace("$RES_SCHEMA$", "N/A (script execution failed)")
+        prompt = prompt.replace("$NUM_RES_TUPLES$", "N/A")
+        prompt = prompt.replace("$RES_EXAMPLES$", "N/A")
+
+    # Inject critique hints unless suppressed via --no_static_hints
+    if getattr(config, "static_hints", True):
+        try:
+            from hints.hints_static import get_hints_section, CRITIQUE_HINT_IDS
+            prompt = prompt.replace(
+                "$STATIC_HINTS$", get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered")
+            )
+        except Exception:
+            prompt = prompt.replace("$STATIC_HINTS$", "")
+    else:
+        prompt = prompt.replace("$STATIC_HINTS$", "")
+
+    return prompt
+
+
+def _run_critique_llm(state: MCTSGraphState, script: str):
+    """
+    Build + send the critique prompt. Returns (new_script, new_score, new_response).
+    Loads ground truth internally for scoring.
+    """
+    config = state["config"]
+    target_file_location = state["target_file_location"]
+    ground_truth_location = state["ground_truth_location"]
+
+    prompt = _build_critique_prompt(state, script)
+    if not prompt:
+        return script, state.get("current_score", 0.0), "Prompt build failed"
+
+    res = query_gpt(
+        config.llm_client,
+        config.model,
+        [prompt],
+        config.q_count,
+        config.logger,
+        config.cost_summary,
+        config.token_tracker,
+        type="MCTS Critique",
+    )
+
+    pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
+    match = pattern.search(res[0])
+    new_script = match.group(1).strip() if match else ""
+
+    new_score = state.get("current_score", 0.0)
+    new_response = "No code extracted"
+
+    if new_script:
+        new_response = execute_python(new_script)
+        if new_response == "Success":
+            try:
+                df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+                df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                df_output = pd.read_csv(target_file_location, low_memory=False)
+                _, _, _, _, new_score, _ = relative_csv_score(df_output, df_gt)
+            except Exception:
+                new_score = 0.0
+
+    return new_script, new_score, new_response
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node 7: mcts_critique  (CRITIQUE phase — single LLM call)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def mcts_critique(state: MCTSGraphState) -> dict:
+    """
+    CRITIQUE (single LLM call): analyzes the failed/imperfect script and outputs
+    corrected Python code. Triggered when current_score < 1.0 in "simulate" mode.
+    Re-executes and re-scores the corrected script before backpropagation.
+    """
+    config = state["config"]
+
+    config.logger.info(
+        f"[mcts_critique] Iter {state['iteration']}: "
+        f"critiquing script (score={state['current_score']:.4f})"
+    )
+
+    new_script, new_score, new_response = _run_critique_llm(
+        state, state["current_script"]
+    )
+
+    config.logger.info(
+        f"[mcts_critique] Iter {state['iteration']}: "
+        f"score {state['current_score']:.4f} → {new_score:.4f}"
+    )
+
+    best_score = state["best_score"]
+    best_script = state["best_script"]
+    best_op_hist = state["best_operation_history"]
+    if new_score > best_score:
+        best_score = new_score
+        best_script = new_script
+        best_op_hist = state["best_operation_history"]
+
+    return {
+        "current_script": new_script if new_script else state["current_script"],
+        "current_score": new_score,
+        "current_response": new_response,
+        "critique_attempted": True,
+        "best_score": best_score,
+        "best_script": best_script,
+        "best_operation_history": best_op_hist,
+        "log_messages": state["log_messages"]
+        + [
+            f"[CRITIQUE] iter={state['iteration']} "
+            f"score_before={state['current_score']:.4f} score_after={new_score:.4f}"
+        ],
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Conditional edge functions
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def should_critique(state: MCTSGraphState) -> str:
+    """
+    After execute_and_score:
+    - "simulate" mode → critique if score < 1.0 and not yet attempted this iteration
+    - "none" / "best" mode → always skip to backpropagate
+    """
+    mode = getattr(state["config"], "mcts_critique_mode", "none")
+    if (
+        mode == "simulate"
+        and state["current_score"] < 1.0
+        and not state.get("critique_attempted", False)
+    ):
+        return "critique"
+    return "backpropagate"
+
 
 def is_selected_terminal(state: MCTSGraphState) -> str:
     """

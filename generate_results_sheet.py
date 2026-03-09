@@ -191,51 +191,47 @@ def write_comparison_sheet(ws, ms, ms_crit, af, lg):
         ("Langraph (MCTS)",      lg),
     ]
 
-    # Only count cases done in ALL four methods for fair comparison
-    common_cases = set(ALL_CASES)
-    for _, d in methods:
-        common_cases &= set(d.keys())
-    common_cases = sorted(common_cases)
-
-    headers = ["Method", "Cases Done", "Cases in Common",
+    headers = ["Method", "Correct", "Total Cases",
                "Accuracy (%)", "Avg Cost ($)", "Avg Latency (s)"]
     for col, h in enumerate(headers, 1):
         hdr(ws.cell(1, col), h)
 
     ws.row_dimensions[1].height = 30
-    for col, w in enumerate([22, 13, 16, 15, 14, 16], 1):
+    for col, w in enumerate([22, 10, 13, 15, 14, 16], 1):
         ws.column_dimensions[get_column_letter(col)].width = w
 
     for row_idx, (name, data) in enumerate(methods, 2):
-        done_cases = [c for c in ALL_CASES if c in data]
-        common = [c for c in common_cases if c in data]
+        # Accuracy over all 85 cases (missing = failed/incorrect)
+        correct  = sum(1 for c in ALL_CASES if data.get(c, {}).get("correct", False))
+        accuracy = correct / len(ALL_CASES) * 100
 
-        accuracy = (sum(1 for c in common if data[c]["correct"]) / len(common) * 100) if common else 0
-        avg_cost = (sum(data[c]["cost"] for c in common) / len(common)) if common else 0
-        avg_lat  = (sum(data[c]["latency"] for c in common) / len(common)) if common else 0
+        # Cost and latency only over cases that have data (exclude failed/missing)
+        done_cases = [c for c in ALL_CASES if c in data]
+        avg_cost = (sum(data[c]["cost"]    for c in done_cases) / len(done_cases)) if done_cases else 0
+        avg_lat  = (sum(data[c]["latency"] for c in done_cases) / len(done_cases)) if done_cases else 0
 
         fill = ALT_FILL if row_idx % 2 == 0 else None
 
-        def fval(cell, v, fmt=None, f=fill):
+        def fval(cell, v, f=fill):
             cell.value = v
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = BORDER
             if f:
                 cell.fill = f
-            if fmt:
-                cell.number_format = fmt
 
         fval(ws.cell(row_idx, 1), name)
         ws.cell(row_idx, 1).font = Font(bold=True)
-        fval(ws.cell(row_idx, 2), len(done_cases))
-        fval(ws.cell(row_idx, 3), len(common))
+        fval(ws.cell(row_idx, 2), correct)
+        fval(ws.cell(row_idx, 3), len(ALL_CASES))
         fval(ws.cell(row_idx, 4), round(accuracy, 1))
         fval(ws.cell(row_idx, 5), round(avg_cost, 4))
         fval(ws.cell(row_idx, 6), round(avg_lat, 1))
 
-    # Add a note about common cases
     note_row = len(methods) + 3
-    ws.cell(note_row, 1).value = f"Accuracy / Cost / Latency computed over {len(common_cases)} cases done in all 4 methods."
+    ws.cell(note_row, 1).value = (
+        "Accuracy over all 85 cases (missing cases counted as failed). "
+        "Avg Cost and Latency computed only over cases with logged data."
+    )
     ws.cell(note_row, 1).font = Font(italic=True, color="666666")
     ws.merge_cells(start_row=note_row, start_column=1, end_row=note_row, end_column=6)
 
@@ -272,7 +268,7 @@ def write_percase_sheet(ws, ms, ms_crit, af, lg):
         for col_idx, (_, data) in enumerate(methods, 2):
             cell = ws.cell(row_idx, col_idx)
             if case_id not in data:
-                val(cell, "Remaining", REM_FILL)
+                val(cell, "Failed", FALSE_FILL)
             elif data[case_id]["correct"]:
                 val(cell, "Correct", TRUE_FILL)
             else:

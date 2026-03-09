@@ -1,0 +1,49 @@
+You are fixing a Python data-pipeline that transforms multiple source tables into a target table.
+
+The current pipeline produced incorrect results. Analyze the issue using the information below, then produce a corrected Python script.
+
+Source Data Information: $SRC_INFO$
+
+Target Data Information:
+Schema: $SCHEMA$
+Number of Tuples: $NUM_TUPLES$
+Examples: $EXAMPLES$
+
+Functional Dependencies (FDs) (important ones ranked on top):
+$FD_HINT$
+
+The failed pipeline used the following operations:
+$OPERATIONS$
+
+After these operations, the resulting table (that does not match target data) has:
+Schema: $RES_SCHEMA$
+Number of Tuples: $NUM_RES_TUPLES$
+Examples: $RES_EXAMPLES$
+
+Current Python script:
+```python
+$CURRENT_SCRIPT$
+```
+
+$STATIC_HINTS$
+
+Instructions:
+--For Join: give the names of tables to be joined and the join attributes.
+--For Union: give the names of tables to be unioned.
+--For GroupBy: give the Group By attributes. You should try to group the data by a couple of LEFTMOST column(s) of the given target table schema. These columns often satisfy: (1) at the leftmost part of the target schema; (2) must be string or integer types and must NOT be float/decimal; (3) must contain unique (non-redundant) values in the target examples.
+--For Aggregate: give the aggregation function and aggregation column. Aggregation columns must NOT be included in group by columns.
+--For Filter: give the predicate.
+--For String operators: give a description.
+--All source tables MUST be used.
+
+Now produce the corrected Python script. The script must:
+- Read ONLY the CSV file paths given in Source Data Information.
+- Write its final output to: $CSV_SAVE_PATH$
+- Keep column names exactly as in the target schema (no added prefixes/suffixes).
+- NOT use assignment operation for any column.
+
+Reason briefly about what is wrong, then output ONLY the corrected code in a Python code block:
+
+```python
+<corrected code here>
+```

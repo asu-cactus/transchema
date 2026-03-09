@@ -75,5 +75,8 @@ class MCTSGraphState(TypedDict):
     best_score: float
     best_operation_history: List[str]
 
+    # ── Critique phase ────────────────────────────────────────────────────────
+    critique_attempted: bool             # True once critique has run this MCTS iteration
+
     # ── Debug log ─────────────────────────────────────────────────────────────
     log_messages: List[str]

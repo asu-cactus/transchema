@@ -13,8 +13,8 @@ from auto_suggest_llm_util import (
     get_source,
     get_target_samples,
     get_filtered_functional_dependency,
-    calculate_score,
 )
+from eval_score.score import relative_csv_score
 from util.utils import execute_python, get_test_info
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching, is_column_numerical
@@ -640,9 +640,9 @@ def critique(
                 similarity_scores,
                 shared_columns,
             ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
-            score = calculate_score(sorted_df_ground_truth, sorted_df_critique)
+            _, _, _, _, score, _ = relative_csv_score(sorted_df_critique, sorted_df_ground_truth)
         else:
-            score = calculate_score(df_ground_truth, df_critique)
+            _, _, _, _, score, _ = relative_csv_score(df_critique, df_ground_truth)
         logger.info(is_correct)
 
     except Exception as e:

@@ -1,4 +1,12 @@
 import json
+import os
+import sys
+
+# Ensure this directory is on sys.path so fdtool and column_map_utils are importable
+_SCORE_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCORE_DIR not in sys.path:
+    sys.path.insert(0, _SCORE_DIR)
+
 import fdtool.fdtool as fdtool
 import column_map_utils
 from column_map_utils import get_column_map
@@ -38,8 +46,8 @@ def serialize_column_map(col_map):
     return serialized
 def relative_csv_score(df_a, df_b):
     # Truncate to cap scoring time
-    df_a = df_a.iloc[:2000, :15]
-    df_b = df_b.iloc[:2000, :15]
+    df_a = df_a.iloc[:1000, :15]
+    df_b = df_b.iloc[:1000, :15]
 
     column_map_utils.GLOBAL_SUMMARY = None  # Reset the actual module-level cache
 
