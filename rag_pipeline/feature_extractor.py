@@ -5,14 +5,26 @@ per transformation case. Used for feature-based retrieval alongside or instead o
 from __future__ import annotations
 
 import ast
+import json
+import math
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
 FEATURE_DIM = 23
 OPERATOR_BINS = ["groupby", "merge", "union", "pivot", "unpivot", "other"]
 OPERATOR_ALIASES = {"concat": "union"}
+# Map multi_step operation names (from critique operation_history) to OPERATOR_BINS
+OPERATION_HISTORY_TO_BIN = {
+    "join": "merge",
+    "group_by/aggregate": "groupby",
+    "groupby": "groupby",
+    "union": "union",
+    "concat": "union",
+    "pivot": "pivot",
+    "unpivot": "unpivot",
+}
 TYPE_BINS = ["int", "float", "str", "datetime", "bool"]
 
 
@@ -58,6 +70,73 @@ def _parse_operator_pipeline(content: str) -> List[str]:
         return [str(x) for x in parsed] if isinstance(parsed, list) else []
     except Exception:
         return []
+
+
+def parse_operation_history_for_query(
+    operation_history: Optional[Union[str, list]],
+) -> List[str]:
+    """
+    Parse operation_history from the critique flow (failed pipeline) into a list of
+    operator names suitable for compute_from_data(..., pipeline_operator_list=...).
+
+    operation_history is typically the string form of a list, e.g. from ms_info[-1]:
+      "['JOIN : [\"col1\", \"col2\"]', 'GROUP_BY/AGGREGATE', 'UNION : [\"t1\", \"t2\"]']"
+    Each element may be "OP" or "OP : ...". We take the part before " : " and map
+    multi_step names (JOIN, GROUP_BY/AGGREGATE, UNION, PIVOT, UNPIVOT) to
+    OPERATOR_BINS (merge, groupby, union, pivot, unpivot, other).
+
+    Returns:
+        List of operator names (e.g. ["merge", "groupby", "union"]) for the histogram.
+    """
+    if operation_history is None:
+        return []
+    raw_list: List[str] = []
+    if isinstance(operation_history, list):
+        raw_list = [str(x) for x in operation_history]
+    elif isinstance(operation_history, str):
+        s = operation_history.strip()
+        if not s:
+            return []
+        try:
+            parsed = ast.literal_eval(s)
+            raw_list = [str(x) for x in parsed] if isinstance(parsed, list) else []
+        except Exception:
+            return []
+    else:
+        return []
+    result: List[str] = []
+    for item in raw_list:
+        item = (item or "").strip()
+        if not item:
+            continue
+        # Take prefix before " : " (e.g. "JOIN : [...]" -> "JOIN")
+        if " : " in item:
+            op_raw = item.split(" : ", 1)[0].strip()
+        else:
+            op_raw = item
+        op_lower = op_raw.lower()
+        full_lower = item.lower()  # use full item for fallback (e.g. "group_by" = ..., "aggregations" = ...)
+        mapped = OPERATION_HISTORY_TO_BIN.get(op_lower)
+        if mapped is None:
+            # GROUP_BY/AGGREGATE may appear as prefix or in full string (e.g. "aggregations")
+            if ("group" in full_lower and "aggregate" in full_lower) or (
+                "group" in full_lower and "aggregations" in full_lower
+            ):
+                mapped = "groupby"
+            elif "join" in full_lower:
+                mapped = "merge"
+            elif "union" in full_lower or "concat" in full_lower:
+                mapped = "union"
+            elif "pivot" in full_lower:
+                mapped = "pivot"
+            elif "unpivot" in full_lower:
+                mapped = "unpivot"
+            elif "no_more_operation" in full_lower or not op_raw:
+                continue  # skip sentinel / empty
+            else:
+                mapped = "other"
+        result.append(mapped)
+    return result
 
 
 def _schema_overlap(source_column_sets: List[set], target_columns: List[str]) -> float:
@@ -190,6 +269,71 @@ def compute_from_data(
     )
     assert len(vec) == FEATURE_DIM, f"expected {FEATURE_DIM} dims, got {len(vec)}"
     return vec
+
+
+# ---------------------------------------------------------------------------
+# Z-score normalization for 23-dim feature vectors
+# ---------------------------------------------------------------------------
+
+_EPSILON = 1e-8
+
+DEFAULT_NORM_STATS_PATH = Path(__file__).resolve().parent / "feature_norm_stats.json"
+
+
+def compute_norm_stats(vectors: List[List[float]]) -> Dict[str, List[float]]:
+    """
+    Compute per-dimension mean and std from a collection of raw 23-dim vectors.
+    Returns {"mean": [23 floats], "std": [23 floats]}.
+    """
+    n = len(vectors)
+    if n == 0:
+        return {"mean": [0.0] * FEATURE_DIM, "std": [1.0] * FEATURE_DIM}
+    dim = len(vectors[0])
+    means = [0.0] * dim
+    for v in vectors:
+        for j in range(dim):
+            means[j] += v[j]
+    means = [m / n for m in means]
+
+    variances = [0.0] * dim
+    for v in vectors:
+        for j in range(dim):
+            variances[j] += (v[j] - means[j]) ** 2
+    stds = [math.sqrt(var / n) for var in variances]
+
+    return {"mean": means, "std": stds}
+
+
+def save_norm_stats(stats: Dict[str, List[float]], path: Optional[Path] = None) -> Path:
+    """Save norm stats to JSON. Returns the path written to."""
+    path = Path(path) if path else DEFAULT_NORM_STATS_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(stats, f, indent=2)
+    return path
+
+
+def load_norm_stats(path: Optional[Union[str, Path]] = None) -> Dict[str, List[float]]:
+    """
+    Load norm stats from JSON.  Falls back to DEFAULT_NORM_STATS_PATH if no
+    path is given.  Returns None-safe defaults (zero mean, unit std) if the
+    file does not exist so that callers can degrade gracefully.
+    """
+    path = Path(path) if path else DEFAULT_NORM_STATS_PATH
+    if not path.exists():
+        return {"mean": [0.0] * FEATURE_DIM, "std": [1.0] * FEATURE_DIM}
+    with open(path) as f:
+        return json.load(f)
+
+
+def zscore_normalize(
+    vec: List[float],
+    stats: Dict[str, List[float]],
+) -> List[float]:
+    """Apply per-dimension z-score: v'_j = (v_j - mean_j) / (std_j + eps)."""
+    mean = stats["mean"]
+    std = stats["std"]
+    return [(vec[j] - mean[j]) / (std[j] + _EPSILON) for j in range(len(vec))]
 
 
 def load_source_target_from_folder(folder_path: Path) -> Tuple[List[pd.DataFrame], Optional[pd.DataFrame]]:

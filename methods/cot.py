@@ -130,8 +130,10 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
     token_limit = args.token_limit
     model = args.model
 
-    # Paths & bookkeeping
-    path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
+    # Paths & bookkeeping (benchmark selector: github | monteprep)
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    path_to_files = f"{main_folder}/length{length}_{id_}/"
     file_count = sum(
         1
         for _, _, files in os.walk(path_to_files)
@@ -139,13 +141,11 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
         if file.startswith("test")
     )
 
-    json_file_path = (
-        "data/chatgpt_github_ms.json"
-        if file_count > 1
-        else "data/chatgpt_github_ss.json"
-    )
+    if benchmark == "monteprep":
+        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
+    else:
+        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
     log_dir = log_dir_
-    main_folder = "autopipeline-benchmarks/github-pipelines"
 
     allowed_operation_list = [
         "JOIN",
@@ -352,7 +352,7 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
     # Save last recovered script (same as multistep.py)
     if script:
         with open(
-            f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/python_recovered.py",
+            f"{main_folder}/length{length}_{id_}/python_recovered.py",
             "w",
         ) as f:
             f.write(script)

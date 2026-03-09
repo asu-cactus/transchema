@@ -406,6 +406,14 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--feature_norm_stats_path",
+        type=str,
+        default=None,
+        help="Path to feature_norm_stats.json for z-score normalization (used when rag_retrieval_strategy=feature). "
+             "Defaults to rag_pipeline/feature_norm_stats.json."
+    )
+
+    parser.add_argument(
         "--intermediate_materialization",
         action="store_true",
         help="Materialize intermediate results",
@@ -415,6 +423,13 @@ def get_parser():
         "--few_shot",
         action="store_true",
         help="Add Few Shot Examples",
+    )
+    parser.add_argument(
+        "--benchmark",
+        type=str,
+        default="github",
+        choices=["github", "monteprep"],
+        help="Benchmark dataset: 'github' or 'monteprep'.",
     )
     parser.add_argument(
         "--single_step_cot",
@@ -510,8 +525,9 @@ if __name__ == "__main__":
                 # do the copy of the script only if critique is successful, meaning the critique judged the script to be correct after fixing the issues
                 if crit_info[0]:
                     # copy python_recovered.py to python_recovered_successful.py
-                    src = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered.py"
-                    dst = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered_successful.py"
+                    main_folder_base = "autopipeline-benchmarks/monteprep-pipelines" if getattr(args, "benchmark", "github") == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+                    src = f"{main_folder_base}/length{case_path}/python_recovered.py"
+                    dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
                     shutil.copy2(src, dst)
 
                     print("Success!")
@@ -524,8 +540,9 @@ if __name__ == "__main__":
             else:
 
                 # copy python_recovered.py to python_recovered_successful.py
-                src = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered.py"
-                dst = f"autopipeline-benchmarks/github-pipelines/length{case_path}/python_recovered_successful.py"
+                main_folder_base = "autopipeline-benchmarks/monteprep-pipelines" if getattr(args, "benchmark", "github") == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+                src = f"{main_folder_base}/length{case_path}/python_recovered.py"
+                dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
                 shutil.copy2(src, dst)
 
                 print("Success!")

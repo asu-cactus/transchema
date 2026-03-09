@@ -17,7 +17,10 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     log_dir = log_dir_
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
 
-    path_to_files = f"autopipeline-benchmarks/github-pipelines/length{length}_{id_}/"
+    # Benchmark selector: github | monteprep
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
         1
@@ -29,7 +32,6 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
     len_id = length
     target_id = id_
     max_target_id = id_
-    main_folder = "autopipeline-benchmarks/github-pipelines"
     len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
     token_tracker = TokenUsageTracker()
