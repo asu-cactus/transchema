@@ -616,7 +616,10 @@ class AgentModeDaemon:
             # Example triplet.prompt: {"token_ids": [...]}
             # Example triplet.response: {"token_ids": [...]}
             trace_list = [
-                {"prompt_ids": t.prompt.get("token_ids", []), "response_ids": t.response.get("token_ids", [])}
+                {
+                    "prompt_ids": self._extract_token_ids(getattr(t, "prompt", None)),
+                    "response_ids": self._extract_token_ids(getattr(t, "response", None)),
+                }
                 for t in rollout.triplets
             ]
 
@@ -788,3 +791,52 @@ class AgentModeDaemon:
         else:
             final_reward = rollout.final_reward
         return final_reward
+
+    def _extract_token_ids(self, obj) -> list[int]:
+        """
+        Robustly extract token ids from rollout prompt/response payloads.
+
+        Some backends may not populate `token_ids` but provide equivalent fields
+        (e.g. `ids`, `input_ids`) or plain text content only.
+        """
+        if obj is None:
+            return []
+
+        # Fast path: dict-like with token/id arrays.
+        if isinstance(obj, dict):
+            for key in ("token_ids", "input_ids", "ids"):
+                value = obj.get(key)
+                if isinstance(value, list) and len(value) > 0:
+                    try:
+                        return [int(x) for x in value]
+                    except Exception:
+                        pass
+
+            # Fallback: tokenize text if ids are missing.
+            for key in ("text", "content", "message", "value"):
+                value = obj.get(key)
+                if isinstance(value, str) and value.strip():
+                    try:
+                        return self.tokenizer.encode(value, add_special_tokens=False)
+                    except Exception:
+                        return []
+            return []
+
+        # Object-like payloads with attributes.
+        for key in ("token_ids", "input_ids", "ids"):
+            value = getattr(obj, key, None)
+            if isinstance(value, list) and len(value) > 0:
+                try:
+                    return [int(x) for x in value]
+                except Exception:
+                    pass
+
+        for key in ("text", "content", "message", "value"):
+            value = getattr(obj, key, None)
+            if isinstance(value, str) and value.strip():
+                try:
+                    return self.tokenizer.encode(value, add_special_tokens=False)
+                except Exception:
+                    return []
+
+        return []
