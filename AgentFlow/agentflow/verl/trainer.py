@@ -345,7 +345,10 @@ class AgentFlowTrainer(RayPPOTrainer):
                 metrics.update(critic_output_metrics)
 
             # implement critic warmup
-            if self.config.trainer.critic_warmup <= self.global_steps:
+            smoke_skip_actor = os.environ.get("AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE", "0") == "1"
+            if smoke_skip_actor:
+                metrics["agent_mode/smoke_skip_actor_update"] = 1
+            elif self.config.trainer.critic_warmup <= self.global_steps:
                 # update actor
                 with _timer("update_actor", timing_raw):
                     batch.meta_info["multi_turn"] = self.config.actor_rollout_ref.rollout.multi_turn.enable
