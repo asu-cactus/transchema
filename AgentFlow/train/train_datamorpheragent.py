@@ -76,8 +76,20 @@ def set_env_vars(env_section: dict):
     # Explicitly set to avoid Ray worker env drift.
     os.environ["VLLM_USE_V1"] = "1"
     print("  VLLM_USE_V1=1")
-    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
-    print(f"  PYTORCH_CUDA_ALLOC_CONF={os.environ['PYTORCH_CUDA_ALLOC_CONF']}")
+    # vLLM CuMem allocator is incompatible with expandable_segments:True.
+    # Keep allocator config conservative and vLLM-safe.
+    alloc_conf = os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "")
+    if "expandable_segments:True" in alloc_conf:
+        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+        print(
+            "  Replaced incompatible PYTORCH_CUDA_ALLOC_CONF "
+            f"'{alloc_conf}' -> '{os.environ['PYTORCH_CUDA_ALLOC_CONF']}'"
+        )
+    elif not alloc_conf:
+        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+        print(f"  PYTORCH_CUDA_ALLOC_CONF={os.environ['PYTORCH_CUDA_ALLOC_CONF']}")
+    else:
+        print(f"  PYTORCH_CUDA_ALLOC_CONF={alloc_conf}")
 
     # ------------------------------------------------------------------ #
     # CHPC/ROCm compatibility:
