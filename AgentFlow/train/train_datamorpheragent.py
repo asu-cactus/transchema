@@ -76,6 +76,8 @@ def set_env_vars(env_section: dict):
     # Explicitly set to avoid Ray worker env drift.
     os.environ["VLLM_USE_V1"] = "1"
     print("  VLLM_USE_V1=1")
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+    print(f"  PYTORCH_CUDA_ALLOC_CONF={os.environ['PYTORCH_CUDA_ALLOC_CONF']}")
 
     # ------------------------------------------------------------------ #
     # CHPC/ROCm compatibility:
@@ -165,6 +167,10 @@ def _default_smoke_overrides() -> list[str]:
         "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
         "actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1",
         "actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1",
+        "data.max_prompt_length=4096",
+        "data.max_response_length=512",
+        "actor_rollout_ref.rollout.gpu_memory_utilization=0.20",
+        "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",
         "trainer.total_epochs=1",
         "trainer.save_freq=999999",
         "trainer.test_freq=999999",

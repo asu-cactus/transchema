@@ -61,7 +61,7 @@ python_args:
   actor_rollout_ref.rollout.tensor_model_parallel_size: '${ROLLOUT_TP_SIZE}'
   trainer.n_gpus_per_node: '${N_GPUS}'
 
-  # Batch and rollout sizing for single Blackwell B6000 Pro (192GB)
+  # Batch and rollout sizing for single GPU (observed ~95GB usable on current node)
   # 4 tasks × 4 rollouts = 16 sequences per step (GRPO works fine with this)
   # With 192GB we could go larger, but keep conservative for stability
   data.train_batch_size: 4
@@ -73,10 +73,10 @@ python_args:
   actor_rollout_ref.rollout.multi_turn.format: 'hermes'
   actor_rollout_ref.model.path: '${BASE_MODEL}'
 
-  # Prompt length: source table schemas + samples can be long; 18 k is safe
-  data.max_prompt_length: 18432
-  # Response length: generated Python pipelines can be several hundred lines
-  data.max_response_length: 4096
+  # Start conservative to avoid OOM; increase only after stable runs.
+  data.max_prompt_length: 8192
+  # Generated pipelines are usually <512 tokens in smoke/early training.
+  data.max_response_length: 1024
   data.truncation: 'truncate'
 
   # Run a validation pass before the first training step to get a baseline score
@@ -92,12 +92,12 @@ python_args:
   actor_rollout_ref.actor.clip_ratio_high: 0.3
   actor_rollout_ref.model.enable_gradient_checkpointing: True
   actor_rollout_ref.actor.fsdp_config.param_offload: False
-  actor_rollout_ref.actor.fsdp_config.optimizer_offload: False
+  actor_rollout_ref.actor.fsdp_config.optimizer_offload: True
 
   # vLLM rollout server
   actor_rollout_ref.rollout.name: 'vllm'
-  # With 192GB we can use more of the GPU for vLLM KV cache
-  actor_rollout_ref.rollout.gpu_memory_utilization: 0.75
+  # Leave more headroom for actor/optimizer state to prevent CUDA OOM.
+  actor_rollout_ref.rollout.gpu_memory_utilization: 0.35
 
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu: 2
   actor_rollout_ref.ref.fsdp_config.param_offload: False
