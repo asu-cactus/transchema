@@ -22,6 +22,7 @@ import time
 import signal
 import argparse
 import subprocess
+import importlib.util
 from pathlib import Path
 
 
@@ -168,6 +169,52 @@ def restart_ray_if_available():
         print("Ray restarted successfully.")
 
 
+def ensure_runtime_dependencies(auto_install: bool = True):
+    """
+    Preflight-check runtime deps that otherwise fail deep inside Ray workers.
+    """
+    missing = []
+    if importlib.util.find_spec("flash_attn") is None:
+        missing.append("flash_attn")
+
+    if not missing:
+        print("Runtime dependency check: OK")
+        return
+
+    print(f"Missing runtime dependencies: {missing}")
+    if not auto_install:
+        raise RuntimeError(
+            "Missing runtime dependencies. Install manually, e.g.:\n"
+            "  python -m pip install flash-attn --no-build-isolation"
+        )
+
+    # Try automatic install in the active venv.
+    print("Attempting automatic install of flash-attn ...")
+    install_cmd = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "flash-attn",
+        "--no-build-isolation",
+    ]
+    result = subprocess.run(
+        install_cmd,
+        env=os.environ,
+        cwd=str(AGENTFLOW_ROOT),
+        check=False,
+        text=True,
+    )
+    if result.returncode != 0 or importlib.util.find_spec("flash_attn") is None:
+        raise RuntimeError(
+            "Failed to install flash-attn automatically.\n"
+            "Please run manually in your rl_env:\n"
+            "  python -m pip install flash-attn --no-build-isolation\n"
+            "If build fails on CHPC, load CUDA toolchain modules and retry."
+        )
+    print("flash-attn installed successfully.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Launch DataMorpher RL fine-tuning (rollout server + verl trainer)."
@@ -181,6 +228,11 @@ def main():
         "--skip_data_prep",
         action="store_true",
         help="Skip automatic data preparation even if parquet files are missing.",
+    )
+    parser.add_argument(
+        "--skip_dep_check",
+        action="store_true",
+        help="Skip runtime dependency preflight (flash-attn check/install).",
     )
     # Any remaining args are forwarded to agentflow.verl as Hydra overrides
     args, overrides = parser.parse_known_args()
@@ -200,6 +252,8 @@ def main():
     # ------------------------------------------------------------------ #
     set_env_vars(config.get("env", {}))
     restart_ray_if_available()
+    if not args.skip_dep_check:
+        ensure_runtime_dependencies(auto_install=True)
 
     # ------------------------------------------------------------------ #
     # 3. Prepare data (if needed)
