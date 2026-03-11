@@ -26,7 +26,23 @@ from typing import Any, Optional
 from filelock import FileLock
 
 from agentflow import Trainer, LitAgent, NamedResources, LLM, reward, configure_logger
-from agentflow.solver import construct_solver
+
+# Compatibility shim:
+# Some environments install the outer `agentflow` package (Trainer/LitAgent/etc.)
+# but keep solver under `agentflow.agentflow.solver` with inner absolute imports
+# like `agentflow.models.*`. We alias these namespaces before importing solver.
+try:
+    from agentflow.solver import construct_solver
+except ModuleNotFoundError:
+    import agentflow.agentflow.models as _af_models
+    import agentflow.agentflow.engine as _af_engine
+    import agentflow.agentflow.tools as _af_tools
+
+    sys.modules.setdefault("agentflow.models", _af_models)
+    sys.modules.setdefault("agentflow.engine", _af_engine)
+    sys.modules.setdefault("agentflow.tools", _af_tools)
+
+    from agentflow.agentflow.solver import construct_solver
 
 configure_logger()
 

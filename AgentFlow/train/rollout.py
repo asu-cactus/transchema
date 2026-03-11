@@ -9,7 +9,18 @@ import sympy
 from autogen_ext.tools.mcp import StdioServerParams
 from agentflow import Trainer, LitAgent, NamedResources, LLM, reward, configure_logger, DevTaskLoader
 
-from agentflow.solver import construct_solver
+try:
+    from agentflow.solver import construct_solver
+except ModuleNotFoundError:
+    import agentflow.agentflow.models as _af_models
+    import agentflow.agentflow.engine as _af_engine
+    import agentflow.agentflow.tools as _af_tools
+
+    sys.modules.setdefault("agentflow.models", _af_models)
+    sys.modules.setdefault("agentflow.engine", _af_engine)
+    sys.modules.setdefault("agentflow.tools", _af_tools)
+
+    from agentflow.agentflow.solver import construct_solver
 from datetime import datetime
 import uuid, json
 from filelock import FileLock
