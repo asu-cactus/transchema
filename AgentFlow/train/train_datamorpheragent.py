@@ -70,6 +70,21 @@ def set_env_vars(env_section: dict):
         Path(hf_cache).mkdir(parents=True, exist_ok=True)
         print(f"  HF_HOME={hf_cache}")
 
+    # ------------------------------------------------------------------ #
+    # CHPC/ROCm compatibility:
+    # veRL raises if ROCR_VISIBLE_DEVICES is set together with
+    # CUDA_VISIBLE_DEVICES or HIP_VISIBLE_DEVICES.
+    # ------------------------------------------------------------------ #
+    cuda_set = bool(os.environ.get("CUDA_VISIBLE_DEVICES"))
+    hip_set = bool(os.environ.get("HIP_VISIBLE_DEVICES"))
+    rocr_set = "ROCR_VISIBLE_DEVICES" in os.environ
+    if (cuda_set or hip_set) and rocr_set:
+        removed = os.environ.pop("ROCR_VISIBLE_DEVICES", None)
+        print(
+            "  Removed ROCR_VISIBLE_DEVICES because CUDA/HIP visibility is set "
+            f"(old value: {removed})"
+        )
+
 
 def maybe_prepare_data(config: dict):
     """
