@@ -49,6 +49,10 @@ configure_logger()
 # ---------------------------------------------------------------------------
 # Path setup so validation/ and eval_score/ are importable
 # ---------------------------------------------------------------------------
+_AGENTFLOW_ROOT = str(Path(__file__).resolve().parents[1])
+if _AGENTFLOW_ROOT not in sys.path:
+    sys.path.insert(0, _AGENTFLOW_ROOT)
+
 _REPO_ROOT = str(Path(__file__).resolve().parents[2])
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
@@ -498,9 +502,15 @@ class DataMorpherRollout(LitAgent):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    from util.parse_config import get_values_from_yaml
-    from util.port_cleanup import kill_process_on_port
-    from util.get_pub_ip import get_public_ip_with_fallback
+    try:
+        from util.parse_config import get_values_from_yaml
+        from util.port_cleanup import kill_process_on_port
+        from util.get_pub_ip import get_public_ip_with_fallback
+    except ModuleNotFoundError:
+        # Fallback for environments where AgentFlow root is imported as a package.
+        from AgentFlow.util.parse_config import get_values_from_yaml
+        from AgentFlow.util.port_cleanup import kill_process_on_port
+        from AgentFlow.util.get_pub_ip import get_public_ip_with_fallback
     from pprint import pprint
 
     server_public_ip = get_public_ip_with_fallback()

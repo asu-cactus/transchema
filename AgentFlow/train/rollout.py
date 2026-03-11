@@ -2,7 +2,9 @@ import math
 import os
 import string
 import re
+import sys
 from typing import Any, Optional
+from pathlib import Path
 
 import sympy
 
@@ -29,6 +31,10 @@ import asyncio
 from utils import compute_score
 
 configure_logger()
+
+_AGENTFLOW_ROOT = str(Path(__file__).resolve().parents[1])
+if _AGENTFLOW_ROOT not in sys.path:
+    sys.path.insert(0, _AGENTFLOW_ROOT)
 
 
 @reward
@@ -371,9 +377,14 @@ class Rollout(LitAgent):
         await self._solve_and_evaluate(self.validation_agent, task, self.val_step_n, val)
 
 if __name__ == "__main__":
-    from util.parse_config import get_values_from_yaml
-    from util.port_cleanup import kill_process_on_port
-    from util.get_pub_ip import get_public_ip_with_fallback
+    try:
+        from util.parse_config import get_values_from_yaml
+        from util.port_cleanup import kill_process_on_port
+        from util.get_pub_ip import get_public_ip_with_fallback
+    except ModuleNotFoundError:
+        from AgentFlow.util.parse_config import get_values_from_yaml
+        from AgentFlow.util.port_cleanup import kill_process_on_port
+        from AgentFlow.util.get_pub_ip import get_public_ip_with_fallback
     from pprint import pprint
 
     server_public_ip = get_public_ip_with_fallback()
