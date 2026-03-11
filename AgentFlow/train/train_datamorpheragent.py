@@ -85,6 +85,13 @@ def set_env_vars(env_section: dict):
             f"(old value: {removed})"
         )
 
+    print(
+        "  GPU env => "
+        f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')} "
+        f"HIP_VISIBLE_DEVICES={os.environ.get('HIP_VISIBLE_DEVICES')} "
+        f"ROCR_VISIBLE_DEVICES={os.environ.get('ROCR_VISIBLE_DEVICES')}"
+    )
+
 
 def maybe_prepare_data(config: dict):
     """
@@ -134,6 +141,33 @@ def build_verl_command(python_args: dict, overrides: list) -> list:
     return command
 
 
+def restart_ray_if_available():
+    """
+    Restart local Ray so workers inherit the sanitized env from this launcher.
+    This avoids stale env vars from previously started Ray daemons.
+    """
+    print("\nRefreshing Ray runtime environment ...")
+    subprocess.run(
+        ["ray", "stop", "--force"],
+        check=False,
+        env=os.environ,
+        cwd=str(AGENTFLOW_ROOT),
+    )
+    start = subprocess.run(
+        ["ray", "start", "--head"],
+        check=False,
+        env=os.environ,
+        cwd=str(AGENTFLOW_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    if start.returncode != 0:
+        print("[WARN] ray start --head failed; continuing and letting Ray auto-init.")
+        print(start.stderr[-500:])
+    else:
+        print("Ray restarted successfully.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Launch DataMorpher RL fine-tuning (rollout server + verl trainer)."
@@ -165,6 +199,7 @@ def main():
     # 2. Set environment variables
     # ------------------------------------------------------------------ #
     set_env_vars(config.get("env", {}))
+    restart_ray_if_available()
 
     # ------------------------------------------------------------------ #
     # 3. Prepare data (if needed)
