@@ -28,6 +28,7 @@ from pathlib import Path
 CONFIG_FILE = "train/datamorpherconfig.yaml"
 ROLLOUT_SCRIPT = "train/datamorpherrollout.py"
 DATA_PREP_SCRIPT = "train/prepare_rl_data.py"
+AGENTFLOW_ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_config(config_path: str) -> dict:
@@ -38,16 +39,35 @@ def load_config(config_path: str) -> dict:
     return config
 
 
+def _resolve_path(path_str: str) -> str:
+    """Resolve relative paths against AgentFlow root for Ray worker safety."""
+    expanded = os.path.expandvars(path_str)
+    p = Path(expanded)
+    if p.is_absolute():
+        return str(p)
+    return str((AGENTFLOW_ROOT / p).resolve())
+
+
 def set_env_vars(env_section: dict):
     print("Setting environment variables...")
     for key, value in env_section.items():
         os.environ[key] = str(value)
         print(f"  {key}={value}")
-    
-    # Ensure HuggingFace uses the correct scratch path
+
+    # Normalize path-like env vars to absolute paths (Ray workers may run elsewhere).
+    for path_key in ("BASE_DATA_DIR", "CHECKPOINT_DIR", "ROLLOUT_DIR", "HF_HOME"):
+        val = os.environ.get(path_key)
+        if val:
+            abs_val = _resolve_path(val)
+            os.environ[path_key] = abs_val
+            print(f"  {path_key}={abs_val}")
+            Path(abs_val).mkdir(parents=True, exist_ok=True)
+
+    # Ensure HuggingFace cache exists even if not provided in YAML.
     if "HF_HOME" not in os.environ:
-        hf_cache = "/scratch/general/vast/u1592362/hf_cache"
+        hf_cache = _resolve_path("/scratch/general/vast/u1592362/hf_cache")
         os.environ["HF_HOME"] = hf_cache
+        Path(hf_cache).mkdir(parents=True, exist_ok=True)
         print(f"  HF_HOME={hf_cache}")
 
 
@@ -56,8 +76,9 @@ def maybe_prepare_data(config: dict):
     Run prepare_rl_data.py if the parquet files don't exist yet.
     Reads BASE_DATA_DIR from config env to resolve the expected paths.
     """
-    base_data_dir = os.path.expandvars(
-        config.get("env", {}).get("BASE_DATA_DIR", "train/data")
+    base_data_dir = os.environ.get(
+        "BASE_DATA_DIR",
+        _resolve_path(config.get("env", {}).get("BASE_DATA_DIR", "train/data")),
     )
     train_parquet = os.path.join(base_data_dir, "train", "datamorphertrain.parquet")
     val_parquet = os.path.join(base_data_dir, "val", "datamorpherval.parquet")
@@ -78,6 +99,7 @@ def maybe_prepare_data(config: dict):
         ],
         check=True,
         env=os.environ,
+        cwd=str(AGENTFLOW_ROOT),
     )
     if result.returncode != 0:
         print("ERROR: Data preparation failed.")
@@ -143,6 +165,7 @@ def main():
     rollout_proc = subprocess.Popen(
         [sys.executable, ROLLOUT_SCRIPT],
         env=os.environ,
+        cwd=str(AGENTFLOW_ROOT),
     )
     print(f"  Rollout server PID: {rollout_proc.pid}")
 
@@ -160,7 +183,9 @@ def main():
 
     trainer_proc = None
     try:
-        trainer_proc = subprocess.run(command, check=True, env=os.environ)
+        trainer_proc = subprocess.run(
+            command, check=True, env=os.environ, cwd=str(AGENTFLOW_ROOT)
+        )
     except subprocess.CalledProcessError as exc:
         print(f"\nERROR: verl trainer exited with code {exc.returncode}")
         sys.exit(exc.returncode)
