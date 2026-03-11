@@ -696,10 +696,12 @@ class AgentModeDaemon:
 
         print(f"[STEP-WISE DEBUG]: valid response trace length in this training step is [{valid_samples}/{all_samples_num}]")
         if valid_samples == 0:
-            return None, {
-                "agent_mode/n_trunc_sample_because_of_response": n_trunc_sample_because_of_response,
-                "agent_mode/n_sample_to_train": 0,
-            }
+            raise RuntimeError(
+                "No valid response traces available for training batch creation. "
+                f"valid_samples={valid_samples}, all_samples={all_samples_num}, "
+                f"completed_rollouts={len(self._completed_rollouts)}, total_queued={self._total_tasks_queued}. "
+                "This usually means rollouts completed but produced empty prompt/response token_ids."
+            )
 
         # CHECK
         if not input_ids_list:

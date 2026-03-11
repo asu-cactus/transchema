@@ -184,6 +184,12 @@ class AgentFlowTrainer(RayPPOTrainer):
                     max_response_length=self.config.data.max_response_length,
                     device=gen_batch.batch["fake_ids"].device,
                 )
+                if batch is None:
+                    raise RuntimeError(
+                        "AgentModeDaemon returned no training batch (batch=None). "
+                        f"agent_metrics={agent_metrics}. "
+                        "Check rollout outputs for empty prompt/response token_ids."
+                    )
                 metrics.update(agent_metrics)
                 self.agent_mode_daemon.clear_data_and_server()
                 self.async_rollout_manager.sleep()
