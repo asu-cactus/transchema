@@ -173,23 +173,40 @@ def ensure_runtime_dependencies(auto_install: bool = True):
     """
     Preflight-check runtime deps that otherwise fail deep inside Ray workers.
     """
-    missing = []
-    if importlib.util.find_spec("flash_attn") is None:
-        missing.append("flash_attn")
+    def _can_import_flash_attn() -> tuple[bool, str]:
+        if importlib.util.find_spec("flash_attn") is None:
+            return False, "not installed"
+        try:
+            importlib.import_module("flash_attn")
+            return True, ""
+        except Exception as exc:
+            return False, str(exc)
 
-    if not missing:
-        print("Runtime dependency check: OK")
+    ok, err = _can_import_flash_attn()
+    if ok:
+        print("Runtime dependency check: flash-attn OK")
         return
 
-    print(f"Missing runtime dependencies: {missing}")
+    print(f"flash-attn not usable: {err}")
     if not auto_install:
         raise RuntimeError(
-            "Missing runtime dependencies. Install manually, e.g.:\n"
-            "  python -m pip install flash-attn --no-build-isolation"
+            "flash-attn is required by verl but is unavailable.\n"
+            "Install manually in rl_env:\n"
+            "  python -m pip install flash-attn --no-build-isolation --no-binary flash-attn\n"
         )
 
-    # Try automatic install in the active venv.
-    print("Attempting automatic install of flash-attn ...")
+    # If a broken wheel is installed (e.g., GLIBC mismatch), remove it first.
+    if "GLIBC_" in err or "cannot open shared object file" in err:
+        print("Detected binary incompatibility in flash-attn; uninstalling broken wheel ...")
+        subprocess.run(
+            [sys.executable, "-m", "pip", "uninstall", "-y", "flash-attn"],
+            env=os.environ,
+            cwd=str(AGENTFLOW_ROOT),
+            check=False,
+        )
+
+    # Build/install in current environment. --no-binary helps avoid incompatible prebuilt wheels.
+    print("Attempting flash-attn installation from source-compatible path ...")
     install_cmd = [
         sys.executable,
         "-m",
@@ -197,6 +214,8 @@ def ensure_runtime_dependencies(auto_install: bool = True):
         "install",
         "flash-attn",
         "--no-build-isolation",
+        "--no-binary",
+        "flash-attn",
     ]
     result = subprocess.run(
         install_cmd,
@@ -205,14 +224,18 @@ def ensure_runtime_dependencies(auto_install: bool = True):
         check=False,
         text=True,
     )
-    if result.returncode != 0 or importlib.util.find_spec("flash_attn") is None:
+    ok, err = _can_import_flash_attn()
+    if result.returncode != 0 or not ok:
         raise RuntimeError(
-            "Failed to install flash-attn automatically.\n"
-            "Please run manually in your rl_env:\n"
-            "  python -m pip install flash-attn --no-build-isolation\n"
-            "If build fails on CHPC, load CUDA toolchain modules and retry."
+            "Failed to install usable flash-attn.\n"
+            "Current error: "
+            f"{err}\n\n"
+            "On CHPC, load CUDA toolchain modules and retry, e.g.:\n"
+            "  module load cuda\n"
+            "  python -m pip install flash-attn --no-build-isolation --no-binary flash-attn\n"
+            "If cluster GLIBC/toolchain blocks this build, use a newer node/container."
         )
-    print("flash-attn installed successfully.")
+    print("flash-attn installed and importable.")
 
 
 def main():
