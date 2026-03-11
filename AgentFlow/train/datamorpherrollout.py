@@ -26,7 +26,7 @@ from typing import Any, Optional
 from filelock import FileLock
 
 from agentflow import Trainer, LitAgent, NamedResources, LLM, reward, configure_logger
-from agentflow.agentflow.solver import construct_solver
+from agentflow.solver import construct_solver
 
 configure_logger()
 
