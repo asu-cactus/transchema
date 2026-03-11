@@ -184,6 +184,7 @@ def _default_smoke_overrides() -> list[str]:
         "actor_rollout_ref.rollout.gpu_memory_utilization=0.20",
         "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",
         "trainer.total_epochs=1",
+        "trainer.critic_warmup=999999",
         "trainer.save_freq=999999",
         "trainer.test_freq=999999",
         "trainer.val_before_train=False",
