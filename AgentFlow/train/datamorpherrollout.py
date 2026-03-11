@@ -205,6 +205,66 @@ def _extract_python_code(text: str) -> Optional[str]:
     return None
 
 
+def _normalize_and_validate_task_payload(task: Any) -> dict:
+    """
+    Validate rollout task payload strictly.
+
+    Fail fast on malformed tasks so training crashes with a clear root cause
+    instead of silently producing empty/invalid batches later.
+    """
+    if not isinstance(task, dict):
+        raise RuntimeError(f"Task is not a dict: got {type(task)}")
+
+    task_id = task.get("id", "unknown")
+    question = task.get("question", "")
+    if not isinstance(question, str) or not question.strip():
+        raise RuntimeError(f"[task_id={task_id}] Empty or missing 'question'.")
+
+    extra_info = task.get("extra_info", {})
+    if isinstance(extra_info, str):
+        try:
+            extra_info = json.loads(extra_info)
+        except Exception as exc:
+            raise RuntimeError(
+                f"[task_id={task_id}] extra_info is invalid JSON: {exc}"
+            ) from exc
+    if not isinstance(extra_info, dict):
+        raise RuntimeError(
+            f"[task_id={task_id}] extra_info must be dict, got {type(extra_info)}"
+        )
+
+    test_csv_paths = extra_info.get("test_csv_paths", [])
+    if not isinstance(test_csv_paths, list) or len(test_csv_paths) == 0:
+        raise RuntimeError(
+            f"[task_id={task_id}] Missing/empty extra_info.test_csv_paths"
+        )
+    for p in test_csv_paths:
+        if not isinstance(p, str) or not p.strip():
+            raise RuntimeError(
+                f"[task_id={task_id}] test_csv_paths contains invalid entry: {p!r}"
+            )
+        if not os.path.exists(p):
+            raise RuntimeError(f"[task_id={task_id}] test CSV does not exist: {p}")
+
+    target_csv_path = extra_info.get("target_csv_path", task.get("result", ""))
+    if not isinstance(target_csv_path, str) or not target_csv_path.strip():
+        raise RuntimeError(
+            f"[task_id={task_id}] Missing target CSV path in extra_info.target_csv_path/result"
+        )
+    if not os.path.exists(target_csv_path):
+        raise RuntimeError(
+            f"[task_id={task_id}] target CSV does not exist: {target_csv_path}"
+        )
+
+    return {
+        "task_id": task_id,
+        "question": question.strip(),
+        "extra_info": extra_info,
+        "test_csv_paths": test_csv_paths,
+        "target_csv_path": target_csv_path,
+    }
+
+
 # ---------------------------------------------------------------------------
 # AgentFlowRollout — wraps construct_solver for DataMorpher
 # ---------------------------------------------------------------------------
@@ -348,20 +408,17 @@ class DataMorpherRollout(LitAgent):
         step_n: int,
         val: bool = False,
     ):
-        extra_info = task.get("extra_info", {})
-        if isinstance(extra_info, str):
-            try:
-                extra_info = json.loads(extra_info)
-            except Exception:
-                extra_info = {}
-
-        test_csv_paths: list = extra_info.get("test_csv_paths", [])
-        target_csv_path: str = extra_info.get("target_csv_path", task.get("result", ""))
+        validated = _normalize_and_validate_task_payload(task)
+        extra_info = validated["extra_info"]
+        test_csv_paths: list = validated["test_csv_paths"]
+        target_csv_path: str = validated["target_csv_path"]
+        question: str = validated["question"]
+        task_id: str = validated["task_id"]
 
         generated_code = None
         result = {}
         try:
-            result = agent.solve(question=task["question"])
+            result = agent.solve(question=question)
 
             # Extract Python code from solver output
             for key in ("final_output", "direct_output", "base_output"):
@@ -385,15 +442,15 @@ class DataMorpherRollout(LitAgent):
 
         idx = extra_info.get("idx", task.get("id", "unknown"))
         print(
-            f"[DataMorpherRollout] id={task.get('id')}  reward={reward_value}  "
+            f"[DataMorpherRollout] id={task_id}  reward={reward_value}  "
             f"code_found={'yes' if generated_code else 'no'}"
         )
 
         rollout_data = {
             "step": step_n,
             "idx": idx,
-            "id": task.get("id", ""),
-            "prompt": task["question"],
+            "id": task_id,
+            "prompt": question,
             "model": agent.llm_engine,
             "target_csv": target_csv_path,
             "generated_code": generated_code or "",

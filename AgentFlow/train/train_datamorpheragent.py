@@ -24,6 +24,7 @@ import argparse
 import subprocess
 import importlib.util
 from pathlib import Path
+import json
 
 
 CONFIG_FILE = "train/datamorpherconfig.yaml"
@@ -147,6 +148,116 @@ def build_verl_command(python_args: dict, overrides: list) -> list:
     return command
 
 
+def _expand_cfg_value(value: str) -> str:
+    """Expand env vars in config values like ${BASE_DATA_DIR}/..."""
+    return os.path.expandvars(value)
+
+
+def _default_smoke_overrides() -> list[str]:
+    """
+    Tiny run to surface runtime errors quickly.
+    Keeps GRPO wiring intact but minimizes workload.
+    """
+    return [
+        "data.train_batch_size=1",
+        "actor_rollout_ref.rollout.n=1",
+        "actor_rollout_ref.actor.ppo_mini_batch_size=1",
+        "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
+        "actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1",
+        "actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1",
+        "trainer.total_epochs=1",
+        "trainer.save_freq=999999",
+        "trainer.test_freq=999999",
+        "trainer.val_before_train=False",
+        "trainer.logger=['console']",
+    ]
+
+
+def _parse_extra_info(extra_info: object) -> dict:
+    if isinstance(extra_info, dict):
+        return extra_info
+    if isinstance(extra_info, str):
+        try:
+            parsed = json.loads(extra_info)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def run_preflight_checks(config: dict):
+    """
+    Fast deterministic checks before launching rollout/training.
+    Catches common failures in seconds.
+    """
+    print("\nRunning preflight checks ...")
+
+    # 1) Verify parquet paths resolve and exist
+    py_args = config.get("python_args", {})
+    train_file = _expand_cfg_value(str(py_args.get("data.train_files", "")))
+    val_file = _expand_cfg_value(str(py_args.get("data.val_files", "")))
+    if not train_file or not val_file:
+        raise RuntimeError("Missing data.train_files or data.val_files in config.")
+    if not os.path.exists(train_file):
+        raise FileNotFoundError(f"Train parquet not found: {train_file}")
+    if not os.path.exists(val_file):
+        raise FileNotFoundError(f"Val parquet not found: {val_file}")
+    print(f"  OK parquet paths:\n    train={train_file}\n    val={val_file}")
+
+    # 2) Load one example via datasets API (same path as verl)
+    try:
+        import datasets  # type: ignore
+    except Exception as exc:
+        raise RuntimeError(f"Failed to import datasets: {exc}") from exc
+
+    train_ds = datasets.load_dataset("parquet", data_files=train_file)["train"]
+    val_ds = datasets.load_dataset("parquet", data_files=val_file)["train"]
+    if len(train_ds) == 0 or len(val_ds) == 0:
+        raise RuntimeError(
+            f"Empty dataset detected: train={len(train_ds)} val={len(val_ds)}"
+        )
+    print(f"  OK dataset sizes: train={len(train_ds)} val={len(val_ds)}")
+
+    row = train_ds[0]
+    question = str(row.get("question", "")).strip()
+    if not question:
+        raise RuntimeError("First train row has empty 'question'.")
+
+    # 3) Validate extra_info payload + referenced CSV files
+    extra_info = _parse_extra_info(row.get("extra_info", {}))
+    test_csv_paths = extra_info.get("test_csv_paths", [])
+    target_csv_path = extra_info.get("target_csv_path")
+    if not isinstance(test_csv_paths, list) or not test_csv_paths:
+        raise RuntimeError(
+            "extra_info.test_csv_paths missing/empty in first train row."
+        )
+    if not target_csv_path:
+        raise RuntimeError("extra_info.target_csv_path missing in first train row.")
+    missing = [p for p in test_csv_paths if not os.path.exists(p)]
+    if missing:
+        raise FileNotFoundError(f"Missing test CSV paths: {missing[:3]}")
+    if not os.path.exists(target_csv_path):
+        raise FileNotFoundError(f"Missing target CSV path: {target_csv_path}")
+    print("  OK sample task payload and referenced CSV files.")
+
+    # 4) Verify flash_attn.bert_padding signature path used by verl
+    try:
+        import torch  # type: ignore
+        from flash_attn.bert_padding import pad_input  # type: ignore
+    except Exception as exc:
+        raise RuntimeError(f"Failed to import flash_attn.bert_padding.pad_input: {exc}") from exc
+
+    # Minimal call that matches verl keyword style.
+    hidden = torch.randn(3, 7, dtype=torch.float32)
+    idx = torch.tensor([0, 1, 2], dtype=torch.long)
+    out = pad_input(hidden_states=hidden, indices=idx, batch_size=1, seq_len=3)
+    if out is None:
+        raise RuntimeError("pad_input returned None for smoke input.")
+    print("  OK flash_attn.bert_padding.pad_input(hidden_states=...)")
+
+    print("Preflight checks passed.")
+
+
 def restart_ray_if_available():
     """
     Restart local Ray so workers inherit the sanitized env from this launcher.
@@ -262,6 +373,16 @@ def main():
         action="store_true",
         help="Skip runtime dependency preflight (flash-attn check/install).",
     )
+    parser.add_argument(
+        "--preflight_only",
+        action="store_true",
+        help="Run fast preflight checks and exit.",
+    )
+    parser.add_argument(
+        "--smoke_test",
+        action="store_true",
+        help="Run a tiny 1-epoch smoke training to fail fast.",
+    )
     # Any remaining args are forwarded to agentflow.verl as Hydra overrides
     args, overrides = parser.parse_known_args()
 
@@ -290,6 +411,14 @@ def main():
         maybe_prepare_data(config)
 
     # ------------------------------------------------------------------ #
+    # 3b. Fast preflight checks
+    # ------------------------------------------------------------------ #
+    run_preflight_checks(config)
+    if args.preflight_only:
+        print("\nPreflight-only mode complete.")
+        return
+
+    # ------------------------------------------------------------------ #
     # 4. Start rollout server in background
     # ------------------------------------------------------------------ #
     agentflow_port = config.get("python_args", {}).get("agentflow.port", 9999)
@@ -307,7 +436,16 @@ def main():
     # ------------------------------------------------------------------ #
     # 5. Launch verl trainer
     # ------------------------------------------------------------------ #
-    command = build_verl_command(config.get("python_args", {}), overrides)
+    effective_overrides = list(overrides)
+    if args.smoke_test:
+        present_keys = {ov.split("=", 1)[0] for ov in effective_overrides if "=" in ov}
+        for ov in _default_smoke_overrides():
+            key = ov.split("=", 1)[0]
+            if key not in present_keys:
+                effective_overrides.append(ov)
+        print("\nSmoke-test mode enabled (tiny run overrides applied).")
+
+    command = build_verl_command(config.get("python_args", {}), effective_overrides)
 
     print(f"\nLaunching verl trainer:")
     print("  " + " ".join(str(c) for c in command))
