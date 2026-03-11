@@ -3,6 +3,7 @@
 # Run via:  python train/train_datamorpheragent.py
 
 env:
+  HF_HOME: "/scratch/general/vast/u1592362/hf_cache"
   # No OpenAI key needed — all components run locally on the vLLM-served Qwen
   # OPENAI_API_KEY: ""
   CUDA_VISIBLE_DEVICES: '0'
@@ -42,6 +43,11 @@ env:
 
   # Timeout per rollout in seconds (pipeline code gen + execution can take ~30-60 s)
   AGENT_MAX_TIMEOUT: 500
+
+  # Paths to store checkpoints and rollout logs. Use scratch space if available.
+  # We use env vars so the launch script can easily redirect these.
+  CHECKPOINT_DIR: "/scratch/general/vast/u1592362/AgentFlow_Checkpoints"
+  ROLLOUT_DIR: "/scratch/general/vast/u1592362/AgentFlow_Rollouts"
 
 python_args:
   agentflow.port: 9999
@@ -104,6 +110,8 @@ python_args:
   trainer.project_name: '${PROJECT_NAME}'
   trainer.experiment_name: '${EXPERIMENT_NAME}'
   trainer.nnodes: 1
+  trainer.default_local_dir: '${CHECKPOINT_DIR}'
+  trainer.default_hdfs_dir: '${CHECKPOINT_DIR}'
 
   # Save a checkpoint every 2 epochs; validate every 2 epochs
   trainer.save_freq: 2

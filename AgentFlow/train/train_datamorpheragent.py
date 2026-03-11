@@ -43,6 +43,12 @@ def set_env_vars(env_section: dict):
     for key, value in env_section.items():
         os.environ[key] = str(value)
         print(f"  {key}={value}")
+    
+    # Ensure HuggingFace uses the correct scratch path
+    if "HF_HOME" not in os.environ:
+        hf_cache = "/scratch/general/vast/u1592362/hf_cache"
+        os.environ["HF_HOME"] = hf_cache
+        print(f"  HF_HOME={hf_cache}")
 
 
 def maybe_prepare_data(config: dict):

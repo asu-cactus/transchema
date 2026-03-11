@@ -275,7 +275,8 @@ class DataMorpherRollout(LitAgent):
         self.val_step_n: Optional[int] = None
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        self.base_rollout_dir = f"./rollout_data/{self.server_public_ip}/{exp_name}_{timestamp}"
+        base_dir = os.environ.get("ROLLOUT_DIR", f"./rollout_data/{self.server_public_ip}")
+        self.base_rollout_dir = os.path.join(base_dir, f"{exp_name}_{timestamp}")
         self.rollout_dir: Optional[str] = None
         self.train_rollout_dir: Optional[str] = None
         self.val_rollout_dir: Optional[str] = None
@@ -533,6 +534,10 @@ if __name__ == "__main__":
     trainer = Trainer(n_workers=config_dict["n_workers"])
     agent = DataMorpherRollout(
         server_public_ip=server_public_ip,
-        **{k: v for k, v in config_dict.items() if k not in ("n_workers", "port")},
+        **{
+            k: v
+            for k, v in config_dict.items()
+            if k not in ("n_workers", "port")
+        },
     )
     trainer.fit(agent, f"http://localhost:{config_dict['port']}/")
