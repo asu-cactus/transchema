@@ -461,7 +461,9 @@ def main():
     effective_overrides = list(overrides)
     if args.smoke_test:
         os.environ["AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE"] = "1"
+        os.environ.setdefault("AGENTFLOW_SMOKE_MAX_STEPS", "2")
         print("  AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE=1")
+        print(f"  AGENTFLOW_SMOKE_MAX_STEPS={os.environ['AGENTFLOW_SMOKE_MAX_STEPS']}")
         present_keys = {ov.split("=", 1)[0] for ov in effective_overrides if "=" in ov}
         for ov in _default_smoke_overrides():
             key = ov.split("=", 1)[0]

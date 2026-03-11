@@ -458,6 +458,17 @@ class AgentFlowTrainer(RayPPOTrainer):
 
         # add tqdm
         progress_bar = tqdm(total=self.total_training_steps, initial=self.global_steps, desc="Training Progress")
+        smoke_max_steps = None
+        smoke_max_steps_env = os.environ.get("AGENTFLOW_SMOKE_MAX_STEPS", "").strip()
+        if smoke_max_steps_env:
+            try:
+                parsed = int(smoke_max_steps_env)
+                if parsed > 0:
+                    smoke_max_steps = parsed
+                    print(f"Smoke mode: limiting training to {smoke_max_steps} steps.")
+            except ValueError:
+                print(f"[WARN] Invalid AGENTFLOW_SMOKE_MAX_STEPS={smoke_max_steps_env}; ignoring.")
+        smoke_step_counter = 0
 
         # we start from step 1
         self.global_steps += 1
@@ -499,6 +510,17 @@ class AgentFlowTrainer(RayPPOTrainer):
                 )
 
                 logger.log(data=metrics, step=self.global_steps)
+                smoke_step_counter += 1
+                if smoke_max_steps is not None and smoke_step_counter >= smoke_max_steps:
+                    pprint(
+                        f"Smoke max steps reached ({smoke_step_counter}/{smoke_max_steps}). "
+                        "Exiting early."
+                    )
+                    progress_bar.close()
+                    pprint("Flush the logger...")
+                    del logger
+                    pprint(f"Smoke run finished at step {self.global_steps}.")
+                    return
 
                 if is_last_step:
                     pprint(f"Final validation metrics: {last_val_metrics}")
