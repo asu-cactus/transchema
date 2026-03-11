@@ -71,6 +71,11 @@ def set_env_vars(env_section: dict):
         Path(hf_cache).mkdir(parents=True, exist_ok=True)
         print(f"  HF_HOME={hf_cache}")
 
+    # vLLM 0.9.x + this AgentFlow async path expects V1 engine mode.
+    # Explicitly set to avoid Ray worker env drift.
+    os.environ["VLLM_USE_V1"] = "1"
+    print("  VLLM_USE_V1=1")
+
     # ------------------------------------------------------------------ #
     # CHPC/ROCm compatibility:
     # veRL raises if ROCR_VISIBLE_DEVICES is set together with
