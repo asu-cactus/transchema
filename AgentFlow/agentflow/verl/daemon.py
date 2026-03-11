@@ -622,6 +622,34 @@ class AgentModeDaemon:
                 }
                 for t in rollout.triplets
             ]
+            if not any(len(x["prompt_ids"]) + len(x["response_ids"]) > 0 for x in trace_list):
+                question_text = str(original_sample.get("question", "")).strip()
+                rollout_text = self._extract_rollout_text(rollout)
+                prompt_ids = []
+                response_ids = []
+                if question_text:
+                    try:
+                        prompt_ids = self.tokenizer.encode(question_text, add_special_tokens=False)
+                    except Exception:
+                        prompt_ids = []
+                if rollout_text:
+                    try:
+                        response_ids = self.tokenizer.encode(rollout_text, add_special_tokens=False)
+                    except Exception:
+                        response_ids = []
+                if not response_ids:
+                    response_ids = [self.pad_token_id]
+                    payload = getattr(rollout, "__dict__", {})
+                    available_keys = list(payload.keys()) if isinstance(payload, dict) else []
+                    logger.warning(
+                        f"Fallback response text missing for rollout {rollout_id}; "
+                        f"using pad-token response. rollout_keys={available_keys}"
+                    )
+                trace_list = [{"prompt_ids": prompt_ids, "response_ids": response_ids}]
+                logger.warning(
+                    f"Synthesized fallback trace for rollout {rollout_id} "
+                    f"(prompt_tokens={len(prompt_ids)}, response_tokens={len(response_ids)})."
+                )
 
             final_reward = self._fillna_reward(rollout)
             info = {
@@ -840,3 +868,28 @@ class AgentModeDaemon:
                     return []
 
         return []
+
+    def _extract_rollout_text(self, rollout) -> str:
+        """Best-effort extraction of rollout text payload."""
+        for key in ("final_output", "output", "response", "result", "text", "content"):
+            value = getattr(rollout, key, None)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+            if isinstance(value, dict):
+                for k2 in ("text", "content", "final_output", "response"):
+                    v2 = value.get(k2)
+                    if isinstance(v2, str) and v2.strip():
+                        return v2.strip()
+
+        payload = getattr(rollout, "__dict__", None)
+        if isinstance(payload, dict):
+            for key in ("final_output", "output", "response", "result", "text", "content"):
+                value = payload.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+                if isinstance(value, dict):
+                    for k2 in ("text", "content", "final_output", "response"):
+                        v2 = value.get(k2)
+                        if isinstance(v2, str) and v2.strip():
+                            return v2.strip()
+        return ""
