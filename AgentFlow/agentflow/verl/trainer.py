@@ -291,6 +291,13 @@ class AgentFlowTrainer(RayPPOTrainer):
             metrics["agent_mode/n_dropped_sample_because_of_prompt"] = (
                 batch.batch["is_drop_mask"].shape[0] - keep_indices.shape[0]
             )
+            # Fallback: if all samples are marked drop due to prompt length,
+            # keep truncated prompts to avoid empty-batch failures in smoke/low-memory runs.
+            if keep_indices.shape[0] == 0 and batch.batch["is_drop_mask"].shape[0] > 0:
+                keep_indices = torch.arange(
+                    batch.batch["is_drop_mask"].shape[0], device=keep_indices.device
+                )
+                metrics["agent_mode/fallback_keep_truncated_prompts"] = 1
             batch = batch[keep_indices]
             # next, round to minibatch size
             mini_batch_size = self.config.actor_rollout_ref.actor.ppo_mini_batch_size
@@ -310,6 +317,15 @@ class AgentFlowTrainer(RayPPOTrainer):
             if n_remained_transition != n_transition:
                 batch = batch[list(range(n_remained_transition))]
             metrics["agent_mode/n_dropped_sample_because_of_gpu_partitions"] = n_transition - n_remained_transition
+            if len(batch) == 0:
+                raise RuntimeError(
+                    "No samples left after mini-batch/GPU-partition rounding. "
+                    f"mini_batch_size={mini_batch_size}, n_gpus_per_node={k_partitions}, "
+                    f"dropped_prompt={metrics.get('agent_mode/n_dropped_sample_because_of_prompt', 'NA')}, "
+                    f"dropped_mini_batch={metrics.get('agent_mode/n_dropped_sample_because_of_mini_batch', 'NA')}, "
+                    f"dropped_gpu_partitions={metrics.get('agent_mode/n_dropped_sample_because_of_gpu_partitions', 'NA')}. "
+                    "Set ppo_mini_batch_size=1 and ensure train_batch_size*rollout.n yields at least one transition."
+                )
 
             # Agent mode note: Change the order of balance batch;
             #     1. first calculate advantage
