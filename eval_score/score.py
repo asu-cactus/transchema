@@ -71,9 +71,14 @@ def relative_csv_score(df_a, df_b):
     fp = len(gen_fds - truth_fds)
     fn = len(truth_fds - gen_fds)
 
-    precision = tp / max(len(gen_fds), 1)
-    recall = tp / max(len(truth_fds), 1)
-    fd_f1 = 2 * precision * recall / max(precision + recall, 1e-6)
+    if len(truth_fds) == 0:
+        fd_f1 = 1.0
+        precision = 1.0
+        recall = 1.0
+    else:
+        precision = tp / max(len(gen_fds), 1)
+        recall = tp / max(len(truth_fds), 1)
+        fd_f1 = 2 * precision * recall / max(precision + recall, 1e-6)
 
     # FD False Positives / False Negatives
     def serialize_fd_tuples(fd_tuples):

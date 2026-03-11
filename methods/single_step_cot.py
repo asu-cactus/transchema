@@ -134,6 +134,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
             model=model,
             token_limit=token_limit,
             directory=directory,
+            static_hints=getattr(args, "static_hints", True),
         )
 
  

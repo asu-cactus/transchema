@@ -361,7 +361,18 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         logger.info(f"[MCTS] Tree viz     → {tree_path}")
 
         # ── Hard accuracy evaluation on best script ────────────────────────
+        # Execute best_script first so target_file_location reflects the best result.
         if best_script:
+            try:
+                from util.utils import execute_python
+                exec_result = execute_python(best_script)
+                if exec_result != "Success":
+                    logger.warning(f"[MCTS] best_script execution failed: {exec_result}")
+            except Exception:
+                logger.warning(
+                    f"[MCTS] best_script execution raised: {traceback.format_exc()}"
+                )
+
             try:
                 validate_fn = (
                     compare_tables_matching

@@ -787,6 +787,48 @@ class Solver:
                         self.executor.extract_explanation_and_command(tool_command)
                     )
 
+                    # [3b] For all pipeline tools, patch the query parameter with the
+                    # full question (real file paths). The LLM is forced to summarize
+                    # due to max_tokens=900, so we inject the query programmatically.
+                    if tool_name in ("Code_Gen_And_Score_Tool", "Code_Generator_Tool"):
+                        memory_actions_str = ""
+                        if self.memory:
+                            try:
+                                memory_actions_str = str(self.memory.get_actions())
+                            except Exception:
+                                pass
+                        command = (
+                            f"execution = tool.execute("
+                            f"query={question!r}, "
+                            f"memory_actions={memory_actions_str!r})"
+                        )
+                        logger.info(
+                            f"[Step {step_count}] Patched {tool_name} query with full question "
+                            f"({len(question)} chars, {len(memory_actions_str)} chars memory)."
+                        )
+                    elif tool_name == "Create_New_Pipeline":
+                        command = f"execution = tool.execute(query={question!r})"
+                        logger.info(
+                            f"[Step {step_count}] Patched Create_New_Pipeline query with full "
+                            f"question ({len(question)} chars)."
+                        )
+                    elif tool_name == "Refine_Existing_Pipeline":
+                        artifacts = self.executor._extract_latest_pipeline_artifacts(self.memory)
+                        pipeline_id = artifacts.get("pipeline_id", "")
+                        current_pipeline = artifacts.get("pipeline", "")
+                        execution_context = artifacts.get("critique", "")
+                        command = (
+                            f"execution = tool.execute("
+                            f"query={question!r}, "
+                            f"pipeline_id={pipeline_id!r}, "
+                            f"current_pipeline={current_pipeline!r}, "
+                            f"execution_context={execution_context!r})"
+                        )
+                        logger.info(
+                            f"[Step {step_count}] Patched Refine_Existing_Pipeline query with full "
+                            f"question ({len(question)} chars, pipeline_id={pipeline_id!r})."
+                        )
+
                     if self.verbose:
                         print(
                             f"\n==> 📝 Step {step_count}: Command Generation ({tool_name})\n"

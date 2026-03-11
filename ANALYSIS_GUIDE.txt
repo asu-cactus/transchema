@@ -1,0 +1,104 @@
+OVERNIGHT EXPERIMENT — ANALYSIS GUIDE
+======================================
+Run from: ~/transchema/
+
+================================================================
+1. MCTS (LangGraph) — run_mcts.sh
+================================================================
+Experiment names: overnight_mcts_l1 / l4 / l9
+
+Results CSV (one row per case):
+  logs_langraph/overnight_mcts_l1/results_summary.csv
+  logs_langraph/overnight_mcts_l4/results_summary.csv
+  logs_langraph/overnight_mcts_l9/results_summary.csv
+
+Per-case log files:
+  logs_langraph/overnight_mcts_l{N}/{N}_target{case}_MCTS_*.log
+
+Raw stdout of each parallel chunk:
+  logs_langraph/mcts_l1_0_50.log
+  logs_langraph/mcts_l1_51_100.log
+  logs_langraph/mcts_l4_15_57.log
+  logs_langraph/mcts_l4_58_100.log
+  logs_langraph/mcts_l9_0_50.log
+  logs_langraph/mcts_l9_51_100.log
+
+Key columns in results_summary.csv:
+  case_id, score, best_score, cost, latency_seconds, is_correct
+
+================================================================
+2. Multistep (critique_data.py) — run_ms_l9.sh
+================================================================
+Experiment name: overnight_ms_l9
+
+Logs and results live under the log_dir set by --log-dir
+(default: logs-auto-suggest-llm-21-04/overnight_ms_l9/)
+
+Results CSVs:
+  logs-auto-suggest-llm-21-04/overnight_ms_l9/results/multi_step.csv
+  logs-auto-suggest-llm-21-04/overnight_ms_l9/results/average_multi_step.csv
+
+Raw stdout of each chunk:
+  logs_multistep/ms_l9_0_50.log
+  logs_multistep/ms_l9_51_100.log
+
+Key columns: case_id, score, is_correct, cost, latency
+
+================================================================
+3. AgentFlow pipeline granularity — run_agentflow_pipeline.sh
+================================================================
+Results are written to timestamped dirs under AgentFlow/results/:
+
+  AgentFlow/results/overnight_af_pipeline_l1_0_50_{timestamp}/
+  AgentFlow/results/overnight_af_pipeline_l1_51_100_{timestamp}/
+  AgentFlow/results/overnight_af_pipeline_l4_15_57_{timestamp}/
+  AgentFlow/results/overnight_af_pipeline_l4_58_100_{timestamp}/
+  AgentFlow/results/overnight_af_pipeline_l9_0_50_{timestamp}/
+  AgentFlow/results/overnight_af_pipeline_l9_51_100_{timestamp}/
+
+Inside each dir:
+  results_summary.csv        ← main file for analysis
+  case_{id}/
+    {id}_result.txt          ← human-readable per-case summary
+    {id}_full_output.json    ← full solver output
+    logs/
+      agentflow_all_*.log    ← complete trace
+      agentflow_prompts_*.log
+      agentflow_tools_*.log
+
+Raw stdout:
+  logs_agentflow_pipeline/af_pipeline_l{N}_*.log
+
+Key columns in results_summary.csv:
+  case_id, is_correct, score, score_fd, column_mapping_score,
+  average_similarity, latency_seconds, cost
+
+================================================================
+4. AgentFlow operator granularity — run_agentflow_operator.sh
+================================================================
+Same structure as above, dirs named:
+  AgentFlow/results/overnight_af_operator_l9_0_50_{timestamp}/
+  AgentFlow/results/overnight_af_operator_l9_51_100_{timestamp}/
+
+Raw stdout:
+  logs_agentflow_operator/af_operator_l9_*.log
+
+================================================================
+QUICK MORNING CHECK COMMANDS
+================================================================
+
+# Check if jobs are still running
+ps aux | grep -E "mcts_search|critique_data|data_transformation" | grep -v grep
+
+# Tail live logs (replace filename as needed)
+tail -f logs_langraph/mcts_l4_15_57.log
+
+# Count completed cases in MCTS results
+wc -l logs_langraph/overnight_mcts_l4/results_summary.csv
+
+# Peek at AgentFlow results
+ls -lt AgentFlow/results/ | head -20
+cat AgentFlow/results/overnight_af_pipeline_l4_15_57_*/results_summary.csv
+
+# Peek at MCTS scores
+cat logs_langraph/overnight_mcts_l4/results_summary.csv

@@ -4,6 +4,7 @@
 # When invoked, solver.py detects this tool name and automatically executes the
 # generated code + calculates the score, then merges the score into the memory entry.
 
+import logging
 import re
 import sys
 from pathlib import Path
@@ -11,6 +12,8 @@ from typing import Any, Dict, Optional
 
 from agentflow.engine.factory import create_llm_engine
 from agentflow.tools.base import BaseTool
+
+logger = logging.getLogger("agentflow.tools")
 
 _TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[5])
 if _TRANSCHEMA_ROOT not in sys.path:
@@ -135,6 +138,8 @@ class Code_Gen_And_Score_Tool(BaseTool):
             memory_actions=memory_actions if memory_actions else "No prior actions.",
             error_string=error_string if error_string else "No previous errors.",
         )
+
+        logger.debug("[Code_Gen_And_Score_Tool] Internal prompt sent to LLM:\n%s", full_prompt)
 
         response = self.llm_engine(full_prompt)
         response_str = str(response)

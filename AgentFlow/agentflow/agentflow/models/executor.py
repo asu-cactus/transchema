@@ -147,6 +147,7 @@ Instructions:
 4.  Each `tool.execute()` call must be assigned to a variable named **`execution`**.
 5.  Please give the exact numbers and parameters should be used in the `tool.execute()` call.
 6.  IMPORTANT: For Configure_* tools (Join, Union, GroupBy_Aggregate), the query parameter MUST include the Operation History to avoid repeating previous operations and to understand the pipeline state.
+6b. CRITICAL: For `Code_Gen_And_Score_Tool` and `Code_Generator_Tool`, the `query` parameter MUST include the EXACT, COMPLETE Source Information with all real file paths (e.g. `/home/.../test_0.csv`) copied verbatim from the Query context. Do NOT summarize, abbreviate, or use placeholder paths like `/path/to/` — the code generator needs the real paths to load the files.
 7.  CRITICAL: For `Refine_Existing_Pipeline` and `Finalize_Pipeline` tools, the `pipeline_id` parameter is REQUIRED and MUST be included. Extract the pipeline_id from the Operation History (look for `pipeline_id` in previous `Create_New_Pipeline` or `Refine_Existing_Pipeline` results). The command MUST follow this pattern:
     - Refine_Existing_Pipeline: `execution = tool.execute(query=..., pipeline_id="pipeline_XXXX", current_pipeline=..., critique=..., modification_goal=...)`
     - Finalize_Pipeline: `execution = tool.execute(pipeline_id="pipeline_XXXX", pipeline=...)`
@@ -189,7 +190,7 @@ Please follow the configuration prompt to genrate tool specific output.
         prompt_logger.debug("=" * 80)
 
         tool_command = self.llm_generate_tool_command(
-            prompt_generate_tool_command, response_format=ToolCommand, max_tokens=900
+            prompt_generate_tool_command, response_format=ToolCommand, max_tokens=4000
         )
 
         # Auto-recover when the model returns malformed Python.

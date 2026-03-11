@@ -674,6 +674,8 @@ def get_result_path(args, main_folder, len_idx_target_idx):
                 step = f.lstrip("intermediate_step").rstrip(".csv")
                 max_step = max(max_step, int(step))
         result_path += f"intermediate_step{max_step}.csv"
+    elif getattr(args, "single_step_cot", False):
+        result_path = f"{main_folder}/length{len_idx_target_idx}/target_multisource_cot.csv"
     else:
         result_path = f"{main_folder}/length{len_idx_target_idx}/target_multisource.csv"
 

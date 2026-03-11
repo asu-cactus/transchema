@@ -763,7 +763,7 @@ def should_critique(state: MCTSGraphState) -> str:
     mode = getattr(state["config"], "mcts_critique_mode", "none")
     if (
         mode == "simulate"
-        and state["current_score"] < 1.0
+        and state["current_score"] < 0.85
         and not state.get("critique_attempted", False)
     ):
         return "critique"
