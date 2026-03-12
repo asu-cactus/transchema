@@ -138,13 +138,18 @@ def create_llm_engine(model_string: str, use_cache: bool = False, is_multimodal:
             effective_base_url = os.environ.get("AGENTFLOW_VLLM_BASE_URL", "").strip() or None
         if not effective_base_url:
             url_file = os.environ.get("AGENTFLOW_VLLM_URL_FILE", "/tmp/agentflow_vllm_url.txt")
-            try:
-                with open(url_file) as _f:
-                    _url = _f.read().strip()
-                if _url:
-                    effective_base_url = _url
-            except Exception:
-                pass
+            for _attempt in range(5):
+                try:
+                    with open(url_file) as _f:
+                        _url = _f.read().strip()
+                    if _url:
+                        effective_base_url = _url
+                        break
+                except Exception:
+                    if _attempt < 4:
+                        import time
+                        time.sleep(0.5)
+                    pass
         if not effective_base_url:
             effective_base_url = "http://localhost:8000/v1"
 

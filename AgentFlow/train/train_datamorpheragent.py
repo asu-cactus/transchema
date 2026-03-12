@@ -113,6 +113,14 @@ def set_env_vars(env_section: dict):
         f"ROCR_VISIBLE_DEVICES={os.environ.get('ROCR_VISIBLE_DEVICES')}"
     )
 
+    # Single-node single-GPU: rollout server and proxy are on the same machine; use
+    # 127.0.0.1 for the proxy so the rollout process can always connect (node IP may
+    # be unreachable from same host on some clusters).
+    n_gpus = int(os.environ.get("N_GPUS", "1"))
+    if n_gpus == 1:
+        os.environ["AGENTFLOW_USE_LOCALHOST_PROXY"] = "1"
+        print("  AGENTFLOW_USE_LOCALHOST_PROXY=1 (single-GPU)")
+
 
 def maybe_prepare_data(config: dict):
     """
