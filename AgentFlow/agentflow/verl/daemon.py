@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import random
 import socket
 import threading
@@ -212,6 +213,23 @@ class AgentModeDaemon:
         self._proxy_thread.start()
         print(f"Proxy server running on port {self.proxy_port}")
 
+    def _resolve_proxy_host_for_workers(self) -> str:
+        """
+        Resolve a worker-routable host for the local proxy server.
+        127.0.0.1 works only within the same process/network namespace and can
+        fail for Ray worker processes; prefer node IP instead.
+        """
+        env_host = os.environ.get("AGENTFLOW_PROXY_HOST", "").strip()
+        if env_host:
+            return env_host
+        try:
+            host_ip = socket.gethostbyname(socket.gethostname())
+            if host_ip and host_ip != "127.0.0.1":
+                return host_ip
+        except Exception:
+            pass
+        return "127.0.0.1"
+
     def start(self):
         """Starts the main AgentFlowServer and the proxy server."""
 
@@ -248,11 +266,13 @@ class AgentModeDaemon:
         self.is_train = is_train
 
         # 1. Update resources on the server for clients to use
+        proxy_host = self._resolve_proxy_host_for_workers()
         llm_resource = LLM(
-            endpoint=f"http://127.0.0.1:{self.proxy_port}/v1",
+            endpoint=f"http://{proxy_host}:{self.proxy_port}/v1",
             model=self.train_information.get("model", "default-model"),
             sampling_parameters={"temperature": self.train_information.get("temperature", 0.7)},
         )
+        logger.info(f"AgentModeDaemon proxy endpoint for workers: {llm_resource.endpoint}")
         resources: NamedResources = {"main_llm": llm_resource}
         resources_id = await self.server.update_resources(resources)
         self._current_resources_id = resources_id
