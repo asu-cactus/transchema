@@ -272,14 +272,30 @@ class AgentModeDaemon:
         self.backend_llm_server_addresses = server_addresses
         self.is_train = is_train
 
-        # 1. Update resources on the server for clients to use
-        proxy_host = self._resolve_proxy_host_for_workers()
+        # 1. Update resources on the server for clients to use.
+        # If there is exactly one vLLM backend, route rollout workers directly to it
+        # instead of through the daemon-internal proxy, which is unreachable from
+        # subprocess-based rollout workers (connection refused on 127.0.0.1).
+        if len(server_addresses) == 1:
+            backend_addr = str(server_addresses[0])
+            if not backend_addr.startswith("http"):
+                backend_addr = f"http://{backend_addr}"
+            llm_endpoint = f"{backend_addr.rstrip('/')}/v1"
+            logger.info(
+                f"Single vLLM backend detected — bypassing proxy, "
+                f"routing rollout workers directly to: {llm_endpoint}"
+            )
+        else:
+            proxy_host = self._resolve_proxy_host_for_workers()
+            llm_endpoint = f"http://{proxy_host}:{self.proxy_port}/v1"
+            logger.info(f"Multiple backends — using proxy endpoint for workers: {llm_endpoint}")
+
         llm_resource = LLM(
-            endpoint=f"http://{proxy_host}:{self.proxy_port}/v1",
+            endpoint=llm_endpoint,
             model=self.train_information.get("model", "default-model"),
             sampling_parameters={"temperature": self.train_information.get("temperature", 0.7)},
         )
-        logger.info(f"AgentModeDaemon proxy endpoint for workers: {llm_resource.endpoint}")
+        logger.info(f"AgentModeDaemon LLM endpoint for workers: {llm_resource.endpoint}")
         resources: NamedResources = {"main_llm": llm_resource}
         resources_id = await self.server.update_resources(resources)
         self._current_resources_id = resources_id
