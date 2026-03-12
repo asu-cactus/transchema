@@ -463,9 +463,11 @@ def main():
         os.environ["AGENTFLOW_SMOKE_MODE"] = "1"
         os.environ["AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE"] = "1"
         os.environ.setdefault("AGENTFLOW_SMOKE_MAX_STEPS", "2")
+        os.environ.setdefault("AGENTFLOW_SMOKE_WALLTIME_MIN", "20")
         print("  AGENTFLOW_SMOKE_MODE=1")
         print("  AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE=1")
         print(f"  AGENTFLOW_SMOKE_MAX_STEPS={os.environ['AGENTFLOW_SMOKE_MAX_STEPS']}")
+        print(f"  AGENTFLOW_SMOKE_WALLTIME_MIN={os.environ['AGENTFLOW_SMOKE_WALLTIME_MIN']}")
         present_keys = {ov.split("=", 1)[0] for ov in effective_overrides if "=" in ov}
         for ov in _default_smoke_overrides():
             key = ov.split("=", 1)[0]
@@ -481,9 +483,27 @@ def main():
 
     trainer_proc = None
     try:
+        timeout_sec = None
+        if args.smoke_test:
+            try:
+                walltime_min = int(os.environ.get("AGENTFLOW_SMOKE_WALLTIME_MIN", "20"))
+                if walltime_min > 0:
+                    timeout_sec = walltime_min * 60
+            except ValueError:
+                timeout_sec = 20 * 60
         trainer_proc = subprocess.run(
-            command, check=True, env=os.environ, cwd=str(AGENTFLOW_ROOT)
+            command,
+            check=True,
+            env=os.environ,
+            cwd=str(AGENTFLOW_ROOT),
+            timeout=timeout_sec,
         )
+    except subprocess.TimeoutExpired:
+        print(
+            f"\nERROR: smoke test exceeded wall-clock limit "
+            f"({os.environ.get('AGENTFLOW_SMOKE_WALLTIME_MIN', '20')} minutes)."
+        )
+        sys.exit(124)
     except subprocess.CalledProcessError as exc:
         print(f"\nERROR: verl trainer exited with code {exc.returncode}")
         sys.exit(exc.returncode)
