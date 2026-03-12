@@ -222,6 +222,13 @@ class AgentModeDaemon:
         env_host = os.environ.get("AGENTFLOW_PROXY_HOST", "").strip()
         if env_host:
             return env_host
+        # Best source: reuse the host/IP from backend vLLM server addresses Ray gave us.
+        if self.backend_llm_server_addresses:
+            first = str(self.backend_llm_server_addresses[0])
+            if ":" in first:
+                host = first.rsplit(":", 1)[0].strip()
+                if host:
+                    return host
         try:
             host_ip = socket.gethostbyname(socket.gethostname())
             if host_ip and host_ip != "127.0.0.1":
@@ -441,8 +448,8 @@ class AgentModeDaemon:
 
         # Dynamic timeout: base time per task + buffer for complexity
         estimated_total_time = original_task_count * avg_task_time_sec * 1.5  # 50% buffer
-        min_timeout = 180 if smoke_mode else 600  # Smoke: 3 minutes
-        max_timeout = 600 if smoke_mode else 3600  # Smoke: 10 minutes
+        min_timeout = 60 if smoke_mode else 600  # Smoke: 1 minute
+        max_timeout = 120 if smoke_mode else 3600  # Smoke: 2 minutes
         dynamic_timeout = max(min_timeout, min(max_timeout, estimated_total_time))
 
         print(f"Starting {original_task_count} {'training' if self.is_train else 'validation'} tasks")
@@ -470,7 +477,7 @@ class AgentModeDaemon:
                 break
 
             # No progress timeout (5 minutes for training, 3 minutes for validation)
-            no_progress_limit = 90 if smoke_mode else (300 if self.is_train else 180)
+            no_progress_limit = 45 if smoke_mode else (300 if self.is_train else 180)
             if (current_time - last_progress_time) > no_progress_limit:
                 print(f"No progress for {no_progress_limit/60:.1f} minutes. Completed {completion_rate:.1%}")
                 if smoke_mode:

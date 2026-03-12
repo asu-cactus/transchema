@@ -462,7 +462,7 @@ def main():
     if args.smoke_test:
         os.environ["AGENTFLOW_SMOKE_MODE"] = "1"
         os.environ["AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE"] = "1"
-        os.environ.setdefault("AGENTFLOW_SMOKE_MAX_STEPS", "2")
+        os.environ.setdefault("AGENTFLOW_SMOKE_MAX_STEPS", "1")
         os.environ.setdefault("AGENTFLOW_SMOKE_WALLTIME_MIN", "20")
         print("  AGENTFLOW_SMOKE_MODE=1")
         print("  AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE=1")
