@@ -211,6 +211,22 @@ class AgentModeDaemon:
 
         self._proxy_thread = threading.Thread(target=run_app, daemon=True)
         self._proxy_thread.start()
+        # Wait until Flask is actually accepting connections before continuing.
+        for _wait_i in range(30):
+            try:
+                import urllib.request as _ur
+                _ur.urlopen(f"http://127.0.0.1:{self.proxy_port}/v1/health_check_init", timeout=1)
+            except Exception:
+                pass  # 404/405 means Flask is up; connection refused means still starting
+            else:
+                break
+            # Check if port is open via socket (faster than HTTP round-trip)
+            import socket as _sock
+            try:
+                with _sock.create_connection(("127.0.0.1", self.proxy_port), timeout=1):
+                    break  # Port is open — Flask is ready
+            except OSError:
+                time.sleep(0.5)
         print(f"Proxy server running on port {self.proxy_port}")
 
     def _resolve_proxy_host_for_workers(self) -> str:
@@ -273,22 +289,13 @@ class AgentModeDaemon:
         self.is_train = is_train
 
         # 1. Update resources on the server for clients to use.
-        # If there is exactly one vLLM backend, route rollout workers directly to it
-        # instead of through the daemon-internal proxy, which is unreachable from
-        # subprocess-based rollout workers (connection refused on 127.0.0.1).
-        if len(server_addresses) == 1:
-            backend_addr = str(server_addresses[0])
-            if not backend_addr.startswith("http"):
-                backend_addr = f"http://{backend_addr}"
-            llm_endpoint = f"{backend_addr.rstrip('/')}/v1"
-            logger.info(
-                f"Single vLLM backend detected — bypassing proxy, "
-                f"routing rollout workers directly to: {llm_endpoint}"
-            )
-        else:
-            proxy_host = self._resolve_proxy_host_for_workers()
-            llm_endpoint = f"http://{proxy_host}:{self.proxy_port}/v1"
-            logger.info(f"Multiple backends — using proxy endpoint for workers: {llm_endpoint}")
+        # Always route rollout workers through the local proxy (listens on 0.0.0.0,
+        # accessible from any subprocess on the same node).  The proxy then forwards
+        # to the actual vLLM backend(s).  Direct routing was unreliable because the
+        # vLLM port may not be reachable from the rollout subprocess's network context.
+        proxy_host = self._resolve_proxy_host_for_workers()
+        llm_endpoint = f"http://{proxy_host}:{self.proxy_port}/v1"
+        logger.info(f"Using proxy endpoint for rollout workers: {llm_endpoint}")
 
         llm_resource = LLM(
             endpoint=llm_endpoint,
@@ -307,8 +314,10 @@ class AgentModeDaemon:
             with open(vllm_url_file, "w") as fh:
                 fh.write(llm_endpoint)
             logger.info(f"Wrote vLLM endpoint to {vllm_url_file}: {llm_endpoint}")
+            print(f"[AgentModeDaemon] vLLM URL file written: {vllm_url_file} → {llm_endpoint}")
         except Exception as _e:
             logger.warning(f"Could not write vLLM URL file {vllm_url_file}: {_e}")
+            print(f"[AgentModeDaemon] WARNING: Could not write vLLM URL file: {_e}")
         resources: NamedResources = {"main_llm": llm_resource}
         resources_id = await self.server.update_resources(resources)
         self._current_resources_id = resources_id

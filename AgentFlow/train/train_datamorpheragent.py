@@ -182,9 +182,13 @@ def _default_smoke_overrides() -> list[str]:
         "actor_rollout_ref.actor.use_kl_loss=False",
         "actor_rollout_ref.actor.kl_loss_coef=0.0",
         "algorithm.use_kl_in_reward=False",
-        "data.max_prompt_length=4096",
-        "data.max_response_length=512",
-        "actor_rollout_ref.rollout.gpu_memory_utilization=0.20",
+        # DataMorpher prompts are ~3000-4000 tokens (15-table schemas + instructions).
+        # max_prompt_length + max_response_length = vLLM max_model_len.
+        # 3142 (typical prompt) + 2048 (planner default max_tokens) = 5190 → need > 5190.
+        # 6144 + 1024 = 7168 gives comfortable headroom.
+        "data.max_prompt_length=6144",
+        "data.max_response_length=1024",
+        "actor_rollout_ref.rollout.gpu_memory_utilization=0.25",
         "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",
         "trainer.total_epochs=1",
         "trainer.critic_warmup=999999",

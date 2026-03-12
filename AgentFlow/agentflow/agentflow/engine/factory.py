@@ -127,9 +127,31 @@ def create_llm_engine(model_string: str, use_cache: bool = False, is_multimodal:
         from .vllm import ChatVLLM
 
         model_string = model_string.replace("vllm-", "")
+
+        # Resolve effective base_url. Priority:
+        #  1. Explicit kwarg (passed by caller who knows the address)
+        #  2. AGENTFLOW_VLLM_BASE_URL environment variable
+        #  3. /tmp/agentflow_vllm_url.txt written by the daemon when vLLM starts
+        #  4. Hard-coded local fallback
+        effective_base_url = kwargs.get("base_url") or None
+        if not effective_base_url:
+            effective_base_url = os.environ.get("AGENTFLOW_VLLM_BASE_URL", "").strip() or None
+        if not effective_base_url:
+            url_file = os.environ.get("AGENTFLOW_VLLM_URL_FILE", "/tmp/agentflow_vllm_url.txt")
+            try:
+                with open(url_file) as _f:
+                    _url = _f.read().strip()
+                if _url:
+                    effective_base_url = _url
+            except Exception:
+                pass
+        if not effective_base_url:
+            effective_base_url = "http://localhost:8000/v1"
+
+        print(f"[vLLM engine] base_url resolved to: {effective_base_url}")
         config = {
             "model_string": model_string,
-            "base_url": kwargs.get("base_url", "http://localhost:8000/v1"), # TODO: check the RL training initialized port and name
+            "base_url": effective_base_url,
             "use_cache": use_cache,
             "is_multimodal": is_multimodal,
             "temperature": kwargs.get("temperature", 0.7),
@@ -138,7 +160,6 @@ def create_llm_engine(model_string: str, use_cache: bool = False, is_multimodal:
             "max_model_len": kwargs.get("max_model_len", 15200),
             "max_seq_len_to_capture": kwargs.get("max_seq_len_to_capture", 15200),
         }
-        print("serving ")
         return ChatVLLM(**config)
 
     # === LiteLLM ===
