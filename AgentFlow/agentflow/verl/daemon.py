@@ -487,7 +487,17 @@ class AgentModeDaemon:
                     print("Accepting current results")
                     break
 
-            completed_batch = await self.server.retrieve_completed_rollouts()
+            try:
+                # Prevent indefinite blocking inside server retrieval path.
+                retrieve_timeout = 10 if smoke_mode else 60
+                completed_batch = await asyncio.wait_for(
+                    self.server.retrieve_completed_rollouts(), timeout=retrieve_timeout
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"Timed out waiting for completed rollouts (>{retrieve_timeout}s); continuing poll loop."
+                )
+                completed_batch = []
 
             # Update progress tracking
             if completed_count > last_completed_count:
@@ -569,7 +579,16 @@ class AgentModeDaemon:
         coro = self._async_run_until_finished(verbose)
         future = asyncio.run_coroutine_threadsafe(coro, self.server.loop)
         try:
-            future.result()  # Wait indefinitely for all tasks to complete
+            smoke_mode = os.environ.get("AGENTFLOW_SMOKE_MODE", "0") == "1"
+            # In smoke mode, enforce a hard daemon-level cap to avoid endless waits.
+            daemon_timeout = 180 if smoke_mode else None
+            future.result(timeout=daemon_timeout)
+        except TimeoutError:
+            logger.error(
+                "AgentModeDaemon run_until_all_finished timed out in smoke mode; "
+                "aborting step early."
+            )
+            raise RuntimeError("Smoke-mode daemon timeout while waiting for rollouts.")
         except Exception as e:
             print(f"Error while waiting for tasks to finish: {e}")
             raise
