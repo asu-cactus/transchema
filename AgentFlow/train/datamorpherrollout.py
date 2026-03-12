@@ -607,6 +607,22 @@ if __name__ == "__main__":
 
     config_dict = dict(zip(config_keys_map.values(), values))
 
+    # Smoke mode: aggressively reduce per-task latency so hangs surface quickly.
+    if os.environ.get("AGENTFLOW_SMOKE_MODE", "0") == "1":
+        config_dict["timeout"] = min(int(config_dict.get("timeout", 500)), 60)
+        config_dict["max_steps"] = 1
+        config_dict["rollout_n"] = 1
+        config_dict["train_temperature"] = 0.0
+        config_dict["test_temperature"] = 0.0
+        print(
+            "Smoke-mode rollout overrides => "
+            f"timeout={config_dict['timeout']}, "
+            f"max_steps={config_dict['max_steps']}, "
+            f"rollout_n={config_dict['rollout_n']}, "
+            f"train_temperature={config_dict['train_temperature']}, "
+            f"test_temperature={config_dict['test_temperature']}"
+        )
+
     port_to_use = config_dict.get("port")
     if port_to_use:
         kill_process_on_port(port_to_use)
