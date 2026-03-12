@@ -260,6 +260,14 @@ class AgentModeDaemon:
     def start(self):
         """Starts the main AgentFlowServer and the proxy server."""
 
+        # Delete any stale URL file from a previous run so old ports can't mislead workers.
+        vllm_url_file = os.environ.get("AGENTFLOW_VLLM_URL_FILE", "/tmp/agentflow_vllm_url.txt")
+        try:
+            os.remove(vllm_url_file)
+            print(f"[AgentModeDaemon] Removed stale URL file: {vllm_url_file}")
+        except FileNotFoundError:
+            pass
+
         def run_server():
             """Run the AgentFlowServer in a separate thread."""
             asyncio.run(self.server.run_forever())
@@ -276,6 +284,17 @@ class AgentModeDaemon:
         print(f"AgentFlowServer control plane running on port {self.server_port}")
 
         self._start_proxy_server()
+
+        # Write proxy URL to the file immediately after the proxy is confirmed running.
+        # This is the earliest possible time the URL is valid and can be used by workers.
+        # _async_set_up will also write the URL, but this ensures it's available ASAP.
+        early_proxy_url = f"http://127.0.0.1:{self.proxy_port}/v1"
+        try:
+            with open(vllm_url_file, "w") as _fh:
+                _fh.write(early_proxy_url)
+            print(f"[AgentModeDaemon] Proxy URL written to {vllm_url_file}: {early_proxy_url}")
+        except Exception as _e:
+            logger.warning(f"Could not write early proxy URL file: {_e}")
 
     async def _async_set_up(self, data, server_addresses, is_train=True):
         """Async helper to set up data and resources on the server."""
@@ -300,6 +319,7 @@ class AgentModeDaemon:
         proxy_host = self._resolve_proxy_host_for_workers()
         llm_endpoint = f"http://{proxy_host}:{self.proxy_port}/v1"
         logger.info(f"Using proxy endpoint for rollout workers: {llm_endpoint}")
+        print(f"[AgentModeDaemon] LLM endpoint for rollout workers: {llm_endpoint}")
 
         llm_resource = LLM(
             endpoint=llm_endpoint,
@@ -307,6 +327,7 @@ class AgentModeDaemon:
             sampling_parameters={"temperature": self.train_information.get("temperature", 0.7)},
         )
         logger.info(f"AgentModeDaemon LLM endpoint for workers: {llm_resource.endpoint}")
+        print(f"[AgentModeDaemon] LLM resource created with endpoint: {llm_resource.endpoint}")
         # Write the resolved endpoint to a well-known file so the rollout subprocess
         # (different process — os.environ won't propagate) can pick it up and override
         # any hardcoded default base_url used by solver sub-components.
