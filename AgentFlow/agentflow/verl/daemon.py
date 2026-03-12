@@ -490,8 +490,8 @@ class AgentModeDaemon:
 
         # Dynamic timeout: base time per task + buffer for complexity
         estimated_total_time = original_task_count * avg_task_time_sec * 1.5  # 50% buffer
-        min_timeout = 60 if smoke_mode else 600  # Smoke: 1 minute
-        max_timeout = 120 if smoke_mode else 3600  # Smoke: 2 minutes
+        min_timeout = 120 if smoke_mode else 600   # Smoke: 2 minutes minimum
+        max_timeout = 300 if smoke_mode else 3600   # Smoke: 5 minutes maximum
         dynamic_timeout = max(min_timeout, min(max_timeout, estimated_total_time))
 
         print(f"Starting {original_task_count} {'training' if self.is_train else 'validation'} tasks")
@@ -519,7 +519,7 @@ class AgentModeDaemon:
                 break
 
             # No progress timeout (5 minutes for training, 3 minutes for validation)
-            no_progress_limit = 45 if smoke_mode else (300 if self.is_train else 180)
+            no_progress_limit = 120 if smoke_mode else (300 if self.is_train else 180)
             if (current_time - last_progress_time) > no_progress_limit:
                 print(f"No progress for {no_progress_limit/60:.1f} minutes. Completed {completion_rate:.1%}")
                 if smoke_mode:
@@ -623,7 +623,7 @@ class AgentModeDaemon:
         try:
             smoke_mode = os.environ.get("AGENTFLOW_SMOKE_MODE", "0") == "1"
             # In smoke mode, enforce a hard daemon-level cap to avoid endless waits.
-            daemon_timeout = 180 if smoke_mode else None
+            daemon_timeout = 600 if smoke_mode else None  # Smoke: 10 minutes max
             future.result(timeout=daemon_timeout)
         except TimeoutError:
             logger.error(

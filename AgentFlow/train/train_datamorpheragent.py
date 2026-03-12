@@ -475,7 +475,7 @@ def main():
         os.environ["AGENTFLOW_SMOKE_MODE"] = "1"
         os.environ["AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE"] = "1"
         os.environ.setdefault("AGENTFLOW_SMOKE_MAX_STEPS", "1")
-        os.environ.setdefault("AGENTFLOW_SMOKE_WALLTIME_MIN", "8")
+        os.environ.setdefault("AGENTFLOW_SMOKE_WALLTIME_MIN", "25")
         print("  AGENTFLOW_SMOKE_MODE=1")
         print("  AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE=1")
         print(f"  AGENTFLOW_SMOKE_MAX_STEPS={os.environ['AGENTFLOW_SMOKE_MAX_STEPS']}")
