@@ -57,9 +57,15 @@ class ChatVLLM(EngineLM, CachedEngine):
         self.api_key = api_key or os.environ.get("VLLM_API_KEY", "dummy-token")
 
         try:
+            import httpx
+            # Set an explicit HTTP timeout so requests never hang indefinitely.
+            # connect=10s: fail fast if the server is unreachable.
+            # read=120s: give vLLM enough time to generate a response on slow hardware.
+            _timeout = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
             self.client = OpenAI(
                 base_url=self.base_url,
                 api_key=self.api_key,
+                timeout=_timeout,
             )
         except Exception as e:
             raise ValueError(f"Failed to connect to VLLM server at {self.base_url}. Please ensure the server is running and try again.")

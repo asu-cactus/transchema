@@ -436,8 +436,14 @@ class DataMorpherRollout(LitAgent):
 
         generated_code = None
         result = {}
+        # Run the synchronous solver in a thread so it doesn't block the async event loop.
+        # asyncio.wait_for enforces a hard wall-clock timeout regardless of internal hangs.
+        solve_timeout = max(60, int(self.timeout) + 30)  # agent timeout + 30s buffer
         try:
-            result = agent.solve(question=question)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(agent.solve, question=question),
+                timeout=float(solve_timeout),
+            )
 
             # Extract Python code from solver output
             for key in ("final_output", "direct_output", "base_output"):
@@ -450,6 +456,8 @@ class DataMorpherRollout(LitAgent):
 
             if generated_code is None:
                 print("[DataMorpherRollout] No Python code found in solver output.")
+        except asyncio.TimeoutError:
+            print(f"[DataMorpherRollout] Solver timed out after {solve_timeout}s — returning 0 reward.")
         except Exception as exc:
             print(f"[DataMorpherRollout] Solver error: {exc}")
 
