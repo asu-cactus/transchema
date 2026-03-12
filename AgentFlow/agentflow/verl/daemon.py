@@ -412,6 +412,7 @@ class AgentModeDaemon:
 
     async def _async_run_until_finished(self, verbose=True, avg_task_time_sec=150):
         """Async helper to wait for all tasks to complete with dynamic timeout and smart completion"""
+        smoke_mode = os.environ.get("AGENTFLOW_SMOKE_MODE", "0") == "1"
         original_task_count = self._total_tasks_queued
         retried_rollout_ids = set()
         start_time = time.time()
@@ -420,8 +421,8 @@ class AgentModeDaemon:
 
         # Dynamic timeout: base time per task + buffer for complexity
         estimated_total_time = original_task_count * avg_task_time_sec * 1.5  # 50% buffer
-        min_timeout = 600  # At least 10 minutes
-        max_timeout = 3600  # At most 1 hour
+        min_timeout = 180 if smoke_mode else 600  # Smoke: 3 minutes
+        max_timeout = 600 if smoke_mode else 3600  # Smoke: 10 minutes
         dynamic_timeout = max(min_timeout, min(max_timeout, estimated_total_time))
 
         print(f"Starting {original_task_count} {'training' if self.is_train else 'validation'} tasks")
@@ -449,9 +450,12 @@ class AgentModeDaemon:
                 break
 
             # No progress timeout (5 minutes for training, 3 minutes for validation)
-            no_progress_limit = 300 if self.is_train else 180
+            no_progress_limit = 90 if smoke_mode else (300 if self.is_train else 180)
             if (current_time - last_progress_time) > no_progress_limit:
                 print(f"No progress for {no_progress_limit/60:.1f} minutes. Completed {completion_rate:.1%}")
+                if smoke_mode:
+                    print("Smoke mode: accepting current results early.")
+                    break
                 if not self.is_train or completion_rate >= 0.5:  # Accept if validation or >50% training done
                     print("Accepting current results")
                     break
