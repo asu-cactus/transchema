@@ -296,6 +296,19 @@ class AgentModeDaemon:
             sampling_parameters={"temperature": self.train_information.get("temperature", 0.7)},
         )
         logger.info(f"AgentModeDaemon LLM endpoint for workers: {llm_resource.endpoint}")
+        # Write the resolved endpoint to a well-known file so the rollout subprocess
+        # (different process — os.environ won't propagate) can pick it up and override
+        # any hardcoded default base_url used by solver sub-components.
+        vllm_url_file = os.environ.get(
+            "AGENTFLOW_VLLM_URL_FILE",
+            "/tmp/agentflow_vllm_url.txt",
+        )
+        try:
+            with open(vllm_url_file, "w") as fh:
+                fh.write(llm_endpoint)
+            logger.info(f"Wrote vLLM endpoint to {vllm_url_file}: {llm_endpoint}")
+        except Exception as _e:
+            logger.warning(f"Could not write vLLM URL file {vllm_url_file}: {_e}")
         resources: NamedResources = {"main_llm": llm_resource}
         resources_id = await self.server.update_resources(resources)
         self._current_resources_id = resources_id

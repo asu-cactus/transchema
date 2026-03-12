@@ -34,10 +34,14 @@ class Verifier:
         self.is_multimodal = is_multimodal
         self.granularity = granularity
         self.execute_pipeline = execute_pipeline
+        fixed_is_vllm = "vllm" in llm_engine_fixed_name.lower()
+        main_is_vllm  = "vllm" in llm_engine_name.lower()
+        fixed_base_url = base_url if (fixed_is_vllm and main_is_vllm) else None
         self.llm_engine_fixed = create_llm_engine(
             model_string=llm_engine_fixed_name,
             is_multimodal=False,
             temperature=temperature,
+            base_url=fixed_base_url,
         )
         self.llm_engine = create_llm_engine(
             model_string=llm_engine_name,

@@ -288,6 +288,24 @@ class DataMorpherAgentRollout:
         if tool_engine is None:
             tool_engine = ["Default"]
 
+        # Allow override of base_url so all solver components route to the correct
+        # vLLM backend, bypassing any unreachable proxy in subprocess context.
+        # Priority: env var → file written by daemon → constructor argument.
+        env_base_url = os.environ.get("AGENTFLOW_VLLM_BASE_URL", "").strip()
+        if env_base_url:
+            base_url = env_base_url
+        else:
+            vllm_url_file = os.environ.get(
+                "AGENTFLOW_VLLM_URL_FILE", "/tmp/agentflow_vllm_url.txt"
+            )
+            try:
+                with open(vllm_url_file) as fh:
+                    file_url = fh.read().strip()
+                if file_url:
+                    base_url = file_url
+                    print(f"  [DataMorpherAgentRollout] base_url from URL file: {base_url}")
+            except Exception:
+                pass  # file not written yet, use base_url from constructor argument
         print(f"****** DataMorpher solver: model={llm_engine_name}  base_url={base_url} ******")
 
         prefix = "" if "gpt" in llm_engine_name else "vllm-"
@@ -353,6 +371,7 @@ class DataMorpherRollout(LitAgent):
         self.training_agent: Optional[DataMorpherAgentRollout] = None
         self.validation_agent: Optional[DataMorpherAgentRollout] = None
         self.val_step_n: Optional[int] = None
+        self._last_vllm_base_url: Optional[str] = None  # detect URL changes
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         base_dir = os.environ.get("ROLLOUT_DIR", f"./rollout_data/{self.server_public_ip}")
@@ -486,8 +505,11 @@ class DataMorpherRollout(LitAgent):
     ) -> Any:
         await self._initialize_run_once(resources)
 
-        if self.training_agent is None:
-            llm: LLM = resources.get("main_llm")
+        llm: LLM = resources.get("main_llm")
+        current_url = llm.endpoint
+        if self.training_agent is None or current_url != self._last_vllm_base_url:
+            if self.training_agent is not None:
+                print(f"  [DataMorpherRollout] vLLM URL changed, recreating training agent: {current_url}")
             self.training_agent = DataMorpherAgentRollout(
                 resources=resources,
                 llm_engine_name=llm.model,
@@ -495,11 +517,12 @@ class DataMorpherRollout(LitAgent):
                 tool_engine=self.tool_engine,
                 max_steps=self.max_steps,
                 max_tokens=self.max_tokens,
-                base_url=llm.endpoint,
+                base_url=current_url,
                 verbose=True,
                 temperature=self.train_temperature,
                 max_time=self.timeout,
             )
+            self._last_vllm_base_url = current_url
 
         lock = FileLock(self.train_lock_file, timeout=30)
         with lock:
@@ -526,8 +549,9 @@ class DataMorpherRollout(LitAgent):
 
         val_lock = FileLock(self.val_lock_file, timeout=50)
         with val_lock:
-            if self.validation_agent is None:
-                llm: LLM = resources.get("main_llm")
+            llm: LLM = resources.get("main_llm")
+            current_url = llm.endpoint
+            if self.validation_agent is None or current_url != self._last_vllm_base_url:
                 self.validation_agent = DataMorpherAgentRollout(
                     resources=resources,
                     llm_engine_name=llm.model,
@@ -535,11 +559,12 @@ class DataMorpherRollout(LitAgent):
                     tool_engine=self.tool_engine,
                     max_steps=self.max_steps,
                     max_tokens=self.max_tokens,
-                    base_url=llm.endpoint,
+                    base_url=current_url,
                     verbose=True,
                     temperature=self.test_temperature,
                     max_time=self.timeout,
                 )
+                self._last_vllm_base_url = current_url
 
             train_step_dirs = [
                 d for d in os.listdir(self.train_rollout_dir) if d.startswith("step_")
@@ -614,6 +639,10 @@ if __name__ == "__main__":
         config_dict["rollout_n"] = 1
         config_dict["train_temperature"] = 0.0
         config_dict["test_temperature"] = 0.0
+        # Reduce max_tokens so prompt+completion stays within vLLM max_model_len.
+        # vLLM context window = max_prompt_length + max_response_length = 4608 in smoke.
+        # Prompts can be 3000+ tokens; cap completion at 512 to stay within budget.
+        config_dict["max_tokens"] = min(int(config_dict.get("max_tokens", 512)), 512)
         print(
             "Smoke-mode rollout overrides => "
             f"timeout={config_dict['timeout']}, "
