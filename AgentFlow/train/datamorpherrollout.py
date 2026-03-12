@@ -288,13 +288,22 @@ class DataMorpherAgentRollout:
         if tool_engine is None:
             tool_engine = ["Default"]
 
-        # Allow override of base_url so all solver components route to the correct
-        # vLLM backend, bypassing any unreachable proxy in subprocess context.
-        # Priority: env var → file written by daemon → constructor argument.
+        # Resolve the correct vLLM proxy URL.
+        # Priority (highest first):
+        #  1. AGENTFLOW_VLLM_BASE_URL env var (explicit override)
+        #  2. Constructor base_url if it looks valid (comes from resources.get("main_llm").endpoint)
+        #  3. URL file written by daemon (/tmp/agentflow_vllm_url.txt) — fallback only
+        #  4. Whatever was in constructor base_url as last resort
+        _default_base = "http://localhost:8888"
         env_base_url = os.environ.get("AGENTFLOW_VLLM_BASE_URL", "").strip()
         if env_base_url:
             base_url = env_base_url
+            print(f"  [DataMorpherAgentRollout] base_url from env var: {base_url}")
+        elif base_url and base_url != _default_base:
+            # Caller passed a real URL (from resources) — use it directly.
+            print(f"  [DataMorpherAgentRollout] base_url from resources: {base_url}")
         else:
+            # No valid URL from caller; try the URL file as fallback.
             vllm_url_file = os.environ.get(
                 "AGENTFLOW_VLLM_URL_FILE", "/tmp/agentflow_vllm_url.txt"
             )
@@ -305,7 +314,7 @@ class DataMorpherAgentRollout:
                     base_url = file_url
                     print(f"  [DataMorpherAgentRollout] base_url from URL file: {base_url}")
             except Exception:
-                pass  # file not written yet, use base_url from constructor argument
+                pass
         print(f"****** DataMorpher solver: model={llm_engine_name}  base_url={base_url} ******")
 
         prefix = "" if "gpt" in llm_engine_name else "vllm-"

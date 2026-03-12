@@ -46,7 +46,10 @@ class Planner:
         # vLLM), propagate base_url so it routes to the same server.
         fixed_is_vllm = "vllm" in llm_engine_fixed_name.lower()
         main_is_vllm  = "vllm" in llm_engine_name.lower()
+        # Always propagate base_url to fixed engine when both are vLLM.
+        # When only one is vLLM, factory.py will read the URL file as fallback.
         fixed_base_url = base_url if (fixed_is_vllm and main_is_vllm) else None
+        print(f"[Planner] main={llm_engine_name} base_url={base_url} | fixed={llm_engine_fixed_name} fixed_base_url={fixed_base_url}")
         self.llm_engine_fixed = create_llm_engine(
             model_string=llm_engine_fixed_name,
             is_multimodal=False,
