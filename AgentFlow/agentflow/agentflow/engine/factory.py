@@ -150,6 +150,19 @@ def create_llm_engine(model_string: str, use_cache: bool = False, is_multimodal:
                         import time
                         time.sleep(0.5)
                     pass
+        # Fallback: direct vLLM backend URL written by daemon (bypasses proxy).
+        if not effective_base_url:
+            direct_url_file = os.environ.get(
+                "AGENTFLOW_VLLM_DIRECT_URL_FILE", "/tmp/agentflow_vllm_direct_url.txt"
+            )
+            try:
+                with open(direct_url_file) as _f:
+                    _url = _f.read().strip()
+                if _url:
+                    effective_base_url = _url
+                    print(f"[vLLM engine] Using direct backend URL fallback: {_url}")
+            except Exception:
+                pass
         if not effective_base_url:
             effective_base_url = "http://localhost:8000/v1"
 

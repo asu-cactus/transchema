@@ -206,28 +206,45 @@ class AgentModeDaemon:
             except requests.exceptions.RequestException as e:
                 abort(500, description=f"Error proxying request: {e}")
 
+        # Shared flag: Flask thread signals success/failure here.
+        _proxy_ready = threading.Event()
+        _proxy_error: list = [None]
+
         def run_app():
-            app.run(host="0.0.0.0", port=self.proxy_port, threaded=True, debug=False)
+            try:
+                app.run(host="0.0.0.0", port=self.proxy_port, threaded=True, debug=False)
+            except Exception as exc:
+                _proxy_error[0] = exc
+                _proxy_ready.set()  # unblock the waiter so it can detect failure fast
 
         self._proxy_thread = threading.Thread(target=run_app, daemon=True)
         self._proxy_thread.start()
+
         # Wait until Flask is actually accepting connections before continuing.
-        for _wait_i in range(30):
-            try:
-                import urllib.request as _ur
-                _ur.urlopen(f"http://127.0.0.1:{self.proxy_port}/v1/health_check_init", timeout=1)
-            except Exception:
-                pass  # 404/405 means Flask is up; connection refused means still starting
-            else:
-                break
-            # Check if port is open via socket (faster than HTTP round-trip)
-            import socket as _sock
+        import socket as _sock
+        proxy_up = False
+        for _wait_i in range(60):  # up to 30 s
+            if _proxy_error[0] is not None:
+                break  # Flask crashed — stop waiting
             try:
                 with _sock.create_connection(("127.0.0.1", self.proxy_port), timeout=1):
-                    break  # Port is open — Flask is ready
+                    proxy_up = True
+                    break
             except OSError:
                 time.sleep(0.5)
-        print(f"Proxy server running on port {self.proxy_port}")
+
+        if _proxy_error[0] is not None:
+            raise RuntimeError(
+                f"[AgentModeDaemon] Flask proxy failed to start on port {self.proxy_port}: "
+                f"{_proxy_error[0]}"
+            )
+        if not proxy_up:
+            raise RuntimeError(
+                f"[AgentModeDaemon] Flask proxy did not come up on port {self.proxy_port} "
+                f"within 30 s. Port may be taken by a previous run — run 'ray stop --force' "
+                f"and retry."
+            )
+        print(f"[AgentModeDaemon] Proxy server verified on port {self.proxy_port}")
 
     def _resolve_proxy_host_for_workers(self) -> str:
         """
@@ -343,6 +360,20 @@ class AgentModeDaemon:
         except Exception as _e:
             logger.warning(f"Could not write vLLM URL file {vllm_url_file}: {_e}")
             print(f"[AgentModeDaemon] WARNING: Could not write vLLM URL file: {_e}")
+
+        # Write the direct vLLM backend URL as a fallback so rollout workers
+        # can bypass the proxy if it is unreachable.
+        if server_addresses:
+            direct_backend_url = f"http://{server_addresses[0]}/v1"
+            direct_url_file = os.environ.get(
+                "AGENTFLOW_VLLM_DIRECT_URL_FILE", "/tmp/agentflow_vllm_direct_url.txt"
+            )
+            try:
+                with open(direct_url_file, "w") as fh:
+                    fh.write(direct_backend_url)
+                print(f"[AgentModeDaemon] Direct backend URL written: {direct_url_file} → {direct_backend_url}")
+            except Exception as _e:
+                print(f"[AgentModeDaemon] WARNING: Could not write direct backend URL file: {_e}")
         resources: NamedResources = {"main_llm": llm_resource}
         resources_id = await self.server.update_resources(resources)
         self._current_resources_id = resources_id
