@@ -267,6 +267,13 @@ IMPORTANT: Be brief and precise. Focus ONLY on what can be achieved with the ava
             return f"No matched tool given: {tool_name}"
 
         try:
+            if isinstance(response, dict):
+                # LLM returned a raw dict — try to coerce it into NextStep.
+                try:
+                    response = NextStep(**response)
+                except Exception:
+                    # Fall back: serialise to JSON string for text parsing below.
+                    response = json.dumps(response)
             if isinstance(response, str):
                 # Attempt to parse the response as JSON
                 try:
@@ -275,13 +282,11 @@ IMPORTANT: Be brief and precise. Focus ONLY on what can be achieved with the ava
                 except Exception as e:
                     print(f"Failed to parse response as JSON: {str(e)}")
             if isinstance(response, NextStep):
-                print("arielg 1")
                 context = response.context.strip()
                 sub_goal = response.sub_goal.strip()
                 tool_name = response.tool_name.strip()
             else:
-                print("arielg 2")
-                text = response.replace("**", "")
+                text = str(response).replace("**", "")
 
                 # Pattern to match the exact format
                 pattern = r"Context:\s*(.*?)Sub-Goal:\s*(.*?)Tool Name:\s*(.*?)\s*(?:```)?\s*(?=\n\n|\Z)"
