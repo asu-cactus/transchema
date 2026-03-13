@@ -108,7 +108,7 @@ class Configure_GroupBy_Aggregate_Operator_Tool(BaseTool):
             presence_penalty=0.0,
         )
 
-    def execute(self, query: str = "") -> Dict[str, Any]:
+    def execute(self, query: str = "", **kwargs) -> Dict[str, Any]:
         """Execute the tool with the provided transformation case information."""
         if not query:
             raise ValueError("query parameter is required and must contain transformation case information")

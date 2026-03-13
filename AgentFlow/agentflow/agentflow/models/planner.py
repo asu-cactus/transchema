@@ -35,8 +35,10 @@ class Planner:
         temperature: float = 0.0,
         granularity: str = "operator",
         execute_pipeline: bool = False,
+        max_tokens: int = 1024,
     ):
         self.llm_engine_name = llm_engine_name
+        self.max_tokens = max_tokens
         self.llm_engine_fixed_name = llm_engine_fixed_name
         self.is_multimodal = is_multimodal
         self.granularity = granularity
@@ -426,7 +428,7 @@ Rules:
         prompt_logger.debug(prompt_generate_next_step)
         prompt_logger.debug("=" * 80)
 
-        next_step = self.llm_engine(prompt_generate_next_step, response_format=NextStep)
+        next_step = self.llm_engine(prompt_generate_next_step, max_tokens=self.max_tokens, response_format=NextStep)
         if json_data is not None:
             json_data[f"action_predictor_{step_count}_prompt"] = (
                 prompt_generate_next_step
@@ -608,7 +610,7 @@ Rules:
         prompt_logger.debug(prompt_generate_next_step)
         prompt_logger.debug("=" * 80)
 
-        next_step = self.llm_engine(prompt_generate_next_step, response_format=NextStep)
+        next_step = self.llm_engine(prompt_generate_next_step, max_tokens=self.max_tokens, response_format=NextStep)
         if json_data is not None:
             json_data[f"action_predictor_{step_count}_prompt"] = (
                 prompt_generate_next_step

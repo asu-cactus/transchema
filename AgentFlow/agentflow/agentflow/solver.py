@@ -1390,6 +1390,7 @@ def construct_solver(
         temperature=temperature,
         granularity=planner_granularity,
         execute_pipeline=execute_pipeline,
+        max_tokens=max_tokens,
     )
 
     # Instantiate Verifier

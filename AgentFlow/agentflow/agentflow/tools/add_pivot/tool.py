@@ -92,7 +92,7 @@ class Add_Pivot_Tool(BaseTool):
             presence_penalty=0.0,
         )
 
-    def execute(self, query: str = "") -> Dict[str, Any]:
+    def execute(self, query: str = "", **kwargs) -> Dict[str, Any]:
         """Execute the pivot configuration tool."""
         if not query:
             raise ValueError(
