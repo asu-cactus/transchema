@@ -80,8 +80,10 @@ python_args:
   actor_rollout_ref.rollout.multi_turn.format: 'hermes'
   actor_rollout_ref.model.path: '${BASE_MODEL}'
 
-  # Start conservative to avoid OOM; increase only after stable runs.
-  data.max_prompt_length: 8192
+  # veRL sets vLLM max_model_len = max_prompt_length + max_response_length.
+  # Qwen2.5-7B supports 128K; the ceiling is this config, not the model or GPU.
+  # 12288 + 1024 = 13312.  use_remove_padding=True keeps training fast.
+  data.max_prompt_length: 12288
   # Generated pipelines are usually <512 tokens in smoke/early training.
   data.max_response_length: 1024
   data.truncation: 'truncate'

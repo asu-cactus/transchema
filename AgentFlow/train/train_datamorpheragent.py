@@ -190,11 +190,10 @@ def _default_smoke_overrides() -> list[str]:
         "actor_rollout_ref.actor.use_kl_loss=False",
         "actor_rollout_ref.actor.kl_loss_coef=0.0",
         "algorithm.use_kl_in_reward=False",
-        # DataMorpher prompts are ~3000-4000 tokens (15-table schemas + instructions).
-        # max_prompt_length + max_response_length = vLLM max_model_len.
-        # 3142 (typical prompt) + 2048 (planner default max_tokens) = 5190 → need > 5190.
-        # 6144 + 1024 = 7168 gives comfortable headroom.
-        "data.max_prompt_length=6144",
+        # veRL sets vLLM max_model_len = max_prompt_length + max_response_length.
+        # Qwen2.5-7B supports 128K; the limit comes from this config, not the model.
+        # 12288 + 1024 = 13312.  use_remove_padding=True keeps training fast.
+        "data.max_prompt_length=12288",
         "data.max_response_length=1024",
         "actor_rollout_ref.rollout.gpu_memory_utilization=0.25",
         "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",

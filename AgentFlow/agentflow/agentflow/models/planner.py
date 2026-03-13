@@ -20,6 +20,29 @@ from hints.hints_static import get_hints_section, NEXT_OPERATOR_HINT_IDS
 # Get the prompt logger
 prompt_logger = logging.getLogger("agentflow.prompts")
 
+# Soft cap on each action result's string representation in planner prompts.
+# Keeps the step-N prompt from growing unboundedly when critique responses are
+# very verbose.  2000 chars (~500 tokens) preserves scores, file paths, and
+# the key conclusion of any critique while trimming wall-of-text verbosity.
+_MAX_RESULT_CHARS = 2000
+
+
+def _truncate_actions(actions: dict, max_chars: int = _MAX_RESULT_CHARS) -> dict:
+    """Return a copy of the actions dict with each result capped to max_chars."""
+    if not actions:
+        return actions
+    truncated = {}
+    for step_key, step_val in actions.items():
+        result_str = str(step_val.get("result", ""))
+        if len(result_str) > max_chars:
+            result_str = result_str[:max_chars] + "... [truncated]"
+        truncated[step_key] = {
+            "tool_name": step_val.get("tool_name", ""),
+            "sub_goal": step_val.get("sub_goal", ""),
+            "result": result_str,
+        }
+    return truncated
+
 
 class Planner:
     def __init__(
@@ -391,7 +414,7 @@ Context:
 - **Toolbox Metadata:** {self.toolbox_metadata}
 - **Current Step:** {step_count} of {max_step_count}
 - **Remaining Steps:** {max_step_count - step_count}
-- **Previous Steps and Their Results:** {memory.get_actions()}
+- **Previous Steps and Their Results:** {_truncate_actions(memory.get_actions())}
 
 Instructions:
 1. Review the query, the pipeline-level analysis, and all previous steps.
@@ -464,7 +487,7 @@ Tool Metadata:
 {self.toolbox_metadata}
 
 Previous Steps and Their Results:
-{memory.get_actions()}
+{_truncate_actions(memory.get_actions())}
 
 Current Step: {step_count} in {max_step_count} steps
 Remaining Steps: {max_step_count - step_count}
@@ -580,7 +603,7 @@ Context:
 - **Query Analysis:** {query_analysis}
 - **Available Tools (THESE ARE THE ONLY TOOLS YOU CAN USE):** {self.available_tools}
 - **Toolbox Metadata:** {self.toolbox_metadata}
-- **Previous Steps and Their Results:** {memory.get_actions()}
+- **Previous Steps and Their Results:** {_truncate_actions(memory.get_actions())}
 - **Current Step:** {step_count} of {max_step_count}
 - **Remaining Steps:** {max_step_count - step_count}
 
@@ -630,7 +653,7 @@ Rules:
         # Extract the finalized pipeline from memory
         finalized_pipeline = ""
         finalized_pipeline_id = ""
-        for action in reversed(list(memory.get_actions().values())):
+        for action in reversed(list(_truncate_actions(memory.get_actions()).values())):
             result = action.get("result", {})
             if (
                 isinstance(result, dict)
@@ -649,7 +672,7 @@ Finalized Pipeline (ID: {finalized_pipeline_id}):
 {finalized_pipeline}
 
 Full Action History (for reference):
-{memory.get_actions()}
+{_truncate_actions(memory.get_actions())}
 
 Instructions:
 1. Generate a complete Python script that implements the finalized pipeline.
@@ -699,7 +722,7 @@ Context:
 Query: {question}
 Image: {image_info}
 Actions Taken:
-{memory.get_actions()}
+{_truncate_actions(memory.get_actions())}
 
 Instructions:
 1. Review the query, image, and all actions taken during the process.
@@ -740,7 +763,7 @@ Task: Generate the final output based on the query and the results from all tool
 
 Context:
 - **Query:** {question}
-- **Actions Taken:** {memory.get_actions()}
+- **Actions Taken:** {_truncate_actions(memory.get_actions())}
 
 Instructions:
 1. Review the query and the results from all tool executions.
@@ -781,7 +804,7 @@ Instructions:
         # Extract the finalized pipeline from memory
         finalized_pipeline = ""
         finalized_pipeline_id = ""
-        for action in reversed(list(memory.get_actions().values())):
+        for action in reversed(list(_truncate_actions(memory.get_actions()).values())):
             result = action.get("result", {})
             if (
                 isinstance(result, dict)
@@ -803,7 +826,7 @@ Finalized Pipeline (ID: {finalized_pipeline_id}):
 {finalized_pipeline}
 
 Action History:
-{memory.get_actions()}
+{_truncate_actions(memory.get_actions())}
 
 Generate a complete, immediately executable Python script using pandas that:
 1. Reads all source CSV files (use index_col=0).
@@ -844,7 +867,7 @@ Image: {image_info}
 Initial Analysis:
 {self.query_analysis}
 Actions Taken:
-{memory.get_actions()}
+{_truncate_actions(memory.get_actions())}
 
 Please generate the concise output based on the query, image information, initial analysis, and actions taken. Break down the process into clear, logical, and conherent steps. Conclude with a precise and direct answer to the query.
 
@@ -857,7 +880,7 @@ Task: Generate a concise final answer to the query based on all provided context
 Context:
 - **Query:** {question}
 - **Initial Analysis:** {self.query_analysis}
-- **Actions Taken:** {memory.get_actions()}
+- **Actions Taken:** {_truncate_actions(memory.get_actions())}
 
 Instructions:
 1. Review the query and the results from all actions.
