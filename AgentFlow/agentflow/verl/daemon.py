@@ -249,29 +249,18 @@ class AgentModeDaemon:
     def _resolve_proxy_host_for_workers(self) -> str:
         """
         Resolve a worker-routable host for the local proxy server.
-        On single-node runs the rollout server is on the same machine as the proxy;
-        use 127.0.0.1 so it always works (node IP can be unreachable from same host on some clusters).
+
+        Default: 127.0.0.1 (loopback), which works for single-node runs and
+        avoids CHPC firewall rules that drop same-node traffic sent to the
+        node's external IP.
+
+        Multi-node: set AGENTFLOW_PROXY_HOST to the daemon node's routable IP
+        so workers on other nodes can reach the proxy.
         """
         env_host = os.environ.get("AGENTFLOW_PROXY_HOST", "").strip()
         if env_host:
             return env_host
-        # Single-node: force localhost so rollout server (same machine) can reach the proxy.
-        if os.environ.get("AGENTFLOW_USE_LOCALHOST_PROXY", "").strip().lower() in ("1", "true", "yes"):
-            return "127.0.0.1"
-        if self.backend_llm_server_addresses:
-            first = str(self.backend_llm_server_addresses[0])
-            if ":" in first:
-                host = first.rsplit(":", 1)[0].strip().lower()
-                if host in ("127.0.0.1", "localhost"):
-                    return "127.0.0.1"
-                if host:
-                    return host
-        try:
-            host_ip = socket.gethostbyname(socket.gethostname())
-            if host_ip and host_ip != "127.0.0.1":
-                return host_ip
-        except Exception:
-            pass
+        # Default to loopback — always reachable from processes on the same node.
         return "127.0.0.1"
 
     def start(self):
