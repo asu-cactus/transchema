@@ -340,6 +340,39 @@ class DataMorpherAgentRollout:
             temperature=temperature,
             execute_pipeline=True,
         )
+        # Forcibly cap max_tokens on every LLM engine attached to the planner/verifier.
+        # This works regardless of which version of the agentflow package is loaded in
+        # memory (editable install, cached bytecode, or old Ray worker).
+        _safe_max = min(max_tokens, 1024)
+        for _component_name in ("planner", "verifier"):
+            _component = getattr(self.solver, _component_name, None)
+            if _component is None:
+                continue
+            if hasattr(_component, "max_tokens"):
+                _component.max_tokens = _safe_max
+            for _engine_attr in ("llm_engine", "llm_engine_fixed"):
+                _engine = getattr(_component, _engine_attr, None)
+                if _engine is None:
+                    continue
+                # Works with new vllm.py (has default_max_tokens attribute).
+                _engine.default_max_tokens = _safe_max
+                # Belt-and-suspenders: patch _generate_text if it still has the
+                # hardcoded 2048 default (old vllm.py in a stale Ray worker).
+                import functools, inspect
+                try:
+                    sig = inspect.signature(_engine._generate_text)
+                    if sig.parameters.get("max_tokens") is not None:
+                        _orig = _engine._generate_text
+                        @functools.wraps(_orig)
+                        def _capped_generate_text(_orig=_orig, _safe=_safe_max,
+                                                  *args, **kwargs):
+                            if "max_tokens" not in kwargs or kwargs["max_tokens"] is None:
+                                kwargs["max_tokens"] = _safe
+                            return _orig(*args, **kwargs)
+                        _engine._generate_text = _capped_generate_text
+                except Exception:
+                    pass
+        print(f"[DataMorpherAgentRollout] max_tokens capped to {_safe_max} on all planner engines")
         self.llm_engine = llm_engine_name
         self.verbose = verbose
 
@@ -512,9 +545,12 @@ class DataMorpherRollout(LitAgent):
             len([f for f in files if f.endswith(".json")])
             for _root, _dirs, files in os.walk(idx_dir)
         )
-        assert json_count < self.rollout_n, (
-            f"Too many rollouts for idx {idx}: {json_count} >= {self.rollout_n}"
-        )
+        if json_count >= self.rollout_n:
+            print(
+                f"[DataMorpherRollout] Skip save for idx {idx}: already have "
+                f"{json_count}/{self.rollout_n} rollouts (stale directory from a prior run)."
+            )
+            return
 
         save_path = os.path.join(idx_dir, f"rollout_{uuid.uuid4()}.json")
         with open(save_path, "w") as f:
