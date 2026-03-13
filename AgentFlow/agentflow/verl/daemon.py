@@ -318,13 +318,23 @@ class AgentModeDaemon:
         self.is_train = is_train
 
         # 1. Update resources on the server for clients to use.
-        # Always route rollout workers through the local proxy (listens on 0.0.0.0,
-        # accessible from any subprocess on the same node).  The proxy then forwards
-        # to the actual vLLM backend(s).  Direct routing was unreliable because the
-        # vLLM port may not be reachable from the rollout subprocess's network context.
-        proxy_host = self._resolve_proxy_host_for_workers()
-        llm_endpoint = f"http://{proxy_host}:{self.proxy_port}/v1"
-        logger.info(f"Using proxy endpoint for rollout workers: {llm_endpoint}")
+        #
+        # Connect workers DIRECTLY to vLLM via loopback (127.0.0.1).  vLLM
+        # listens on 0.0.0.0 so 127.0.0.1 always works from the same node,
+        # avoids CHPC firewall rules that drop same-node traffic sent to the
+        # node's external IP, and eliminates the Flask proxy as a failure point.
+        #
+        # For multi-node setups where workers run on a different node from vLLM,
+        # set AGENTFLOW_VLLM_DIRECT_HOST to the routable vLLM node IP.
+        if server_addresses:
+            raw_addr = str(server_addresses[0])  # e.g. "10.242.160.83:8000"
+            vllm_port = raw_addr.rsplit(":", 1)[-1] if ":" in raw_addr else "8000"
+            direct_host = os.environ.get("AGENTFLOW_VLLM_DIRECT_HOST", "127.0.0.1").strip()
+            llm_endpoint = f"http://{direct_host}:{vllm_port}/v1"
+        else:
+            llm_endpoint = f"http://127.0.0.1:{self.proxy_port}/v1"  # last-resort fallback
+
+        logger.info(f"Using direct vLLM endpoint for rollout workers: {llm_endpoint}")
         print(f"[AgentModeDaemon] LLM endpoint for rollout workers: {llm_endpoint}")
 
         llm_resource = LLM(
@@ -334,9 +344,9 @@ class AgentModeDaemon:
         )
         logger.info(f"AgentModeDaemon LLM endpoint for workers: {llm_resource.endpoint}")
         print(f"[AgentModeDaemon] LLM resource created with endpoint: {llm_resource.endpoint}")
-        # Write the resolved endpoint to a well-known file so the rollout subprocess
-        # (different process — os.environ won't propagate) can pick it up and override
-        # any hardcoded default base_url used by solver sub-components.
+
+        # Write the resolved endpoint to a well-known file so solver sub-components
+        # in the rollout subprocess can pick it up (os.environ doesn't cross processes).
         vllm_url_file = os.environ.get(
             "AGENTFLOW_VLLM_URL_FILE",
             "/tmp/agentflow_vllm_url.txt",
@@ -349,20 +359,6 @@ class AgentModeDaemon:
         except Exception as _e:
             logger.warning(f"Could not write vLLM URL file {vllm_url_file}: {_e}")
             print(f"[AgentModeDaemon] WARNING: Could not write vLLM URL file: {_e}")
-
-        # Write the direct vLLM backend URL as a fallback so rollout workers
-        # can bypass the proxy if it is unreachable.
-        if server_addresses:
-            direct_backend_url = f"http://{server_addresses[0]}/v1"
-            direct_url_file = os.environ.get(
-                "AGENTFLOW_VLLM_DIRECT_URL_FILE", "/tmp/agentflow_vllm_direct_url.txt"
-            )
-            try:
-                with open(direct_url_file, "w") as fh:
-                    fh.write(direct_backend_url)
-                print(f"[AgentModeDaemon] Direct backend URL written: {direct_url_file} → {direct_backend_url}")
-            except Exception as _e:
-                print(f"[AgentModeDaemon] WARNING: Could not write direct backend URL file: {_e}")
         resources: NamedResources = {"main_llm": llm_resource}
         resources_id = await self.server.update_resources(resources)
         self._current_resources_id = resources_id
