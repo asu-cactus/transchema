@@ -356,22 +356,26 @@ class DataMorpherAgentRollout:
                     continue
                 # Works with new vllm.py (has default_max_tokens attribute).
                 _engine.default_max_tokens = _safe_max
-                # Belt-and-suspenders: patch _generate_text if it still has the
-                # hardcoded 2048 default (old vllm.py in a stale Ray worker).
-                import functools, inspect
+                # Belt-and-suspenders: patch _generate_text so it uses _safe_max
+                # as the default instead of the hardcoded 2048.
+                # Use a factory function to avoid closure-variable capture bugs.
                 try:
-                    sig = inspect.signature(_engine._generate_text)
-                    if sig.parameters.get("max_tokens") is not None:
-                        _orig = _engine._generate_text
-                        @functools.wraps(_orig)
-                        def _capped_generate_text(_orig=_orig, _safe=_safe_max,
-                                                  *args, **kwargs):
-                            if "max_tokens" not in kwargs or kwargs["max_tokens"] is None:
-                                kwargs["max_tokens"] = _safe
-                            return _orig(*args, **kwargs)
-                        _engine._generate_text = _capped_generate_text
-                except Exception:
-                    pass
+                    def _make_capped_generate_text(orig_fn, safe_max):
+                        def _capped(prompt, system_prompt=None,
+                                    max_tokens=None, **kwargs):
+                            if max_tokens is None:
+                                max_tokens = safe_max
+                            # orig_fn is a bound method — self is already captured
+                            return orig_fn(prompt,
+                                          system_prompt=system_prompt,
+                                          max_tokens=max_tokens,
+                                          **kwargs)
+                        return _capped
+                    _engine._generate_text = _make_capped_generate_text(
+                        _engine._generate_text, _safe_max
+                    )
+                except Exception as _patch_err:
+                    print(f"[DataMorpherAgentRollout] Warning: _generate_text patch failed: {_patch_err}")
         print(f"[DataMorpherAgentRollout] max_tokens capped to {_safe_max} on all planner engines")
         self.llm_engine = llm_engine_name
         self.verbose = verbose

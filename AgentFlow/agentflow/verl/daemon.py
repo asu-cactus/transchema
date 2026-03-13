@@ -739,19 +739,23 @@ class AgentModeDaemon:
             original_sample = self._task_id_to_original_sample[rollout_id]
 
             if not rollout.triplets:
-                continue
-
-            # The client should report triplets that contain prompt_ids and response_ids.
-            # Example triplet.prompt: {"token_ids": [...]}
-            # Example triplet.response: {"token_ids": [...]}
-            trace_list = [
-                {
-                    "prompt_ids": self._extract_token_ids(getattr(t, "prompt", None)),
-                    "response_ids": self._extract_token_ids(getattr(t, "response", None)),
-                }
-                for t in rollout.triplets
-            ]
-            if not any(len(x["prompt_ids"]) + len(x["response_ids"]) > 0 for x in trace_list):
+                # No conversation turns recorded (e.g. LLM call failed before any
+                # response was generated).  Fall through to the fallback path below
+                # so the rollout can still contribute a (0-reward) training sample
+                # rather than being silently discarded.
+                trace_list = []
+            else:
+                # The client should report triplets that contain prompt_ids and response_ids.
+                # Example triplet.prompt: {"token_ids": [...]}
+                # Example triplet.response: {"token_ids": [...]}
+                trace_list = [
+                    {
+                        "prompt_ids": self._extract_token_ids(getattr(t, "prompt", None)),
+                        "response_ids": self._extract_token_ids(getattr(t, "response", None)),
+                    }
+                    for t in rollout.triplets
+                ]
+            if not trace_list or not any(len(x["prompt_ids"]) + len(x["response_ids"]) > 0 for x in trace_list):
                 question_text = str(original_sample.get("question", "")).strip()
                 rollout_text = self._extract_rollout_text(rollout)
                 prompt_ids = []
