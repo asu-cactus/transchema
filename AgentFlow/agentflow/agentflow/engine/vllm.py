@@ -34,6 +34,7 @@ class ChatVLLM(EngineLM, CachedEngine):
         base_url=None,
         api_key=None,
         check_model: bool=True,
+        max_tokens: int = 1024,
         **kwargs):
         """
         :param model_string:
@@ -45,6 +46,7 @@ class ChatVLLM(EngineLM, CachedEngine):
         self.use_cache = use_cache
         self.system_prompt = system_prompt
         self.is_multimodal = is_multimodal
+        self.default_max_tokens = max_tokens
 
         if self.use_cache:
             root = platformdirs.user_cache_dir("agentflow")
@@ -103,8 +105,10 @@ class ChatVLLM(EngineLM, CachedEngine):
             }
         
     def _generate_text(
-        self, prompt, system_prompt=None, max_tokens=2048, top_p=0.99, response_format=None, **kwargs
+        self, prompt, system_prompt=None, max_tokens=None, top_p=0.99, response_format=None, **kwargs
     ):
+        if max_tokens is None:
+            max_tokens = self.default_max_tokens
 
         sys_prompt_arg = system_prompt if system_prompt else self.system_prompt
 
@@ -159,8 +163,10 @@ class ChatVLLM(EngineLM, CachedEngine):
         return formatted_content
 
     def _generate_multimodal(
-        self, content: List[Union[str, bytes]], system_prompt=None, temperature=0, max_tokens=2048, top_p=0.99, response_format=None
+        self, content: List[Union[str, bytes]], system_prompt=None, temperature=0, max_tokens=None, top_p=0.99, response_format=None
     ):
+        if max_tokens is None:
+            max_tokens = self.default_max_tokens
         sys_prompt_arg = system_prompt if system_prompt else self.system_prompt
         formatted_content = self._format_content(content)
 

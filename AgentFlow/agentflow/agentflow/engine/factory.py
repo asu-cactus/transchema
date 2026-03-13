@@ -177,6 +177,7 @@ def create_llm_engine(model_string: str, use_cache: bool = False, is_multimodal:
             "frequency_penalty": kwargs.get("frequency_penalty", 1.2),
             "max_model_len": kwargs.get("max_model_len", 15200),
             "max_seq_len_to_capture": kwargs.get("max_seq_len_to_capture", 15200),
+            "max_tokens": kwargs.get("max_tokens", 1024),
         }
         return ChatVLLM(**config)
 
