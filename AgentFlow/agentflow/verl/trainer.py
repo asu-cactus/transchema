@@ -51,10 +51,12 @@ class AgentFlowTrainer(RayPPOTrainer):
 
     def _load_checkpoint(self):
         # veRL's base _load_checkpoint raises NotImplementedError if
-        # default_hdfs_dir is set to any non-None value.  We only use local
-        # scratch storage, so force it to None before delegating.
-        with OmegaConf.open_dict(self.config):
-            self.config.trainer.default_hdfs_dir = None
+        # default_hdfs_dir is set. Force it to None via OmegaConf so the
+        # base method skips the HDFS branch and only checks local storage.
+        try:
+            OmegaConf.update(self.config, "trainer.default_hdfs_dir", None, merge=True)
+        except Exception:
+            pass
         super()._load_checkpoint()
     """
     Specialized PPO trainer for agent-based reinforcement learning.
