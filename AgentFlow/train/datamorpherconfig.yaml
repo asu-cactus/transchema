@@ -19,9 +19,16 @@ env:
   VERBOSITY: 'DEBUG'
   N_WORKERS: 2
 
-  # Tool suite for DataMorpher pipeline synthesis.
-  # Code_Gen_And_Score_Tool: generates and scores Python transformation code.
-  ENABLE_TOOLS: ["Code_Gen_And_Score_Tool"]
+  # Full operator tool suite for DataMorpher pipeline synthesis.
+  ENABLE_TOOLS: [
+    "Configure_Join_Operator_Tool",
+    "Configure_Union_Operator_Tool",
+    "Configure_GroupBy_Aggregate_Operator_Tool",
+    "Add_Pivot_Tool",
+    "Add_Unpivot_Tool",
+    "Code_Gen_And_Score_Tool",
+    "Critique_Pipeline_Tool"
+  ]
 
   # "Default" means each tool uses its own built-in default engine (the vLLM-served Qwen)
   TOOL_ENGINE: ["Default"]

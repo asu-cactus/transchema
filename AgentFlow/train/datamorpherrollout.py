@@ -320,7 +320,15 @@ class DataMorpherAgentRollout:
         prefix = "" if "gpt" in llm_engine_name else "vllm-"
         self.solver = construct_solver(
             llm_engine_name=prefix + llm_engine_name,
-            enabled_tools=["Code_Gen_And_Score_Tool"],
+            enabled_tools=[
+                "Configure_Join_Operator_Tool",
+                "Configure_Union_Operator_Tool",
+                "Configure_GroupBy_Aggregate_Operator_Tool",
+                "Add_Pivot_Tool",
+                "Add_Unpivot_Tool",
+                "Code_Gen_And_Score_Tool",
+                "Critique_Pipeline_Tool",
+            ],
             tool_engine=tool_engine,
             model_engine=model_engine,
             output_types="final",
