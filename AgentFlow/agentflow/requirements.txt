@@ -16,8 +16,9 @@ tenacity==9.0.0
 wikipedia==1.4.0
 # vllm is pre-installed on CHPC — do NOT list it here or pip will reinstall it
 # and overwrite the system torch/cuda packages.
-# numpy must stay <2.0 for pandas/verl ABI compatibility
-numpy<2.0.0
+# numpy must stay at 1.26.4: pandas 2.1.4 and verl 0.5.0 were compiled against it.
+# Use: pip install "numpy==1.26.4" --force-reinstall --no-deps  to fix if broken.
+numpy==1.26.4
 # vllm==0.8.5
 dashscope==1.24.2
 # Pin opentelemetry to a single consistent set that satisfies agentops and vllm
