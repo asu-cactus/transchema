@@ -6,9 +6,17 @@ import time
 from contextlib import nullcontext
 from typing import List, Optional, Union, Dict, Any
 
-import agentops
+try:
+    import agentops  # noqa: F401
+except Exception:
+    agentops = None
 
-from opentelemetry.sdk.trace import ReadableSpan
+try:
+    from opentelemetry.sdk.trace import ReadableSpan
+    _HAS_READABLE_SPAN = True
+except Exception:
+    ReadableSpan = Any
+    _HAS_READABLE_SPAN = False
 from .client import AgentFlowClient
 from .litagent import LitAgent
 from .types import Rollout, Task, Triplet, RolloutRawResult
@@ -92,7 +100,7 @@ class AgentRunner(ParallelWorkerBase):
         if isinstance(result, list) and all(isinstance(t, Triplet) for t in result):
             triplets = result  # type: ignore
         # Case 3: result is a list of ReadableSpan (OpenTelemetry spans)
-        if isinstance(result, list) and all(isinstance(t, ReadableSpan) for t in result):
+        if _HAS_READABLE_SPAN and isinstance(result, list) and all(isinstance(t, ReadableSpan) for t in result):
             trace_spans = result  # type: ignore
             trace = [json.loads(readable_span.to_json()) for readable_span in trace_spans]  # type: ignore
         # Case 4: result is a list of dict (trace JSON)
