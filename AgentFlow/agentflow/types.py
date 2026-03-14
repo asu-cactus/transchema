@@ -1,7 +1,12 @@
 from typing import Any, Dict, List, Optional, Union, Literal, Annotated
 
 from pydantic import BaseModel, Field, Discriminator
-from opentelemetry.sdk.trace import ReadableSpan
+try:
+    from opentelemetry.sdk.trace import ReadableSpan
+except Exception:
+    # OpenTelemetry is optional for local/CHPC runs; only the trace type alias
+    # below references ReadableSpan.
+    ReadableSpan = Any
 
 __all__ = [
     "Triplet",

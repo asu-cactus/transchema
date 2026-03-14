@@ -25,6 +25,19 @@ from typing import Any, Optional
 
 from filelock import FileLock
 
+# ---------------------------------------------------------------------------
+# Ensure repo-local packages are importable before any agentflow imports.
+# When this file is launched as `python train/datamorpherrollout.py`, Python
+# puts `train/` on sys.path, not the repository root.
+# ---------------------------------------------------------------------------
+_AGENTFLOW_ROOT = str(Path(__file__).resolve().parents[1])
+if _AGENTFLOW_ROOT not in sys.path:
+    sys.path.insert(0, _AGENTFLOW_ROOT)
+
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 from agentflow import Trainer, LitAgent, NamedResources, LLM, reward, configure_logger
 
 # Compatibility shim:
@@ -45,17 +58,6 @@ except ModuleNotFoundError:
     from agentflow.agentflow.solver import construct_solver
 
 configure_logger()
-
-# ---------------------------------------------------------------------------
-# Path setup so validation/ and eval_score/ are importable
-# ---------------------------------------------------------------------------
-_AGENTFLOW_ROOT = str(Path(__file__).resolve().parents[1])
-if _AGENTFLOW_ROOT not in sys.path:
-    sys.path.insert(0, _AGENTFLOW_ROOT)
-
-_REPO_ROOT = str(Path(__file__).resolve().parents[2])
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
 
 _EVAL_SCORE_ROOT = os.path.join(_REPO_ROOT, "eval_score")
 if _EVAL_SCORE_ROOT not in sys.path:
