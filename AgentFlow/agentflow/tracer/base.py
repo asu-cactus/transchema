@@ -1,7 +1,10 @@
 from contextlib import contextmanager
 from typing import Iterator, List, Optional, Callable, Any, Awaitable
 
-from opentelemetry.sdk.trace import ReadableSpan
+try:
+    from opentelemetry.sdk.trace import ReadableSpan
+except Exception:
+    ReadableSpan = Any
 from agentflow.types import ParallelWorkerBase
 
 

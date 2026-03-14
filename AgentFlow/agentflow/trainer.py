@@ -6,19 +6,41 @@ import signal
 import time
 from typing import List, Optional, Union
 import importlib
-
-import agentops
+from contextlib import contextmanager
 
 from .client import AgentFlowClient
 from .litagent import LitAgent
 from .runner import AgentRunner
 from .types import ParallelWorkerBase
 from .tracer.base import BaseTracer
-from .tracer.agentops import AgentOpsTracer
 from .tracer.triplet import TripletExporter
+
+try:
+    import agentops  # noqa: F401
+    from .tracer.agentops import AgentOpsTracer
+except Exception:
+    agentops = None
+    AgentOpsTracer = None
 
 
 logger = logging.getLogger(__name__)
+
+
+class NullTracer(BaseTracer):
+    """No-op tracer used when AgentOps is unavailable."""
+
+    def init(self) -> None:
+        return None
+
+    def teardown(self) -> None:
+        return None
+
+    @contextmanager
+    def trace_context(self, name: Optional[str] = None):
+        yield None
+
+    def get_last_trace(self) -> List:
+        return []
 
 
 class Trainer(ParallelWorkerBase):
@@ -99,6 +121,9 @@ class Trainer(ParallelWorkerBase):
             tracer_kwargs = {k: v for k, v in tracer.items() if k != "type"}
             return tracer_cls(**tracer_kwargs)
         if tracer is None:
+            if AgentOpsTracer is None:
+                logger.warning("AgentOps unavailable; using NullTracer.")
+                return NullTracer()
             return AgentOpsTracer(agentops_managed=True, instrument_managed=True, daemon=self.daemon)
         raise ValueError(f"Invalid tracer type: {type(tracer)}. Expected BaseTracer, str, dict, or None.")
 
