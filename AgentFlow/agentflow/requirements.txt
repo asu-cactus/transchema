@@ -20,6 +20,12 @@ wikipedia==1.4.0
 # Use: pip install "numpy==1.26.4" --force-reinstall --no-deps  to fix if broken.
 numpy==1.26.4
 # vllm==0.8.5
+# torch/torchvision/torchaudio are NOT listed here intentionally.
+# The GPU is NVIDIA RTX PRO 6000 Blackwell (sm_120) — requires PyTorch nightly+cu128.
+# To restore if broken:
+#   pip install --pre torch torchvision torchaudio \
+#       --index-url https://download.pytorch.org/whl/nightly/cu128 \
+#       --force-reinstall --no-deps
 dashscope==1.24.2
 # Pin opentelemetry to a single consistent set that satisfies agentops and vllm
 opentelemetry-api==1.29.0
