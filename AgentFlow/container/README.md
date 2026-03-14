@@ -51,6 +51,9 @@ so ABI/package issues fail immediately instead of after a long startup.
 If you do not want online Weights & Biases logging on CHPC, leave `WANDB_API_KEY` unset;
 the launcher will default to `WANDB_MODE=offline`.
 
+Do not add `AgentFlow/agentflow` directly to `PYTHONPATH`; that path contains
+`types.py`, which can shadow Python's standard-library `types` module.
+
 For a real training run, omit `--smoke_test`:
 
 ```bash
