@@ -3,7 +3,13 @@ import inspect
 import warnings
 from typing import TypedDict, Optional
 
-from agentops.sdk.decorators import operation
+try:
+    from agentops.sdk.decorators import operation
+except Exception:
+    # AgentOps is optional in local/CHPC runs. Fall back to a no-op decorator
+    # so reward computation still works without tracing installed.
+    def operation(fn):
+        return fn
 
 
 class RewardSpanData(TypedDict):
