@@ -107,7 +107,7 @@ class Code_Gen_And_Score_Tool(BaseTool):
         )
 
     def execute(
-        self, query: str = "", memory_actions: str = "", error_string: str = ""
+        self, query: str = "", memory_actions: str = "", error_string: str = "", **kwargs
     ) -> Dict[str, Any]:
         """
         Generate Python transformation code based on query and operator action history.

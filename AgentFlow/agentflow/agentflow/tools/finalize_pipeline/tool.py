@@ -46,7 +46,7 @@ class Finalize_Pipeline_Tool(BaseTool):
         )
 
     def execute(
-        self, pipeline_id: str = "", pipeline: str = ""
+        self, pipeline_id: str = "", pipeline: str = "", **kwargs
     ) -> Dict[str, Any]:
         """Mark a pipeline as finalized."""
         if not pipeline_id:

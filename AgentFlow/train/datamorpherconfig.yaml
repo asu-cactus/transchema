@@ -30,7 +30,9 @@ env:
     "Critique_Pipeline_Tool"
   ]
 
-  # "Default" means each tool uses its own built-in default engine (the vLLM-served Qwen)
+  # "trainable" routes the planner/verifier/executor through the local vLLM-served Qwen.
+  # "Default" here means datamorpherrollout.py will replace it with the vllm-prefixed
+  # model string so all operator tools also use the local Qwen — no GPT API key needed.
   TOOL_ENGINE: ["Default"]
 
   # [planner_main, planner_fixed, verifier, executor]

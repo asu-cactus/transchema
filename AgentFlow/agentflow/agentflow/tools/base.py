@@ -1,7 +1,5 @@
 # agentflow/tools/base.py
 
-from agentflow.engine.openai import ChatOpenAI
-
 class BaseTool:
     """
     A base class for building tool classes that perform specific tasks, such as image processing or text detection.

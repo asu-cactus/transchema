@@ -209,6 +209,7 @@ class Add_Operator_Tool(BaseTool):
         fd_hints: str = "",
         hints: Optional[List[str]] = None,
         all_intermediate_results: Optional[dict] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         """Run the operator-selection prompt and return the chosen operator."""
 

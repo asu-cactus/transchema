@@ -17,8 +17,9 @@ import platformdirs
 from typing import List, Union
 from tenacity import (
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
-    wait_random_exponential,
+    wait_exponential,
 )
 from .base import EngineLM, CachedEngine
 
@@ -72,28 +73,33 @@ class ChatVLLM(EngineLM, CachedEngine):
         except Exception as e:
             raise ValueError(f"Failed to connect to VLLM server at {self.base_url}. Please ensure the server is running and try again.")
 
-    @retry(wait=wait_random_exponential(min=1, max=3), stop=stop_after_attempt(3))
+    @retry(
+        retry=retry_if_exception_type(Exception),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        stop=stop_after_attempt(10),
+        reraise=True,
+    )
+    def _generate_with_retry(self, content: Union[str, List[Union[str, bytes]]], system_prompt=None, **kwargs):
+        """Inner call that raises on error so tenacity can retry."""
+        if isinstance(content, str):
+            return self._generate_text(content, system_prompt=system_prompt, **kwargs)
+        elif isinstance(content, list):
+            if all(isinstance(item, str) for item in content):
+                return self._generate_text("\n".join(content), system_prompt=system_prompt, **kwargs)
+            elif any(isinstance(item, bytes) for item in content):
+                if not self.is_multimodal:
+                    raise NotImplementedError(
+                        f"Multimodal generation is only supported for {self.model_string}."
+                    )
+                return self._generate_multimodal(content, system_prompt=system_prompt, **kwargs)
+            else:
+                raise ValueError("Unsupported content in list: only str or bytes are allowed.")
+        else:
+            raise ValueError(f"Unsupported content type: {type(content)}")
+
     def generate(self, content: Union[str, List[Union[str, bytes]]], system_prompt=None, **kwargs):
         try:
-            if isinstance(content, str):
-                return self._generate_text(content, system_prompt=system_prompt, **kwargs)
-            
-            elif isinstance(content, list):
-                if all(isinstance(item, str) for item in content):
-                    full_text = "\n".join(content)
-                    return self._generate_text(full_text, system_prompt=system_prompt, **kwargs)
-
-                elif any(isinstance(item, bytes) for item in content):
-                    if not self.is_multimodal:
-                        raise NotImplementedError(
-                            f"Multimodal generation is only supported for {self.model_string}. "
-                            "Consider using a multimodal model like 'gpt-4o'."
-                        )
-                    return self._generate_multimodal(content, system_prompt=system_prompt, **kwargs)
-
-                else:
-                    raise ValueError("Unsupported content in list: only str or bytes are allowed.")
-                
+            return self._generate_with_retry(content, system_prompt=system_prompt, **kwargs)
         except Exception as e:
             print(f"Error in generate method: {str(e)}")
             print(f"Error type: {type(e).__name__}")

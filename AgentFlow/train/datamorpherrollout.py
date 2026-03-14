@@ -318,6 +318,11 @@ class DataMorpherAgentRollout:
         print(f"****** DataMorpher solver: model={llm_engine_name}  base_url={base_url} ******")
 
         prefix = "" if "gpt" in llm_engine_name else "vllm-"
+        # If tool_engine is ["Default"] (i.e. caller didn't specify), replace with the
+        # actual local vLLM-prefixed model string so tools route through ChatVLLM
+        # instead of falling back to their hardcoded gpt-4o defaults.
+        if tool_engine == ["Default"] and prefix == "vllm-":
+            tool_engine = [prefix + llm_engine_name]
         self.solver = construct_solver(
             llm_engine_name=prefix + llm_engine_name,
             enabled_tools=[

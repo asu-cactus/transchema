@@ -195,6 +195,7 @@ class Refine_Existing_Pipeline(BaseTool):
         pipeline_id: str = "",
         current_pipeline: str = "",
         execution_context: str = "",
+        **kwargs,
     ) -> Dict[str, Any]:
         """Critique and correct an existing pipeline in a single LLM call."""
         if not query:
