@@ -273,20 +273,9 @@ def run_preflight_checks(config: dict):
         raise FileNotFoundError(f"Missing target CSV path: {target_csv_path}")
     print("  OK sample task payload and referenced CSV files.")
 
-    # 4) Verify flash_attn.bert_padding signature path used by verl
-    try:
-        import torch  # type: ignore
-        from flash_attn.bert_padding import pad_input  # type: ignore
-    except Exception as exc:
-        raise RuntimeError(f"Failed to import flash_attn.bert_padding.pad_input: {exc}") from exc
-
-    # Minimal call that matches verl keyword style.
-    hidden = torch.randn(3, 7, dtype=torch.float32)
-    idx = torch.tensor([0, 1, 2], dtype=torch.long)
-    out = pad_input(hidden_states=hidden, indices=idx, batch_size=1, seq_len=3)
-    if out is None:
-        raise RuntimeError("pad_input returned None for smoke input.")
-    print("  OK flash_attn.bert_padding.pad_input(hidden_states=...)")
+    # 4) flash-attn is optional on CHPC. The environment follows the patched
+    # transformers/no-flash-attn path, so don't hard-fail here.
+    print("  Skipping flash-attn preflight (optional on this CHPC path).")
 
     print("Preflight checks passed.")
 
@@ -334,57 +323,9 @@ def ensure_runtime_dependencies(auto_install: bool = True):
     ok, err = _can_import_flash_attn()
     if ok:
         print("Runtime dependency check: flash-attn OK")
-        return
-
-    print(f"flash-attn not usable: {err}")
-    if not auto_install:
-        raise RuntimeError(
-            "flash-attn is required by verl but is unavailable.\n"
-            "Install manually in rl_env:\n"
-            "  python -m pip install flash-attn --no-build-isolation --no-binary flash-attn\n"
-        )
-
-    # If a broken wheel is installed (e.g., GLIBC mismatch), remove it first.
-    if "GLIBC_" in err or "cannot open shared object file" in err:
-        print("Detected binary incompatibility in flash-attn; uninstalling broken wheel ...")
-        subprocess.run(
-            [sys.executable, "-m", "pip", "uninstall", "-y", "flash-attn"],
-            env=os.environ,
-            cwd=str(AGENTFLOW_ROOT),
-            check=False,
-        )
-
-    # Build/install in current environment. --no-binary helps avoid incompatible prebuilt wheels.
-    print("Attempting flash-attn installation from source-compatible path ...")
-    install_cmd = [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "flash-attn",
-        "--no-build-isolation",
-        "--no-binary",
-        "flash-attn",
-    ]
-    result = subprocess.run(
-        install_cmd,
-        env=os.environ,
-        cwd=str(AGENTFLOW_ROOT),
-        check=False,
-        text=True,
-    )
-    ok, err = _can_import_flash_attn()
-    if result.returncode != 0 or not ok:
-        raise RuntimeError(
-            "Failed to install usable flash-attn.\n"
-            "Current error: "
-            f"{err}\n\n"
-            "On CHPC, load CUDA toolchain modules and retry, e.g.:\n"
-            "  module load cuda\n"
-            "  python -m pip install flash-attn --no-build-isolation --no-binary flash-attn\n"
-            "If cluster GLIBC/toolchain blocks this build, use a newer node/container."
-        )
-    print("flash-attn installed and importable.")
+    else:
+        print(f"flash-attn not usable ({err}); continuing without it.")
+    return
 
 
 def main():

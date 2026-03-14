@@ -4,6 +4,17 @@
 
 set -euo pipefail
 
+# Load CUDA 12.8 — required for torch 2.7.0+cu128 on Blackwell (sm_120)
+module purge
+module load cuda/12.8
+export CUDA_HOME=$(dirname $(dirname $(which nvcc)))
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+
+unset ROCR_VISIBLE_DEVICES
+export CUDA_VISIBLE_DEVICES=0
+export HF_HOME=/scratch/general/vast/u1592362/hf_cache
+
 URL_FILE="${AGENTFLOW_VLLM_URL_FILE:-/tmp/agentflow_vllm_url.txt}"
 LOG="/tmp/dm_smoke_$(date +%H%M%S).log"
 
