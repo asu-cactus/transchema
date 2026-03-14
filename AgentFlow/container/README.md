@@ -1,13 +1,5 @@
 # CHPC Container Path
 
-This is the paper-safe path for running DataMorpher RL fine-tuning on CHPC:
-
-- real `torch==2.7.0+cu128`
-- real `vllm==0.9.2`
-- real `verl==0.5.0`
-- real `flash-attn` built inside the container
-- no local `flash_attn` shim
-
 ## 1. Build the image
 
 ### Option A: Apptainer on CHPC
