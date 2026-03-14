@@ -1,3 +1,7 @@
 from .base import BaseTracer
-from .agentops import AgentOpsTracer
 from .triplet import TripletExporter
+
+try:
+    from .agentops import AgentOpsTracer
+except Exception:
+    AgentOpsTracer = None
