@@ -34,5 +34,5 @@ exec apptainer exec --nv \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
-  python train/train_datamorpheragent.py --skip_dep_check "$@"
+  python3.11 train/train_datamorpheragent.py --skip_dep_check "$@"
 

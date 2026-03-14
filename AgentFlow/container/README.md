@@ -43,6 +43,9 @@ APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-a
   bash train/chpc_container_run.sh --smoke_test
 ```
 
+If you see `FATAL: "python": executable file not found in $PATH`, update to the latest
+`train/chpc_container_run.sh` from this repo or run `python3.11` inside the container.
+
 For a real training run, omit `--smoke_test`:
 
 ```bash
