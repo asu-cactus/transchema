@@ -8,7 +8,17 @@ If CHPC allows `apptainer build` for your account:
 
 ```bash
 cd /path/to/transschema
-apptainer build transschema-agentflow-cu128.sif AgentFlow/container/apptainer.def
+
+# Build (optionally to scratch to avoid filling home/uufs)
+mkdir -p /scratch/general/vast/u1592362/AgentFlow_container
+apptainer build /scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif AgentFlow/container/apptainer.def
+```
+
+If you built the SIF inside the repo (e.g. `AgentFlow/container/transschema-agentflow-cu128.sif`), move it to scratch:
+
+```bash
+mkdir -p /scratch/general/vast/u1592362/AgentFlow_container
+mv AgentFlow/container/transschema-agentflow-cu128.sif /scratch/general/vast/u1592362/AgentFlow_container/
 ```
 
 ### Option B: Build Docker elsewhere, run Apptainer on CHPC
@@ -25,10 +35,11 @@ Then convert/import to a `.sif` for CHPC using your preferred workflow.
 ## 2. Run on CHPC
 
 ```bash
-cd /uufs/chpc.utah.edu/common/home/u1592362/Downloads/transschema/AgentFlow
+cd /path/to/transschema/AgentFlow
 chmod +x train/chpc_container_run.sh
 
-APPTAINER_IMAGE=/path/to/transschema-agentflow-cu128.sif \
+# If the SIF is on scratch (recommended):
+APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif \
   bash train/chpc_container_run.sh --smoke_test
 ```
 
