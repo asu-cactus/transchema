@@ -4,8 +4,14 @@ from enum import Enum
 from typing import List, Dict, Tuple, Optional, Any
 
 from pydantic import BaseModel
-from opentelemetry import trace as trace_api
-from opentelemetry.sdk.trace import ReadableSpan
+try:
+    from opentelemetry import trace as trace_api
+    from opentelemetry.sdk.trace import ReadableSpan
+    _HAS_OTEL = True
+except Exception:
+    trace_api = None
+    ReadableSpan = Any
+    _HAS_OTEL = False
 from agentflow.types import Triplet
 
 
@@ -155,6 +161,8 @@ class TraceTree:
         All spans without parents found will be considered as candidate root spans.
         If multiple root spans are found, a virtual root span will be created as the parent of all root spans.
         """
+        if not _HAS_OTEL:
+            raise RuntimeError("OpenTelemetry is unavailable; TraceTree.from_spans() cannot be used.")
 
         if not spans:
             raise ValueError("No spans provided to create TraceTree.")
@@ -527,6 +535,8 @@ class TripletExporter:
 
     def export(self, spans: List[ReadableSpan]) -> List[Triplet]:
         """Convert OpenTelemetry spans to a list of Triplet objects."""
+        if not _HAS_OTEL:
+            return []
         trace_tree = TraceTree.from_spans(spans)
         if self.repair_hierarchy:
             trace_tree.repair_hierarchy()
