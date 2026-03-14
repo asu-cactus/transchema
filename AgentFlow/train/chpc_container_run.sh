@@ -28,6 +28,46 @@ mkdir -p /scratch/general/vast/u1592362/AgentFlow_Rollouts
 unset ROCR_VISIBLE_DEVICES
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
+export PYTHONPATH="${AGENTFLOW_ROOT}:${AGENTFLOW_ROOT}/agentflow:${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+
+# Avoid wandb login failures on batch/cluster runs unless the user explicitly configured it.
+if [[ -z "${WANDB_API_KEY:-}" && -z "${WANDB_MODE:-}" ]]; then
+  export WANDB_MODE=offline
+fi
+
+echo "Running container sanity imports ..."
+apptainer exec --nv \
+  --bind "${REPO_ROOT}:/workspace/transschema" \
+  --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+  --pwd /workspace/transschema/AgentFlow \
+  "${IMAGE}" \
+  python3.11 - <<'PY'
+import importlib
+
+required = [
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "datasets",
+    "torch",
+    "ray",
+    "transformers",
+    "yaml",
+    "filelock",
+    "agentflow",
+]
+
+for name in required:
+    importlib.import_module(name)
+
+print("  OK core imports")
+
+try:
+    import flash_attn  # noqa: F401
+    print("  OK flash_attn import")
+except Exception as exc:
+    print(f"  WARN flash_attn import failed: {exc}")
+PY
 
 exec apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \

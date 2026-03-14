@@ -45,6 +45,11 @@ APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-a
 
 If you see `FATAL: "python": executable file not found in $PATH`, update to the latest
 `train/chpc_container_run.sh` from this repo or run `python3.11` inside the container.
+The launcher now also runs a fast in-container import sanity check before starting training,
+so ABI/package issues fail immediately instead of after a long startup.
+
+If you do not want online Weights & Biases logging on CHPC, leave `WANDB_API_KEY` unset;
+the launcher will default to `WANDB_MODE=offline`.
 
 For a real training run, omit `--smoke_test`:
 

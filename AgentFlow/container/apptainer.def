@@ -11,6 +11,7 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
     export CUDA_HOME=/usr/local/cuda
     export PATH=/usr/local/cuda/bin:$PATH
     export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export PYTHONPATH=/workspace/transschema/AgentFlow:/workspace/transschema/AgentFlow/agentflow:/workspace/transschema${PYTHONPATH:+:$PYTHONPATH}
 
 %setup
     mkdir -p "${APPTAINER_ROOTFS}/uufs"
@@ -117,6 +118,11 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
         pyyaml==6.0.2 \
         python-Levenshtein==0.26.0 \
         scikit-learn==1.5.1 \
+        opentelemetry-api==1.29.0 \
+        opentelemetry-sdk==1.29.0 \
+        opentelemetry-exporter-otlp-proto-http==1.29.0 \
+        opentelemetry-exporter-otlp-proto-grpc==1.29.0 \
+        opentelemetry-semantic-conventions==0.50b0 \
         psycopg2-binary==2.9.10
 
     # Real flash-attn compiled in-container with Python headers and CUDA toolchain.
@@ -124,7 +130,18 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
     export MAX_JOBS=8
     python3.11 -m pip install flash-attn==2.7.4.post1 --no-build-isolation --no-cache-dir
 
-    python3.11 -m pip install --force-reinstall transformers==4.53.3 tokenizers==0.21.4
+    python3.11 -m pip install --force-reinstall \
+        transformers==4.53.3 \
+        tokenizers==0.21.4 \
+        openai==1.75.0 \
+        dashscope==1.24.2
+
+    # Some transitive deps pull NumPy 2.x, which breaks pandas/datasets ABI here.
+    # Re-pin the final runtime pair explicitly so the built SIF is deterministic.
+    python3.11 -m pip install --force-reinstall --no-deps --no-cache-dir \
+        numpy==1.26.4 \
+        pyarrow==21.0.0 \
+        pandas==2.1.4
 
 %runscript
     exec "$@"
