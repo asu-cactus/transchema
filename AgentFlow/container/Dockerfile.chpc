@@ -28,7 +28,7 @@ RUN python3.11 -m pip install --upgrade pip==24.3.1 setuptools==75.8.0 wheel==0.
 WORKDIR /workspace/transschema
 COPY . /workspace/transschema
 
-RUN python3.11 -m pip install packaging==25.0 ninja==1.11.1.1 numpy==1.26.4 "setuptools_scm<8"
+RUN python3.11 -m pip install packaging==25.0 ninja==1.11.1.1 numpy==1.26.4 "setuptools_scm<8" "cmake>=3.26,<4"
 
 ENV CUDA_HOME=/usr/local/cuda \
     PATH=/usr/local/cuda/bin:${PATH} \
