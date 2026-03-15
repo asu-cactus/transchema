@@ -66,7 +66,9 @@ APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-a
 This installs the pinned packages listed in
 `AgentFlow/train/chpc_runtime_requirements.txt` into a scratch virtualenv and
 records a `pip freeze` manifest alongside the venv and prints the resolved torch
-version.
+version. It also installs `flash-attn` in the runtime env with
+`FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE` so `verl` can import
+`flash_attn.bert_padding` without requiring a full flash-attn CUDA build.
 
 The bootstrap script now builds a fresh versioned runtime env under scratch and
 updates a stable symlink (`AgentFlow_runtime_venv_current`) to point at it. This
@@ -76,6 +78,12 @@ venv on shared filesystems.
 By default, the bootstrap script does not apply the GPU overlay. The current
 `vllm`/`verl` stack is tightly coupled to the torch version in the base image, so
 replacing torch alone is not a safe default.
+
+If you need to skip the runtime flash-attn utility install for debugging, set:
+
+```bash
+AGENTFLOW_INSTALL_FLASH_ATTN_UTILS=0
+```
 
 Re-run the bootstrap script whenever you change
 `AgentFlow/train/chpc_runtime_requirements.txt`.

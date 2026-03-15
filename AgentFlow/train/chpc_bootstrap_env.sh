@@ -24,6 +24,7 @@ RUNTIME_ENV_ROOT="${AGENTFLOW_RUNTIME_ENV_ROOT:-/scratch/general/vast/u1592362/A
 RUNTIME_REQUIREMENTS="/workspace/transschema/AgentFlow/train/chpc_runtime_requirements.txt"
 GPU_RUNTIME_REQUIREMENTS="${AGENTFLOW_GPU_RUNTIME_REQUIREMENTS:-/workspace/transschema/AgentFlow/train/chpc_gpu_runtime_requirements.txt}"
 ENABLE_GPU_OVERLAY="${AGENTFLOW_ENABLE_GPU_OVERLAY:-0}"
+INSTALL_FLASH_ATTN_UTILS="${AGENTFLOW_INSTALL_FLASH_ATTN_UTILS:-1}"
 PIP_CACHE_DIR="${AGENTFLOW_PIP_CACHE_DIR:-/scratch/general/vast/u1592362/pip_cache}"
 FREEZE_FILE="${AGENTFLOW_RUNTIME_FREEZE:-${RUNTIME_VENV}.freeze.txt}"
 
@@ -38,6 +39,7 @@ echo "  env_root=${RUNTIME_ENV_ROOT}"
 echo "  requirements=${RUNTIME_REQUIREMENTS}"
 echo "  gpu_requirements=${GPU_RUNTIME_REQUIREMENTS}"
 echo "  enable_gpu_overlay=${ENABLE_GPU_OVERLAY}"
+echo "  install_flash_attn_utils=${INSTALL_FLASH_ATTN_UTILS}"
 
 export PIP_CACHE_DIR
 
@@ -68,6 +70,16 @@ if [[ \"${ENABLE_GPU_OVERLAY}\" == \"1\" && -f \"${GPU_RUNTIME_REQUIREMENTS}\" ]
     --upgrade \
     --upgrade-strategy eager \
     --requirement \"${GPU_RUNTIME_REQUIREMENTS}\"
+fi
+
+if [[ \"${INSTALL_FLASH_ATTN_UTILS}\" == \"1\" ]]; then
+  FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE \
+    \"\${new_venv}/bin/python\" -m pip install \
+      --no-build-isolation \
+      --no-cache-dir \
+      --no-deps \
+      --upgrade \
+      flash-attn==2.7.4.post1
 fi
 
 \"\${new_venv}/bin/python\" -c 'import importlib; torch = importlib.import_module(\"torch\"); print(f\"Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}\")'
