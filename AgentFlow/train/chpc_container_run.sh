@@ -55,6 +55,11 @@ else
   echo "  APPTAINER_IMAGE=${IMAGE} bash AgentFlow/train/chpc_bootstrap_env.sh"
 fi
 
+# Ensure Ray worker processes use the same Python interpreter as the launcher.
+# Without this, Ray can default to system python, which may miss runtime-only deps.
+export RAY_PYTHON_EXECUTABLE="${PYTHON_IN_CONTAINER}"
+echo "RAY_PYTHON_EXECUTABLE=${RAY_PYTHON_EXECUTABLE}"
+
 # Avoid wandb login failures on batch/cluster runs unless the user explicitly configured it.
 if [[ -z "${WANDB_API_KEY:-}" && -z "${WANDB_MODE:-}" ]]; then
   export WANDB_MODE=offline
