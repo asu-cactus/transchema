@@ -32,15 +32,34 @@ docker build -f AgentFlow/container/Dockerfile.chpc -t transschema-agentflow:cu1
 
 Then convert/import to a `.sif` for CHPC using your preferred workflow.
 
-## 2. Run on CHPC
+## 2. Bootstrap the fast runtime layer
+
+For lightweight Python dependency changes, use a scratch virtualenv layered on
+top of the base SIF instead of rebuilding the image:
 
 ```bash
-cd /path/to/transschema/AgentFlow
-chmod +x train/chpc_container_run.sh
+cd /path/to/transschema
+chmod +x AgentFlow/train/chpc_bootstrap_env.sh AgentFlow/train/chpc_container_run.sh
+
+APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif \
+  bash AgentFlow/train/chpc_bootstrap_env.sh
+```
+
+This installs the pinned packages listed in
+`AgentFlow/train/chpc_runtime_requirements.txt` into a scratch virtualenv and
+records a `pip freeze` manifest alongside it.
+
+Re-run the bootstrap script whenever you change
+`AgentFlow/train/chpc_runtime_requirements.txt`.
+
+## 3. Run on CHPC
+
+```bash
+cd /path/to/transschema
 
 # If the SIF is on scratch (recommended):
 APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif \
-  bash train/chpc_container_run.sh --smoke_test
+  bash AgentFlow/train/chpc_container_run.sh --smoke_test
 ```
 
 If you see `FATAL: "python": executable file not found in $PATH`, update to the latest
@@ -58,12 +77,14 @@ For a real training run, omit `--smoke_test`:
 
 ```bash
 APPTAINER_IMAGE=/path/to/transschema-agentflow-cu128.sif \
-  bash train/chpc_container_run.sh
+  bash AgentFlow/train/chpc_container_run.sh
 ```
 
 ## Notes
 
 - The repo is bind-mounted into the container at `/workspace/transschema`.
 - CHPC scratch is bind-mounted so checkpoints, rollouts, and HF cache remain on scratch.
+- Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, flash-attn, or apt packages.
+- Use `AgentFlow/train/chpc_runtime_requirements.txt` plus `chpc_bootstrap_env.sh` for lightweight Python-only dependency changes.
 - This path is intended to avoid host-side package drift and host GLIBC / Python-header issues.
 

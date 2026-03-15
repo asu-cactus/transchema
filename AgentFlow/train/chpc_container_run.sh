@@ -29,6 +29,17 @@ unset ROCR_VISIBLE_DEVICES
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
 export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv}"
+PYTHON_IN_CONTAINER="python3.11"
+
+if [[ -x "${RUNTIME_VENV}/bin/python" ]]; then
+  PYTHON_IN_CONTAINER="${RUNTIME_VENV}/bin/python"
+  echo "Using scratch runtime env: ${RUNTIME_VENV}"
+else
+  echo "No scratch runtime env found at ${RUNTIME_VENV}."
+  echo "For lightweight Python dependency updates without rebuilding the SIF, run:"
+  echo "  APPTAINER_IMAGE=${IMAGE} bash AgentFlow/train/chpc_bootstrap_env.sh"
+fi
 
 # Avoid wandb login failures on batch/cluster runs unless the user explicitly configured it.
 if [[ -z "${WANDB_API_KEY:-}" && -z "${WANDB_MODE:-}" ]]; then
@@ -41,8 +52,9 @@ apptainer exec --nv \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
-  python3.11 - <<'PY'
+  "${PYTHON_IN_CONTAINER}" - <<'PY'
 import importlib
+import sys
 
 required = [
     "numpy",
@@ -54,11 +66,22 @@ required = [
     "transformers",
     "yaml",
     "filelock",
+    "setproctitle",
     "agentflow",
 ]
 
+failures = []
 for name in required:
-    importlib.import_module(name)
+    try:
+        importlib.import_module(name)
+    except Exception as exc:
+        failures.append((name, exc))
+
+if failures:
+    print("ERROR: active Python runtime is missing required imports:")
+    for name, exc in failures:
+        print(f"  - {name}: {exc}")
+    sys.exit(3)
 
 print("  OK core imports")
 
@@ -74,5 +97,5 @@ exec apptainer exec --nv \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
-  python3.11 train/train_datamorpheragent.py --skip_dep_check "$@"
+  "${PYTHON_IN_CONTAINER}" train/train_datamorpheragent.py --skip_dep_check "$@"
 
