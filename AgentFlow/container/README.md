@@ -2,6 +2,17 @@
 
 ## 1. Build the image
 
+This container definition now targets the CHPC Blackwell GPU path. The heavy
+GPU stack is rebuilt coherently in the image:
+
+- PyTorch `cu128` nightly wheels
+- `xformers` built from source
+- `vllm` `v0.9.2` built from source
+- `flash-attn` built from source
+
+This is intentional: the earlier wheel-based stack failed on Blackwell with
+`CUDA error: no kernel image is available for execution on the device`.
+
 ### Option A: Apptainer on CHPC
 
 If CHPC allows `apptainer build` for your account:
@@ -13,6 +24,9 @@ cd /path/to/transschema
 mkdir -p /scratch/general/vast/u1592362/AgentFlow_container
 apptainer build /scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif AgentFlow/container/apptainer.def
 ```
+
+Expect this Blackwell rebuild to take noticeably longer than the earlier image,
+because multiple GPU-sensitive packages are compiled from source.
 
 If you built the SIF inside the repo (e.g. `AgentFlow/container/transschema-agentflow-cu128.sif`), move it to scratch:
 
@@ -107,7 +121,7 @@ APPTAINER_IMAGE=/path/to/transschema-agentflow-cu128.sif \
 
 - The repo is bind-mounted into the container at `/workspace/transschema`.
 - CHPC scratch is bind-mounted so checkpoints, rollouts, and HF cache remain on scratch.
-- Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, flash-attn, or apt packages.
+- Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, flash-attn, xformers, or apt packages.
 - Use `AgentFlow/train/chpc_runtime_requirements.txt` plus `chpc_bootstrap_env.sh` for lightweight Python-only dependency changes.
 - `AgentFlow/train/chpc_gpu_runtime_requirements.txt` is opt-in only; use it when intentionally testing a different torch wheel stack.
 - This path is intended to avoid host-side package drift and host GLIBC / Python-header issues.

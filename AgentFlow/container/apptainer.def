@@ -26,12 +26,14 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
         python3-pip \
         python3.11-venv \
         build-essential \
+        cmake \
         git \
         curl \
         wget \
         ca-certificates \
         ninja-build \
         pkg-config \
+        libnuma-dev \
         libglib2.0-0 \
         libgl1 \
         && rm -rf /var/lib/apt/lists/*
@@ -42,9 +44,21 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
     python3.11 -m pip install --upgrade pip==24.3.1 setuptools==75.8.0 wheel==0.45.1
     python3.11 -m pip install packaging==25.0 ninja==1.11.1.1 numpy==1.26.4
 
-    python3.11 -m pip install \
-        torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 \
-        --index-url https://download.pytorch.org/whl/cu128
+    # Blackwell (sm_120) requires a coherent CUDA 12.8+ stack. Use cu128 nightly
+    # torch wheels here, then build the GPU-sensitive extension packages in-container
+    # against the same torch/CUDA toolchain.
+    export CUDA_HOME=/usr/local/cuda
+    export PATH=/usr/local/cuda/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+    export TORCH_CUDA_ARCH_LIST="12.0+PTX"
+    export MAX_JOBS=8
+    export CMAKE_BUILD_PARALLEL_LEVEL=8
+    export FLASH_ATTENTION_FORCE_BUILD=TRUE
+    export VLLM_TARGET_DEVICE=cuda
+
+    python3.11 -m pip install --pre \
+        torch torchvision torchaudio \
+        --index-url https://download.pytorch.org/whl/nightly/cu128
 
     python3.11 -m pip install \
         pyvers==0.1.0 \
@@ -89,6 +103,16 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
         "fastapi[standard]>=0.115.0,<0.116" \
         llguidance==0.7.30
 
+    # xformers wheels lag Blackwell support; compile from source against the active torch.
+    python3.11 -m pip install --no-build-isolation --no-cache-dir --upgrade \
+        "git+https://github.com/facebookresearch/xformers.git@main#egg=xformers"
+
+    # vLLM 0.9.2 is the project version we already target, but the public wheel path
+    # is not sufficient for Blackwell. Build the same release from source with sm_120
+    # arch enabled instead of using the prebuilt wheel.
+    python3.11 -m pip install --no-build-isolation --no-cache-dir --upgrade \
+        "git+https://github.com/vllm-project/vllm.git@v0.9.2#egg=vllm"
+
     python3.11 -m pip install verl==0.5.0 --no-deps
 
     python3.11 -m pip install \
@@ -125,10 +149,10 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
         opentelemetry-semantic-conventions==0.50b0 \
         psycopg2-binary==2.9.10
 
-    # Real flash-attn compiled in-container with Python headers and CUDA toolchain.
-    export FLASH_ATTENTION_FORCE_BUILD=TRUE
-    export MAX_JOBS=8
-    python3.11 -m pip install flash-attn==2.7.4.post1 --no-build-isolation --no-cache-dir
+    # Blackwell flash-attn support landed after the old pinned wheel path; build from
+    # source against the active torch/CUDA toolchain instead of using an older release.
+    python3.11 -m pip install --no-build-isolation --no-cache-dir --upgrade \
+        "git+https://github.com/Dao-AILab/flash-attention.git@main#egg=flash-attn"
 
     python3.11 -m pip install --force-reinstall \
         transformers==4.53.3 \
