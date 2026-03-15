@@ -1,10 +1,6 @@
-# Blackwell GPU overlay for CHPC runtime.
-# The base SIF keeps the heavy stack stable, but the torch wheel itself must
-# match the GPU architecture. For RTX PRO 6000 Blackwell (sm_120), use the
-# cu128 nightly wheels in the runtime overlay instead of rebuilding the full SIF.
-
---pre
---index-url https://download.pytorch.org/whl/nightly/cu128
-torch
-torchvision
-torchaudio
+# Deprecated.
+#
+# The Blackwell reset path now uses a coherent GPU stack in the base image
+# instead of swapping torch wheels at runtime. This file is kept only as a
+# record of the older experiment and is no longer used by the CHPC bootstrap
+# script.

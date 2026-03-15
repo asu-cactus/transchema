@@ -31,21 +31,31 @@ export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
 export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv_current}"
 LEGACY_RUNTIME_VENV="/scratch/general/vast/u1592362/AgentFlow_runtime_venv"
-PYTHON_IN_CONTAINER="python3.11"
+PYTHON_IN_CONTAINER="python"
+
+runtime_site_packages_dir() {
+  local venv_path="$1"
+  local match
+  for match in "${venv_path}"/lib/python*/site-packages; do
+    if [[ -d "${match}" ]]; then
+      printf '%s\n' "${match}"
+      return 0
+    fi
+  done
+  return 1
+}
 
 if [[ -x "${RUNTIME_VENV}/bin/python" ]]; then
   PYTHON_IN_CONTAINER="${RUNTIME_VENV}/bin/python"
   echo "Using scratch runtime env: ${RUNTIME_VENV}"
-  RUNTIME_SITE_PACKAGES="${RUNTIME_VENV}/lib/python3.11/site-packages"
-  if [[ -d "${RUNTIME_SITE_PACKAGES}" ]]; then
+  if RUNTIME_SITE_PACKAGES="$(runtime_site_packages_dir "${RUNTIME_VENV}")"; then
     export PYTHONPATH="${RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
     echo "Injected runtime site-packages into PYTHONPATH for Ray workers."
   fi
 elif [[ -x "${LEGACY_RUNTIME_VENV}/bin/python" ]]; then
   PYTHON_IN_CONTAINER="${LEGACY_RUNTIME_VENV}/bin/python"
   echo "Using legacy scratch runtime env: ${LEGACY_RUNTIME_VENV}"
-  LEGACY_RUNTIME_SITE_PACKAGES="${LEGACY_RUNTIME_VENV}/lib/python3.11/site-packages"
-  if [[ -d "${LEGACY_RUNTIME_SITE_PACKAGES}" ]]; then
+  if LEGACY_RUNTIME_SITE_PACKAGES="$(runtime_site_packages_dir "${LEGACY_RUNTIME_VENV}")"; then
     export PYTHONPATH="${LEGACY_RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
     echo "Injected legacy runtime site-packages into PYTHONPATH for Ray workers."
   fi

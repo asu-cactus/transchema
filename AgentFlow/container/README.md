@@ -2,20 +2,21 @@
 
 ## 1. Build the image
 
-This container definition now targets the CHPC Blackwell GPU path. The heavy
-GPU stack is rebuilt coherently in the image:
+This is the Blackwell-first reset path.
 
-- PyTorch `cu128` nightly wheels
+The container now starts from an NGC PyTorch base and treats the GPU stack as a
+coherent unit instead of trying to patch an older CUDA Ubuntu image:
+
+- NGC PyTorch base image
+- bundled CUDA / torch from that base
 - `xformers` built from source
-- `vllm` `v0.9.2` built from source
+- `vllm` `v0.9.2` built from source against the base torch
+- `verl` layered on top
+- `flash-attn` Python package installed with CUDA build skipped so
+  `flash_attn.bert_padding` is available to all worker processes
 
-This is intentional: the earlier wheel-based stack failed on Blackwell with
-`CUDA error: no kernel image is available for execution on the device`.
-
-`flash-attn` is intentionally not a hard image requirement on this path. The
-DataMorpher CHPC training/rollout path already treats it as optional, and the
-upstream Blackwell source build is not stable enough to require during image
-construction.
+This is intentionally different from the earlier path. The old wheel-based stack
+kept failing on Blackwell with `CUDA error: no kernel image is available for execution on the device`.
 
 ### Option A: Apptainer on CHPC
 
@@ -23,37 +24,27 @@ If CHPC allows `apptainer build` for your account:
 
 ```bash
 cd /path/to/transschema
-
-# Build (optionally to scratch to avoid filling home/uufs)
 mkdir -p /scratch/general/vast/u1592362/AgentFlow_container
 apptainer build /scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif AgentFlow/container/apptainer.def
 ```
 
-Expect this Blackwell rebuild to take noticeably longer than the earlier image,
-because multiple GPU-sensitive packages are compiled from source.
-
-If you built the SIF inside the repo (e.g. `AgentFlow/container/transschema-agentflow-cu128.sif`), move it to scratch:
-
-```bash
-mkdir -p /scratch/general/vast/u1592362/AgentFlow_container
-mv AgentFlow/container/transschema-agentflow-cu128.sif /scratch/general/vast/u1592362/AgentFlow_container/
-```
+Note: the NGC base image may require access to `nvcr.io`. If the build fails
+while pulling the base image, use Docker on a machine where you can authenticate
+to NGC and then convert/import the resulting image for CHPC.
 
 ### Option B: Build Docker elsewhere, run Apptainer on CHPC
-
-Build on a Linux machine with Docker:
 
 ```bash
 cd /path/to/transschema
 docker build -f AgentFlow/container/Dockerfile.chpc -t transschema-agentflow:cu128 .
 ```
 
-Then convert/import to a `.sif` for CHPC using your preferred workflow.
+Then convert/import to a `.sif` using your preferred workflow.
 
-## 2. Bootstrap the fast runtime layer
+## 2. Bootstrap the runtime layer
 
-For lightweight Python dependency changes, use a scratch virtualenv layered on
-top of the base SIF instead of rebuilding the image:
+The scratch runtime layer is still useful, but it is now only for lightweight
+Python-only dependencies that should not trigger a full image rebuild.
 
 ```bash
 cd /path/to/transschema
@@ -63,79 +54,35 @@ APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-a
   bash AgentFlow/train/chpc_bootstrap_env.sh
 ```
 
-This installs the pinned packages listed in
-`AgentFlow/train/chpc_runtime_requirements.txt` into a scratch virtualenv and
-records a `pip freeze` manifest alongside the venv and prints the resolved torch
-version. It also installs `flash-attn` in the runtime env with
-`FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE` so `verl` can import
-`flash_attn.bert_padding` without requiring a full flash-attn CUDA build. The
-bootstrap now verifies this import and fails early if missing.
+This creates a fresh versioned runtime env on scratch, updates the stable
+symlink `AgentFlow_runtime_venv_current`, records a `pip freeze`, and verifies
+that both `torch` and `flash_attn.bert_padding` import cleanly.
 
-The bootstrap script now builds a fresh versioned runtime env under scratch and
-updates a stable symlink (`AgentFlow_runtime_venv_current`) to point at it. This
-avoids `.nfs*` busy-file errors that can happen when trying to mutate an in-use
-venv on shared filesystems.
-
-By default, the bootstrap script does not apply the GPU overlay. The current
-`vllm`/`verl` stack is tightly coupled to the torch version in the base image, so
-replacing torch alone is not a safe default.
-
-If you need to skip the runtime flash-attn utility install for debugging, set:
-
-```bash
-AGENTFLOW_INSTALL_FLASH_ATTN_UTILS=0
-```
-
-Re-run the bootstrap script whenever you change
-`AgentFlow/train/chpc_runtime_requirements.txt`.
-
-If you created the runtime venv with an older version of the bootstrap script,
-just rerun it. The script now recreates the venv automatically if it was built
-without system site-packages.
-
-Only enable the GPU overlay if you are intentionally testing a different torch
-wheel stack and understand the compatibility trade-offs:
-
-```bash
-AGENTFLOW_ENABLE_GPU_OVERLAY=1 \
-APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif \
-  bash AgentFlow/train/chpc_bootstrap_env.sh
-```
+The bootstrap script no longer assumes Python 3.11 specifically; it uses
+whatever Python is provided by the base container.
 
 ## 3. Run on CHPC
 
 ```bash
 cd /path/to/transschema
 
-# If the SIF is on scratch (recommended):
 APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif \
   bash AgentFlow/train/chpc_container_run.sh --smoke_test
 ```
 
-If you see `FATAL: "python": executable file not found in $PATH`, update to the latest
-`train/chpc_container_run.sh` from this repo or run `python3.11` inside the container.
-The launcher now also runs a fast in-container import sanity check before starting training,
-so ABI/package issues fail immediately instead of after a long startup.
+The launcher now:
 
-If you do not want online Weights & Biases logging on CHPC, leave `WANDB_API_KEY` unset;
-the launcher will default to `WANDB_MODE=offline`.
+- discovers the runtime venv if present
+- injects its `site-packages` into `PYTHONPATH`
+- forces Ray workers to use the same interpreter via `RAY_PYTHON_EXECUTABLE`
+- validates imports before training starts
 
-Do not add `AgentFlow/agentflow` directly to `PYTHONPATH`; that path contains
-`types.py`, which can shadow Python's standard-library `types` module.
-
-For a real training run, omit `--smoke_test`:
-
-```bash
-APPTAINER_IMAGE=/path/to/transschema-agentflow-cu128.sif \
-  bash AgentFlow/train/chpc_container_run.sh
-```
+For a real training run, omit `--smoke_test`.
 
 ## Notes
 
 - The repo is bind-mounted into the container at `/workspace/transschema`.
 - CHPC scratch is bind-mounted so checkpoints, rollouts, and HF cache remain on scratch.
-- Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, xformers, or apt packages.
+- Rebuild the SIF for heavy stack changes like CUDA, torch, vLLM, verl, xformers, or apt packages.
 - Use `AgentFlow/train/chpc_runtime_requirements.txt` plus `chpc_bootstrap_env.sh` for lightweight Python-only dependency changes.
-- `AgentFlow/train/chpc_gpu_runtime_requirements.txt` is opt-in only; use it when intentionally testing a different torch wheel stack.
-- This path is intended to avoid host-side package drift and host GLIBC / Python-header issues.
 

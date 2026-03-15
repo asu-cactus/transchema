@@ -22,9 +22,6 @@ fi
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv_current}"
 RUNTIME_ENV_ROOT="${AGENTFLOW_RUNTIME_ENV_ROOT:-/scratch/general/vast/u1592362/AgentFlow_runtime_envs}"
 RUNTIME_REQUIREMENTS="/workspace/transschema/AgentFlow/train/chpc_runtime_requirements.txt"
-GPU_RUNTIME_REQUIREMENTS="${AGENTFLOW_GPU_RUNTIME_REQUIREMENTS:-/workspace/transschema/AgentFlow/train/chpc_gpu_runtime_requirements.txt}"
-ENABLE_GPU_OVERLAY="${AGENTFLOW_ENABLE_GPU_OVERLAY:-0}"
-INSTALL_FLASH_ATTN_UTILS="${AGENTFLOW_INSTALL_FLASH_ATTN_UTILS:-1}"
 PIP_CACHE_DIR="${AGENTFLOW_PIP_CACHE_DIR:-/scratch/general/vast/u1592362/pip_cache}"
 FREEZE_FILE="${AGENTFLOW_RUNTIME_FREEZE:-${RUNTIME_VENV}.freeze.txt}"
 
@@ -37,9 +34,6 @@ echo "  image=${IMAGE}"
 echo "  venv=${RUNTIME_VENV}"
 echo "  env_root=${RUNTIME_ENV_ROOT}"
 echo "  requirements=${RUNTIME_REQUIREMENTS}"
-echo "  gpu_requirements=${GPU_RUNTIME_REQUIREMENTS}"
-echo "  enable_gpu_overlay=${ENABLE_GPU_OVERLAY}"
-echo "  install_flash_attn_utils=${INSTALL_FLASH_ATTN_UTILS}"
 
 export PIP_CACHE_DIR
 
@@ -54,8 +48,9 @@ set -euo pipefail
 build_id=\$(date +%Y%m%d-%H%M%S)
 new_venv=\"${RUNTIME_ENV_ROOT}/venv-\${build_id}\"
 previous_target=\$(readlink \"${RUNTIME_VENV}\" 2>/dev/null || true)
+base_python=\$(command -v python || command -v python3)
 
-python3.11 -m venv --system-site-packages \"\${new_venv}\"
+"\${base_python}" -m venv --system-site-packages \"\${new_venv}\"
 
 \"\${new_venv}/bin/python\" -m pip install --upgrade \
   pip==24.3.1 \
@@ -65,41 +60,19 @@ python3.11 -m venv --system-site-packages \"\${new_venv}\"
 \"\${new_venv}/bin/python\" -m pip install \
   --requirement \"${RUNTIME_REQUIREMENTS}\"
 
-if [[ \"${ENABLE_GPU_OVERLAY}\" == \"1\" && -f \"${GPU_RUNTIME_REQUIREMENTS}\" ]]; then
-  \"\${new_venv}/bin/python\" -m pip install \
-    --upgrade \
-    --upgrade-strategy eager \
-    --requirement \"${GPU_RUNTIME_REQUIREMENTS}\"
-fi
-
-if [[ \"${INSTALL_FLASH_ATTN_UTILS}\" == \"1\" ]]; then
-  FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE \
-  FLASH_ATTENTION_FORCE_BUILD=FALSE \
-    \"\${new_venv}/bin/python\" -m pip install \
-      --no-build-isolation \
-      --no-cache-dir \
-      --no-deps \
-      --upgrade \
-      flash-attn==2.7.4.post1
-fi
-
-INSTALL_FLASH_ATTN_UTILS=\"${INSTALL_FLASH_ATTN_UTILS}\" \
-  \"\${new_venv}/bin/python\" - <<'PY'
+\"\${new_venv}/bin/python\" - <<'PY'
 import importlib
-import os
 import sys
 
 torch = importlib.import_module('torch')
 print(f'Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}')
 
-require_flash = os.environ.get('INSTALL_FLASH_ATTN_UTILS', '1') == '1'
-if require_flash:
-    try:
-        importlib.import_module('flash_attn.bert_padding')
-        print('flash_attn import check: OK')
-    except Exception as exc:
-        print(f'flash_attn import check failed: {exc}')
-        sys.exit(1)
+try:
+    importlib.import_module('flash_attn.bert_padding')
+    print('flash_attn import check: OK')
+except Exception as exc:
+    print(f'flash_attn import check failed: {exc}')
+    sys.exit(1)
 PY
 
 \"\${new_venv}/bin/python\" -m pip freeze | sort > \"${FREEZE_FILE}\"
