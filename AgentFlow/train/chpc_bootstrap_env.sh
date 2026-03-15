@@ -89,16 +89,16 @@ import importlib
 import os
 import sys
 
-torch = importlib.import_module("torch")
-print(f"Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}")
+torch = importlib.import_module('torch')
+print(f'Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}')
 
-require_flash = os.environ.get("INSTALL_FLASH_ATTN_UTILS", "1") == "1"
+require_flash = os.environ.get('INSTALL_FLASH_ATTN_UTILS', '1') == '1'
 if require_flash:
     try:
-        importlib.import_module("flash_attn.bert_padding")
-        print("flash_attn import check: OK")
+        importlib.import_module('flash_attn.bert_padding')
+        print('flash_attn import check: OK')
     except Exception as exc:
-        print(f"flash_attn import check failed: {exc}")
+        print(f'flash_attn import check failed: {exc}')
         sys.exit(1)
 PY
 
