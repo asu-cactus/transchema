@@ -28,7 +28,7 @@ mkdir -p /scratch/general/vast/u1592362/AgentFlow_Rollouts
 unset ROCR_VISIBLE_DEVICES
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
-export PYTHONPATH="${AGENTFLOW_ROOT}:${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 
 # Avoid wandb login failures on batch/cluster runs unless the user explicitly configured it.
 if [[ -z "${WANDB_API_KEY:-}" && -z "${WANDB_MODE:-}" ]]; then
