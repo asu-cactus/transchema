@@ -58,8 +58,11 @@ elif [[ \"${ENABLE_GPU_OVERLAY}\" != \"1\" ]] && ! \"${RUNTIME_VENV}/bin/python\
 fi
 
 if [[ \"\${recreate_venv}\" == \"1\" ]]; then
-  rm -rf \"${RUNTIME_VENV}\"
-  python3.11 -m venv --system-site-packages \"${RUNTIME_VENV}\"
+  if [[ -d \"${RUNTIME_VENV}\" ]]; then
+    python3.11 -m venv --clear --system-site-packages \"${RUNTIME_VENV}\"
+  else
+    python3.11 -m venv --system-site-packages \"${RUNTIME_VENV}\"
+  fi
 fi
 
 \"${RUNTIME_VENV}/bin/python\" -m pip install --upgrade \
