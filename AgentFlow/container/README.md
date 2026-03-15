@@ -50,7 +50,7 @@ This installs the pinned packages listed in
 also applies the GPU overlay from
 `AgentFlow/train/chpc_gpu_runtime_requirements.txt` so the torch wheel stack can
 be updated for Blackwell without rebuilding the SIF. The script records a
-`pip freeze` manifest alongside the venv.
+`pip freeze` manifest alongside the venv and prints the resolved torch version.
 
 Re-run the bootstrap script whenever you change
 `AgentFlow/train/chpc_runtime_requirements.txt`.

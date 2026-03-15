@@ -67,8 +67,17 @@ fi
 
 if [[ -f \"${GPU_RUNTIME_REQUIREMENTS}\" ]]; then
   \"${RUNTIME_VENV}/bin/python\" -m pip install \
+    --upgrade \
+    --upgrade-strategy eager \
     --requirement \"${GPU_RUNTIME_REQUIREMENTS}\"
 fi
+
+\"${RUNTIME_VENV}/bin/python\" - <<'PY'
+import importlib
+
+torch = importlib.import_module("torch")
+print(f"Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}")
+PY
 
 \"${RUNTIME_VENV}/bin/python\" -m pip freeze | sort > \"${FREEZE_FILE}\"
 
