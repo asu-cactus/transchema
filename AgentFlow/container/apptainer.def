@@ -53,7 +53,6 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
     export TORCH_CUDA_ARCH_LIST="12.0+PTX"
     export MAX_JOBS=8
     export CMAKE_BUILD_PARALLEL_LEVEL=8
-    export FLASH_ATTENTION_FORCE_BUILD=TRUE
     export VLLM_TARGET_DEVICE=cuda
 
     python3.11 -m pip install --pre \
@@ -164,10 +163,9 @@ PY
         opentelemetry-semantic-conventions==0.50b0 \
         psycopg2-binary==2.9.10
 
-    # Blackwell flash-attn support landed after the old pinned wheel path; build from
-    # source against the active torch/CUDA toolchain instead of using an older release.
-    python3.11 -m pip install --no-build-isolation --no-cache-dir --no-deps --upgrade \
-        "git+https://github.com/Dao-AILab/flash-attention.git@main#egg=flash-attn"
+    # flash-attn is optional on this CHPC path. The training/rollout code already
+    # tolerates its absence, and upstream Blackwell source builds are not yet stable
+    # enough to make this a hard image requirement.
 
     python3.11 -m pip install --force-reinstall \
         transformers==4.53.3 \

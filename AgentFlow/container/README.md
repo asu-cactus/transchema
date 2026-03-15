@@ -8,10 +8,14 @@ GPU stack is rebuilt coherently in the image:
 - PyTorch `cu128` nightly wheels
 - `xformers` built from source
 - `vllm` `v0.9.2` built from source
-- `flash-attn` built from source
 
 This is intentional: the earlier wheel-based stack failed on Blackwell with
 `CUDA error: no kernel image is available for execution on the device`.
+
+`flash-attn` is intentionally not a hard image requirement on this path. The
+DataMorpher CHPC training/rollout path already treats it as optional, and the
+upstream Blackwell source build is not stable enough to require during image
+construction.
 
 ### Option A: Apptainer on CHPC
 
@@ -121,7 +125,7 @@ APPTAINER_IMAGE=/path/to/transschema-agentflow-cu128.sif \
 
 - The repo is bind-mounted into the container at `/workspace/transschema`.
 - CHPC scratch is bind-mounted so checkpoints, rollouts, and HF cache remain on scratch.
-- Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, flash-attn, xformers, or apt packages.
+- Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, xformers, or apt packages.
 - Use `AgentFlow/train/chpc_runtime_requirements.txt` plus `chpc_bootstrap_env.sh` for lightweight Python-only dependency changes.
 - `AgentFlow/train/chpc_gpu_runtime_requirements.txt` is opt-in only; use it when intentionally testing a different torch wheel stack.
 - This path is intended to avoid host-side package drift and host GLIBC / Python-header issues.
