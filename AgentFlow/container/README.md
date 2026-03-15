@@ -50,6 +50,11 @@ This installs the pinned packages listed in
 records a `pip freeze` manifest alongside the venv and prints the resolved torch
 version.
 
+The bootstrap script now builds a fresh versioned runtime env under scratch and
+updates a stable symlink (`AgentFlow_runtime_venv_current`) to point at it. This
+avoids `.nfs*` busy-file errors that can happen when trying to mutate an in-use
+venv on shared filesystems.
+
 By default, the bootstrap script does not apply the GPU overlay. The current
 `vllm`/`verl` stack is tightly coupled to the torch version in the base image, so
 replacing torch alone is not a safe default.
