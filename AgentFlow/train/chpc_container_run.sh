@@ -36,9 +36,19 @@ PYTHON_IN_CONTAINER="python3.11"
 if [[ -x "${RUNTIME_VENV}/bin/python" ]]; then
   PYTHON_IN_CONTAINER="${RUNTIME_VENV}/bin/python"
   echo "Using scratch runtime env: ${RUNTIME_VENV}"
+  RUNTIME_SITE_PACKAGES="${RUNTIME_VENV}/lib/python3.11/site-packages"
+  if [[ -d "${RUNTIME_SITE_PACKAGES}" ]]; then
+    export PYTHONPATH="${RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
+    echo "Injected runtime site-packages into PYTHONPATH for Ray workers."
+  fi
 elif [[ -x "${LEGACY_RUNTIME_VENV}/bin/python" ]]; then
   PYTHON_IN_CONTAINER="${LEGACY_RUNTIME_VENV}/bin/python"
   echo "Using legacy scratch runtime env: ${LEGACY_RUNTIME_VENV}"
+  LEGACY_RUNTIME_SITE_PACKAGES="${LEGACY_RUNTIME_VENV}/lib/python3.11/site-packages"
+  if [[ -d "${LEGACY_RUNTIME_SITE_PACKAGES}" ]]; then
+    export PYTHONPATH="${LEGACY_RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
+    echo "Injected legacy runtime site-packages into PYTHONPATH for Ray workers."
+  fi
 else
   echo "No scratch runtime env found at ${RUNTIME_VENV}."
   echo "For lightweight Python dependency updates without rebuilding the SIF, run:"
