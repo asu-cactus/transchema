@@ -22,6 +22,7 @@ fi
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv}"
 RUNTIME_REQUIREMENTS="/workspace/transschema/AgentFlow/train/chpc_runtime_requirements.txt"
 GPU_RUNTIME_REQUIREMENTS="${AGENTFLOW_GPU_RUNTIME_REQUIREMENTS:-/workspace/transschema/AgentFlow/train/chpc_gpu_runtime_requirements.txt}"
+ENABLE_GPU_OVERLAY="${AGENTFLOW_ENABLE_GPU_OVERLAY:-0}"
 PIP_CACHE_DIR="${AGENTFLOW_PIP_CACHE_DIR:-/scratch/general/vast/u1592362/pip_cache}"
 FREEZE_FILE="${AGENTFLOW_RUNTIME_FREEZE:-${RUNTIME_VENV}.freeze.txt}"
 
@@ -33,6 +34,7 @@ echo "  image=${IMAGE}"
 echo "  venv=${RUNTIME_VENV}"
 echo "  requirements=${RUNTIME_REQUIREMENTS}"
 echo "  gpu_requirements=${GPU_RUNTIME_REQUIREMENTS}"
+echo "  enable_gpu_overlay=${ENABLE_GPU_OVERLAY}"
 
 export PIP_CACHE_DIR
 
@@ -50,6 +52,9 @@ if [[ ! -x \"${RUNTIME_VENV}/bin/python\" ]]; then
 elif [[ -f \"${RUNTIME_VENV}/pyvenv.cfg\" ]] && ! grep -q '^include-system-site-packages = true$' \"${RUNTIME_VENV}/pyvenv.cfg\"; then
   echo \"Existing venv is isolated; recreating as a layered venv with system site-packages.\"
   recreate_venv=1
+elif [[ \"${ENABLE_GPU_OVERLAY}\" != \"1\" ]] && ! \"${RUNTIME_VENV}/bin/python\" -c 'import importlib; import sys; torch = importlib.import_module(\"torch\"); numpy = importlib.import_module(\"numpy\"); sys.exit(1 if (\"dev\" in torch.__version__ or int(numpy.__version__.split(\".\", 1)[0]) >= 2) else 0)'; then
+  echo \"Existing venv contains an incompatible GPU overlay; recreating clean runtime env.\"
+  recreate_venv=1
 fi
 
 if [[ \"\${recreate_venv}\" == \"1\" ]]; then
@@ -65,19 +70,14 @@ fi
 \"${RUNTIME_VENV}/bin/python\" -m pip install \
   --requirement \"${RUNTIME_REQUIREMENTS}\"
 
-if [[ -f \"${GPU_RUNTIME_REQUIREMENTS}\" ]]; then
+if [[ \"${ENABLE_GPU_OVERLAY}\" == \"1\" && -f \"${GPU_RUNTIME_REQUIREMENTS}\" ]]; then
   \"${RUNTIME_VENV}/bin/python\" -m pip install \
     --upgrade \
     --upgrade-strategy eager \
     --requirement \"${GPU_RUNTIME_REQUIREMENTS}\"
 fi
 
-\"${RUNTIME_VENV}/bin/python\" - <<'PY'
-import importlib
-
-torch = importlib.import_module("torch")
-print(f"Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}")
-PY
+\"${RUNTIME_VENV}/bin/python\" -c 'import importlib; torch = importlib.import_module(\"torch\"); print(f\"Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}\")'
 
 \"${RUNTIME_VENV}/bin/python\" -m pip freeze | sort > \"${FREEZE_FILE}\"
 

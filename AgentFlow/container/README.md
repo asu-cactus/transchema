@@ -47,10 +47,12 @@ APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-a
 
 This installs the pinned packages listed in
 `AgentFlow/train/chpc_runtime_requirements.txt` into a scratch virtualenv and
-also applies the GPU overlay from
-`AgentFlow/train/chpc_gpu_runtime_requirements.txt` so the torch wheel stack can
-be updated for Blackwell without rebuilding the SIF. The script records a
-`pip freeze` manifest alongside the venv and prints the resolved torch version.
+records a `pip freeze` manifest alongside the venv and prints the resolved torch
+version.
+
+By default, the bootstrap script does not apply the GPU overlay. The current
+`vllm`/`verl` stack is tightly coupled to the torch version in the base image, so
+replacing torch alone is not a safe default.
 
 Re-run the bootstrap script whenever you change
 `AgentFlow/train/chpc_runtime_requirements.txt`.
@@ -58,6 +60,15 @@ Re-run the bootstrap script whenever you change
 If you created the runtime venv with an older version of the bootstrap script,
 just rerun it. The script now recreates the venv automatically if it was built
 without system site-packages.
+
+Only enable the GPU overlay if you are intentionally testing a different torch
+wheel stack and understand the compatibility trade-offs:
+
+```bash
+AGENTFLOW_ENABLE_GPU_OVERLAY=1 \
+APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-agentflow-cu128.sif \
+  bash AgentFlow/train/chpc_bootstrap_env.sh
+```
 
 ## 3. Run on CHPC
 
@@ -93,6 +104,6 @@ APPTAINER_IMAGE=/path/to/transschema-agentflow-cu128.sif \
 - CHPC scratch is bind-mounted so checkpoints, rollouts, and HF cache remain on scratch.
 - Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, flash-attn, or apt packages.
 - Use `AgentFlow/train/chpc_runtime_requirements.txt` plus `chpc_bootstrap_env.sh` for lightweight Python-only dependency changes.
-- Use `AgentFlow/train/chpc_gpu_runtime_requirements.txt` when the torch wheel stack needs to change for the active GPU architecture.
+- `AgentFlow/train/chpc_gpu_runtime_requirements.txt` is opt-in only; use it when intentionally testing a different torch wheel stack.
 - This path is intended to avoid host-side package drift and host GLIBC / Python-header issues.
 
