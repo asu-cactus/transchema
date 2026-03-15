@@ -50,7 +50,7 @@ elif [[ -f \"${RUNTIME_VENV}/pyvenv.cfg\" ]] && ! grep -q '^include-system-site-
   recreate_venv=1
 fi
 
-if [[ \"${recreate_venv}\" == \"1\" ]]; then
+if [[ \"\${recreate_venv}\" == \"1\" ]]; then
   rm -rf \"${RUNTIME_VENV}\"
   python3.11 -m venv --system-site-packages \"${RUNTIME_VENV}\"
 fi
