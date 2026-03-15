@@ -42,8 +42,17 @@ exec apptainer exec \
   /bin/bash -lc "
 set -euo pipefail
 
+recreate_venv=0
 if [[ ! -x \"${RUNTIME_VENV}/bin/python\" ]]; then
-  python3.11 -m venv \"${RUNTIME_VENV}\"
+  recreate_venv=1
+elif [[ -f \"${RUNTIME_VENV}/pyvenv.cfg\" ]] && ! grep -q '^include-system-site-packages = true$' \"${RUNTIME_VENV}/pyvenv.cfg\"; then
+  echo \"Existing venv is isolated; recreating as a layered venv with system site-packages.\"
+  recreate_venv=1
+fi
+
+if [[ \"${recreate_venv}\" == \"1\" ]]; then
+  rm -rf \"${RUNTIME_VENV}\"
+  python3.11 -m venv --system-site-packages \"${RUNTIME_VENV}\"
 fi
 
 \"${RUNTIME_VENV}/bin/python\" -m pip install --upgrade \

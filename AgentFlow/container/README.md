@@ -52,6 +52,10 @@ records a `pip freeze` manifest alongside it.
 Re-run the bootstrap script whenever you change
 `AgentFlow/train/chpc_runtime_requirements.txt`.
 
+If you created the runtime venv with an older version of the bootstrap script,
+just rerun it. The script now recreates the venv automatically if it was built
+without system site-packages.
+
 ## 3. Run on CHPC
 
 ```bash
