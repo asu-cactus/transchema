@@ -74,6 +74,7 @@ fi
 
 if [[ \"${INSTALL_FLASH_ATTN_UTILS}\" == \"1\" ]]; then
   FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE \
+  FLASH_ATTENTION_FORCE_BUILD=FALSE \
     \"\${new_venv}/bin/python\" -m pip install \
       --no-build-isolation \
       --no-cache-dir \
@@ -82,7 +83,24 @@ if [[ \"${INSTALL_FLASH_ATTN_UTILS}\" == \"1\" ]]; then
       flash-attn==2.7.4.post1
 fi
 
-\"\${new_venv}/bin/python\" -c 'import importlib; torch = importlib.import_module(\"torch\"); print(f\"Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}\")'
+INSTALL_FLASH_ATTN_UTILS=\"${INSTALL_FLASH_ATTN_UTILS}\" \
+  \"\${new_venv}/bin/python\" - <<'PY'
+import importlib
+import os
+import sys
+
+torch = importlib.import_module("torch")
+print(f"Resolved torch runtime: {torch.__version__}  cuda={torch.version.cuda}")
+
+require_flash = os.environ.get("INSTALL_FLASH_ATTN_UTILS", "1") == "1"
+if require_flash:
+    try:
+        importlib.import_module("flash_attn.bert_padding")
+        print("flash_attn import check: OK")
+    except Exception as exc:
+        print(f"flash_attn import check failed: {exc}")
+        sys.exit(1)
+PY
 
 \"\${new_venv}/bin/python\" -m pip freeze | sort > \"${FREEZE_FILE}\"
 

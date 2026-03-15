@@ -68,7 +68,8 @@ This installs the pinned packages listed in
 records a `pip freeze` manifest alongside the venv and prints the resolved torch
 version. It also installs `flash-attn` in the runtime env with
 `FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE` so `verl` can import
-`flash_attn.bert_padding` without requiring a full flash-attn CUDA build.
+`flash_attn.bert_padding` without requiring a full flash-attn CUDA build. The
+bootstrap now verifies this import and fails early if missing.
 
 The bootstrap script now builds a fresh versioned runtime env under scratch and
 updates a stable symlink (`AgentFlow_runtime_venv_current`) to point at it. This

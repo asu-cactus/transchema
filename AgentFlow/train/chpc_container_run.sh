@@ -71,6 +71,7 @@ required = [
     "yaml",
     "filelock",
     "setproctitle",
+    "flash_attn",
     "agentflow",
 ]
 
@@ -98,7 +99,8 @@ try:
     import flash_attn  # noqa: F401
     print("  OK flash_attn import")
 except Exception as exc:
-    print(f"  WARN flash_attn import failed: {exc}")
+    print(f"  ERROR flash_attn import failed: {exc}")
+    sys.exit(3)
 PY
 
 exec apptainer exec --nv \
