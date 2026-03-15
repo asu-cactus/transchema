@@ -71,7 +71,7 @@ required = [
     "yaml",
     "filelock",
     "setproctitle",
-    "flash_attn",
+    "flash_attn.bert_padding",
     "agentflow",
 ]
 
@@ -95,12 +95,7 @@ print(f"  torch={torch.__version__}  cuda={torch.version.cuda}")
 if torch.cuda.is_available():
     print(f"  device_capability={torch.cuda.get_device_capability()}")
 
-try:
-    import flash_attn  # noqa: F401
-    print("  OK flash_attn import")
-except Exception as exc:
-    print(f"  ERROR flash_attn import failed: {exc}")
-    sys.exit(3)
+print("  OK flash_attn.bert_padding import")
 PY
 
 exec apptainer exec --nv \
