@@ -1,15 +1,31 @@
-import sys
-from pathlib import Path
-
-_REPO_ROOT = str(Path(__file__).resolve().parents[1])
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
-
 from padding_match import pad_comp
-from util.utils import are_elements_equal
 from collections import Counter
 import bisect
 import pandas as pd
+
+
+def _convert_if_number(value):
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return value
+
+
+def are_elements_equal(elem1, elem2, tolerance=1e-1):
+    elem1 = "" if elem1 is None else elem1
+    elem2 = "" if elem2 is None else elem2
+    elem1 = _convert_if_number(elem1)
+    elem2 = _convert_if_number(elem2)
+    if isinstance(elem1, float) and isinstance(elem2, float):
+        denom = max(abs(elem1), abs(elem2))
+        if denom == 0:
+            return True
+        return (abs(elem1 - elem2) / denom) < tolerance
+    if isinstance(elem1, str) and isinstance(elem2, str):
+        return elem1.strip().lower() == elem2.strip().lower()
+    return elem1 == elem2
 
 
 def find_best_matching_column(pred_col, ground_truth_df):
