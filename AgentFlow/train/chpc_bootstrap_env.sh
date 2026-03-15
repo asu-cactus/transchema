@@ -21,6 +21,7 @@ fi
 
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv}"
 RUNTIME_REQUIREMENTS="/workspace/transschema/AgentFlow/train/chpc_runtime_requirements.txt"
+GPU_RUNTIME_REQUIREMENTS="${AGENTFLOW_GPU_RUNTIME_REQUIREMENTS:-/workspace/transschema/AgentFlow/train/chpc_gpu_runtime_requirements.txt}"
 PIP_CACHE_DIR="${AGENTFLOW_PIP_CACHE_DIR:-/scratch/general/vast/u1592362/pip_cache}"
 FREEZE_FILE="${AGENTFLOW_RUNTIME_FREEZE:-${RUNTIME_VENV}.freeze.txt}"
 
@@ -31,6 +32,7 @@ echo "Bootstrapping scratch runtime env:"
 echo "  image=${IMAGE}"
 echo "  venv=${RUNTIME_VENV}"
 echo "  requirements=${RUNTIME_REQUIREMENTS}"
+echo "  gpu_requirements=${GPU_RUNTIME_REQUIREMENTS}"
 
 export PIP_CACHE_DIR
 
@@ -62,6 +64,11 @@ fi
 
 \"${RUNTIME_VENV}/bin/python\" -m pip install \
   --requirement \"${RUNTIME_REQUIREMENTS}\"
+
+if [[ -f \"${GPU_RUNTIME_REQUIREMENTS}\" ]]; then
+  \"${RUNTIME_VENV}/bin/python\" -m pip install \
+    --requirement \"${GPU_RUNTIME_REQUIREMENTS}\"
+fi
 
 \"${RUNTIME_VENV}/bin/python\" -m pip freeze | sort > \"${FREEZE_FILE}\"
 

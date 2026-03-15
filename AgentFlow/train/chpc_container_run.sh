@@ -85,6 +85,11 @@ if failures:
 
 print("  OK core imports")
 
+import torch
+print(f"  torch={torch.__version__}  cuda={torch.version.cuda}")
+if torch.cuda.is_available():
+    print(f"  device_capability={torch.cuda.get_device_capability()}")
+
 try:
     import flash_attn  # noqa: F401
     print("  OK flash_attn import")

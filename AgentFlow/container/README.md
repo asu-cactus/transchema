@@ -47,7 +47,10 @@ APPTAINER_IMAGE=/scratch/general/vast/u1592362/AgentFlow_container/transschema-a
 
 This installs the pinned packages listed in
 `AgentFlow/train/chpc_runtime_requirements.txt` into a scratch virtualenv and
-records a `pip freeze` manifest alongside it.
+also applies the GPU overlay from
+`AgentFlow/train/chpc_gpu_runtime_requirements.txt` so the torch wheel stack can
+be updated for Blackwell without rebuilding the SIF. The script records a
+`pip freeze` manifest alongside the venv.
 
 Re-run the bootstrap script whenever you change
 `AgentFlow/train/chpc_runtime_requirements.txt`.
@@ -90,5 +93,6 @@ APPTAINER_IMAGE=/path/to/transschema-agentflow-cu128.sif \
 - CHPC scratch is bind-mounted so checkpoints, rollouts, and HF cache remain on scratch.
 - Rebuild the SIF only for heavy stack changes like CUDA, torch, vLLM, verl, flash-attn, or apt packages.
 - Use `AgentFlow/train/chpc_runtime_requirements.txt` plus `chpc_bootstrap_env.sh` for lightweight Python-only dependency changes.
+- Use `AgentFlow/train/chpc_gpu_runtime_requirements.txt` when the torch wheel stack needs to change for the active GPU architecture.
 - This path is intended to avoid host-side package drift and host GLIBC / Python-header issues.
 
