@@ -122,49 +122,46 @@ text = text.replace('license = "Apache-2.0"', 'license = { text = "Apache-2.0" }
 text = "\n".join(line for line in text.splitlines() if "license-files" not in line)
 pyproject.write_text(text + "\n")
 
-# Patch 2: replace PEP 585 lowercase generics with typing.* forms.
+# Patch 2: replace PEP 585 lowercase list[X] with typing.List[X].
 # torch.library.infer_schema in NGC 25.02 torch nightly (2.7.0a0) only accepts the
-# typing.* forms; stable torch 2.7.0 added support for PEP 585 lowercase syntax.
-_REPLACEMENTS = [
-    (r"\blist\[", "List["),
-    # dict/tuple/set are NOT valid infer_schema types (only List[X] is), and replacing
-    # them breaks runtime constructor calls like dict[str, Any]() which are valid in
-    # Python 3.12 but TypeError when spelled as Dict[str, Any]().
-]
-_ALL_NAMES = {"List"}
-
+# typing.* form; stable torch 2.7.0 added support for lowercase list[X].
+# dict/tuple/set are intentionally NOT replaced — they are not valid infer_schema
+# types anyway, and replacing them breaks runtime calls like dict[str,Any]() which
+# are valid Python 3.12 but raise TypeError when spelled as Dict[str,Any]().
 patched = []
 for py_file in vllm_src.rglob("*.py"):
     try:
         text = py_file.read_text(encoding="utf-8")
     except Exception:
         continue
-    new_text = text
-    for pattern, replacement in _REPLACEMENTS:
-        new_text = re.sub(pattern, replacement, new_text)
+    if "list[" not in text:
+        continue
+    new_text = re.sub(r"\blist\[", "List[", text)
     if new_text == text:
         continue
-    # Collect typing names that were introduced by this patch and are not yet imported.
-    new_names = sorted(
-        name for name in _ALL_NAMES
-        if re.search(r"\b" + name + r"\[", new_text)
-        and not re.search(r"\b" + name + r"\b", text)
+    # Revert any List[X]() constructor calls introduced by the replacement.
+    # list[X]() is valid Python 3.12 (creates an empty list) but List[X]() is a
+    # TypeError — typing generics cannot be instantiated.
+    new_text = re.sub(
+        r"\bList(\[[^\[\]]*\])\(\)",
+        lambda m: "list" + m.group(1) + "()",
+        new_text,
     )
-    if new_names:
-        import_line = "from typing import " + ", ".join(new_names)
-        # Insert AFTER any 'from __future__ import' lines — those must come first
-        # in a Python file and prepending before them would cause a SyntaxError.
-        lines = new_text.split("\n")
-        insert_at = 0
-        for i, line in enumerate(lines):
-            if line.strip().startswith("from __future__ import"):
-                insert_at = i + 1
-        lines.insert(insert_at, import_line)
-        new_text = "\n".join(lines)
+    # Inject 'from typing import List' UNCONDITIONALLY — the original file may have
+    # 'List' in a docstring or comment without it being actually imported.
+    # Duplicate 'from typing import' lines are harmless in Python.
+    # Insert AFTER any 'from __future__ import' lines to avoid SyntaxError.
+    lines = new_text.split("\n")
+    insert_at = 0
+    for i, line in enumerate(lines):
+        if line.strip().startswith("from __future__ import"):
+            insert_at = i + 1
+    lines.insert(insert_at, "from typing import List")
+    new_text = "\n".join(lines)
     py_file.write_text(new_text, encoding="utf-8")
     patched.append(str(py_file.relative_to(vllm_src)))
 
-print(f"Patched {len(patched)} files (PEP 585 generics -> typing.*):")
+print(f"Patched {len(patched)} files (list[X] -> List[X]):")
 for p in sorted(patched):
     print(f"  {p}")
 PY

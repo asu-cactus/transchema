@@ -102,27 +102,23 @@ t = '\n'.join(l for l in t.splitlines() if 'license-files' not in l)
 p.write_text(t + '\n')
 # Patch 2: replace PEP 585 lowercase generics with typing.* forms.
 # torch.library.infer_schema in NGC 25.02 torch nightly only accepts typing.* forms.
-SUBS = [(r'\blist\[','List[')]
-# dict/tuple/set are NOT valid infer_schema types and replacing them breaks runtime
-# calls like dict[str, Any]() which are valid Python 3.12 but TypeError as Dict[str, Any]()
-NAMES = {'List'}
 for f in pathlib.Path('/tmp/vllm-src').rglob('*.py'):
     try: orig = f.read_text(encoding='utf-8')
     except: continue
-    new = orig
-    for pat, rep in SUBS: new = re.sub(pat, rep, new)
+    if 'list[' not in orig: continue
+    new = re.sub(r'\blist\[', 'List[', orig)
     if new == orig: continue
-    need = sorted(n for n in NAMES if re.search(r'\b'+n+r'\[',new) and not re.search(r'\b'+n+r'\b',orig))
-    if need:
-        imp = 'from typing import ' + ', '.join(need)
-        lines = new.split('\n')
-        pos = 0
-        for i,l in enumerate(lines):
-            if l.strip().startswith('from __future__ import'): pos = i+1
-        lines.insert(pos, imp)
-        new = '\n'.join(lines)
-    f.write_text(new, encoding='utf-8')
-print('vllm PEP585 patch done')
+    # Revert List[X]() constructor calls - list[X]() is valid Python 3.12 but List[X]() is TypeError
+    new = re.sub(r'\bList(\[[^\[\]]*\])\(\)', lambda m: 'list' + m.group(1) + '()', new)
+    # Always inject import unconditionally - List may appear in comments/strings
+    # in the original file without being imported. Duplicate imports are harmless.
+    lines = new.split('\n')
+    pos = 0
+    for i,l in enumerate(lines):
+        if l.strip().startswith('from __future__ import'): pos = i+1
+    lines.insert(pos, 'from typing import List')
+    f.write_text('\n'.join(lines), encoding='utf-8')
+print('vllm list[X]->List[X] patch done')
 " && \
     "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir --no-deps /tmp/vllm-src && \
     rm -rf /tmp/vllm-src
