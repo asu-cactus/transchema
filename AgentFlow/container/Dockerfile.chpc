@@ -110,6 +110,9 @@ for f in pathlib.Path('/tmp/vllm-src').rglob('*.py'):
     if new == orig: continue
     # Revert List[X]() constructor calls - list[X]() is valid Python 3.12 but List[X]() is TypeError
     new = re.sub(r'\bList(\[[^\[\]]*\])\(\)', lambda m: 'list' + m.group(1) + '()', new)
+    # Revert List[X,Y,...] multi-arg patterns - typing.List only takes ONE arg but
+    # Python 3.12's list[X,Y] GenericAlias accepts any count (e.g. moonvit.py list[int,int])
+    new = re.sub(r'\bList(\[[^\[\]]*,[^\[\]]*\])', lambda m: 'list' + m.group(1), new)
     # Always inject import unconditionally - List may appear in comments/strings
     # in the original file without being imported. Duplicate imports are harmless.
     lines = new.split('\n')

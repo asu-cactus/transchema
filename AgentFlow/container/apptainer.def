@@ -147,6 +147,14 @@ for py_file in vllm_src.rglob("*.py"):
         lambda m: "list" + m.group(1) + "()",
         new_text,
     )
+    # Revert List[X, Y, ...] multi-arg patterns — typing.List only accepts ONE type
+    # argument, but Python 3.12's list[X, Y] GenericAlias accepts any number without
+    # validation (e.g. moonvit.py uses list[int, int] for a 2-tuple-like default).
+    new_text = re.sub(
+        r"\bList(\[[^\[\]]*,[^\[\]]*\])",
+        lambda m: "list" + m.group(1),
+        new_text,
+    )
     # Inject 'from typing import List' UNCONDITIONALLY — the original file may have
     # 'List' in a docstring or comment without it being actually imported.
     # Duplicate 'from typing import' lines are harmless in Python.
