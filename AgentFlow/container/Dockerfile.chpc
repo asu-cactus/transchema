@@ -162,6 +162,14 @@ RUN PYTHON_BIN="$(command -v python || command -v python3)" && \
       pyarrow==21.0.0 \
       pandas==2.1.4
 
+# The NGC 25.02 torch nightly (2.7.0a0, Feb 2025) was built against Triton 3.2.x,
+# which still exposes AttrsDescriptor.  Triton 3.3.0 removed AttrsDescriptor from
+# its public API, breaking torch.compile / TorchInductor.  Pin triton last so no
+# earlier install can upgrade it past 3.2.
+RUN PYTHON_BIN="$(command -v python || command -v python3)" && \
+    "${PYTHON_BIN}" -m pip install --force-reinstall --no-deps --no-cache-dir \
+      triton==3.2.0
+
 WORKDIR /workspace/transschema/AgentFlow
 
 CMD ["bash"]

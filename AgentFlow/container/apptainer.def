@@ -180,5 +180,12 @@ PY
         pyarrow==21.0.0 \
         pandas==2.1.4
 
+    # The NGC 25.02 torch nightly (2.7.0a0, Feb 2025) was built against Triton 3.2.x,
+    # which still exposes AttrsDescriptor.  Triton 3.3.0 removed AttrsDescriptor from
+    # its public API, breaking torch.compile / TorchInductor.  Pin triton here at the
+    # very end so no earlier install can upgrade it past 3.2.
+    "${PYTHON_BIN}" -m pip install --force-reinstall --no-deps --no-cache-dir \
+        triton==3.2.0
+
 %runscript
     exec "$@"
