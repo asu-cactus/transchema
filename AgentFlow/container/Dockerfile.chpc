@@ -177,9 +177,11 @@ RUN PYTHON_BIN="$(command -v python || command -v python3)" && \
     if TORCH_CUDA_ARCH_LIST="12.0+PTX" MAX_JOBS=4 \
        "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir \
          flash-attn==2.7.4.post1; then \
-        echo "flash-attn built with CUDA support (sm_120)"; \
+        echo "flash-attn built with native CUDA support (sm_120)" && \
+        touch /etc/flash_attn_sm120_built; \
     else \
-        echo "flash-attn CUDA build failed; installing Python-only fallback" && \
+        echo "flash-attn source build failed; falling back to Python-only install." && \
+        echo "The SDPA shim in AgentFlow/train/flash_attn_shim activates automatically." && \
         FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE FLASH_ATTENTION_FORCE_BUILD=FALSE \
           "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir --no-deps \
             flash-attn==2.7.4.post1; \

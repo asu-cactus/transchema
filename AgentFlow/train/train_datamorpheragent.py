@@ -195,10 +195,11 @@ def _default_smoke_overrides() -> list[str]:
         # 12288 + 1024 = 13312.  use_remove_padding=True keeps training fast.
         "data.max_prompt_length=12288",
         "data.max_response_length=1024",
-        # Disable sequence packing for the smoke test.  use_remove_padding requires
-        # flash_attn variable-length kernel support; if flash_attn was only installed
-        # as a Python-only fallback (no sm_120 CUDA kernels), this would crash.
-        # For a smoke test, correctness matters more than throughput.
+        # Disable sequence packing for the smoke test.
+        # use_remove_padding=True calls flash_attn_varlen_func (packed sequences),
+        # which the SDPA shim handles correctly but at padding overhead cost.
+        # For a quick validation run simplicity > throughput; the full training
+        # run uses use_remove_padding=True from the base config.
         "actor_rollout_ref.model.use_remove_padding=False",
         "actor_rollout_ref.rollout.gpu_memory_utilization=0.25",
         "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",

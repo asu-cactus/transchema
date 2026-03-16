@@ -9,6 +9,53 @@ from .trainer import AgentFlowTrainer
 from verl.trainer.ppo.reward import load_reward_manager
 from verl.trainer.main_ppo import create_rl_sampler
 
+# Marker written by the container build when flash-attn is compiled from source
+# with sm_120 (Blackwell) CUDA kernel support.  See apptainer.def / Dockerfile.chpc.
+_FLASH_ATTN_SM120_MARKER = Path("/etc/flash_attn_sm120_built")
+
+
+def _should_use_flash_attn_shim() -> bool:
+    """Return True when the SDPA compatibility shim must be active for Ray workers.
+
+    Background
+    ----------
+    PyPI flash_attn wheels contain CUDA kernels compiled only for sm<=90.
+    Calling them on a Blackwell GPU (sm_120) produces an unhandled CUDA error
+    that kills the worker process without a Python traceback.
+
+    The AgentFlow/train/flash_attn_shim package provides SDPA-backed
+    (torch.nn.functional.scaled_dot_product_attention) drop-in replacements
+    for all flash_attn symbols imported by HuggingFace transformers and verl.
+    SDPA is mathematically equivalent to flash attention and natively compiled
+    for all GPU architectures, including Blackwell.
+
+    Decision logic
+    --------------
+    1. If the current GPU is pre-Blackwell (sm < 120): PyPI wheels work → no shim.
+    2. If the GPU is Blackwell+ (sm >= 120) AND the container was built with the
+       native flash_attn source build (marker file present): the installed wheel
+       has sm_120 kernels → no shim.
+    3. Otherwise (Blackwell+ without native build): activate the shim.
+
+    The marker file /etc/flash_attn_sm120_built is written by the container build
+    script only when `pip install flash-attn` from source succeeds with
+    TORCH_CUDA_ARCH_LIST=12.0+PTX.  Once the container is rebuilt the shim
+    becomes a no-op automatically.
+    """
+    try:
+        import torch
+        if not torch.cuda.is_available():
+            return False
+        major, minor = torch.cuda.get_device_capability()
+        sm = major * 10 + minor          # e.g. 12*10+0 = 120 for Blackwell
+        if sm < 120:
+            return False                 # pre-Blackwell: standard wheels work
+        if _FLASH_ATTN_SM120_MARKER.exists():
+            return False                 # native sm_120 kernels present in container
+        return True                      # Blackwell + no native build → need shim
+    except Exception:
+        return False                     # can't determine; assume no shim needed
+
 
 @hydra.main(config_path="pkg://agentflow/verl", config_name="config", version_base=None)
 def main(config):
@@ -25,29 +72,33 @@ def run_ppo(config) -> None:
             k: v for k, v in os.environ.items() if k.startswith("AGENTFLOW_")
         }
 
-        # Prepend the flash_attn shim directory to PYTHONPATH for ALL Ray workers.
-        # The shim's __init__.py raises ImportError for flash_attn_func so that
-        # HuggingFace's is_flash_attn_2_available() returns False and every Ray
-        # actor (WorkerDict, vLLM, etc.) uses SDPA instead of flash_attention_2.
-        # This is needed because the PyPI flash_attn wheel has CUDA kernels
-        # compiled only for sm<=90; calling them on Blackwell (sm_120) causes an
-        # unhandled CUDA error that kills the worker without a Python traceback.
-        _shim_dir = str(
-            Path(__file__).parent.parent.parent  # AgentFlow/
-            / "train" / "flash_attn_shim"
-        )
-        _existing_pypath = os.environ.get("PYTHONPATH", "")
-        _ray_pythonpath = (
-            f"{_shim_dir}:{_existing_pypath}" if _existing_pypath else _shim_dir
-        )
-
-        runtime_env_vars = {
+        runtime_env_vars: dict = {
             "TOKENIZERS_PARALLELISM": "true",
             "NCCL_DEBUG": "WARN",
             "VLLM_LOGGING_LEVEL": "WARN",
-            "PYTHONPATH": _ray_pythonpath,
             **agentflow_env_vars,
         }
+
+        if _should_use_flash_attn_shim():
+            # Prepend the SDPA-backed flash_attn compatibility shim to PYTHONPATH
+            # so every Ray actor uses it in place of the system flash_attn package.
+            # The shim is self-deactivating: _should_use_flash_attn_shim() returns
+            # False once the container is rebuilt with native sm_120 kernels.
+            shim_dir = str(
+                Path(__file__).parent.parent.parent  # AgentFlow/
+                / "train" / "flash_attn_shim"
+            )
+            existing = os.environ.get("PYTHONPATH", "")
+            runtime_env_vars["PYTHONPATH"] = (
+                f"{shim_dir}:{existing}" if existing else shim_dir
+            )
+            print(
+                f"[entrypoint] GPU sm_120 detected without native flash_attn build.\n"
+                f"  Activating SDPA compatibility shim: {shim_dir}\n"
+                f"  Attention computation is mathematically equivalent to flash_attn.\n"
+                f"  To use native kernels: rebuild the container (see apptainer.def)."
+            )
+
         ray.init(
             runtime_env={"env_vars": runtime_env_vars},
             num_cpus=config.ray_init.num_cpus,
