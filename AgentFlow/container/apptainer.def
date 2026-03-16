@@ -126,12 +126,12 @@ pyproject.write_text(text + "\n")
 # torch.library.infer_schema in NGC 25.02 torch nightly (2.7.0a0) only accepts the
 # typing.* forms; stable torch 2.7.0 added support for PEP 585 lowercase syntax.
 _REPLACEMENTS = [
-    (r"\blist\[",  "List["),
-    (r"\bdict\[",  "Dict["),
-    (r"\btuple\[", "Tuple["),
-    (r"\bset\[",   "Set["),
+    (r"\blist\[", "List["),
+    # dict/tuple/set are NOT valid infer_schema types (only List[X] is), and replacing
+    # them breaks runtime constructor calls like dict[str, Any]() which are valid in
+    # Python 3.12 but TypeError when spelled as Dict[str, Any]().
 ]
-_ALL_NAMES = {"List", "Dict", "Tuple", "Set"}
+_ALL_NAMES = {"List"}
 
 patched = []
 for py_file in vllm_src.rglob("*.py"):

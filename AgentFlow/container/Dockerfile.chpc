@@ -102,8 +102,10 @@ t = '\n'.join(l for l in t.splitlines() if 'license-files' not in l)
 p.write_text(t + '\n')
 # Patch 2: replace PEP 585 lowercase generics with typing.* forms.
 # torch.library.infer_schema in NGC 25.02 torch nightly only accepts typing.* forms.
-SUBS = [(r'\blist\[','List['),(r'\bdict\[','Dict['),(r'\btuple\[','Tuple['),(r'\bset\[','Set[')]
-NAMES = {'List','Dict','Tuple','Set'}
+SUBS = [(r'\blist\[','List[')]
+# dict/tuple/set are NOT valid infer_schema types and replacing them breaks runtime
+# calls like dict[str, Any]() which are valid Python 3.12 but TypeError as Dict[str, Any]()
+NAMES = {'List'}
 for f in pathlib.Path('/tmp/vllm-src').rglob('*.py'):
     try: orig = f.read_text(encoding='utf-8')
     except: continue
