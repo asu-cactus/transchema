@@ -451,6 +451,17 @@ def main():
     # Give the rollout server a moment to bind its port before the trainer connects
     time.sleep(5)
 
+    # Clean up any stale Ray cluster state left by a previous crashed run.
+    # Without this, verl's register_center_actor times out waiting to be placed
+    # because old worker actors still consume slots in the Ray GCS.
+    print("\nCleaning up stale Ray cluster state (if any) ...")
+    subprocess.run(
+        [sys.executable, "-m", "ray", "stop", "--force"],
+        capture_output=True,
+        check=False,  # no-op if Ray is not running
+        cwd=str(AGENTFLOW_ROOT),
+    )
+
     command = build_verl_command(config.get("python_args", {}), effective_overrides)
 
     print(f"\nLaunching verl trainer:")
