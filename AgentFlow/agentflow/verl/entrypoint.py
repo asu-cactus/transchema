@@ -1,3 +1,5 @@
+import os
+
 import hydra
 import ray
 
@@ -14,13 +16,22 @@ def main(config):
 
 def run_ppo(config) -> None:
     if not ray.is_initialized():
-        # this is for local ray cluster
+        # Forward all AGENTFLOW_* env vars into the Ray runtime so they are
+        # visible inside every Ray actor (TaskRunner, WorkerDict, etc.).
+        # Without this, vars set in the launcher process after `ray start --head`
+        # may not be inherited by actors spawned by the existing head daemon.
+        agentflow_env_vars = {
+            k: v for k, v in os.environ.items() if k.startswith("AGENTFLOW_")
+        }
+        runtime_env_vars = {
+            "TOKENIZERS_PARALLELISM": "true",
+            "NCCL_DEBUG": "WARN",
+            "VLLM_LOGGING_LEVEL": "WARN",
+            **agentflow_env_vars,
+        }
         ray.init(
-            runtime_env={
-                "env_vars": {"TOKENIZERS_PARALLELISM": "true", "NCCL_DEBUG": "WARN", "VLLM_LOGGING_LEVEL": "WARN"}
-            },
-            num_cpus=config.ray_init.num_cpus, 
-            # To fix the omiga config issue, you can try not commenting this line if your speed is not that satisfying, while it may cause Error for cpu matching. 
+            runtime_env={"env_vars": runtime_env_vars},
+            num_cpus=config.ray_init.num_cpus,
         )
 
     runner = TaskRunner.remote()

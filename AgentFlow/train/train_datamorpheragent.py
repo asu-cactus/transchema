@@ -178,7 +178,7 @@ def _expand_cfg_value(value: str) -> str:
 def _default_smoke_overrides() -> list[str]:
     """
     Tiny run to surface runtime errors quickly.
-    Keeps GRPO wiring intact but minimizes workload.
+    Keeps GRPO wiring intact but minimises workload.
     """
     return [
         "data.train_batch_size=1",
@@ -197,6 +197,11 @@ def _default_smoke_overrides() -> list[str]:
         "data.max_response_length=1024",
         "actor_rollout_ref.rollout.gpu_memory_utilization=0.25",
         "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",
+        # enforce_eager=True disables CUDA graph capture and Triton JIT compilation,
+        # which can take 10–20 min on first inference with a 7B model.  Eager mode
+        # is slower per step but avoids the compilation delay that causes the smoke
+        # test rollout workers to time out before submitting any results.
+        "actor_rollout_ref.rollout.enforce_eager=True",
         "trainer.total_epochs=1",
         "trainer.critic_warmup=999999",
         "trainer.save_freq=999999",
@@ -393,29 +398,15 @@ def main():
         return
 
     # ------------------------------------------------------------------ #
-    # 4. Start rollout server in background
-    # ------------------------------------------------------------------ #
-    agentflow_port = config.get("python_args", {}).get("agentflow.port", 9999)
-    print(f"\nStarting DataMorpher rollout server on port {agentflow_port} ...")
-    rollout_proc = subprocess.Popen(
-        [sys.executable, ROLLOUT_SCRIPT],
-        env=os.environ,
-        cwd=str(AGENTFLOW_ROOT),
-    )
-    print(f"  Rollout server PID: {rollout_proc.pid}")
-
-    # Give the rollout server a moment to bind its port before the trainer connects
-    time.sleep(5)
-
-    # ------------------------------------------------------------------ #
-    # 5. Launch verl trainer
+    # 4. Apply smoke-test overrides BEFORE forking the rollout server so
+    #    the subprocess inherits all AGENTFLOW_SMOKE_* env vars.
     # ------------------------------------------------------------------ #
     effective_overrides = list(overrides)
     if args.smoke_test:
         os.environ["AGENTFLOW_SMOKE_MODE"] = "1"
         os.environ["AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE"] = "1"
         os.environ.setdefault("AGENTFLOW_SMOKE_MAX_STEPS", "1")
-        os.environ.setdefault("AGENTFLOW_SMOKE_WALLTIME_MIN", "25")
+        os.environ.setdefault("AGENTFLOW_SMOKE_WALLTIME_MIN", "45")
         print("  AGENTFLOW_SMOKE_MODE=1")
         print("  AGENTFLOW_SMOKE_SKIP_ACTOR_UPDATE=1")
         print(f"  AGENTFLOW_SMOKE_MAX_STEPS={os.environ['AGENTFLOW_SMOKE_MAX_STEPS']}")
@@ -426,6 +417,29 @@ def main():
             if key not in present_keys:
                 effective_overrides.append(ov)
         print("\nSmoke-test mode enabled (tiny run overrides applied).")
+
+    # ------------------------------------------------------------------ #
+    # 5. Start rollout server in background
+    # ------------------------------------------------------------------ #
+    agentflow_port = config.get("python_args", {}).get("agentflow.port", 9999)
+    rollout_log_path = os.path.join(
+        os.environ.get("ROLLOUT_DIR", "/tmp"), "rollout_server.log"
+    )
+    os.makedirs(os.path.dirname(rollout_log_path), exist_ok=True)
+    print(f"\nStarting DataMorpher rollout server on port {agentflow_port} ...")
+    print(f"  Rollout server log: {rollout_log_path}")
+    rollout_log_fh = open(rollout_log_path, "w")
+    rollout_proc = subprocess.Popen(
+        [sys.executable, ROLLOUT_SCRIPT],
+        env=os.environ,
+        cwd=str(AGENTFLOW_ROOT),
+        stdout=rollout_log_fh,
+        stderr=subprocess.STDOUT,
+    )
+    print(f"  Rollout server PID: {rollout_proc.pid}")
+
+    # Give the rollout server a moment to bind its port before the trainer connects
+    time.sleep(5)
 
     command = build_verl_command(config.get("python_args", {}), effective_overrides)
 
@@ -471,6 +485,12 @@ def main():
             except subprocess.TimeoutExpired:
                 rollout_proc.kill()
             print("Rollout server stopped.")
+        try:
+            rollout_log_fh.close()
+        except Exception:
+            pass
+        if os.path.exists(rollout_log_path):
+            print(f"Rollout server log saved to: {rollout_log_path}")
 
     print("\nTraining complete.")
 
