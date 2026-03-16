@@ -166,11 +166,24 @@ RUN PYTHON_BIN="$(command -v python || command -v python3)" && \
       opentelemetry-semantic-conventions==0.50b0 \
       psycopg2-binary==2.9.10
 
+# Build flash-attn from source against NGC 25.02 torch so CUDA kernels are
+# compiled for Blackwell (sm_120).  PyPI pre-built wheels cover only sm≤90;
+# on sm_120 the unresolved kernel causes a native crash killing the worker.
+# NGC 25.02 ships complete torch headers (torch/csrc/stable/library.h etc.)
+# so the source build succeeds where the old Ubuntu container failed.
+# If the build somehow fails, fall back to the Python-only version; in that
+# case the smoke-test attn_implementation=sdpa override prevents the crash.
 RUN PYTHON_BIN="$(command -v python || command -v python3)" && \
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE \
-    FLASH_ATTENTION_FORCE_BUILD=FALSE \
-    "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir --no-deps \
-      flash-attn==2.7.4.post1
+    if TORCH_CUDA_ARCH_LIST="12.0+PTX" MAX_JOBS=4 \
+       "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir \
+         flash-attn==2.7.4.post1; then \
+        echo "flash-attn built with CUDA support (sm_120)"; \
+    else \
+        echo "flash-attn CUDA build failed; installing Python-only fallback" && \
+        FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE FLASH_ATTENTION_FORCE_BUILD=FALSE \
+          "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir --no-deps \
+            flash-attn==2.7.4.post1; \
+    fi
 
 RUN PYTHON_BIN="$(command -v python || command -v python3)" && \
     "${PYTHON_BIN}" -m pip install --force-reinstall \

@@ -214,12 +214,25 @@ PY
         opentelemetry-semantic-conventions==0.50b0 \
         psycopg2-binary==2.9.10
 
-    # Provide flash_attn.bert_padding to system Python without forcing a Blackwell
-    # CUDA extension build.
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE \
-    FLASH_ATTENTION_FORCE_BUILD=FALSE \
-      "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir --no-deps \
-        flash-attn==2.7.4.post1
+    # Build flash-attn from source against the NGC 25.02 torch so that CUDA kernels
+    # are compiled for Blackwell (sm_120).  PyPI pre-built wheels only cover sm≤90;
+    # installing a wheel and calling it on sm_120 produces an unhandled CUDA error
+    # that kills the worker process.  Building from source with NGC's complete torch
+    # headers (including torch/csrc/stable/library.h, missing from the old Ubuntu
+    # container) produces proper sm_120 kernels.
+    # If the source build fails for any reason, fall back to Python-only (no CUDA
+    # kernels).  In that case the FSDP model must use attn_implementation=sdpa.
+    if TORCH_CUDA_ARCH_LIST="12.0+PTX" MAX_JOBS=4 \
+         "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir \
+           flash-attn==2.7.4.post1; then
+        echo "flash-attn built with CUDA support (sm_120)"
+    else
+        echo "flash-attn CUDA build failed; installing Python-only fallback"
+        FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE \
+        FLASH_ATTENTION_FORCE_BUILD=FALSE \
+          "${PYTHON_BIN}" -m pip install --no-build-isolation --no-cache-dir --no-deps \
+            flash-attn==2.7.4.post1
+    fi
 
     "${PYTHON_BIN}" -m pip install --force-reinstall \
         transformers==4.53.3 \

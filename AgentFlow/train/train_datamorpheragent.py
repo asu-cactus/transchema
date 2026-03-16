@@ -195,6 +195,11 @@ def _default_smoke_overrides() -> list[str]:
         # 12288 + 1024 = 13312.  use_remove_padding=True keeps training fast.
         "data.max_prompt_length=12288",
         "data.max_response_length=1024",
+        # Disable sequence packing for the smoke test.  use_remove_padding requires
+        # flash_attn variable-length kernel support; if flash_attn was only installed
+        # as a Python-only fallback (no sm_120 CUDA kernels), this would crash.
+        # For a smoke test, correctness matters more than throughput.
+        "actor_rollout_ref.model.use_remove_padding=False",
         "actor_rollout_ref.rollout.gpu_memory_utilization=0.25",
         "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",
         # enforce_eager=True disables CUDA graph capture and Triton JIT compilation,
@@ -202,6 +207,18 @@ def _default_smoke_overrides() -> list[str]:
         # is slower per step but avoids the compilation delay that causes the smoke
         # test rollout workers to time out before submitting any results.
         "actor_rollout_ref.rollout.enforce_eager=True",
+        # Force the FSDP training model (compute_log_prob / update_actor) to use
+        # PyTorch's built-in scaled_dot_product_attention (SDPA) instead of
+        # flash_attention_2.  The container installs flash-attn with
+        # FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE (no CUDA kernels) which causes a
+        # SIGSEGV on sm_120 Blackwell when HuggingFace tries to call flash_attn_func.
+        # SDPA works on all architectures without any extra kernels.
+        # This override applies to the FSDP model only; vLLM uses its own attention.
+        "actor_rollout_ref.model.override_config.attn_implementation=sdpa",
+        # Offload reference-model parameters to CPU so they don't occupy GPU VRAM
+        # while compute_log_prob runs on the actor.  This is slow for full training
+        # but safe for a smoke test and eliminates a potential OOM source.
+        "actor_rollout_ref.ref.fsdp_config.param_offload=True",
         "trainer.total_epochs=1",
         "trainer.critic_warmup=999999",
         "trainer.save_freq=999999",
