@@ -214,7 +214,7 @@ def _default_smoke_overrides() -> list[str]:
         # SIGSEGV on sm_120 Blackwell when HuggingFace tries to call flash_attn_func.
         # SDPA works on all architectures without any extra kernels.
         # This override applies to the FSDP model only; vLLM uses its own attention.
-        "actor_rollout_ref.model.override_config.attn_implementation=sdpa",
+        "+actor_rollout_ref.model.override_config.attn_implementation=sdpa",
         # Offload reference-model parameters to CPU so they don't occupy GPU VRAM
         # while compute_log_prob runs on the actor.  This is slow for full training
         # but safe for a smoke test and eliminates a potential OOM source.
