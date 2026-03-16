@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import hydra
 import ray
@@ -23,10 +24,28 @@ def run_ppo(config) -> None:
         agentflow_env_vars = {
             k: v for k, v in os.environ.items() if k.startswith("AGENTFLOW_")
         }
+
+        # Prepend the flash_attn shim directory to PYTHONPATH for ALL Ray workers.
+        # The shim's __init__.py raises ImportError for flash_attn_func so that
+        # HuggingFace's is_flash_attn_2_available() returns False and every Ray
+        # actor (WorkerDict, vLLM, etc.) uses SDPA instead of flash_attention_2.
+        # This is needed because the PyPI flash_attn wheel has CUDA kernels
+        # compiled only for sm<=90; calling them on Blackwell (sm_120) causes an
+        # unhandled CUDA error that kills the worker without a Python traceback.
+        _shim_dir = str(
+            Path(__file__).parent.parent.parent  # AgentFlow/
+            / "train" / "flash_attn_shim"
+        )
+        _existing_pypath = os.environ.get("PYTHONPATH", "")
+        _ray_pythonpath = (
+            f"{_shim_dir}:{_existing_pypath}" if _existing_pypath else _shim_dir
+        )
+
         runtime_env_vars = {
             "TOKENIZERS_PARALLELISM": "true",
             "NCCL_DEBUG": "WARN",
             "VLLM_LOGGING_LEVEL": "WARN",
+            "PYTHONPATH": _ray_pythonpath,
             **agentflow_env_vars,
         }
         ray.init(
