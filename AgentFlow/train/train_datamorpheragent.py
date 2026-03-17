@@ -208,9 +208,8 @@ def _default_smoke_overrides() -> list[str]:
         # is slower per step but avoids the compilation delay that causes the smoke
         # test rollout workers to time out before submitting any results.
         "actor_rollout_ref.rollout.enforce_eager=True",
-        # Offload reference-model parameters to CPU so they don't occupy GPU VRAM
-        # while compute_log_prob runs on the actor.  This is slow for full training
-        # but safe for a smoke test and eliminates a potential OOM source.
+        # param_offload=True for ref model is now the default in datamorpherconfig.yaml.
+        # Keep it explicit here so the smoke overrides are self-contained.
         "actor_rollout_ref.ref.fsdp_config.param_offload=True",
         "trainer.total_epochs=1",
         "trainer.critic_warmup=999999",

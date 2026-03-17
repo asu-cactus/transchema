@@ -107,11 +107,20 @@ python_args:
 
   # vLLM rollout server
   actor_rollout_ref.rollout.name: 'vllm'
-  # Leave more headroom for actor/optimizer state to prevent CUDA OOM.
-  actor_rollout_ref.rollout.gpu_memory_utilization: 0.35
+  # 0.30 gives vLLM ~28 GB on a 94 GB H100-NVL while leaving sufficient
+  # headroom for the FSDP actor weights (~14 GB), activations, and grad
+  # buffers.  0.35 was tight enough to cause ActorUnavailableError crashes
+  # during compute_log_prob when ref param_offload was disabled.
+  actor_rollout_ref.rollout.gpu_memory_utilization: 0.30
 
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu: 2
-  actor_rollout_ref.ref.fsdp_config.param_offload: False
+  # Offload reference model parameters to CPU between log-prob calls.
+  # The ref model is read-only during training; the throughput cost of PCIe
+  # transfers is small compared to the stability gain of ~14GB VRAM freed.
+  # On a single GPU the FSDP actor, ref model, and vLLM KV cache all compete
+  # for the same VRAM; without this, the combined peak exceeds safe limits
+  # and causes the FSDP WorkerDict actor to die (ActorUnavailableError).
+  actor_rollout_ref.ref.fsdp_config.param_offload: True
 
   algorithm.use_kl_in_reward: False
   trainer.critic_warmup: 0
