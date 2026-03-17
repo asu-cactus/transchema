@@ -50,7 +50,7 @@ from .modules import *
 
 from string import ascii_letters, ascii_uppercase
 
-from .config import MAX_K_LEVEL
+from .config import MAX_K_LEVEL, MAX_TIME
 
 
 def main(df):
@@ -156,8 +156,8 @@ def main(df):
 
             # Run GetFDs to get closure and set of functional dependencies
             KEYs = None
-            Closure, F, Cardinality = GetFDs.f(C_km1, df, Closure, U, Cardinality, KEYs)
-            
+            Closure, F, Cardinality = GetFDs.f(C_km1, df, Closure, U, Cardinality, KEYs, start_time=start_time, max_time=MAX_TIME)
+
 
             # Print out FDs
             for FunctionalDependency in F:
@@ -183,7 +183,11 @@ def main(df):
 
             if k is not None and MAX_K_LEVEL == k:
                 break
-            
+
+            # Break while loop if elapsed time exceeds MAX_TIME
+            if time.time() - start_time > MAX_TIME:
+                break
+
             C_k = Apriori_Gen.oneUp(C_km1, U_NF)
 
             # Run Obtain Equivalences to get set of attribute equivalences

@@ -442,7 +442,7 @@ def get_prompt(
             f"2. Target Schema: {target_data_schema}\n"
             f"3. Target Examples: {target_samples}\n"
             f"4. Source Information: {source_information_with_location}\n"
-            f"5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length{len_idx_target_idx}/target_multisource_agentic.csv"
+            f"5. Save the Generated CSV File at : {os.path.join(directory, f'length{len_idx_target_idx}', 'target_multisource_agentic.csv')}"
         )
 
         return prompt

@@ -479,10 +479,10 @@ If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id t
         if isinstance(response, MemoryVerification):
             analysis = response.analysis
             stop_signal = response.stop_signal
-            if stop_signal:
-                return analysis, "STOP"
-            else:
-                return analysis, "CONTINUE"
+            conclusion = "STOP" if stop_signal else "CONTINUE"
+            if self.granularity == "pipeline":
+                return analysis, conclusion, None
+            return analysis, conclusion
         else:
             analysis = response
             pattern = r"conclusion\**:?\s*\**\s*(\w+)"
@@ -490,15 +490,21 @@ If STOP, you MUST include the finalized_pipeline_id field with the pipeline_id t
             if matches:
                 conclusion = matches[-1].group(1).upper()
                 if conclusion in ["STOP", "CONTINUE"]:
+                    if self.granularity == "pipeline":
+                        return analysis, conclusion, None
                     return analysis, conclusion
 
             # If no valid conclusion found, search for STOP or CONTINUE anywhere in the text
             if "stop" in response.lower():
-                return analysis, "STOP"
+                conclusion = "STOP"
             elif "continue" in response.lower():
-                return analysis, "CONTINUE"
+                conclusion = "CONTINUE"
             else:
                 print(
                     "No valid conclusion (STOP or CONTINUE) found in the response. Continuing..."
                 )
-                return analysis, "CONTINUE"
+                conclusion = "CONTINUE"
+
+            if self.granularity == "pipeline":
+                return analysis, conclusion, None
+            return analysis, conclusion

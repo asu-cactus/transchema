@@ -34,6 +34,8 @@ class TokenUsageTracker:
             # gpt-4-turbo supports at most 4096 completion tokens
             "gpt-4-turbo": (0.03, 0.01),
             "gpt-4.1-mini": (0.0016, 0.0004),
+            "o4-mini": (0.0044, 0.0011),  # $4.40/1M output, $1.10/1M input
+            "o3": (0.060, 0.010),          # $60/1M output, $10/1M input
         }.get(model, (0, 0))
 
         model_usage = self.usage.get(

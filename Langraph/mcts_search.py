@@ -466,6 +466,14 @@ if __name__ == "__main__":
         default="results_langraph",
         help="Base directory for results (a timestamped subdirectory is created inside)",
     )
+    parser.add_argument(
+        "--cases",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Explicit list of case IDs to run, e.g. --cases 1_41 4_18 9_70. "
+             "Overrides --length / --id_start / --id_end.",
+    )
     args = parser.parse_args()
     args.join_hints_truncate = []
     args.aggregate_hints_truncate = []
@@ -501,15 +509,21 @@ if __name__ == "__main__":
 
     print(f"[MCTS] Results will be written to: {results_csv_path}")
 
+    # Build case list: explicit --cases overrides --length / --id_start / --id_end
+    if args.cases:
+        case_pairs = [(int(c.split("_")[0]), int(c.split("_")[1])) for c in args.cases]
+    else:
+        case_pairs = [(args.length, cid) for cid in range(args.id_start, args.id_end + 1)]
+
     results = {}
-    for case_id in range(args.id_start, args.id_end + 1):
-        print(f"\n[MCTS] === length={args.length}  id={case_id} ===")
-        case_label = f"{args.length}_{case_id}"
+    for length, case_id in case_pairs:
+        print(f"\n[MCTS] === length={length}  id={case_id} ===")
+        case_label = f"{length}_{case_id}"
         _ts = datetime.now().isoformat()
         try:
             result = mcts_search(
                 args,
-                length=args.length,
+                length=length,
                 id_=case_id,
                 log_dir_=log_dir_,
                 experiment_name=args.experiment_name,

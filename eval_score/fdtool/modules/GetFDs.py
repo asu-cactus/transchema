@@ -49,9 +49,9 @@ def get_card(Cardinality, Cand, U, df):
 #    print("card: ", Cardinality[key])
     return Cardinality[key]
 
-def f(C_km1, df, Closure, U, Cardinality, keys=None, fds=None):
-    #import time
-    
+def f(C_km1, df, Closure, U, Cardinality, keys=None, fds=None, start_time=None, max_time=None):
+    import time as _time
+
     # Set F to null list; Initialize U_c to remaining columns in data frame
     F = []; U_c = list(df.head(0));
     
@@ -72,7 +72,10 @@ def f(C_km1, df, Closure, U, Cardinality, keys=None, fds=None):
     if keys is not None:
         keys_set = [set(k) for k in keys]
     for Candidate in C_km1:
-        
+        if start_time is not None and max_time is not None:
+            if _time.time() - start_time > max_time:
+                return Closure, F, Cardinality
+
         #print("CANDIDATE: ", set(Candidate))
         if keys is not None:
             overlap = [k for k in keys_set if k.issubset(set(Candidate))]
@@ -90,6 +93,9 @@ def f(C_km1, df, Closure, U, Cardinality, keys=None, fds=None):
         #     continue
         # Iterate though attribute subsets that are not in U - X{+}; difference b/t U and inclusive closure of candidate    
         for v_i in list(set(U_c).difference(Closure[binaryRepr.toBin(Candidate, U)])):
+            if start_time is not None and max_time is not None:
+                if _time.time() - start_time > max_time:
+                    return Closure, F, Cardinality
             # Check if the cardinality of the partition of {Candidate} is equal to that of {Candidate, v_i}
             if get_card(Cardinality, [v_i], U, df) == 0:
                 continue

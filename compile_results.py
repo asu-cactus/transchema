@@ -17,7 +17,7 @@ import os
 import pandas as pd
 from pathlib import Path
 
-ROOT    = Path("/home/local/ASUAD/jrtandel/transchema")
+ROOT    = Path(__file__).resolve().parent
 AF_DIRS = ROOT / "AgentFlow" / "results"
 MS_BASE = ROOT / "logs-auto-suggest-llm-21-04"
 MCTS_DIRS = ROOT / "Langraph" / "results_langraph"
@@ -306,6 +306,19 @@ print(f"MCTS L4:               {len(mcts_l4)} cases")
 print(f"MCTS L9:               {len(mcts_l9)} cases")
 
 
+# ── Materialization (gpt-4.1-mini) ────────────────────────────────────────────
+_MAT_L1_DIRS = ["l1_4.1mini_ms_mat_0_49_20260316_215021",  "l1_4.1mini_ms_mat_50_99_20260316_215021"]
+_MAT_L4_DIRS = ["l4_4.1mini_ms_mat_15_56_20260316_231146", "l4_4.1mini_ms_mat_57_99_20260316_231146"]
+_MAT_L9_DIRS = ["l9_4.1mini_ms_mat_0_50_20260317_021700",  "l9_4.1mini_ms_mat_51_100_20260317_021700"]
+
+mat_crit_l1 = load_ms_critique(_MAT_L1_DIRS)
+mat_crit_l4 = load_ms_critique(_MAT_L4_DIRS).drop_duplicates(subset="case_id", keep="last")
+mat_crit_l9 = load_ms_critique(_MAT_L9_DIRS).drop_duplicates(subset="case_id", keep="last")
+print(f"Materialization L1:    {len(mat_crit_l1)} cases")
+print(f"Materialization L4:    {len(mat_crit_l4)} cases")
+print(f"Materialization L9:    {len(mat_crit_l9)} cases")
+
+
 # ── Experiment registry ───────────────────────────────────────────────────────
 # Format: "Name": (granularity, {len: df}, {len: [source paths]})
 
@@ -370,6 +383,13 @@ experiments = {
              str(AF_DIRS / "l4_run1_af_pl_58_99_20260310_034423" / "results_summary.csv")],
          9: [str(AF_DIRS / "l9_run2_af_pl_0_50_20260310_000446"  / "results_summary.csv"),
              str(AF_DIRS / "l9_run2_af_pl_51_100_20260310_000446"/ "results_summary.csv")]},
+    ),
+    "Op Critique+Mat (4.1-mini)": (
+        "Operator-driven", "Critique+Mat (4.1-mini)",
+        {1: mat_crit_l1, 4: mat_crit_l4, 9: mat_crit_l9},
+        {1: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_L1_DIRS],
+         4: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_L4_DIRS],
+         9: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_L9_DIRS]},
     ),
 }
 

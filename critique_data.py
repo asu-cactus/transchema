@@ -317,6 +317,14 @@ def get_parser():
         "--experiment-name", type=str, default="feature_v3_2", help="Experiment name"
     )
     parser.add_argument("--no_of_runs", type=int, default=1, help="Number of runs")
+    parser.add_argument(
+        "--cases",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Explicit list of case IDs to run, e.g. --cases 1_41 4_18 9_70. "
+             "Overrides --len_id / --target_id / --max_target_id.",
+    )
 
     # Complex dict via JSON
     default_hints = {
@@ -452,30 +460,17 @@ if __name__ == "__main__":
     args.result_directory = results_directory
     # sys.exit()
 
-    length = args.len_id
-    start = args.target_id
-    end = args.max_target_id
-
-    cases = list(range(start, end))
-
-    # failed cases
-    # cases = [
-    #     73,
-    #     74,
-    #     76,
-    #     82,
-    #     90,
-    #     91,
-    #     92,
-    #     93,
-    #     95,
-    #     97,
-    #     100,
-    # ]
+    # Build case list: --cases overrides --len_id / --target_id / --max_target_id
+    if args.cases:
+        # Each entry is "length_id", e.g. "1_41"
+        case_pairs = [(int(c.split("_")[0]), int(c.split("_")[1])) for c in args.cases]
+    else:
+        length = args.len_id
+        case_pairs = [(length, cid) for cid in range(args.target_id, args.max_target_id)]
 
     processed_without_exceptions = 0
 
-    for case in cases:
+    for length, case in case_pairs:
 
         print("Processing:", case)
 

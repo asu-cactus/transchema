@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import signal
 
 # Ensure this directory is on sys.path so fdtool and column_map_utils are importable
 _SCORE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -10,6 +11,21 @@ if _SCORE_DIR not in sys.path:
 import fdtool.fdtool as fdtool
 import column_map_utils
 from column_map_utils import get_column_map
+
+FD_TIMEOUT = 60
+
+def _run_fdtool(df):
+    def _handler(signum, frame):
+        raise TimeoutError("FD mining exceeded time limit")
+    signal.signal(signal.SIGALRM, _handler)
+    signal.alarm(FD_TIMEOUT)
+    try:
+        result = fdtool.main(df)
+        signal.alarm(0)
+        return result
+    except TimeoutError:
+        signal.alarm(0)
+        return [], [], []
 
 def serialize_fd_list(fd_list):
     return [{"lhs": list(lhs), "rhs": rhs} for lhs, rhs in fd_list]
@@ -44,16 +60,18 @@ def serialize_column_map(col_map):
             "candidates": candidates
         })
     return serialized
-def relative_csv_score(df_a, df_b):
-    # Truncate to cap scoring time
-    df_a = df_a.iloc[:1000, :15]
-    df_b = df_b.iloc[:1000, :15]
+MAX_FD_COLS = 52
 
+def relative_csv_score(df_a, df_b):
     column_map_utils.GLOBAL_SUMMARY = None  # Reset the actual module-level cache
 
-    # Run FD mining
-    FDs_a, E_a, keys_a = fdtool.main(df_a)
-    FDs_b, E_b, keys_b = fdtool.main(df_b)
+    # Truncate columns to fdtool's supported limit (no row truncation)
+    df_a_fd = df_a.iloc[:, :MAX_FD_COLS]
+    df_b_fd = df_b.iloc[:, :MAX_FD_COLS]
+
+    # Run FD mining with hard 60s timeout
+    FDs_a, E_a, keys_a = _run_fdtool(df_a_fd)
+    FDs_b, E_b, keys_b = _run_fdtool(df_b_fd)
 
     fd_count_a = len(FDs_a)
     fd_count_b = len(FDs_b)

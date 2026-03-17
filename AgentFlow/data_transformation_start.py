@@ -48,6 +48,9 @@ _parser.add_argument("--result-dir", type=str, default="run",
 _parser.add_argument("--validation", type=str, default="hard_match",
                      choices=["hard_match", "autopipeline"],
                      help="Validation method: 'hard_match' uses compare_lists_matching (partial credit), 'autopipeline' uses compare_tables_matching (binary match) (default: hard_match)")
+_parser.add_argument("--cases", type=str, nargs="+", default=None,
+                     help="Explicit list of case IDs to run, e.g. --cases 1_41 4_18 9_70. "
+                          "Overrides --len-id / --target-id-start / --target-id-end.")
 _args = _parser.parse_args()
 
 # ============================================================
@@ -119,8 +122,11 @@ START_AGAIN_CLEAR_HISTORY = False
 # ============================================================
 # Derive the list of cases
 # ============================================================
-if TARGET_IDS is not None:
-    # Option A: explicit list
+if _args.cases:
+    # Option C: explicit case IDs via --cases (overrides everything else)
+    CASES_TO_RUN = _args.cases
+elif TARGET_IDS is not None:
+    # Option A: explicit list hardcoded in script
     CASES_TO_RUN = [f"{LEN_ID}_{tid}" for tid in TARGET_IDS]
 else:
     # Option B: range via get_test_cases_ids (both MS and SS)
