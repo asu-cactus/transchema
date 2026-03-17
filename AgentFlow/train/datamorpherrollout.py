@@ -34,6 +34,28 @@ _AGENTFLOW_ROOT = str(Path(__file__).resolve().parents[1])
 if _AGENTFLOW_ROOT not in sys.path:
     sys.path.insert(0, _AGENTFLOW_ROOT)
 
+# Pre-import heavy container packages BEFORE any parallel tool loading begins.
+#
+# Apptainer uses squashfuse_ll (a FUSE driver) to serve the container
+# filesystem.  squashfuse_ll drops connections when many processes read
+# different files concurrently (tool loading is parallel).  Once a package
+# is in sys.modules, subsequent `import X` calls are O(1) dict lookups —
+# squashfuse is never touched again for that package.
+#
+# Importing here (single-threaded, before Trainer.start()) ensures:
+#   1. vllm / openai are cached before parallel tool loading floods FUSE.
+#   2. Worker processes spawned via fork() inherit sys.modules and skip
+#      re-reading from squashfuse entirely.
+try:
+    import vllm as _vllm_preload  # noqa: F401
+except Exception:
+    pass  # will fail later with a clearer message if actually needed
+
+try:
+    import openai as _openai_preload  # noqa: F401
+except Exception:
+    pass
+
 _REPO_ROOT = str(Path(__file__).resolve().parents[2])
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
