@@ -123,8 +123,15 @@ def flash_attn_varlen_func(
 ):
     """SDPA-backed replacement for flash_attn.flash_attn_varlen_func.
 
-    Handles packed (variable-length, padding-free) sequences by temporarily
-    padding them to uniform length, running SDPA, then repacking the output.
+    Processes each sequence in the batch independently so that SDPA's native
+    ``is_causal`` flag handles causal masking without allocating an explicit
+    O(seq_len²) mask matrix.
+
+    Memory complexity: O(seq_len × nheads × headdim) per sequence, constant
+    in the number of sequences.  The previous pad-then-mask approach allocated
+    a (max_seqlen_q, max_seqlen_k) causal mask (~355 MB at seq_len=13312) and
+    broadcast it to (batch, 1, max_seqlen_q, max_seqlen_k) (~710 MB) on every
+    Transformer layer call, causing GPU OOM during compute_log_prob.
 
     Inputs:
         q, k, v      : (total_tokens, nheads, headdim)
@@ -137,68 +144,48 @@ def flash_attn_varlen_func(
     nheads_q = q.shape[1]
     headdim = q.shape[2]
     nheads_k = k.shape[1]
+    rep = nheads_q // nheads_k if nheads_q != nheads_k else 1
 
-    # Unpack into padded tensors
-    q_pad = q.new_zeros(batch, max_seqlen_q, nheads_q, headdim)
-    k_pad = k.new_zeros(batch, max_seqlen_k, nheads_k, headdim)
-    v_pad = v.new_zeros(batch, max_seqlen_k, nheads_k, headdim)
+    if batch == 0:
+        out = q.new_zeros(0, nheads_q, headdim)
+        return (out, None, None) if return_attn_probs else out
 
+    chunks: list[torch.Tensor] = []
     for i in range(batch):
-        sq = int(cu_seqlens_q[i + 1]) - int(cu_seqlens_q[i])
-        sk = int(cu_seqlens_k[i + 1]) - int(cu_seqlens_k[i])
-        q_pad[i, :sq] = q[int(cu_seqlens_q[i]):int(cu_seqlens_q[i + 1])]
-        k_pad[i, :sk] = k[int(cu_seqlens_k[i]):int(cu_seqlens_k[i + 1])]
-        v_pad[i, :sk] = v[int(cu_seqlens_k[i]):int(cu_seqlens_k[i + 1])]
+        q_start = int(cu_seqlens_q[i])
+        q_end   = int(cu_seqlens_q[i + 1])
+        k_start = int(cu_seqlens_k[i])
+        k_end   = int(cu_seqlens_k[i + 1])
 
-    # Build additive attention bias: -inf at padding positions in the key
-    # Shape: (batch, 1, 1, max_seqlen_k) — broadcasts over (batch, nheads, seqlen_q, seqlen_k)
-    attn_bias = q.new_zeros(batch, 1, 1, max_seqlen_k)
-    for i in range(batch):
-        sk = int(cu_seqlens_k[i + 1]) - int(cu_seqlens_k[i])
-        if sk < max_seqlen_k:
-            attn_bias[i, 0, 0, sk:] = float("-inf")
+        # Slice this sequence: (seqlen, nheads, headdim)
+        qi = q[q_start:q_end]
+        ki = k[k_start:k_end]
+        vi = v[k_start:k_end]
 
-    if causal:
-        # Upper-triangular causal mask (future positions = -inf)
-        causal_mask = torch.triu(
-            torch.full(
-                (max_seqlen_q, max_seqlen_k),
-                float("-inf"),
-                dtype=q.dtype,
-                device=q.device,
-            ),
-            diagonal=1,
+        # SDPA expects (batch, nheads, seqlen, headdim)
+        qi = qi.unsqueeze(0).transpose(1, 2)   # (1, nheads_q, sq, headdim)
+        ki = ki.unsqueeze(0).transpose(1, 2)   # (1, nheads_k, sk, headdim)
+        vi = vi.unsqueeze(0).transpose(1, 2)
+
+        # GQA: expand k/v heads to match q heads
+        if rep > 1:
+            ki = ki.repeat_interleave(rep, dim=1)
+            vi = vi.repeat_interleave(rep, dim=1)
+
+        # SDPA handles causal masking internally — no explicit mask matrix.
+        # is_causal=True with no attn_mask is equivalent to flash_attn's causal
+        # flag and requires zero additional memory beyond the output tensor.
+        oi = F.scaled_dot_product_attention(
+            qi, ki, vi,
+            dropout_p=dropout_p if torch.is_grad_enabled() else 0.0,
+            is_causal=causal,
+            scale=softmax_scale,
         )
-        attn_bias = attn_bias + causal_mask.unsqueeze(0).unsqueeze(0)
 
-    # SDPA: transpose to (batch, nheads, seqlen, headdim)
-    q_t = q_pad.transpose(1, 2)
-    k_t = k_pad.transpose(1, 2)
-    v_t = v_pad.transpose(1, 2)
+        # (1, nheads_q, sq, headdim) → (sq, nheads_q, headdim)
+        chunks.append(oi.squeeze(0).transpose(0, 1))
 
-    # GQA expansion (after transpose: dim=1 is nheads)
-    if nheads_q != nheads_k:
-        assert nheads_q % nheads_k == 0
-        rep = nheads_q // nheads_k
-        k_t = k_t.repeat_interleave(rep, dim=1)
-        v_t = v_t.repeat_interleave(rep, dim=1)
-
-    out_t = F.scaled_dot_product_attention(
-        q_t, k_t, v_t,
-        attn_mask=attn_bias,
-        dropout_p=dropout_p if torch.is_grad_enabled() else 0.0,
-        is_causal=False,  # causal is encoded in attn_bias above
-        scale=softmax_scale,
-    )
-
-    out_pad = out_t.transpose(1, 2)  # (batch, max_seqlen_q, nheads, headdim)
-
-    # Repack output
-    out_chunks = [
-        out_pad[i, :int(cu_seqlens_q[i + 1]) - int(cu_seqlens_q[i])]
-        for i in range(batch)
-    ]
-    out = torch.cat(out_chunks, dim=0)
+    out = torch.cat(chunks, dim=0)
 
     if return_attn_probs:
         return out, None, None
