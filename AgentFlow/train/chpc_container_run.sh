@@ -154,6 +154,23 @@ export NCCL_IB_DISABLE=1
 export NCCL_P2P_DISABLE=1
 export UCX_TLS=tcp,self
 
+# Disable torch.compile (TorchDynamo) for all FSDP training workers.
+#
+# veRL decorates dp_actor._forward_micro_batch with @torch.compile.  When
+# torch._inductor compiles the first micro-batch it calls the Triton NVIDIA
+# backend to generate PTX.  Triton's LLVM backend in NGC 25.02 does not
+# recognise sm_120 (Blackwell) as a valid target processor, so when it tries
+# to lower the warp-shuffle intrinsic llvm.nvvm.shfl.sync.bfly.i32 it cannot
+# select an instruction and calls llvm::report_fatal_error(), which calls
+# abort() → SIGABRT, killing the WorkerDict actor.
+#
+# TORCHDYNAMO_DISABLE=1 makes every @torch.compile decorator a no-op.  All
+# veRL FSDP training code runs in standard PyTorch eager mode, which is
+# fully correct and reproducible.  Eager mode is the accepted baseline for
+# research; torch.compile is an optional throughput optimisation that can be
+# re-enabled once Triton ships LLVM 19+ with sm_120 support.
+export TORCHDYNAMO_DISABLE=1
+
 echo "Running container sanity imports ..."
 apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
