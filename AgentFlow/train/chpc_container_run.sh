@@ -129,6 +129,13 @@ if [[ -z "${WANDB_API_KEY:-}" && -z "${WANDB_MODE:-}" ]]; then
   export WANDB_MODE=offline
 fi
 
+# Disable Ray's task-event telemetry flush on actor shutdown.
+# Without this, the vLLM rollout-server actor races between flushing telemetry
+# to the GCS (via UCX) and the GCS connection being torn down, producing a
+# harmless but noisy SIGSEGV in ray::gcs::TaskInfoAccessor::AsyncAddTaskEventData.
+# Setting this to 0 disables the periodic flush; task events are never sent.
+export RAY_task_events_report_interval_ms=0
+
 echo "Running container sanity imports ..."
 apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
