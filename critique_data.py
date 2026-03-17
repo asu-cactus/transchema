@@ -203,6 +203,15 @@ def get_parser():
         "--no-perc", dest="is_perc", action="store_false", help="Set is_perc to False"
     )
     parser.set_defaults(is_perc=False)
+    
+    #corresponds to table 9 from paper
+    parser.add_argument(
+        "--judge",
+        type=str,
+        default="gt",
+        choices=["gt", "llm", "det_score", "llm_score", "llm_score_hybrid"],
+        help="Judging technique for critique planning", 
+    )
 
     parser.add_argument(
         "--hint-source",
@@ -513,7 +522,10 @@ if __name__ == "__main__":
                 writer = csv.writer(f)
                 writer.writerow(result)
 
-            if not result[1]:
+            #insert llm as a judge methods  
+            enact_critique = not result[1]
+
+            if enact_critique:
                 if args.single_step_cot:
                     # No critique for single step cot
                     continue
