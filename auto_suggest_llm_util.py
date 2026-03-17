@@ -1243,9 +1243,14 @@ def calculate_score_cost(gt_df, tgt_df, cost_):
 
 if __name__ == "__main__":
     # generate all hints for join and aggregate
-
-    main_folder = "autopipeline-benchmarks/github-pipelines"
-    json_file_path = "data/chatgpt_github_ms.json"
+    import sys
+    benchmark = "github"
+    if "--benchmark" in sys.argv:
+        idx = sys.argv.index("--benchmark")
+        if idx + 1 < len(sys.argv) and sys.argv[idx + 1] in ("github", "monteprep"):
+            benchmark = sys.argv[idx + 1]
+    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    json_file_path = "data/chatgpt_monteprep_ms.json" if benchmark == "monteprep" else "data/chatgpt_github_ms.json"
 
     len_id = 2
     max_len_id = 2

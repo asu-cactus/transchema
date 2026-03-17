@@ -71,6 +71,8 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
 
     max_trails = 5
     error_str = ""
+    script = ""
+    response = ""
     for _ in range(max_trails):
         prompt = get_prompt(
             prompt_type="python_script",
@@ -129,9 +131,9 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
 
 
 def create_intermediate_space(main_folder, len_id, target_id):
-    # create source space
-
-    source_space_path = Path(f"{source_space_dir}/length{len_id}_{target_id}")
+    # create source space (derive from main_folder so benchmark selector works)
+    _source_space_dir = f"{main_folder}/intermediate_space"
+    source_space_path = Path(f"{_source_space_dir}/length{len_id}_{target_id}")
     source_space_path.mkdir(exist_ok=True, parents=True)
 
     source_dir = Path(f"{main_folder}/length{len_id}_{target_id}")
@@ -139,7 +141,7 @@ def create_intermediate_space(main_folder, len_id, target_id):
     for file in source_dir.glob("*"):
         if file.is_file():  # Skip directories
             shutil.copy(file, source_space_path)
-    return source_space_dir
+    return _source_space_dir
 
 
 def multi_step(args, length, id_, log_dir_, experiment_name, i_):
@@ -176,6 +178,10 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
     token_limit = args.token_limit
     model = args.model
     static_hints = args.static_hints
+    # Benchmark selector: github | monteprep
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    source_space_dir = f"{main_folder}/intermediate_space"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
@@ -189,10 +195,10 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
         interm_space_dir = create_intermediate_space(main_folder, len_id, target_id)
     # print(file_count)
 
-    if file_count > 1:
-        json_file_path = "data/chatgpt_github_ms.json"
+    if benchmark == "monteprep":
+        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
     else:
-        json_file_path = "data/chatgpt_github_ss.json"
+        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
     log_dir = log_dir_
 
