@@ -25,6 +25,60 @@ mkdir -p /scratch/general/vast/u1592362/hf_cache
 mkdir -p /scratch/general/vast/u1592362/AgentFlow_Checkpoints
 mkdir -p /scratch/general/vast/u1592362/AgentFlow_Rollouts
 
+# ---------------------------------------------------------------------------
+# Squashfuse-bypass: extract packages to scratch.
+#
+# Apptainer mounts SIF images via squashfuse_ll (a user-space FUSE daemon).
+# squashfuse_ll handles one kernel FUSE request at a time through a single
+# /dev/fuse fd.  When AgentFlow's Trainer loads tools in parallel it spawns
+# N independent Python processes that each try to open vllm/__init__.py and
+# openai/__init__.py from squashfuse_ll concurrently.  The FUSE daemon
+# becomes overloaded and closes the fd, returning ENOTCONN to every reader.
+#
+# Fix: copy the two problematic packages to a real filesystem (VAST scratch)
+# once.  PYTHONPATH is then prepended with that directory so every Python
+# process — spawned or forked, regardless of concurrency — finds these
+# packages without ever touching squashfuse_ll.
+#
+# The copy is keyed to the SIF's mtime; it is automatically redone when
+# the container image is rebuilt, otherwise it is instantaneous.
+# ---------------------------------------------------------------------------
+_SIF_PKGS_DIR="/scratch/general/vast/u1592362/AgentFlow_sif_pkgs"
+_SIF_PKGS_MARKER="${_SIF_PKGS_DIR}/.extracted_from_sif"
+_need_extract=false
+if [[ ! -f "${_SIF_PKGS_MARKER}" ]]; then
+  _need_extract=true
+elif [[ "${IMAGE}" -nt "${_SIF_PKGS_MARKER}" ]]; then
+  echo "SIF image is newer than cached packages; re-extracting..."
+  _need_extract=true
+fi
+
+if [[ "${_need_extract}" == "true" ]]; then
+  echo "Extracting Python packages from SIF to scratch (avoids squashfuse_ll"
+  echo "  concurrency failures during parallel tool loading)."
+  echo "  This runs once; subsequent launches are instant."
+  rm -rf "${_SIF_PKGS_DIR}"
+  mkdir -p "${_SIF_PKGS_DIR}"
+  # Use -rL so symlinks inside the container are dereferenced; all files land on scratch.
+  # Shell glob expansion happens inside the container via /bin/sh -c.
+  apptainer exec \
+    --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+    "${IMAGE}" \
+    /bin/sh -c "
+      set -e
+      DEST=\"${_SIF_PKGS_DIR}\"
+      SP=/usr/local/lib/python3.12/dist-packages
+      cp -rL \"\${SP}/vllm\"   \"\${DEST}/\"
+      cp -rL \"\${SP}/openai\" \"\${DEST}/\"
+      for d in \"\${SP}\"/vllm-*.dist-info \"\${SP}\"/openai-*.dist-info; do
+        [ -d \"\${d}\" ] && cp -rL \"\${d}\" \"\${DEST}/\"
+      done
+    "
+  touch "${_SIF_PKGS_MARKER}"
+  echo "  Done. Packages cached at ${_SIF_PKGS_DIR}"
+fi
+export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
+
 unset ROCR_VISIBLE_DEVICES
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
