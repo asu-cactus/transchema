@@ -136,6 +136,24 @@ fi
 # Setting this to 0 disables the periodic flush; task events are never sent.
 export RAY_task_events_report_interval_ms=0
 
+# Force NCCL to use TCP sockets instead of InfiniBand / UCX.
+#
+# On CHPC nodes HPC-X (the host's OpenMPI + UCX distribution) is installed at
+# /opt/hpcx/.  When NCCL initialises inside an Apptainer container it probes
+# for IB devices and loads UCX's IB transport (libucs.so from HPC-X).  That
+# transport crashes with SIGSEGV in ucs_handle_error when the IB device is not
+# fully accessible from the container namespace.  The crash kills the colocated
+# FSDP/vLLM WorkerDict actor before compute_log_prob can return results.
+#
+# NCCL_IB_DISABLE=1  : skip InfiniBand entirely; use socket-based transport.
+# NCCL_P2P_DISABLE=1 : disable GPU-to-GPU P2P (irrelevant for 1 GPU but
+#                       prevents additional UCX initialisation paths).
+# UCX_TLS=tcp,self   : in case any library still tries to init UCX, restrict
+#                       it to TCP loopback only.
+export NCCL_IB_DISABLE=1
+export NCCL_P2P_DISABLE=1
+export UCX_TLS=tcp,self
+
 echo "Running container sanity imports ..."
 apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
