@@ -102,18 +102,39 @@ python_args:
   actor_rollout_ref.actor.clip_ratio_low: 0.2
   actor_rollout_ref.actor.clip_ratio_high: 0.3
   actor_rollout_ref.model.enable_gradient_checkpointing: True
-  actor_rollout_ref.actor.fsdp_config.param_offload: False
+  # Offload actor FSDP parameters, gradients, and optimizer states to CPU.
+  #
+  # Memory budget on the 94.97 GiB H100-NVL with a single GPU and colocated
+  # vLLM + FSDP (WorkerDict):
+  #   vLLM (model 15.2 GB + KV cache)      : 28.5 GB at gpu_memory_utilization=0.30
+  #   FSDP actor params                     : 15.2 GB
+  #   FSDP gradients                        : 15.2 GB
+  #   Adam exp_avg + exp_avg_sq             : 30.4 GB
+  #   Misc / activations                    :  5.0 GB
+  #   ─────────────────────────────────────
+  #   Total without param_offload           : ~94.3 GB  → OOM at optimizer step
+  #
+  # With param_offload=True the FSDP actor params, gradients, and Adam states
+  # all live on CPU.  The GPU only ever holds the vLLM reservation (~28.5 GB)
+  # plus a single layer's activations during the forward/backward pass.
+  # This leaves ~65 GB of headroom, eliminating all OOM paths.
+  #
+  # Throughput note: the dominant cost per RL step is the multi-turn agent
+  # rollout (tool calls + LLM generation), not the FSDP backward pass.
+  # PCIe parameter streaming during compute_log_prob / update_actor adds
+  # roughly 1–2 s per micro-batch but is completely overlapped with I/O in
+  # the agent loop.
+  actor_rollout_ref.actor.fsdp_config.param_offload: True
   actor_rollout_ref.actor.fsdp_config.optimizer_offload: True
 
   # vLLM rollout server
   actor_rollout_ref.rollout.name: 'vllm'
-  # 0.25 gives vLLM ~23.7 GB on a 94 GB H100-NVL (including model weights,
-  # leaving ~8.5 GB for the KV cache).  0.30 caused GPU OOM during the Adam
-  # optimizer step in update_actor: the vLLM reservation + FSDP params +
-  # gradients + Adam exp_avg/exp_avg_sq together reach ~94 GB, leaving no
-  # room for the first optimizer-state allocation (~890 MB).  0.25 provides
-  # ~10 GB of headroom to absorb the optimizer states and misc overhead.
-  actor_rollout_ref.rollout.gpu_memory_utilization: 0.25
+  # 0.30 gives vLLM ~28.5 GB (model 15.2 GB + 13.3 GB KV cache).
+  # 13.3 GB KV cache is sufficient for 4 prompts × 4 rollouts = 16 sequences
+  # with prompts up to 12288 tokens (confirmed: generation succeeds at 0.30).
+  # 0.25 reduces the KV budget to 8.5 GB, which is below the ~10.5 GB needed
+  # for the prefill phase of 16 long-prompt sequences → vLLM OOM → SIGKILL.
+  actor_rollout_ref.rollout.gpu_memory_utilization: 0.30
 
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu: 2
   # Offload reference model parameters to CPU between log-prob calls.
