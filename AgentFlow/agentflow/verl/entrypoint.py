@@ -57,6 +57,50 @@ def _should_use_flash_attn_shim() -> bool:
         return False                     # can't determine; assume no shim needed
 
 
+def _worker_setup_hook() -> None:
+    """Runs inside every new Ray worker process before it handles any task.
+
+    This is the correct place to monkey-patch library code that lives inside
+    the container's site-packages, because:
+
+    1. It executes *before* the WorkerDict actor class is deserialized and
+       before any ``import vllm`` occurs in user code.
+    2. It is called in the same process that will run the actor, so the patch
+       applies to whichever ``vllm.device_allocator.cumem`` module that process
+       eventually imports (container copy or PYTHONPATH override — same class
+       object in sys.modules either way).
+    3. It does not rely on PYTHONPATH ordering or file-system copies.
+
+    Patch: ``CuMemAllocator.wake_up`` → call ``torch.cuda.empty_cache()`` first.
+
+    Root cause (verl issue #302 / verl PR #575):
+    ``FSDPVLLMShardingManager.__enter__`` collects the FSDP state dict before
+    calling ``inference_engine.wake_up()``.  The state_dict call allocates GPU
+    tensors via ``cudaMalloc``.  PyTorch's CUDA allocator caches freed blocks
+    rather than returning them to the driver.  When ``wake_up`` then calls
+    ``cuMemCreate`` to re-allocate physical GPU pages for the vLLM model weights
+    the CUDA driver cannot satisfy the request because those pages are held in
+    PyTorch's cache → ``CUDA_ERROR_OUT_OF_MEMORY`` even with ample free VRAM.
+
+    ``torch.cuda.empty_cache()`` flushes the cache, returning the pages to the
+    driver before ``cuMemCreate`` is invoked.
+    """
+    try:
+        import torch
+        from vllm.device_allocator.cumem import CuMemAllocator
+
+        _orig_wake_up = CuMemAllocator.wake_up
+
+        def _patched_wake_up(self, tags=None):
+            torch.cuda.empty_cache()
+            return _orig_wake_up(self, tags)
+
+        CuMemAllocator.wake_up = _patched_wake_up
+    except Exception:
+        # Not running in a vLLM-enabled environment; skip silently.
+        pass
+
+
 @hydra.main(config_path="pkg://agentflow/verl", config_name="config", version_base=None)
 def main(config):
     run_ppo(config)
@@ -100,7 +144,13 @@ def run_ppo(config) -> None:
             )
 
         ray.init(
-            runtime_env={"env_vars": runtime_env_vars},
+            runtime_env={
+                "env_vars": runtime_env_vars,
+                # Apply the CuMemAllocator.wake_up patch in every Ray worker
+                # process before any vLLM import occurs.  See _worker_setup_hook
+                # above for the full rationale.
+                "worker_process_setup_hook": _worker_setup_hook,
+            },
             num_cpus=config.ray_init.num_cpus,
         )
 
