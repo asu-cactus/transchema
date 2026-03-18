@@ -107,11 +107,13 @@ python_args:
 
   # vLLM rollout server
   actor_rollout_ref.rollout.name: 'vllm'
-  # 0.30 gives vLLM ~28 GB on a 94 GB H100-NVL while leaving sufficient
-  # headroom for the FSDP actor weights (~14 GB), activations, and grad
-  # buffers.  0.35 was tight enough to cause ActorUnavailableError crashes
-  # during compute_log_prob when ref param_offload was disabled.
-  actor_rollout_ref.rollout.gpu_memory_utilization: 0.30
+  # 0.25 gives vLLM ~23.7 GB on a 94 GB H100-NVL (including model weights,
+  # leaving ~8.5 GB for the KV cache).  0.30 caused GPU OOM during the Adam
+  # optimizer step in update_actor: the vLLM reservation + FSDP params +
+  # gradients + Adam exp_avg/exp_avg_sq together reach ~94 GB, leaving no
+  # room for the first optimizer-state allocation (~890 MB).  0.25 provides
+  # ~10 GB of headroom to absorb the optimizer states and misc overhead.
+  actor_rollout_ref.rollout.gpu_memory_utilization: 0.25
 
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu: 2
   # Offload reference model parameters to CPU between log-prob calls.

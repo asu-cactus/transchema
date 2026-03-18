@@ -171,6 +171,16 @@ export UCX_TLS=tcp,self
 # re-enabled once Triton ships LLVM 19+ with sm_120 support.
 export TORCHDYNAMO_DISABLE=1
 
+# Prevent CUDA allocator fragmentation during the Adam optimizer step.
+#
+# After compute_log_prob and backward, the allocator holds many small freed
+# blocks from activation/gradient temporaries.  When Adam initialises its
+# exp_avg / exp_avg_sq tensors (~15 GB each) it needs large contiguous
+# regions.  expandable_segments lets the allocator extend existing segments
+# rather than searching for a single contiguous free block, eliminating the
+# CUDA OOM that occurs even when total free memory would otherwise be sufficient.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 echo "Running container sanity imports ..."
 apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
