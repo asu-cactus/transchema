@@ -79,6 +79,44 @@ if [[ "${_need_extract}" == "true" ]]; then
 fi
 export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
 
+# ---------------------------------------------------------------------------
+# Patch vLLM cumem_allocator: flush PyTorch cache before wake_up.
+#
+# FSDPVLLMShardingManager.__enter__ collects the FSDP state dict before
+# calling inference_engine.wake_up().  The state_dict call allocates GPU
+# tensors via cudaMalloc.  PyTorch's CUDA allocator caches these freed
+# blocks instead of returning them to the CUDA driver.  When wake_up then
+# calls cuMemCreate (to re-allocate physical pages for vLLM model weights)
+# the driver cannot satisfy the request because the physical pages are still
+# held in PyTorch's cache → CUDA_ERROR_OUT_OF_MEMORY.
+#
+# Fix (confirmed in verl issue #302 / verl PR #575): call
+# torch.cuda.empty_cache() inside CuMemAllocator.wake_up() before each
+# cuMemCreate.  empty_cache() returns PyTorch's cached pages to the CUDA
+# driver, making them available for cuMemCreate.
+#
+# We append the monkey-patch to the scratch copy of cumem.py.  That copy
+# is loaded in preference to the SIF version because _SIF_PKGS_DIR is
+# first on PYTHONPATH.  The marker comment prevents re-patching on re-runs.
+# ---------------------------------------------------------------------------
+_CUMEM_PY="${_SIF_PKGS_DIR}/vllm/device_allocator/cumem.py"
+if [[ -f "${_CUMEM_PY}" ]] && ! grep -q "PATCHED_EMPTY_CACHE_BEFORE_WAKE_UP" "${_CUMEM_PY}"; then
+  cat >> "${_CUMEM_PY}" << 'CUMEM_PATCH'
+
+# PATCHED_EMPTY_CACHE_BEFORE_WAKE_UP
+# Wrap CuMemAllocator.wake_up to call torch.cuda.empty_cache() first.
+# This releases PyTorch's cached CUDA blocks back to the driver so that
+# cuMemCreate can obtain physical GPU pages for the vLLM model weights.
+_orig_cumem_wake_up = CuMemAllocator.wake_up
+def _patched_cumem_wake_up(self, tags=None):
+    import torch
+    torch.cuda.empty_cache()
+    _orig_cumem_wake_up(self, tags)
+CuMemAllocator.wake_up = _patched_cumem_wake_up
+CUMEM_PATCH
+  echo "  Patched ${_CUMEM_PY}: torch.cuda.empty_cache() added before cuMemCreate."
+fi
+
 unset ROCR_VISIBLE_DEVICES
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
@@ -171,22 +209,9 @@ export UCX_TLS=tcp,self
 # re-enabled once Triton ships LLVM 19+ with sm_120 support.
 export TORCHDYNAMO_DISABLE=1
 
-# Disable vLLM's sleep/wake CUDA VMM mechanism.
-#
-# vLLM v1 uses a CuMemAllocator (CUDA virtual memory management: cuMemCreate
-# + cuMemMap) to "sleep" model weights (unmap from GPU) during FSDP training
-# and "wake_up" (re-map) before the next rollout.  On Blackwell (sm_120)
-# the CUDA driver returns CUDA_ERROR_OUT_OF_MEMORY from cuMemCreate during
-# wake_up even when there is ample free physical GPU memory.  This is a
-# known driver-level issue with CUDA VMM on Blackwell.
-#
-# VLLM_SLEEP_LEVEL=0 makes vLLM use NullAllocator instead of CuMemAllocator:
-# sleep() and wake_up() become no-ops.  vLLM model weights stay mapped on the
-# GPU at all times.  With actor.fsdp_config.param_offload=True the FSDP actor
-# never needs the GPU for its own weights; the GPU holds only the vLLM
-# reservation (~28.5 GB at 0.30 utilisation) plus transient per-layer
-# activations (~0.5 GB) during the training forward/backward pass.
-export VLLM_SLEEP_LEVEL=0
+# Note: VLLM_SLEEP_LEVEL is not a recognised env var in the vLLM version
+# shipped with NGC 25.02, so it has no effect here.  The cumem patch above
+# (torch.cuda.empty_cache before cuMemCreate) is the operative fix.
 
 echo "Running container sanity imports ..."
 apptainer exec --nv \
