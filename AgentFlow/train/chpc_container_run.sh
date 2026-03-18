@@ -171,19 +171,22 @@ export UCX_TLS=tcp,self
 # re-enabled once Triton ships LLVM 19+ with sm_120 support.
 export TORCHDYNAMO_DISABLE=1
 
-# Do NOT set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True here.
+# Disable vLLM's sleep/wake CUDA VMM mechanism.
 #
-# expandable_segments makes PyTorch's allocator use cuMemCreate/cuMemMap/
-# cuMemReserveAddressRange — the same CUDA virtual memory management (VMM)
-# mechanism as vLLM's cumem_allocator.  Every cuMemMap call adds a VMA to
-# the process.  Linux caps VMAs at /proc/sys/vm/max_map_count (65536 by
-# default on CHPC).  With both PyTorch and vLLM generating VMAs the process
-# hits this ceiling; cuMemMap returns CUDA_ERROR_OUT_OF_MEMORY even though
-# physical GPU memory is ample, causing vLLM's wake_up to fail.
+# vLLM v1 uses a CuMemAllocator (CUDA virtual memory management: cuMemCreate
+# + cuMemMap) to "sleep" model weights (unmap from GPU) during FSDP training
+# and "wake_up" (re-map) before the next rollout.  On Blackwell (sm_120)
+# the CUDA driver returns CUDA_ERROR_OUT_OF_MEMORY from cuMemCreate during
+# wake_up even when there is ample free physical GPU memory.  This is a
+# known driver-level issue with CUDA VMM on Blackwell.
 #
-# With actor.fsdp_config.param_offload=True the Adam optimizer states live on
-# CPU, so there is no GPU-side fragmentation problem to solve; the standard
-# cudaMalloc allocator is correct here.
+# VLLM_SLEEP_LEVEL=0 makes vLLM use NullAllocator instead of CuMemAllocator:
+# sleep() and wake_up() become no-ops.  vLLM model weights stay mapped on the
+# GPU at all times.  With actor.fsdp_config.param_offload=True the FSDP actor
+# never needs the GPU for its own weights; the GPU holds only the vLLM
+# reservation (~28.5 GB at 0.30 utilisation) plus transient per-layer
+# activations (~0.5 GB) during the training forward/backward pass.
+export VLLM_SLEEP_LEVEL=0
 
 echo "Running container sanity imports ..."
 apptainer exec --nv \
