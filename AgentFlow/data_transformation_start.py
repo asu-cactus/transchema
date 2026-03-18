@@ -51,6 +51,9 @@ _parser.add_argument("--validation", type=str, default="hard_match",
 _parser.add_argument("--cases", type=str, nargs="+", default=None,
                      help="Explicit list of case IDs to run, e.g. --cases 1_41 4_18 9_70. "
                           "Overrides --len-id / --target-id-start / --target-id-end.")
+_parser.add_argument("--benchmark", type=str, default="github",
+                     choices=["github", "monteprep"],
+                     help="Benchmark dataset: 'github' or 'monteprep'. (default: github)")
 _args = _parser.parse_args()
 
 # ============================================================
@@ -92,11 +95,19 @@ TARGET_ID_END = _args.target_id_end
 # ============================================================
 
 # Paths
-JSON_FILE_PATH_MS = os.path.join(_TRANSCHEMA_ROOT, "data", "chatgpt_github_ms.json")
-JSON_FILE_PATH_SS = os.path.join(_TRANSCHEMA_ROOT, "data", "chatgpt_github_ss.json")
-BENCHMARKS_DIR = os.path.join(
-    _TRANSCHEMA_ROOT, "autopipeline-benchmarks", "github-pipelines"
-)
+_BENCHMARK = _args.benchmark
+if _BENCHMARK == "monteprep":
+    JSON_FILE_PATH_MS = os.path.join(_TRANSCHEMA_ROOT, "data", "chatgpt_monteprep_ms.json")
+    JSON_FILE_PATH_SS = os.path.join(_TRANSCHEMA_ROOT, "data", "chatgpt_monteprep_ss.json")
+    BENCHMARKS_DIR = os.path.join(
+        _TRANSCHEMA_ROOT, "autopipeline-benchmarks", "monteprep-pipelines"
+    )
+else:
+    JSON_FILE_PATH_MS = os.path.join(_TRANSCHEMA_ROOT, "data", "chatgpt_github_ms.json")
+    JSON_FILE_PATH_SS = os.path.join(_TRANSCHEMA_ROOT, "data", "chatgpt_github_ss.json")
+    BENCHMARKS_DIR = os.path.join(
+        _TRANSCHEMA_ROOT, "autopipeline-benchmarks", "github-pipelines"
+    )
 _RUN_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 RESULTS_DIR = os.path.join(
     _TRANSCHEMA_ROOT, "AgentFlow", "results", f"{_args.result_dir}_{_RUN_TIMESTAMP}"

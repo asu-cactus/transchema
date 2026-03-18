@@ -108,6 +108,13 @@ def _extract_output_csv_path(generated_code: str) -> Optional[str]:
     )
     if to_csv_matches:
         return to_csv_matches[-1]
+
+    # Handle: var = "/path/to/output.csv" followed by df.to_csv(var)
+    for var_match in re.finditer(r'(\w+)\s*=\s*["\']([^"\']+\.csv)["\']', generated_code):
+        var_name, csv_path = var_match.group(1), var_match.group(2)
+        if re.search(rf'\.to_csv\s*\(\s*{re.escape(var_name)}\b', generated_code):
+            return csv_path
+
     return None
 
 
@@ -122,16 +129,11 @@ def _extract_ground_truth_csv_path(query: str) -> Optional[str]:
         return explicit_match.group(1)
 
     case_match = re.search(
-        r"(autopipeline-benchmarks/github-pipelines/length\d+_\d+)/test_\d+\.csv",
+        r"(autopipeline-benchmarks/[^/]+-pipelines/length\d+_\d+)/test_\d+\.csv",
         query,
     )
     if case_match:
         return f"{case_match.group(1)}/target.csv"
-
-    target_name_match = re.search(r"Target Table Name:\s*Target(\d+_\d+)", query)
-    if target_name_match:
-        case_id = target_name_match.group(1)
-        return f"autopipeline-benchmarks/github-pipelines/length{case_id}/target.csv"
 
     return None
 

@@ -1,7 +1,8 @@
 import json
 import os
 import sys
-import signal
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 # Ensure this directory is on sys.path so fdtool and column_map_utils are importable
 _SCORE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,17 +16,12 @@ from column_map_utils import get_column_map
 FD_TIMEOUT = 60
 
 def _run_fdtool(df):
-    def _handler(signum, frame):
-        raise TimeoutError("FD mining exceeded time limit")
-    signal.signal(signal.SIGALRM, _handler)
-    signal.alarm(FD_TIMEOUT)
-    try:
-        result = fdtool.main(df)
-        signal.alarm(0)
-        return result
-    except TimeoutError:
-        signal.alarm(0)
-        return [], [], []
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(fdtool.main, df)
+        try:
+            return future.result(timeout=FD_TIMEOUT)
+        except FuturesTimeoutError:
+            return [], [], []
 
 def serialize_fd_list(fd_list):
     return [{"lhs": list(lhs), "rhs": rhs} for lhs, rhs in fd_list]

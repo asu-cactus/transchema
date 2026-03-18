@@ -68,7 +68,6 @@ from graph import build_mcts_graph
 from viz import write_action_trace, write_tree_viz
 
 # ──────────────────────────────────────────────────────────────────────────────
-_MAIN_FOLDER = "autopipeline-benchmarks/github-pipelines"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -152,22 +151,27 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
     aggregate_hints_truncate = getattr(args, "aggregate_hints_truncate", [])
     few_shot = getattr(args, "few_shot", 0)
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = (
+        "autopipeline-benchmarks/monteprep-pipelines"
+        if benchmark == "monteprep"
+        else "autopipeline-benchmarks/github-pipelines"
+    )
 
     # ── Case path and data file selection ──────────────────────────────────
     len_id = length
     target_id = id_
-    path_to_files = f"{_MAIN_FOLDER}/length{length}_{id_}/"
+    path_to_files = f"{main_folder}/length{length}_{id_}/"
     file_count = sum(
         1
         for _, _, files in os.walk(path_to_files)
         for file in files
         if file.startswith("test")
     )
-    json_file_path = (
-        "data/chatgpt_github_ms.json"
-        if file_count > 1
-        else "data/chatgpt_github_ss.json"
-    )
+    if benchmark == "monteprep":
+        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
+    else:
+        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
     task_list = get_test_cases_ids(json_file_path, len_id, len_id, target_id, target_id)
 
@@ -205,14 +209,14 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             source_data_name_list,
             source_data_schema_list,
             source_samples_list,
-        ) = get_test_info(json_file_path, len_idx_target_idx, _MAIN_FOLDER, anon_flag)
+        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
 
         llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
 
         target_file_location = (
-            f"{_MAIN_FOLDER}/length{len_idx_target_idx}/target_multisource_mcts.csv"
+            f"{main_folder}/length{len_idx_target_idx}/target_multisource_mcts.csv"
         )
-        ground_truth_location = f"{_MAIN_FOLDER}/length{len_idx_target_idx}/target.csv"
+        ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
 
         # ── Critique support: pre-compute source_information and fd_hints ────
         mcts_critique_mode = getattr(args, "mcts_critique_mode", "none")
@@ -228,7 +232,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
 
         source_information = get_source(
             file_count, source_data_name_list, source_data_schema_list,
-            _MAIN_FOLDER, len_idx_target_idx, source_length, token_limit, _enc,
+            main_folder, len_idx_target_idx, source_length, token_limit, _enc,
         )
 
         fd_hints_str = ""
@@ -266,7 +270,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             token_tracker=token_tracker,
             model=model,
             token_limit=token_limit,
-            directory=_MAIN_FOLDER,
+            directory=main_folder,
             source_information=source_information,
             static_hints=not getattr(args, "no_static_hints", False),
             fd_hints=fd_hints_str,
@@ -279,7 +283,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         initial_state: MCTSGraphState = {
             # Problem config
             "config": config,
-            "main_folder": _MAIN_FOLDER,
+            "main_folder": main_folder,
             "ground_truth_location": ground_truth_location,
             "target_file_location": target_file_location,
             "experiment_name": experiment_name,
@@ -406,10 +410,25 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
 #                                               --experiment_name my_run)
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _case_worker(args, length, case_id, log_dir_, experiment_name, result_queue):
+    """Worker function run in a child process for each case."""
+    try:
+        result = mcts_search(
+            args, length=length, id_=case_id,
+            log_dir_=log_dir_, experiment_name=experiment_name, i_=case_id,
+        )
+        result_queue.put(("ok", result))
+    except Exception:
+        result_queue.put(("error", traceback.format_exc()))
+
+
 if __name__ == "__main__":
     import argparse
     import csv
+    import multiprocessing
     from datetime import datetime
+
+    _CASE_TIMEOUT = 600  # 10 minutes per case
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
@@ -459,6 +478,13 @@ if __name__ == "__main__":
         default="hard_match",
         choices=["hard_match", "autopipeline"],
         help="Validation method: 'hard_match' uses compare_lists_matching (partial credit), 'autopipeline' uses compare_tables_matching (binary match)",
+    )
+    parser.add_argument(
+        "--benchmark",
+        type=str,
+        default="github",
+        choices=["github", "monteprep"],
+        help="Benchmark dataset: 'github' or 'monteprep'.",
     )
     parser.add_argument(
         "--result_dir",
@@ -520,32 +546,66 @@ if __name__ == "__main__":
         print(f"\n[MCTS] === length={length}  id={case_id} ===")
         case_label = f"{length}_{case_id}"
         _ts = datetime.now().isoformat()
-        try:
-            result = mcts_search(
-                args,
-                length=length,
-                id_=case_id,
-                log_dir_=log_dir_,
-                experiment_name=args.experiment_name,
-                i_=case_id,
-            )
-            results[case_id] = result
-            is_correct, total_cost, time_elapsed, best_score, op_hist_ = result
-            print(f"[MCTS] Case {case_id} done: {result}")
+        _result_queue = multiprocessing.Queue()
+        _proc = multiprocessing.Process(
+            target=_case_worker,
+            args=(args, length, case_id, log_dir_, args.experiment_name, _result_queue),
+            daemon=True,
+        )
+        _proc.start()
+        _proc.join(timeout=_CASE_TIMEOUT)
+
+        if _proc.is_alive():
+            print(f"[MCTS] Case {case_id} TIMED OUT after {_CASE_TIMEOUT}s — killing")
+            _proc.terminate()
+            _proc.join()
+            results[case_id] = None
             _row = {
                 "case_id": case_label,
-                "is_correct": is_correct,
-                "cost": round(total_cost, 6) if total_cost is not None else "N/A",
-                "latency_seconds": round(time_elapsed, 2),
-                "best_score": round(best_score, 4),
-                "operation_history": op_hist_,
+                "is_correct": False,
+                "cost": "N/A",
+                "latency_seconds": _CASE_TIMEOUT,
+                "best_score": "N/A",
+                "operation_history": "",
                 "timestamp": _ts,
-                "status": "correct" if is_correct else "incorrect",
-                "error": "",
+                "status": "timeout",
+                "error": f"Timed out after {_CASE_TIMEOUT}s",
             }
-        except Exception:
-            tb = traceback.format_exc()
-            print(f"[MCTS] Case {case_id} FAILED:\n{tb}")
+        elif not _result_queue.empty():
+            _status, _payload = _result_queue.get()
+            if _status == "ok":
+                result = _payload
+                results[case_id] = result
+                is_correct, total_cost, time_elapsed, best_score, op_hist_ = result
+                print(f"[MCTS] Case {case_id} done: {result}")
+                _row = {
+                    "case_id": case_label,
+                    "is_correct": is_correct,
+                    "cost": round(total_cost, 6) if total_cost is not None else "N/A",
+                    "latency_seconds": round(time_elapsed, 2),
+                    "best_score": round(best_score, 4),
+                    "operation_history": op_hist_,
+                    "timestamp": _ts,
+                    "status": "correct" if is_correct else "incorrect",
+                    "error": "",
+                }
+            else:
+                tb = _payload
+                print(f"[MCTS] Case {case_id} FAILED:\n{tb}")
+                results[case_id] = None
+                _row = {
+                    "case_id": case_label,
+                    "is_correct": False,
+                    "cost": "N/A",
+                    "latency_seconds": "N/A",
+                    "best_score": "N/A",
+                    "operation_history": "",
+                    "timestamp": _ts,
+                    "status": "error",
+                    "error": tb.strip().splitlines()[-1],
+                }
+        else:
+            print(f"[MCTS] Case {case_id} exited with no result (exit code {_proc.exitcode})")
             results[case_id] = None
             _row = {
                 "case_id": case_label,
@@ -556,7 +616,7 @@ if __name__ == "__main__":
                 "operation_history": "",
                 "timestamp": _ts,
                 "status": "error",
-                "error": tb.strip().splitlines()[-1],
+                "error": f"Process exited with code {_proc.exitcode}",
             }
         with open(results_csv_path, "a", newline="") as _f:
             csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_row)
