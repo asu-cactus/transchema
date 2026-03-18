@@ -342,6 +342,8 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
             source_data_schema_list.append(data["Source Data Schema"])
             source_samples_list.append(data["3 Samples of Source Data"])
 
+    file_count = len(source_data_name_list)
+
     return (
         target_data_name,
         target_data_schema,

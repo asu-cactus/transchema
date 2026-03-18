@@ -1,6 +1,6 @@
 import json
-import fdtool.fdtool as fdtool
-from column_map_utils import get_column_map, GLOBAL_SUMMARY
+from eval_score.fdtool import fdtool
+from .column_map_utils import get_column_map, GLOBAL_SUMMARY
 
 def serialize_fd_list(fd_list):
     return [{"lhs": list(lhs), "rhs": rhs} for lhs, rhs in fd_list]
