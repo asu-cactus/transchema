@@ -171,15 +171,19 @@ export UCX_TLS=tcp,self
 # re-enabled once Triton ships LLVM 19+ with sm_120 support.
 export TORCHDYNAMO_DISABLE=1
 
-# Prevent CUDA allocator fragmentation during the Adam optimizer step.
+# Do NOT set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True here.
 #
-# After compute_log_prob and backward, the allocator holds many small freed
-# blocks from activation/gradient temporaries.  When Adam initialises its
-# exp_avg / exp_avg_sq tensors (~15 GB each) it needs large contiguous
-# regions.  expandable_segments lets the allocator extend existing segments
-# rather than searching for a single contiguous free block, eliminating the
-# CUDA OOM that occurs even when total free memory would otherwise be sufficient.
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# expandable_segments makes PyTorch's allocator use cuMemCreate/cuMemMap/
+# cuMemReserveAddressRange — the same CUDA virtual memory management (VMM)
+# mechanism as vLLM's cumem_allocator.  Every cuMemMap call adds a VMA to
+# the process.  Linux caps VMAs at /proc/sys/vm/max_map_count (65536 by
+# default on CHPC).  With both PyTorch and vLLM generating VMAs the process
+# hits this ceiling; cuMemMap returns CUDA_ERROR_OUT_OF_MEMORY even though
+# physical GPU memory is ample, causing vLLM's wake_up to fail.
+#
+# With actor.fsdp_config.param_offload=True the Adam optimizer states live on
+# CPU, so there is no GPU-side fragmentation problem to solve; the standard
+# cudaMalloc allocator is correct here.
 
 echo "Running container sanity imports ..."
 apptainer exec --nv \
