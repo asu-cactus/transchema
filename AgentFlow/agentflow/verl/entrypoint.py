@@ -153,81 +153,121 @@ def _worker_setup_hook() -> None:
         # the env var above still applies.
         pass
 
-    # Patch 4: CPU-offload params and grads before Adam optimizer.step().
+    # Patch 4: Force the entire FSDP actor optimizer step to run on CPU.
     #
-    # Root cause: single-GPU NO_SHARD FSDP does not move parameters and
-    # gradients to CPU before calling optimizer.step(), even when
-    # fsdp_config.optimizer_offload=True / param_offload=True are set.
-    # veRL's fsdp_workers.py calls offload_fsdp_model_to_cpu() *after*
-    # update_policy() returns, but Adam._init_group runs *inside*
-    # update_policy() at the first optimizer.step(), too late.
+    # Root cause (OOM → SIGKILL → "Socket closed"):
     #
-    # Without CPU params at that point, torch.zeros_like(param) creates
-    # exp_avg / exp_avg_sq on GPU.  For a 7B model (fp32 Adam states):
-    #   7B × 4 bytes × 2 tensors = 56.8 GiB additional GPU allocation
-    # which pushes the already-full 94.97 GiB GPU past its limit → OOM.
+    # veRL's fsdp_workers.py::update_actor() flow:
+    #   1. load_fsdp_model_to_gpu(model)           -- params on GPU
+    #   2. load_fsdp_optimizer(opt, device_id)      -- first step: state empty → no-op
+    #   3. actor.update_policy(data)                -- fwd → bwd → _optimizer_step()
+    #      └→ clip_grad_norm_ (needs GPU params+grads)
+    #      └→ Adam._init_group: state["exp_avg"] = torch.zeros_like(param) ← ON GPU
+    #   4. offload_fsdp_model_to_cpu(model)         -- too late, OOM at step 3
     #
-    # IMPORTANT – why we must use offload_fsdp_model_to_cpu() and NOT
-    # manipulate p.data directly:
-    #   FSDP FlatParameters carry an internal _local_shard attribute that
-    #   caches the GPU data pointer used by load_fsdp_model_to_gpu().
-    #   Setting p.data = p.data.cpu() only swaps the public data buffer;
-    #   _local_shard still holds the now-freed GPU pointer.  When
-    #   load_fsdp_model_to_gpu() later reads _local_shard it dereferences
-    #   freed GPU memory → SIGSEGV → "Socket closed" ActorUnavailableError.
-    #   offload_fsdp_model_to_cpu() is veRL's own utility that updates
-    #   _local_shard (and other FSDP internals) atomically.
+    # Adam creates exp_avg and exp_avg_sq on the same device as the param.
+    # For 7B fp32: 7B × 4 bytes × 2 = ~56 GiB on GPU → OOM (only ~95 GiB total,
+    # ~30 GiB already used by model + grads).
+    #
+    # Fix: Patch DataParallelPPOActor._optimizer_step to:
+    #   a) Run clip_grad_norm_ on GPU (where params+grads live after backward)
+    #   b) Move all params and grads to CPU (using FSDP-safe handle.flat_param_to)
+    #   c) Call optimizer.step() on CPU → Adam creates states on CPU
+    #   d) On subsequent steps, veRL's load_fsdp_model_to_gpu() + load_fsdp_optimizer()
+    #      move everything back to GPU, and offload_fsdp_optimizer() returns states to CPU.
+    #
+    # After the first step, optimizer states exist on CPU.  load_fsdp_optimizer()
+    # moves them to GPU for subsequent steps, then offload_fsdp_optimizer() returns
+    # them to CPU.  The patch detects this (states non-empty on GPU) and skips the
+    # CPU detour, letting the original code path run.
     try:
         import torch
         from verl.workers.actor.dp_actor import DataParallelPPOActor
-
-        # offload_fsdp_model_to_cpu lives in fsdp_utils in all known veRL versions.
         try:
             from verl.utils.fsdp_utils import offload_fsdp_model_to_cpu
         except ImportError:
-            from verl.utils.fsdp_v2_utils import offload_fsdp_model_to_cpu  # type: ignore[no-redef]
+            offload_fsdp_model_to_cpu = None
 
         _orig_optimizer_step = DataParallelPPOActor._optimizer_step
 
-        def _patched_optimizer_step_cpu(self):
-            # Only offload if the config requests it; fall back silently.
+        def _patched_optimizer_step(self):
+            from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+
+            # Determine if we need to offload for the optimizer step.
+            # Only on the first step (empty optimizer state) is this necessary,
+            # because on later steps load_fsdp_optimizer() has already placed
+            # states on GPU alongside the params.
+            need_cpu_offload = False
+            for group in self.actor_optimizer.param_groups:
+                for p in group["params"]:
+                    state = self.actor_optimizer.state.get(p, {})
+                    if len(state) == 0 and p.grad is not None:
+                        need_cpu_offload = True
+                        break
+                if need_cpu_offload:
+                    break
+
+            if not need_cpu_offload:
+                return _orig_optimizer_step(self)
+
+            # --- First optimizer step: run entirely on CPU ---
+
+            # Step A: clip_grad_norm_ on GPU (requires GPU tensors).
+            assert self.config.grad_clip is not None
+            if isinstance(self.actor_module, FSDP):
+                grad_norm = self.actor_module.clip_grad_norm_(max_norm=self.config.grad_clip)
+            else:
+                grad_norm = torch.nn.utils.clip_grad_norm_(
+                    self.actor_module.parameters(), max_norm=self.config.grad_clip
+                )
+
             try:
-                should_offload = getattr(
-                    getattr(getattr(self, "config", None), "fsdp_config", None),
-                    "optimizer_offload", False,
-                )
+                from torch.distributed.tensor import DTensor
+                if isinstance(grad_norm, DTensor):
+                    grad_norm = grad_norm.full_tensor()
+            except ImportError:
+                pass
+
+            if not torch.isfinite(grad_norm):
+                print(f"WARN: grad_norm is not finite: {grad_norm}")
+                self.actor_optimizer.zero_grad()
+                return grad_norm
+
+            # Step B: offload model to CPU using veRL's FSDP-safe utility.
+            torch.cuda.synchronize()
+            if offload_fsdp_model_to_cpu is not None:
+                offload_fsdp_model_to_cpu(self.actor_module, empty_cache=True)
+            else:
+                self.actor_module.cpu()
+                torch.cuda.empty_cache()
+
+            # Step C: ensure grads are on CPU too.
+            with torch.no_grad():
+                for group in self.actor_optimizer.param_groups:
+                    for p in group["params"]:
+                        if p.grad is not None and p.grad.device.type != "cpu":
+                            p.grad = p.grad.cpu()
+
+            # Step D: optimizer.step() on CPU — Adam creates states on CPU.
+            self.actor_optimizer.step()
+
+            # Step E: reload model to GPU so any subsequent PPO epoch iterations
+            # (if ppo_epochs > 1) can run forward/backward on GPU.
+            # If ppo_epochs == 1 (the common case), veRL's update_actor() will
+            # call offload_fsdp_model_to_cpu() right after, which is fine.
+            try:
+                from verl.utils.fsdp_utils import load_fsdp_model_to_gpu as _reload
+                _reload(self.actor_module)
             except Exception:
-                should_offload = False
+                pass
 
-            if should_offload:
-                # Step 1: use veRL's utility so FSDP's _local_shard and all
-                # other internal state are updated consistently with param.data.
-                # Try common attribute names used in different veRL versions.
-                actor_mod = (
-                    getattr(self, "actor_module", None)
-                    or getattr(self, "actor_module_fsdp", None)
-                )
-                if actor_mod is not None:
-                    offload_fsdp_model_to_cpu(actor_mod)
+            return grad_norm
 
-                # Step 2: move accumulated gradients to CPU as well.
-                # offload_fsdp_model_to_cpu() may not cover param.grad, so
-                # we handle it explicitly here.
-                with torch.no_grad():
-                    for group in self.actor_optimizer.param_groups:
-                        for p in group["params"]:
-                            if p.grad is not None and p.grad.device.type == "cuda":
-                                p.grad = p.grad.cpu()
-
-                # Ensure all GPU ops referencing the old tensors are done
-                # before Python GC may free them.
-                torch.cuda.synchronize()
-
-            return _orig_optimizer_step(self)
-
-        DataParallelPPOActor._optimizer_step = _patched_optimizer_step_cpu
-    except Exception:
-        pass
+        DataParallelPPOActor._optimizer_step = _patched_optimizer_step
+    except Exception as exc:
+        import traceback
+        print(f"[_worker_setup_hook] WARNING: Patch 4 failed: {exc}")
+        traceback.print_exc()
 
 
 @hydra.main(config_path="pkg://agentflow/verl", config_name="config", version_base=None)
