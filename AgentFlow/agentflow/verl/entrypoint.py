@@ -153,6 +153,58 @@ def _worker_setup_hook() -> None:
         # the env var above still applies.
         pass
 
+    # Patch 4: CPU-offload params and grads before Adam optimizer.step().
+    #
+    # Root cause: single-GPU NO_SHARD FSDP does not move parameters and
+    # gradients to CPU before calling optimizer.step(), even when
+    # fsdp_config.optimizer_offload=True / param_offload=True are set.
+    # veRL's fsdp_workers.py calls offload_fsdp_model_to_cpu() *after*
+    # update_policy() returns, but Adam._init_group runs *inside*
+    # update_policy() at the first optimizer.step(), too late.
+    #
+    # Without CPU params at that point, torch.zeros_like(param) creates
+    # exp_avg / exp_avg_sq on GPU.  For a 7B model (fp32 Adam states):
+    #   7B × 4 bytes × 2 tensors = 56.8 GiB additional GPU allocation
+    # which pushes the already-full 94.97 GiB GPU past its limit → OOM.
+    #
+    # Fix: wrap DataParallelPPOActor._optimizer_step to move all flat
+    # parameter tensors and their gradients to CPU just before step().
+    # Adam then creates all optimizer states on CPU.  Subsequent
+    # load_fsdp_model_to_gpu() calls (in fsdp_workers.py before each
+    # forward pass) restore params to GPU so forward/backward are
+    # unaffected.  The CPU→GPU transfer of updated params costs ~0.5 s
+    # per step on PCIe, negligible compared to the rollout time.
+    try:
+        import torch
+        from verl.workers.actor.dp_actor import DataParallelPPOActor
+
+        _orig_optimizer_step = DataParallelPPOActor._optimizer_step
+
+        def _patched_optimizer_step_cpu(self):
+            # Only offload if the config requests it; fall back silently.
+            try:
+                should_offload = getattr(
+                    getattr(getattr(self, "config", None), "fsdp_config", None),
+                    "optimizer_offload", False,
+                )
+            except Exception:
+                should_offload = False
+
+            if should_offload:
+                with torch.no_grad():
+                    for group in self.actor_optimizer.param_groups:
+                        for p in group["params"]:
+                            if p.data.device.type == "cuda":
+                                p.data = p.data.cpu()
+                            if p.grad is not None and p.grad.device.type == "cuda":
+                                p.grad = p.grad.cpu()
+
+            return _orig_optimizer_step(self)
+
+        DataParallelPPOActor._optimizer_step = _patched_optimizer_step_cpu
+    except Exception:
+        pass
+
 
 @hydra.main(config_path="pkg://agentflow/verl", config_name="config", version_base=None)
 def main(config):
