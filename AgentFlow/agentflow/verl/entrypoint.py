@@ -116,10 +116,35 @@ def run_ppo(config) -> None:
             k: v for k, v in os.environ.items() if k.startswith("AGENTFLOW_")
         }
 
+        # Infrastructure env vars set by chpc_container_run.sh that must be
+        # explicitly forwarded to Ray workers.  Ray's runtime_env env_vars are
+        # MERGED into the worker's environment, so specifying them here
+        # guarantees they are present regardless of how the Ray head was
+        # started or what the worker inherits.
+        #
+        # TORCHDYNAMO_DISABLE : prevents torch.compile from calling Triton on
+        #     the first un-cached input shape.  Triton's LLVM backend in NGC
+        #     25.02 cannot lower warp-shuffle intrinsics for sm_120 (Blackwell)
+        #     and calls abort() → SIGABRT, killing the Ray worker.
+        # NCCL_IB_DISABLE / NCCL_P2P_DISABLE / UCX_TLS : suppress UCX IB
+        #     transport crashes that appear as SIGSEGV in ucs_handle_error
+        #     during NCCL collective operations inside FSDP workers.
+        _infra_keys = [
+            "TORCHDYNAMO_DISABLE",
+            "NCCL_IB_DISABLE",
+            "NCCL_P2P_DISABLE",
+            "UCX_TLS",
+            "RAY_task_events_report_interval_ms",
+            "CUDA_VISIBLE_DEVICES",
+            "HF_HOME",
+        ]
+        infra_env_vars = {k: os.environ[k] for k in _infra_keys if k in os.environ}
+
         runtime_env_vars: dict = {
             "TOKENIZERS_PARALLELISM": "true",
             "NCCL_DEBUG": "WARN",
             "VLLM_LOGGING_LEVEL": "WARN",
+            **infra_env_vars,
             **agentflow_env_vars,
         }
 
