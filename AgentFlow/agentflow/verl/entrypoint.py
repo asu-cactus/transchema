@@ -60,18 +60,40 @@ def _should_use_flash_attn_shim() -> bool:
 def _worker_setup_hook() -> None:
     """Runs inside every new Ray worker process before it handles any task.
 
-    This is the correct place to monkey-patch library code that lives inside
-    the container's site-packages, because:
+    This is the single authoritative place to apply process-wide patches for
+    all Ray actors (actor+vLLM WorkerDict, ref-policy WorkerDict, TaskRunner,
+    etc.), because:
 
-    1. It executes *before* the WorkerDict actor class is deserialized and
-       before any ``import vllm`` occurs in user code.
-    2. It is called in the same process that will run the actor, so the patch
-       applies to whichever ``vllm.device_allocator.cumem`` module that process
-       eventually imports (container copy or PYTHONPATH override — same class
-       object in sys.modules either way).
-    3. It does not rely on PYTHONPATH ordering or file-system copies.
+    1. It executes *before* any user code runs in the worker — including before
+       the WorkerDict actor class is deserialized and before any
+       ``import vllm`` or ``@torch.compile`` call occurs.
+    2. It runs in the worker's own process, so ``os.environ`` mutations and
+       monkey-patches are scoped to that process.
+    3. It does not depend on shell-environment inheritance (which is unreliable
+       when Ray's head daemon was started independently) or on ``ray.init``
+       ``runtime_env`` timing (env_vars may not reach workers that are already
+       alive in the pool).
 
-    Patch: ``CuMemAllocator.wake_up`` → call ``torch.cuda.empty_cache()`` first.
+    ---- Patch 1: TORCHDYNAMO_DISABLE ----
+    Set ``TORCHDYNAMO_DISABLE=1`` unconditionally for this process.
+
+    NGC 25.02 Triton's LLVM backend cannot lower ``%llvm.nvvm.shfl.sync.bfly.i32``
+    for sm_120 (Blackwell) and terminates via ``llvm::report_fatal_error()`` →
+    ``abort()`` → SIGABRT.  This kills the worker with no Python traceback,
+    appearing as ``ActorUnavailableError: Socket closed`` at the caller.
+
+    torch._dynamo checks this env var lazily on the *first compilation attempt*,
+    so setting it here (before any ``@torch.compile`` decorated function is
+    called) is sufficient to prevent any compilation from being attempted.
+
+    This affects ALL workers: the actor+vLLM WorkerDict (compute_log_prob) and
+    the separate ref-policy WorkerDict (compute_ref_log_prob).  The ref worker
+    is where this crash is most commonly observed because it triggers a *new*
+    Triton compilation for a different micro_batch size / input shape than any
+    kernel previously compiled (and possibly cached) in the actor worker.
+
+    ---- Patch 2: CuMemAllocator.wake_up ----
+    Prepend ``torch.cuda.empty_cache()`` to ``CuMemAllocator.wake_up``.
 
     Root cause (verl issue #302 / verl PR #575):
     ``FSDPVLLMShardingManager.__enter__`` collects the FSDP state dict before
@@ -81,10 +103,15 @@ def _worker_setup_hook() -> None:
     ``cuMemCreate`` to re-allocate physical GPU pages for the vLLM model weights
     the CUDA driver cannot satisfy the request because those pages are held in
     PyTorch's cache → ``CUDA_ERROR_OUT_OF_MEMORY`` even with ample free VRAM.
-
-    ``torch.cuda.empty_cache()`` flushes the cache, returning the pages to the
-    driver before ``cuMemCreate`` is invoked.
+    ``torch.cuda.empty_cache()`` flushes the cache before ``cuMemCreate``.
     """
+    import os
+
+    # Patch 1: disable torch.compile / TorchDynamo unconditionally.
+    # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
+    os.environ["TORCHDYNAMO_DISABLE"] = "1"
+
+    # Patch 2: flush PyTorch CUDA cache before vLLM re-maps its model weights.
     try:
         import torch
         from vllm.device_allocator.cumem import CuMemAllocator
@@ -97,7 +124,8 @@ def _worker_setup_hook() -> None:
 
         CuMemAllocator.wake_up = _patched_wake_up
     except Exception:
-        # Not running in a vLLM-enabled environment; skip silently.
+        # Not running in a vLLM-enabled environment (e.g. ref-policy worker);
+        # the env var above still applies.
         pass
 
 
