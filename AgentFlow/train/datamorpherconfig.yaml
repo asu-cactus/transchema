@@ -63,8 +63,11 @@ python_args:
 
   algorithm.adv_estimator: 'grpo'
 
-  # Parquet files prepared by prepare_rl_data.py
-  data.train_files: '${BASE_DATA_DIR}/train/datamorphertrain.parquet'
+  # Parquet files prepared by prepare_rl_data.py.
+  # datamorphertrain_200.parquet is a reproducible 200-example subset of the
+  # full 560-example dataset (random_state=42).  Use datamorphertrain.parquet
+  # for a full production run.
+  data.train_files: '${BASE_DATA_DIR}/train/datamorphertrain_200.parquet'
   data.val_files: '${BASE_DATA_DIR}/val/datamorpherval.parquet'
 
   actor_rollout_ref.rollout.tensor_model_parallel_size: '${ROLLOUT_TP_SIZE}'
@@ -155,7 +158,10 @@ python_args:
   trainer.nnodes: 1
   trainer.default_local_dir: '${CHECKPOINT_DIR}'
 
-  # Save a checkpoint every 2 epochs; validate every 2 epochs
+  # Save a checkpoint every 2 epochs; validate every 2 epochs.
+  # To resume a stopped or crashed run, add this override on the command line:
+  #   trainer.resume_training=True
+  # veRL will automatically load the latest checkpoint from trainer.default_local_dir.
   trainer.save_freq: 2
   trainer.test_freq: 2
   trainer.total_epochs: 5
