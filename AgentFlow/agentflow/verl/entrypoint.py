@@ -106,12 +106,37 @@ def _worker_setup_hook() -> None:
     ``torch.cuda.empty_cache()`` flushes the cache before ``cuMemCreate``.
     """
     import os
+    import sys
 
     # Patch 1: disable torch.compile / TorchDynamo unconditionally.
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
-    # Patch 2: flush PyTorch CUDA cache before vLLM re-maps its model weights.
+    # Patch 2: guarantee flash_attn_shim is at the front of sys.path.
+    #
+    # The shim provides pure-PyTorch (SDPA) implementations of flash_attn's
+    # public API for workers running on Blackwell (sm_120) where the real
+    # flash_attn CUDA kernels are not yet compiled for that compute capability.
+    # Without this, workers that miss the PYTHONPATH override (e.g. the
+    # ref-policy worker, which starts as a separate Ray actor and may not
+    # inherit runtime_env PYTHONPATH reliably) fall back to the real
+    # flash_attn, whose sm_120-incompatible CUDA kernels crash with SIGABRT
+    # and produce only "Socket closed / ActorUnavailableError" at the caller.
+    #
+    # We compute the shim path relative to __file__ (this file) which is
+    # always available inside the container because AGENTFLOW_ROOT is on
+    # PYTHONPATH and the workspace is bind-mounted at /workspace/transschema.
+    try:
+        import pathlib
+        _shim = pathlib.Path(__file__).resolve().parent.parent.parent / "train" / "flash_attn_shim"
+        if _shim.exists():
+            _shim_str = str(_shim)
+            if _shim_str not in sys.path:
+                sys.path.insert(0, _shim_str)
+    except Exception:
+        pass
+
+    # Patch 3: flush PyTorch CUDA cache before vLLM re-maps its model weights.
     try:
         import torch
         from vllm.device_allocator.cumem import CuMemAllocator
