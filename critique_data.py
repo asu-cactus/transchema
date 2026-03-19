@@ -4,12 +4,15 @@ import json
 import csv
 import pdb
 import shutil
+import pandas as pd 
 
 # from methods.precursor import precursor
 from methods.multi_step import multi_step
 from methods.single_step_cot import single_step_cot
 from methods.critique import critique
 from log_util.log_util import setup_logging
+from judges import judge
+from llm.llm_models import LLMClient, TokenUsageTracker
 
 
 def avg_tup(list_tup):
@@ -203,6 +206,15 @@ def get_parser():
         "--no-perc", dest="is_perc", action="store_false", help="Set is_perc to False"
     )
     parser.set_defaults(is_perc=False)
+    
+    #corresponds to table 9 from paper
+    parser.add_argument(
+        "--judge",
+        type=str,
+        default="gt",
+        choices=["gt", "llm", "det_score", "llm_score", "llm_score_hybrid"],
+        help="Judging technique for critique planning", 
+    )
 
     parser.add_argument(
         "--hint-source",
@@ -458,6 +470,13 @@ if __name__ == "__main__":
     args.static_hints = not args.no_static_hints
     args.majority_voting = args.no_of_runs // 2 + 1
 
+
+    import logging
+    _logger = logging.getLogger("main")
+    token_tracker = TokenUsageTracker()
+    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=_logger)
+
+
     # set up logging
     print(args)
     experiment_log_directory, log_directory, results_directory = setup_logging(
@@ -495,6 +514,7 @@ if __name__ == "__main__":
         print("Processing:", case)
 
         case_path = f"{length}_{case}"
+        main_folder_base = "autopipeline-benchmarks/monteprep-pipelines" if getattr(args, "benchmark", "github") == "monteprep" else "autopipeline-benchmarks/github-pipelines"
         # log_dir = f"crit_logs/{case_path}"
 
         try:
@@ -513,7 +533,27 @@ if __name__ == "__main__":
                 writer = csv.writer(f)
                 writer.writerow(result)
 
-            if not result[1]:
+            #insert llm as a judge methods  
+            enact_critique = not result[1]
+
+            if args.judge == "gt":
+                enact_critique = not result[1]
+
+            else:
+                df_generated_path = f"{main_folder_base}/length{case_path}/target_multisource.csv"
+                df_ground_truth_path = f"{main_folder_base}/length{case_path}/target.csv"
+                try:
+                    df_generated = pd.read_csv(df_generated_path, low_memory=False)
+                    df_ground_truth = pd.read_csv(df_ground_truth_path, low_memory=False)
+                    df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+                    is_correct = judge(df_generated, df_ground_truth, args.judge, llm_client)
+                    enact_critique = not is_correct
+                except Exception as e:
+                    print(f"Judge failed for {case_path}, falling back to gt: {e}")
+                    enact_critique = not result[1]
+
+
+            if enact_critique:
                 if args.single_step_cot:
                     # No critique for single step cot
                     continue
