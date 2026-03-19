@@ -167,16 +167,25 @@ def _worker_setup_hook() -> None:
     #   7B × 4 bytes × 2 tensors = 56.8 GiB additional GPU allocation
     # which pushes the already-full 94.97 GiB GPU past its limit → OOM.
     #
-    # Fix: wrap DataParallelPPOActor._optimizer_step to move all flat
-    # parameter tensors and their gradients to CPU just before step().
-    # Adam then creates all optimizer states on CPU.  Subsequent
-    # load_fsdp_model_to_gpu() calls (in fsdp_workers.py before each
-    # forward pass) restore params to GPU so forward/backward are
-    # unaffected.  The CPU→GPU transfer of updated params costs ~0.5 s
-    # per step on PCIe, negligible compared to the rollout time.
+    # IMPORTANT – why we must use offload_fsdp_model_to_cpu() and NOT
+    # manipulate p.data directly:
+    #   FSDP FlatParameters carry an internal _local_shard attribute that
+    #   caches the GPU data pointer used by load_fsdp_model_to_gpu().
+    #   Setting p.data = p.data.cpu() only swaps the public data buffer;
+    #   _local_shard still holds the now-freed GPU pointer.  When
+    #   load_fsdp_model_to_gpu() later reads _local_shard it dereferences
+    #   freed GPU memory → SIGSEGV → "Socket closed" ActorUnavailableError.
+    #   offload_fsdp_model_to_cpu() is veRL's own utility that updates
+    #   _local_shard (and other FSDP internals) atomically.
     try:
         import torch
         from verl.workers.actor.dp_actor import DataParallelPPOActor
+
+        # offload_fsdp_model_to_cpu lives in fsdp_utils in all known veRL versions.
+        try:
+            from verl.utils.fsdp_utils import offload_fsdp_model_to_cpu
+        except ImportError:
+            from verl.utils.fsdp_v2_utils import offload_fsdp_model_to_cpu  # type: ignore[no-redef]
 
         _orig_optimizer_step = DataParallelPPOActor._optimizer_step
 
@@ -191,13 +200,28 @@ def _worker_setup_hook() -> None:
                 should_offload = False
 
             if should_offload:
+                # Step 1: use veRL's utility so FSDP's _local_shard and all
+                # other internal state are updated consistently with param.data.
+                # Try common attribute names used in different veRL versions.
+                actor_mod = (
+                    getattr(self, "actor_module", None)
+                    or getattr(self, "actor_module_fsdp", None)
+                )
+                if actor_mod is not None:
+                    offload_fsdp_model_to_cpu(actor_mod)
+
+                # Step 2: move accumulated gradients to CPU as well.
+                # offload_fsdp_model_to_cpu() may not cover param.grad, so
+                # we handle it explicitly here.
                 with torch.no_grad():
                     for group in self.actor_optimizer.param_groups:
                         for p in group["params"]:
-                            if p.data.device.type == "cuda":
-                                p.data = p.data.cpu()
                             if p.grad is not None and p.grad.device.type == "cuda":
                                 p.grad = p.grad.cpu()
+
+                # Ensure all GPU ops referencing the old tensors are done
+                # before Python GC may free them.
+                torch.cuda.synchronize()
 
             return _orig_optimizer_step(self)
 
