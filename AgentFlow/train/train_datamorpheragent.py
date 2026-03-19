@@ -342,6 +342,38 @@ def ensure_runtime_dependencies(auto_install: bool = True):
     return
 
 
+def _save_ray_worker_logs():
+    """Copy Ray worker .err logs to ROLLOUT_DIR for post-mortem debugging.
+
+    Ray stores logs in /tmp/ray/session_*/logs/ inside the container.
+    These are lost once the container exits, so we copy the most recent
+    worker error logs to a persistent scratch directory.
+    """
+    import glob, shutil
+
+    dest = os.environ.get("AGENTFLOW_ROLLOUT_DIR",
+                          "/scratch/general/vast/u1592362/AgentFlow_Rollouts")
+    ray_log_dest = os.path.join(dest, "ray_worker_logs")
+    os.makedirs(ray_log_dest, exist_ok=True)
+
+    patterns = ["/tmp/ray/session_latest/logs/worker-*.err",
+                "/tmp/ray/session_latest/logs/worker-*.out",
+                "/tmp/ray/*/logs/worker-*.err"]
+    copied = 0
+    for pat in patterns:
+        for src in sorted(glob.glob(pat), key=os.path.getmtime, reverse=True)[:20]:
+            if os.path.getsize(src) > 0:
+                try:
+                    shutil.copy2(src, ray_log_dest)
+                    copied += 1
+                except Exception:
+                    pass
+    if copied:
+        print(f"  Saved {copied} Ray worker log(s) to {ray_log_dest}/")
+    else:
+        print("  No Ray worker logs found to save.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Launch DataMorpher RL fine-tuning (rollout server + verl trainer)."
@@ -492,6 +524,7 @@ def main():
         sys.exit(124)
     except subprocess.CalledProcessError as exc:
         print(f"\nERROR: verl trainer exited with code {exc.returncode}")
+        _save_ray_worker_logs()
         sys.exit(exc.returncode)
     except KeyboardInterrupt:
         print("\nInterrupted by user.")

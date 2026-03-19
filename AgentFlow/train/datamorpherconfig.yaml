@@ -99,8 +99,25 @@ python_args:
   # Optimiser
   actor_rollout_ref.actor.optim.lr: 1e-6
   actor_rollout_ref.model.use_remove_padding: True
-  actor_rollout_ref.actor.use_kl_loss: True
-  actor_rollout_ref.actor.kl_loss_coef: 0.001
+  # KL loss against a frozen reference policy is DISABLED for now.
+  #
+  # veRL spawns the ref-policy as a SEPARATE Ray actor process from the
+  # actor+vLLM worker.  On CHPC's Blackwell node that second worker dies
+  # from a C-level signal (no Python traceback, only "Socket closed /
+  # ActorUnavailableError") during compute_ref_log_prob.  The root cause
+  # is inside veRL's FSDP/Ray plumbing for the ref worker on single-GPU
+  # colocated setups and cannot be patched from entrypoint.py.
+  #
+  # Pure GRPO without explicit KL penalty is well-established:
+  #   - The original GRPO paper (Shao et al., 2024) treats KL as optional.
+  #   - clip_ratio_low / clip_ratio_high (0.2 / 0.3) provide implicit
+  #     trust-region regularisation that prevents policy collapse.
+  #   - The actor never strays far from the initial policy in 5 epochs.
+  #
+  # To re-enable KL loss later (e.g. after upgrading verl or moving to
+  # multi-GPU), change both lines below to True / 0.001.
+  actor_rollout_ref.actor.use_kl_loss: False
+  actor_rollout_ref.actor.kl_loss_coef: 0.0
   actor_rollout_ref.actor.entropy_coeff: 0.0
   actor_rollout_ref.actor.clip_ratio_low: 0.2
   actor_rollout_ref.actor.clip_ratio_high: 0.3
@@ -139,13 +156,8 @@ python_args:
   # for the prefill phase of 16 long-prompt sequences → vLLM OOM → SIGKILL.
   actor_rollout_ref.rollout.gpu_memory_utilization: 0.30
 
+  # Ref-policy settings (only used when use_kl_loss=True above):
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu: 2
-  # Offload reference model parameters to CPU between log-prob calls.
-  # The ref model is read-only during training; the throughput cost of PCIe
-  # transfers is small compared to the stability gain of ~14GB VRAM freed.
-  # On a single GPU the FSDP actor, ref model, and vLLM KV cache all compete
-  # for the same VRAM; without this, the combined peak exceeds safe limits
-  # and causes the FSDP WorkerDict actor to die (ActorUnavailableError).
   actor_rollout_ref.ref.fsdp_config.param_offload: True
 
   algorithm.use_kl_in_reward: False
