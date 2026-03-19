@@ -1,6 +1,27 @@
 import json
-from eval_score.fdtool import fdtool
-from .column_map_utils import get_column_map, GLOBAL_SUMMARY
+import os
+import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+# Ensure this directory is on sys.path so fdtool and column_map_utils are importable
+_SCORE_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCORE_DIR not in sys.path:
+    sys.path.insert(0, _SCORE_DIR)
+
+import fdtool.fdtool as fdtool
+import column_map_utils
+from column_map_utils import get_column_map
+
+FD_TIMEOUT = 60
+
+def _run_fdtool(df):
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(fdtool.main, df)
+        try:
+            return future.result(timeout=FD_TIMEOUT)
+        except FuturesTimeoutError:
+            return [], [], []
 
 def serialize_fd_list(fd_list):
     return [{"lhs": list(lhs), "rhs": rhs} for lhs, rhs in fd_list]
@@ -35,13 +56,18 @@ def serialize_column_map(col_map):
             "candidates": candidates
         })
     return serialized
-def relative_csv_score(df_a, df_b):
-    global GLOBAL_SUMMARY
-    GLOBAL_SUMMARY = None
+MAX_FD_COLS = 52
 
-    # Run FD mining
-    FDs_a, E_a, keys_a = fdtool.main(df_a)
-    FDs_b, E_b, keys_b = fdtool.main(df_b)
+def relative_csv_score(df_a, df_b):
+    column_map_utils.GLOBAL_SUMMARY = None  # Reset the actual module-level cache
+
+    # Truncate columns to fdtool's supported limit (no row truncation)
+    df_a_fd = df_a.iloc[:, :MAX_FD_COLS]
+    df_b_fd = df_b.iloc[:, :MAX_FD_COLS]
+
+    # Run FD mining with hard 60s timeout
+    FDs_a, E_a, keys_a = _run_fdtool(df_a_fd)
+    FDs_b, E_b, keys_b = _run_fdtool(df_b_fd)
 
     fd_count_a = len(FDs_a)
     fd_count_b = len(FDs_b)
@@ -59,9 +85,14 @@ def relative_csv_score(df_a, df_b):
     fp = len(gen_fds - truth_fds)
     fn = len(truth_fds - gen_fds)
 
-    precision = tp / max(len(gen_fds), 1)
-    recall = tp / max(len(truth_fds), 1)
-    fd_f1 = 2 * precision * recall / max(precision + recall, 1e-6)
+    if len(truth_fds) == 0:
+        fd_f1 = 1.0
+        precision = 1.0
+        recall = 1.0
+    else:
+        precision = tp / max(len(gen_fds), 1)
+        recall = tp / max(len(truth_fds), 1)
+        fd_f1 = 2 * precision * recall / max(precision + recall, 1e-6)
 
     # FD False Positives / False Negatives
     def serialize_fd_tuples(fd_tuples):
@@ -72,7 +103,7 @@ def relative_csv_score(df_a, df_b):
 
     # Column map ratio
     col_map = get_column_map(df_a, df_b)
-    GLOBAL_SUMMARY = None
+    column_map_utils.GLOBAL_SUMMARY = None  # Reset so self-map recomputes from df_b
     self_col_map = get_column_map(df_b, df_b)
 
     col_count = len(col_map)
@@ -119,4 +150,67 @@ def relative_csv_score(df_a, df_b):
     }
 
     return fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict
+
+
+def summarize_score(debug_dict: dict, score: float, fd_f1: float, col_ratio: float) -> dict:
+    """Convert raw score debug dict into a clean, LLM-readable summary.
+
+    Returns a dict with counts and missed items for functional dependencies,
+    keys, and column mappings — using full terms (no abbreviations).
+    """
+    fd_section = debug_dict.get("fd", {})
+    columns_section = debug_dict.get("columns", {})
+
+    # Functional dependencies
+    output_fd_count = fd_section.get("A", {}).get("count", 0)
+    gt_fd_count = fd_section.get("B", {}).get("count", 0)
+    output_keys = fd_section.get("A", {}).get("keys", [])
+    gt_keys = fd_section.get("B", {}).get("keys", [])
+    missed_fds = fd_section.get("false_negatives", [])   # in ground truth but not in output
+    unexpected_fds = fd_section.get("false_positives", [])  # in output but not in ground truth
+
+    def format_fd(fd):
+        lhs = ", ".join(fd["lhs"])
+        return f"({lhs}) -> {fd['rhs']}"
+
+    def format_key(key):
+        return "[" + ", ".join(key) + "]"
+
+    # Missed keys: keys in ground truth but not in output
+    gt_keys_set = {frozenset(k) for k in gt_keys}
+    output_keys_set = {frozenset(k) for k in output_keys}
+    missed_key_sets = gt_keys_set - output_keys_set
+    missed_keys = sorted([format_key(sorted(k)) for k in missed_key_sets])
+
+    # Column mappings
+    a_to_b_count = columns_section.get("A_to_B", {}).get("count", 0)
+    b_to_b_count = columns_section.get("B_to_B", {}).get("count", 0)
+    a_to_b_map = columns_section.get("A_to_B", {}).get("map", [])
+    b_to_b_map = columns_section.get("B_to_B", {}).get("map", [])
+
+    matched_gt_columns = {entry["right_column"] for entry in a_to_b_map}
+    all_gt_columns = {entry["right_column"] for entry in b_to_b_map}
+    missed_target_columns = sorted(all_gt_columns - matched_gt_columns)
+
+    return {
+        "overall_score": round(float(score), 4),
+        "functional_dependency_f1_score": round(float(fd_f1), 4),
+        "column_mapping_score": round(float(col_ratio), 4),
+        "functional_dependencies": {
+            "ground_truth_count": gt_fd_count,
+            "output_count": output_fd_count,
+            "missed": [format_fd(fd) for fd in missed_fds],
+            "unexpected": [format_fd(fd) for fd in unexpected_fds],
+        },
+        "keys": {
+            "ground_truth_keys": [format_key(k) for k in gt_keys],
+            "output_keys": [format_key(k) for k in output_keys],
+            "missed_ground_truth_keys": missed_keys,
+        },
+        "column_mappings": {
+            "matched_count": a_to_b_count,
+            "total_target_columns": b_to_b_count,
+            "missed_target_columns": missed_target_columns,
+        },
+    }
 
