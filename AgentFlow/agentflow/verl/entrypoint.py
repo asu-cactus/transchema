@@ -230,15 +230,19 @@ def run_ppo(config) -> None:
                 f"  To use native kernels: rebuild the container (see apptainer.def)."
             )
 
-        # GPU/CPU resources are registered by `ray start --head --num-gpus=N`
-        # in restart_ray_if_available().  ray.init() here connects to that
-        # existing cluster; passing num_cpus/num_gpus when connecting raises
-        # ValueError, so we omit them.
+        # num_gpus is registered on the Ray HEAD via restart_ray_if_available()
+        # which calls `ray start --head --num-gpus=N`.  Do NOT pass num_gpus
+        # to ray.init() here — ray.init() connects to the already-running head
+        # and raises ValueError if num_gpus is supplied to an existing cluster.
         ray.init(
             runtime_env={
                 "env_vars": runtime_env_vars,
+                # Apply the CuMemAllocator.wake_up patch in every Ray worker
+                # process before any vLLM import occurs.  See _worker_setup_hook
+                # above for the full rationale.
                 "worker_process_setup_hook": _worker_setup_hook,
             },
+            num_cpus=config.ray_init.num_cpus,
         )
 
     runner = TaskRunner.remote()
