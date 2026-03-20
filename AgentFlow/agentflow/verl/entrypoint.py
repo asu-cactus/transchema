@@ -230,23 +230,15 @@ def run_ppo(config) -> None:
                 f"  To use native kernels: rebuild the container (see apptainer.def)."
             )
 
-        import torch as _torch
-        _num_gpus = _torch.cuda.device_count() if _torch.cuda.is_available() else 0
-
+        # GPU/CPU resources are registered by `ray start --head --num-gpus=N`
+        # in restart_ray_if_available().  ray.init() here connects to that
+        # existing cluster; passing num_cpus/num_gpus when connecting raises
+        # ValueError, so we omit them.
         ray.init(
             runtime_env={
                 "env_vars": runtime_env_vars,
-                # Apply the CuMemAllocator.wake_up patch in every Ray worker
-                # process before any vLLM import occurs.  See _worker_setup_hook
-                # above for the full rationale.
                 "worker_process_setup_hook": _worker_setup_hook,
             },
-            num_cpus=config.ray_init.num_cpus,
-            # Explicitly register all visible GPUs so Ray's scheduler assigns
-            # one per worker.  Without this, Ray can under-count GPUs inside
-            # Apptainer and place both WorkerDict actors on the same device,
-            # causing NCCL "Duplicate GPU detected" errors at FSDP init.
-            num_gpus=_num_gpus if _num_gpus > 0 else None,
         )
 
     runner = TaskRunner.remote()
