@@ -153,10 +153,13 @@ python_args:
   trainer.nnodes: 1
   trainer.default_local_dir: '${CHECKPOINT_DIR}'
 
-  # Save a checkpoint every 2 epochs; validate every 2 epochs.
-  # resume_training=True tells veRL to load the latest checkpoint from
-  # trainer.default_local_dir automatically on startup.
-  trainer.save_freq: 2
-  trainer.test_freq: 2
+  # Save a checkpoint every 10 steps; validate every epoch (50 steps).
+  # With 200 training examples and batch_size=4, each epoch = 50 steps.
+  # save_freq is in steps (iterations), so 10 steps ≈ every ~2 hours on
+  # 2 GPUs.  This ensures progress is not lost if the cluster hits a time limit.
+  trainer.save_freq: 10
+  trainer.test_freq: 50
   trainer.total_epochs: 5
-  trainer.resume_training: True
+  # To resume after a cluster time limit, add this on the next submission:
+  #   trainer.resume_training=True
+  # veRL will load the latest checkpoint from trainer.default_local_dir.
