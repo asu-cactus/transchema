@@ -117,37 +117,38 @@ def _worker_setup_hook() -> None:
     # veRL's colocated FSDP resource pool allocates fractional GPUs
     # (num_gpus = 1/3 per actor).  For fractional allocations Ray does NOT set
     # CUDA_VISIBLE_DEVICES — that only happens for whole-GPU actors (num_gpus ≥ 1).
-    # Both workers therefore see all GPUs; torch.cuda.current_device() returns 0
-    # for both; when FSDP's _broadcast_coalesced fires, rank 1's tensor is on
-    # cuda:0 but NCCL's communicator for rank 1 was initialised on cudaDev 1 →
-    # "Cuda failure 1 'invalid argument'" in enqueue.cc.
+    # Both workers therefore see all GPUs and default to cuda:0; when FSDP's
+    # _broadcast_coalesced runs, rank 1's tensor is on cuda:0 but NCCL's
+    # communicator for rank 1 was initialised on cudaDev 1 (from the RANK env var
+    # that torch.distributed reads) → "Cuda failure 1 'invalid argument'".
     #
-    # Fix: restrict each worker to exactly its own GPU before any CUDA context is
-    # created.  We derive the physical GPU index from the assigned Ray accelerator
-    # IDs.  If get_accelerator_ids() is not yet populated (it can be empty during
-    # the setup hook for fractional allocations) we fall back to LOCAL_RANK, then
-    # RANK, all of which identify the correct device on a single-node job.
+    # The setup hook fires before Worker.__init__, so RANK/LOCAL_RANK env vars
+    # are not yet available here.  We patch torch.distributed.init_process_group
+    # instead: the patch fires just before the real call, at which point RANK and
+    # LOCAL_RANK are already in os.environ (set by Worker._configure_with_store).
+    # It reads LOCAL_RANK (falling back to RANK for single-node), sets
+    # CUDA_VISIBLE_DEVICES to that single GPU index and calls set_device, then
+    # forwards to the real init_process_group.
     try:
-        import ray as _ray
-        _gpu_ids = _ray.get_runtime_context().get_accelerator_ids().get("GPU", [])
-        if _gpu_ids:
-            _assigned_gpu = str(_gpu_ids[0])
-            os.environ["CUDA_VISIBLE_DEVICES"] = _assigned_gpu
-        else:
-            # Fallback: on a single-node job LOCAL_RANK == the GPU index.
-            # LOCAL_RANK is not yet set here (set later by veRL Worker.__init__),
-            # but RANK is set by Ray and equals LOCAL_RANK on a single node.
-            _rank_str = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
-            if _rank_str is not None and _rank_str.isdigit():
-                os.environ["CUDA_VISIBLE_DEVICES"] = _rank_str
+        import torch.distributed as _dist
+
+        _real_ipg = _dist.init_process_group
+
+        def _patched_init_process_group(*args, **kwargs):
+            _lr = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
+            if _lr is not None and str(_lr).isdigit():
+                _gpu = str(_lr)
+                os.environ["CUDA_VISIBLE_DEVICES"] = _gpu
+                try:
+                    import torch as _t
+                    _t.cuda.set_device(int(_gpu))
+                except Exception:
+                    pass
+            return _real_ipg(*args, **kwargs)
+
+        _dist.init_process_group = _patched_init_process_group
     except Exception:
-        # Last resort: use RANK directly.
-        try:
-            _rank_str = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
-            if _rank_str is not None and _rank_str.isdigit():
-                os.environ["CUDA_VISIBLE_DEVICES"] = _rank_str
-        except Exception:
-            pass
+        pass
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
