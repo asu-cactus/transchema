@@ -181,24 +181,31 @@ fi
 # Setting this to 0 disables the periodic flush; task events are never sent.
 export RAY_task_events_report_interval_ms=0
 
-# Force NCCL to use TCP sockets instead of InfiniBand / UCX.
+# Force NCCL to use TCP sockets instead of InfiniBand / UCX, and work
+# around PCIe bridge device-ID collision on this Blackwell workstation.
 #
 # On CHPC nodes HPC-X (the host's OpenMPI + UCX distribution) is installed at
 # /opt/hpcx/.  When NCCL initialises inside an Apptainer container it probes
 # for IB devices and loads UCX's IB transport (libucs.so from HPC-X).  That
 # transport crashes with SIGSEGV in ucs_handle_error when the IB device is not
-# fully accessible from the container namespace.  The crash kills the colocated
-# FSDP/vLLM WorkerDict actor before compute_log_prob can return results.
+# fully accessible from the container namespace.
 #
-# NCCL_IB_DISABLE=1  : skip InfiniBand entirely; use socket-based transport
-#                       for inter-node communication.
-# NCCL_P2P_DISABLE   : NOT set.  With 2 GPUs on the same node, P2P (NVLink
-#                       or PCIe) is the fastest path for FSDP all-gather /
-#                       reduce-scatter.  P2P does not use UCX/IB.
-# UCX_TLS=tcp,self   : in case any library still tries to init UCX, restrict
-#                       it to TCP loopback only.
+# Additionally, on this node both Blackwell GPUs sit behind the same PCIe
+# bridge and expose the same PCI bus ID (0x21000) to the driver.  NCCL uses
+# PCI bus IDs as unique device fingerprints and therefore reports
+# "Duplicate GPU detected: rank 0 and rank 1 both on CUDA device 21000".
+#
+# NCCL_IB_DISABLE=1          : skip InfiniBand entirely; use SHM/P2P/TCP.
+# NCCL_IGNORE_DISABLED_P2P=1 : ignore the PCI bus-ID uniqueness check; use
+#                               CUDA device ordinals for rank-to-device mapping.
+# UCX_TLS=tcp,self            : restrict any residual UCX init to TCP loopback.
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
+# Both Blackwell GPUs on this node share the same PCIe bridge, so NCCL's
+# device-uniqueness check sees the same PCI bus ID for rank 0 and rank 1.
+# NCCL_IGNORE_DISABLED_P2P=1 bypasses that check and uses CUDA device
+# ordinals instead of PCI bus IDs for rank-to-device mapping.
+export NCCL_IGNORE_DISABLED_P2P=1
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.
 #

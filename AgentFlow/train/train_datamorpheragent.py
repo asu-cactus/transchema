@@ -287,6 +287,16 @@ def restart_ray_if_available():
     Restart local Ray so workers inherit the sanitized env from this launcher.
     This avoids stale env vars from previously started Ray daemons.
     """
+    import torch
+    # Detect how many GPUs are visible right now so Ray's head node
+    # registers them all.  Without --num-gpus, Ray sometimes under-counts
+    # GPUs inside Apptainer (detecting only 1 of 2), causing it to schedule
+    # both WorkerDict actors on the same GPU → NCCL "Duplicate GPU detected".
+    try:
+        num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    except Exception:
+        num_gpus = 0
+
     print("\nRefreshing Ray runtime environment ...")
     subprocess.run(
         ["ray", "stop", "--force"],
@@ -294,8 +304,12 @@ def restart_ray_if_available():
         env=os.environ,
         cwd=str(AGENTFLOW_ROOT),
     )
+    ray_start_cmd = ["ray", "start", "--head"]
+    if num_gpus > 0:
+        ray_start_cmd += [f"--num-gpus={num_gpus}"]
+        print(f"  Starting Ray head with --num-gpus={num_gpus}")
     start = subprocess.run(
-        ["ray", "start", "--head"],
+        ray_start_cmd,
         check=False,
         env=os.environ,
         cwd=str(AGENTFLOW_ROOT),

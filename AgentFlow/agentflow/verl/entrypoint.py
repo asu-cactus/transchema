@@ -184,9 +184,9 @@ def run_ppo(config) -> None:
         #     the first un-cached input shape.  Triton's LLVM backend in NGC
         #     25.02 cannot lower warp-shuffle intrinsics for sm_120 (Blackwell)
         #     and calls abort() → SIGABRT, killing the Ray worker.
-        # NCCL_IB_DISABLE / UCX_TLS : suppress UCX IB transport crashes that
-        #     appear as SIGSEGV in ucs_handle_error during NCCL collective
-        #     operations inside FSDP workers.
+        # NCCL_IB_DISABLE / NCCL_IGNORE_DISABLED_P2P / UCX_TLS : suppress UCX
+        #     IB transport crashes and PCIe bridge device-ID collisions on this
+        #     Blackwell workstation node (both GPUs share the same PCI bus ID).
         # NOTE: CUDA_VISIBLE_DEVICES is intentionally NOT forwarded here.
         # veRL's RayWorkerGroup sets CUDA_VISIBLE_DEVICES per worker to
         # assign exactly one GPU per rank.  Forwarding the multi-GPU value
@@ -195,6 +195,7 @@ def run_ppo(config) -> None:
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_IB_DISABLE",
+            "NCCL_IGNORE_DISABLED_P2P",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
@@ -229,6 +230,9 @@ def run_ppo(config) -> None:
                 f"  To use native kernels: rebuild the container (see apptainer.def)."
             )
 
+        import torch as _torch
+        _num_gpus = _torch.cuda.device_count() if _torch.cuda.is_available() else 0
+
         ray.init(
             runtime_env={
                 "env_vars": runtime_env_vars,
@@ -238,6 +242,11 @@ def run_ppo(config) -> None:
                 "worker_process_setup_hook": _worker_setup_hook,
             },
             num_cpus=config.ray_init.num_cpus,
+            # Explicitly register all visible GPUs so Ray's scheduler assigns
+            # one per worker.  Without this, Ray can under-count GPUs inside
+            # Apptainer and place both WorkerDict actors on the same device,
+            # causing NCCL "Duplicate GPU detected" errors at FSDP init.
+            num_gpus=_num_gpus if _num_gpus > 0 else None,
         )
 
     runner = TaskRunner.remote()
