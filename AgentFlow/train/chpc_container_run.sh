@@ -118,7 +118,14 @@ CUMEM_PATCH
 fi
 
 unset ROCR_VISIBLE_DEVICES
-export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1}"
+# Do NOT export CUDA_VISIBLE_DEVICES here.  Ray manages per-worker GPU
+# assignment via placement groups and sets CUDA_VISIBLE_DEVICES per actor.
+# Exporting a multi-GPU value (e.g. "0,1") causes all workers to see the
+# same devices, leading to NCCL "Duplicate GPU detected" errors.
+# If SLURM or the user's environment already set CUDA_VISIBLE_DEVICES to
+# restrict which physical GPUs are visible, that is fine — Ray will
+# sub-assign from whatever is visible.  We just don't override it here.
+unset CUDA_VISIBLE_DEVICES 2>/dev/null || true
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
 export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv_current}"

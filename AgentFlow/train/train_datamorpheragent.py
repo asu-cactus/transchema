@@ -50,9 +50,15 @@ def _resolve_path(path_str: str) -> str:
     return str((AGENTFLOW_ROOT / p).resolve())
 
 
+_SKIP_ENV_KEYS = {"CUDA_VISIBLE_DEVICES", "HIP_VISIBLE_DEVICES"}
+
+
 def set_env_vars(env_section: dict):
     print("Setting environment variables...")
     for key, value in env_section.items():
+        if key in _SKIP_ENV_KEYS:
+            print(f"  {key}={value}  [SKIPPED — Ray manages GPU assignment]")
+            continue
         os.environ[key] = str(value)
         print(f"  {key}={value}")
 
