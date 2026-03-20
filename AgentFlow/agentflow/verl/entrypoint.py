@@ -112,25 +112,45 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
-    # Patch 1b: pin this worker process to its assigned GPU.
+    # Patch 1b: fix FSDP _broadcast_coalesced to use Gloo (CPU) instead of NCCL.
     #
-    # veRL's colocated FSDP resource pool allocates fractional GPUs
-    # (num_gpus = 1/3 per actor).  For fractional allocations Ray does NOT set
-    # CUDA_VISIBLE_DEVICES — that only happens for whole-GPU actors (num_gpus ≥ 1).
-    # Both workers therefore see all GPUs and default to cuda:0; when FSDP's
-    # _broadcast_coalesced runs, rank 1's tensor is on cuda:0 but NCCL's
-    # communicator for rank 1 was initialised on cudaDev 1 (from the RANK env var
-    # that torch.distributed reads) → "Cuda failure 1 'invalid argument'".
+    # veRL's colocated FSDP resource pool puts two workers in separate processes,
+    # each on a different physical GPU (cudaDev 0 and cudaDev 1).  NCCL 2.25
+    # treats each as a separate "node" (nNodes=2, localRanks=1) because they hold
+    # different GPU devices.  In nNodes=2 mode NCCL spawns proxy threads that call
+    # cudaSetDevice + cudaMemcpy for staging, but these threads fail with
+    # "Cuda failure 1 'invalid argument'" because CUDA contexts are per-thread and
+    # the proxy threads were not initialized with the correct device context.
     #
-    # The setup hook fires before Worker.__init__, so RANK/LOCAL_RANK env vars
-    # are not yet available here.  We patch torch.distributed.init_process_group
-    # instead: the patch fires just before the real call, at which point RANK and
-    # LOCAL_RANK are already in os.environ (set by Worker._configure_with_store).
-    # It reads LOCAL_RANK (falling back to RANK for single-node), sets
-    # CUDA_VISIBLE_DEVICES to that single GPU index and calls set_device, then
-    # forwards to the real init_process_group.
+    # The backend is "cpu:gloo,cuda:nccl".  FSDP's _sync_params_and_buffers calls
+    # dist._broadcast_coalesced, which routes GPU tensors through NCCL.  We patch
+    # it to move tensors to CPU first (routed through Gloo), then move back — this
+    # avoids NCCL entirely for the FSDP init broadcast.
     try:
         import torch.distributed as _dist
+
+        _real_broadcast_coalesced = _dist._broadcast_coalesced
+
+        def _patched_broadcast_coalesced(process_group, tensors, buffer_size, src=0):
+            import torch as _t
+            _on_gpu = [t.is_cuda for t in tensors]
+            if any(_on_gpu):
+                _cpu_tensors = [t.cpu() if t.is_cuda else t for t in tensors]
+                _real_broadcast_coalesced(process_group, _cpu_tensors, buffer_size, src)
+                for t, cpu_t, was_gpu in zip(tensors, _cpu_tensors, _on_gpu):
+                    if was_gpu:
+                        t.copy_(cpu_t)
+            else:
+                _real_broadcast_coalesced(process_group, tensors, buffer_size, src)
+
+        _dist._broadcast_coalesced = _patched_broadcast_coalesced
+    except Exception:
+        pass
+
+    # Patch 1c: call set_device(RANK) just before init_process_group so that
+    # all CUDA allocations (model load, FSDP sharding) land on the correct GPU.
+    try:
+        import torch.distributed as _dist2
         import torch.distributed.distributed_c10d as _c10d
 
         _real_ipg = _c10d.init_process_group
@@ -138,23 +158,15 @@ def _worker_setup_hook() -> None:
         def _patched_init_process_group(*args, **kwargs):
             _lr = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
             if _lr is not None and str(_lr).isdigit():
-                _gpu = int(_lr)
-                # Do NOT set CUDA_VISIBLE_DEVICES — NCCL uses physical device
-                # indices internally and CUDA_VISIBLE_DEVICES remapping causes
-                # cudaSetDevice(1) to fail with "invalid argument" when only one
-                # device is visible.  Instead, call set_device with the logical
-                # index (== physical index when CUDA_VISIBLE_DEVICES is unset)
-                # so that all CUDA allocations in this process land on the right
-                # GPU before NCCL initialises its communicator.
                 try:
                     import torch as _t
-                    _t.cuda.set_device(_gpu)
+                    _t.cuda.set_device(int(_lr))
                 except Exception:
                     pass
             return _real_ipg(*args, **kwargs)
 
         _c10d.init_process_group = _patched_init_process_group
-        _dist.init_process_group = _patched_init_process_group
+        _dist2.init_process_group = _patched_init_process_group
     except Exception:
         pass
 
