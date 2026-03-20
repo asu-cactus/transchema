@@ -138,11 +138,17 @@ def _worker_setup_hook() -> None:
         def _patched_init_process_group(*args, **kwargs):
             _lr = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
             if _lr is not None and str(_lr).isdigit():
-                _gpu = str(_lr)
-                os.environ["CUDA_VISIBLE_DEVICES"] = _gpu
+                _gpu = int(_lr)
+                # Do NOT set CUDA_VISIBLE_DEVICES — NCCL uses physical device
+                # indices internally and CUDA_VISIBLE_DEVICES remapping causes
+                # cudaSetDevice(1) to fail with "invalid argument" when only one
+                # device is visible.  Instead, call set_device with the logical
+                # index (== physical index when CUDA_VISIBLE_DEVICES is unset)
+                # so that all CUDA allocations in this process land on the right
+                # GPU before NCCL initialises its communicator.
                 try:
                     import torch as _t
-                    _t.cuda.set_device(int(_gpu))
+                    _t.cuda.set_device(_gpu)
                 except Exception:
                     pass
             return _real_ipg(*args, **kwargs)
@@ -254,7 +260,6 @@ def run_ppo(config) -> None:
             "NCCL_P2P_DISABLE",
             "NCCL_SHM_DISABLE",
             "NCCL_SOCKET_IFNAME",
-            "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",

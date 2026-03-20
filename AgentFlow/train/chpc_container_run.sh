@@ -220,18 +220,13 @@ export NCCL_P2P_DISABLE=1
 export NCCL_SHM_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
 # Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
-# For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES per actor —
-# that only happens for whole-GPU actors (num_gpus >= 1.0).  Without any
-# CUDA_VISIBLE_DEVICES restriction both workers see all GPUs and both default
-# to cuda:0, causing NCCL "Duplicate GPU detected".
-#
-# Setting RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 activates the branch
-# in veRL's Worker._setup_env_cuda_visible_devices() that calls
-#   local_rank = ray.get_runtime_context().get_accelerator_ids()["GPU"][0]
-#   torch.cuda.set_device(int(local_rank))
-# which correctly assigns each worker to its allocated physical GPU.
-# We also set CUDA_VISIBLE_DEVICES to that single GPU in the worker hook so
-# NCCL's topology scan sees only one GPU per process.
+# For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES — that only
+# happens for whole-GPU actors.  We do NOT set CUDA_VISIBLE_DEVICES either:
+# NCCL uses physical GPU indices internally, so remapping via CUDA_VISIBLE_DEVICES
+# causes cudaSetDevice(1) to fail with "invalid argument" when only one device
+# is visible.  Instead, the _patched_init_process_group hook in entrypoint.py
+# calls torch.cuda.set_device(LOCAL_RANK) just before init_process_group so
+# all CUDA allocations land on the correct GPU without restricting visibility.
 export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.
