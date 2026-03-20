@@ -103,10 +103,17 @@ python_args:
   actor_rollout_ref.actor.optim.lr: 1e-6
   actor_rollout_ref.model.use_remove_padding: True
   # KL loss against a frozen reference policy.
-  # With 2 GPUs, FSDP uses FULL_SHARD so the ref-policy worker operates
-  # correctly (the single-GPU NO_SHARD crash no longer applies).
-  actor_rollout_ref.actor.use_kl_loss: True
-  actor_rollout_ref.actor.kl_loss_coef: 0.001
+  #
+  # DISABLED: the ref-policy's FSDP initialization triggers "Duplicate GPU
+  # detected" in NCCL on this CHPC Apptainer setup, even with 2 GPUs
+  # correctly visible.  The root cause is in how veRL's colocated
+  # WorkerDict interacts with NCCL device detection inside Apptainer.
+  #
+  # Pure GRPO without KL is well-established (Shao et al., 2024) — the
+  # clip_ratio_low/high (0.2/0.3) provide implicit trust-region
+  # regularisation that prevents policy collapse.
+  actor_rollout_ref.actor.use_kl_loss: False
+  actor_rollout_ref.actor.kl_loss_coef: 0.0
   actor_rollout_ref.actor.entropy_coeff: 0.0
   actor_rollout_ref.actor.clip_ratio_low: 0.2
   actor_rollout_ref.actor.clip_ratio_high: 0.3
@@ -135,6 +142,7 @@ python_args:
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu: 2
   actor_rollout_ref.ref.fsdp_config.param_offload: True
 
+  # KL-in-reward also disabled (requires ref-policy worker).
   algorithm.use_kl_in_reward: False
   trainer.critic_warmup: 0
 
