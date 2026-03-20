@@ -219,6 +219,15 @@ export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
 export NCCL_SHM_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
+# Force all NCCL ranks to report the same host identity.
+# Apptainer may give each worker process a different UTS namespace (hostname),
+# causing NCCL's getHostHash() to return different values per process even on
+# the same physical node.  NCCL uses host hashes to determine nNodes: if two
+# ranks hash differently it concludes nNodes=2 (multi-node) and uses a network
+# proxy path that fails with "Cuda failure 1 'invalid argument'".
+# Setting NCCL_HOSTID to a fixed string forces all ranks on this job to share
+# the same host identity → nNodes=1 → intra-node transport → correct operation.
+export NCCL_HOSTID=datamorphernode0
 # Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
 # For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES — that only
 # happens for whole-GPU actors.  We do NOT set CUDA_VISIBLE_DEVICES either:

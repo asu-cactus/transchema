@@ -260,6 +260,7 @@ def run_ppo(config) -> None:
             "NCCL_P2P_DISABLE",
             "NCCL_SHM_DISABLE",
             "NCCL_SOCKET_IFNAME",
+            "NCCL_HOSTID",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
