@@ -226,6 +226,35 @@ print(f"SSCoT Critique L1: {len(sscot_crit_l1)} cases")
 print(f"SSCoT Critique L4: {len(sscot_crit_l4)} cases")
 print(f"SSCoT Critique L9: {len(sscot_crit_l9)} cases")
 
+# ── Materialization (o4-mini) — critique_data.py ─────────────────────────────
+_MAT_O4_L1 = [
+    "l1_o4mini_ms_mat_0_49_20260318_172807",
+    "l1_o4mini_ms_mat_50_99_20260318_172808",
+]
+_MAT_O4_L4 = [
+    "l4_o4mini_ms_mat_15_56_20260318_183306",
+    "l4_o4mini_ms_mat_57_99_20260318_183306",
+]
+_MAT_O4_L9 = [
+    "l9_o4mini_ms_mat_0_50_20260318_215540",
+    "l9_o4mini_ms_mat_51_100_20260318_215540",
+]
+
+mat_cot_l1 = load_ms_only(_MAT_O4_L1).drop_duplicates(subset="case_id", keep="last")
+mat_cot_l4 = load_ms_only(_MAT_O4_L4).drop_duplicates(subset="case_id", keep="last")
+mat_cot_l9 = load_ms_only(_MAT_O4_L9).drop_duplicates(subset="case_id", keep="last")
+
+mat_crit_l1 = load_ms_critique(_MAT_O4_L1).drop_duplicates(subset="case_id", keep="last")
+mat_crit_l4 = load_ms_critique(_MAT_O4_L4).drop_duplicates(subset="case_id", keep="last")
+mat_crit_l9 = load_ms_critique(_MAT_O4_L9).drop_duplicates(subset="case_id", keep="last")
+
+print(f"Mat CoT     L1: {len(mat_cot_l1)} cases")
+print(f"Mat CoT     L4: {len(mat_cot_l4)} cases")
+print(f"Mat CoT     L9: {len(mat_cot_l9)} cases")
+print(f"Mat Critique L1: {len(mat_crit_l1)} cases")
+print(f"Mat Critique L4: {len(mat_crit_l4)} cases")
+print(f"Mat Critique L9: {len(mat_crit_l9)} cases")
+
 # MCTS (o4-mini) — Langraph
 mcts_l1 = load_langraph([
     "l1_o4mini_mcts_0_49_20260315_192556",
@@ -290,6 +319,20 @@ experiments = {
         {1: [str(MS_BASE / d / "results" / "critique.csv") for d in _SSCOT_O4_L1],
          4: [str(MS_BASE / d / "results" / "critique.csv") for d in _SSCOT_O4_L4],
          9: [str(MS_BASE / d / "results" / "critique.csv") for d in _SSCOT_O4_L9]},
+    ),
+    "Op CoT+Mat (o4-mini)": (
+        "Operator-driven", "CoT+Materialization (o4-mini)",
+        {1: mat_cot_l1, 4: mat_cot_l4, 9: mat_cot_l9},
+        {1: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_O4_L1],
+         4: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_O4_L4],
+         9: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_O4_L9]},
+    ),
+    "Op Critique+Mat (o4-mini)": (
+        "Operator-driven", "Critique+Materialization (o4-mini)",
+        {1: mat_crit_l1, 4: mat_crit_l4, 9: mat_crit_l9},
+        {1: [str(MS_BASE / d / "results" / "critique.csv") for d in _MAT_O4_L1],
+         4: [str(MS_BASE / d / "results" / "critique.csv") for d in _MAT_O4_L4],
+         9: [str(MS_BASE / d / "results" / "critique.csv") for d in _MAT_O4_L9]},
     ),
     "Op Iterative (o4-mini)": (
         "Operator-driven", "Iterative (o4-mini)",

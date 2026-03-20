@@ -10,6 +10,7 @@ import os
 import sys
 import json
 import traceback
+import multiprocessing
 from datetime import datetime
 
 # Ensure the transchema root is on the path so shared utilities are importable.
@@ -174,49 +175,41 @@ _CSV_FIELDS = [
 with open(RESULTS_CSV_PATH, "w", newline="") as _f:
     csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writeheader()
 
-# ============================================================
-# Process each case
-# ============================================================
-results_summary = []
+_CASE_TIMEOUT = 600  # 10 minutes per case
 
-for i, case_id in enumerate(CASES_TO_RUN, 1):
-    print(f"{'='*80}")
-    print(f"Processing Case {i}/{len(CASES_TO_RUN)}: {case_id}")
-    print(f"{'='*80}")
 
-    # Create case-specific results directory
-    case_results_dir = os.path.join(RESULTS_DIR, f"case_{case_id}")
+def _af_case_worker(
+    case_id, results_dir, results_csv_path, csv_fields,
+    benchmarks_dir, json_ms, json_ss,
+    llm_engine, planner_granularity, execute_pipeline,
+    validation, start_again_clear_history,
+    transchema_root, result_queue,
+):
+    """Runs one AgentFlow case fully in a child process."""
+    if transchema_root not in sys.path:
+        sys.path.insert(0, transchema_root)
+
+    case_results_dir = os.path.join(results_dir, f"case_{case_id}")
     case_logs_dir = os.path.join(case_results_dir, "logs")
     os.makedirs(case_logs_dir, exist_ok=True)
-
-    # Reset token tracker for this case
     TOKEN_TRACKER.reset()
 
     try:
-        # Setup logging
         logger, component_loggers = setup_logging(case_logs_dir)
 
         import agentflow.agentflow.solver as solver_module
-
         solver_module.logger = logger
         solver_module.prompt_logger = component_loggers["prompts"]
         solver_module.tool_logger = component_loggers["tools"]
         solver_module.memory_logger = component_loggers["memory"]
 
-        # --- Select correct JSON based on file count (ms vs ss) ---
-        path_to_files = os.path.join(BENCHMARKS_DIR, f"length{case_id}")
+        path_to_files = os.path.join(benchmarks_dir, f"length{case_id}")
         file_count = sum(
-            1
-            for _, _, files in os.walk(path_to_files)
-            for file in files
-            if file.startswith("test")
+            1 for _, _, files in os.walk(path_to_files)
+            for file in files if file.startswith("test")
         )
-        if file_count > 1:
-            json_file_path = JSON_FILE_PATH_MS
-        else:
-            json_file_path = JSON_FILE_PATH_SS
+        json_file_path = json_ms if file_count > 1 else json_ss
 
-        # --- Build the query dynamically via get_prompt ---
         (
             target_data_name,
             target_data_schema,
@@ -226,12 +219,7 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
             source_data_name_list,
             source_data_schema_list,
             _source_samples_list,
-        ) = get_test_info(
-            json_file_path,
-            case_id,
-            BENCHMARKS_DIR,
-            anon_flag=0,
-        )
+        ) = get_test_info(json_file_path, case_id, benchmarks_dir, anon_flag=0)
 
         query = get_prompt(
             prompt_type="get_case_info",
@@ -239,29 +227,27 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
             operation_history=[],
             target_data_name=target_data_name,
             target_data_schema=target_data_schema,
-            target_samples="",  # will be filled by get_prompt
+            target_samples="",
             file_count=file_count,
-            directory=BENCHMARKS_DIR,
+            directory=benchmarks_dir,
             len_idx_target_idx=case_id,
             source_data_name_list=source_data_name_list,
             source_data_schema_list=source_data_schema_list,
             target_data_schema_with_types=target_data_schema_with_types,
             target_length=3,
             source_length=3,
-            model=LLM_ENGINE_NAME,
+            model=llm_engine,
         )
 
         print(f"Query generated ({len(query)} characters)")
 
-        # --- Select tools based on planner granularity ---
-        if PLANNER_GRANULARITY == "pipeline":
+        if planner_granularity == "pipeline":
             enabled_tools = [
                 "Create_New_Pipeline",
                 "Refine_Existing_Pipeline",
                 "Code_Generator_Tool",
                 "Finalize_Pipeline_Tool",
             ]
-            tool_engine = ["Default"] * len(enabled_tools)
         else:
             enabled_tools = [
                 "Configure_Join_Operator_Tool",
@@ -272,79 +258,55 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
                 "Code_Gen_And_Score_Tool",
                 "Critique_Pipeline_Tool",
             ]
-            tool_engine = ["Default"] * len(enabled_tools)
+        tool_engine = ["Default"] * len(enabled_tools)
 
-        # Ground truth path (always provided for final scoring/verification)
-        ground_truth_csv = os.path.join(
-            BENCHMARKS_DIR, f"length{case_id}", "target.csv"
-        )
+        ground_truth_csv = os.path.join(benchmarks_dir, f"length{case_id}", "target.csv")
         if not os.path.isfile(ground_truth_csv):
             print(f"WARNING: Ground truth not found at {ground_truth_csv}")
             ground_truth_csv = None
 
-        # --- Construct and run solver ---
         solver = construct_solver(
-            llm_engine_name=LLM_ENGINE_NAME,
+            llm_engine_name=llm_engine,
             enabled_tools=enabled_tools,
             tool_engine=tool_engine,
             model_engine=["trainable", "trainable", "trainable", "trainable"],
-            start_again_clear_history=START_AGAIN_CLEAR_HISTORY,
-            planner_granularity=PLANNER_GRANULARITY,
-            execute_pipeline=EXECUTE_PIPELINE,
+            start_again_clear_history=start_again_clear_history,
+            planner_granularity=planner_granularity,
+            execute_pipeline=execute_pipeline,
             ground_truth_csv=ground_truth_csv,
-            validation=VALIDATION,
+            validation=validation,
         )
 
         print(f"Starting solver...")
-
         start_time = datetime.now()
         output = solver.solve(query)
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
 
-        # Determine correctness from verification
         is_correct = output.get("is_correct", False)
         case_status = "correct" if is_correct else "incorrect"
         status_icon = "✓" if is_correct else "✗"
+        print(f"\n{status_icon} Case {case_id} completed in {duration:.2f}s — {case_status.upper()}")
 
-        print(
-            f"\n{status_icon} Case {case_id} completed in {duration:.2f} seconds — {case_status.upper()}"
-        )
-
-        # Save results
         result_file = os.path.join(case_results_dir, f"{case_id}_result.txt")
         with open(result_file, "w") as f:
             f.write(f"Case: {case_id}\n")
             f.write(f"Status: {case_status.upper()}\n")
             f.write(f"Timestamp: {start_time.isoformat()}\n")
             f.write(f"Duration: {duration:.2f} seconds\n")
-            f.write(f"LLM Engine: {LLM_ENGINE_NAME}\n")
+            f.write(f"LLM Engine: {llm_engine}\n")
             f.write(f"Logs Directory: {case_logs_dir}\n")
             verification = output.get("verification_result", {})
             if verification:
                 f.write(f"\nVerification:\n")
                 f.write(f"  is_correct: {is_correct}\n")
-                f.write(
-                    f"  average_similarity: {verification.get('average_similarity', 'N/A')}\n"
-                )
-                f.write(
-                    f"  matched_columns: {verification.get('all_matched_columns', [])}\n"
-                )
-                f.write(
-                    f"  calculate_score: {verification.get('calculate_score', 'N/A')}\n"
-                )
-            f.write(f"\n{'='*80}\n")
-            f.write(f"QUERY:\n")
-            f.write(f"{'='*80}\n")
+                f.write(f"  average_similarity: {verification.get('average_similarity', 'N/A')}\n")
+                f.write(f"  matched_columns: {verification.get('all_matched_columns', [])}\n")
+                f.write(f"  calculate_score: {verification.get('calculate_score', 'N/A')}\n")
+            f.write(f"\n{'='*80}\nQUERY:\n{'='*80}\n")
             f.write(query)
-            f.write(f"\n\n{'='*80}\n")
-            f.write(f"OUTPUT:\n")
-            f.write(f"{'='*80}\n")
-            f.write(
-                str(
-                    output.get("direct_output", output.get("final_output", "No output"))
-                )
-            )
+            f.write(f"\n\n{'='*80}\nOUTPUT:\n{'='*80}\n")
+            f.write(str(output.get("direct_output", output.get("final_output", "No output"))))
 
         json_output_file = os.path.join(case_results_dir, f"{case_id}_full_output.json")
         with open(json_output_file, "w") as f:
@@ -352,13 +314,11 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
 
         print(f"{status_icon} Result saved to: {result_file}")
         print(f"{status_icon} Full output saved to: {json_output_file}")
-        print(f"{status_icon} Logs saved to: {case_logs_dir}/")
 
-        # Append row to results CSV
         final_score = output.get("final_score") or {}
         verification = output.get("verification_result") or {}
         _token_totals = TOKEN_TRACKER.get_totals()
-        _cost = TOKEN_TRACKER.compute_cost(LLM_ENGINE_NAME)
+        _cost = TOKEN_TRACKER.compute_cost(llm_engine)
         _csv_row = {
             "case_id": case_id,
             "status": case_status,
@@ -372,40 +332,35 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
             "timestamp": start_time.isoformat(),
             "error": "",
         }
-        with open(RESULTS_CSV_PATH, "a", newline="") as _f:
-            csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_csv_row)
+        with open(results_csv_path, "a", newline="") as _f:
+            csv.DictWriter(_f, fieldnames=csv_fields).writerow(_csv_row)
         print(
-            f"{status_icon} Tokens — prompt: {_token_totals['prompt_tokens']}, completion: {_token_totals['completion_tokens']}, calls: {_token_totals['num_calls']} | Cost: ${_cost:.6f}"
-            if _cost is not None
-            else f"{status_icon} Tokens — {_token_totals} | Cost: N/A (unknown model)"
-        )
-        print(f"{status_icon} CSV updated: {RESULTS_CSV_PATH}")
-
-        results_summary.append(
-            {
-                "case": case_id,
-                "status": case_status,
-                "is_correct": is_correct,
-                "duration_seconds": duration,
-                "timestamp": start_time.isoformat(),
-                "result_file": result_file,
-                "json_output_file": json_output_file,
-                "logs_directory": case_logs_dir,
-            }
+            f"{status_icon} Tokens — prompt: {_token_totals['prompt_tokens']}, "
+            f"completion: {_token_totals['completion_tokens']}, calls: {_token_totals['num_calls']} "
+            f"| Cost: ${_cost:.6f}" if _cost is not None
+            else f"{status_icon} Tokens — {_token_totals} | Cost: N/A"
         )
 
-    except Exception as e:
+        result_queue.put(("ok", {
+            "case": case_id,
+            "status": case_status,
+            "is_correct": is_correct,
+            "duration_seconds": duration,
+            "timestamp": start_time.isoformat(),
+            "result_file": result_file,
+            "json_output_file": json_output_file,
+            "logs_directory": case_logs_dir,
+        }))
+
+    except Exception:
         error_tb = traceback.format_exc()
-        print(f"\n✗ Error processing case {case_id}: {e}")
+        print(f"\n✗ Error processing case {case_id}:\n{error_tb}")
 
         error_file = os.path.join(case_results_dir, f"{case_id}_error.txt")
         with open(error_file, "w") as f:
-            f.write(f"Case: {case_id}\n")
-            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-            f.write(f"Error: {e}\n\nTraceback:\n{error_tb}\n")
+            f.write(f"Case: {case_id}\nTimestamp: {datetime.now().isoformat()}\n\n{error_tb}\n")
 
-        # Append error row to results CSV
-        _cost = TOKEN_TRACKER.compute_cost(LLM_ENGINE_NAME)
+        _cost = TOKEN_TRACKER.compute_cost(llm_engine)
         _csv_row = {
             "case_id": case_id,
             "status": "error",
@@ -417,29 +372,89 @@ for i, case_id in enumerate(CASES_TO_RUN, 1):
             "latency_seconds": None,
             "cost": round(_cost, 6) if _cost is not None else "N/A",
             "timestamp": datetime.now().isoformat(),
-            "error": str(e),
+            "error": error_tb[:500],
+        }
+        with open(results_csv_path, "a", newline="") as _f:
+            csv.DictWriter(_f, fieldnames=csv_fields).writerow(_csv_row)
+
+        result_queue.put(("error", error_tb))
+
+
+# ============================================================
+# Process each case
+# ============================================================
+results_summary = []
+
+for i, case_id in enumerate(CASES_TO_RUN, 1):
+    print(f"{'='*80}")
+    print(f"Processing Case {i}/{len(CASES_TO_RUN)}: {case_id}")
+    print(f"{'='*80}")
+
+    # Ensure case dir exists (for error files written by parent on timeout)
+    case_results_dir = os.path.join(RESULTS_DIR, f"case_{case_id}")
+    os.makedirs(case_results_dir, exist_ok=True)
+
+    _ts = datetime.now().isoformat()
+    _result_queue = multiprocessing.Queue()
+    _proc = multiprocessing.Process(
+        target=_af_case_worker,
+        args=(
+            case_id, RESULTS_DIR, RESULTS_CSV_PATH, _CSV_FIELDS,
+            BENCHMARKS_DIR, JSON_FILE_PATH_MS, JSON_FILE_PATH_SS,
+            LLM_ENGINE_NAME, PLANNER_GRANULARITY, EXECUTE_PIPELINE,
+            VALIDATION, START_AGAIN_CLEAR_HISTORY, _TRANSCHEMA_ROOT,
+            _result_queue,
+        ),
+        daemon=True,
+    )
+    _proc.start()
+    _proc.join(timeout=_CASE_TIMEOUT)
+
+    if _proc.is_alive():
+        print(f"\n[TIMEOUT] Case {case_id} exceeded {_CASE_TIMEOUT}s — killing process")
+        _proc.terminate()
+        _proc.join()
+        _csv_row = {
+            "case_id": case_id,
+            "status": "timeout",
+            "is_correct": False,
+            "score": None,
+            "score_fd": None,
+            "column_mapping_score": None,
+            "average_similarity": None,
+            "latency_seconds": _CASE_TIMEOUT,
+            "cost": "N/A",
+            "timestamp": _ts,
+            "error": f"Timed out after {_CASE_TIMEOUT}s",
         }
         with open(RESULTS_CSV_PATH, "a", newline="") as _f:
             csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_csv_row)
-
-        results_summary.append(
-            {
-                "case": case_id,
-                "status": "error",
-                "error": str(e),
-                "timestamp": datetime.now().isoformat(),
-                "logs_directory": case_logs_dir,
-            }
-        )
+        results_summary.append({"case": case_id, "status": "timeout", "timestamp": _ts})
+    elif not _result_queue.empty():
+        _status, _payload = _result_queue.get()
+        if _status == "ok":
+            results_summary.append(_payload)
+        else:
+            results_summary.append({
+                "case": case_id, "status": "error",
+                "error": str(_payload)[:200], "timestamp": _ts,
+            })
+    else:
+        print(f"\n✗ Case {case_id} exited without result")
+        results_summary.append({
+            "case": case_id, "status": "error",
+            "error": "process exited without result", "timestamp": _ts,
+        })
 
     print()
 
 # ============================================================
 # Summary
 # ============================================================
-num_correct = sum(1 for r in results_summary if r.get("is_correct", False))
+num_correct  = sum(1 for r in results_summary if r.get("is_correct", False))
 num_incorrect = sum(1 for r in results_summary if r["status"] == "incorrect")
-num_error = sum(1 for r in results_summary if r["status"] == "error")
+num_error    = sum(1 for r in results_summary if r["status"] == "error")
+num_timeout  = sum(1 for r in results_summary if r["status"] == "timeout")
 
 print(f"{'='*80}")
 print(f"SUMMARY")
@@ -448,15 +463,19 @@ print(f"  Total Cases: {len(CASES_TO_RUN)}")
 print(f"  Correct:   {num_correct}")
 print(f"  Incorrect: {num_incorrect}")
 print(f"  Errors:    {num_error}")
+print(f"  Timeouts:  {num_timeout}")
 print(f"\nResults organized in: {RESULTS_DIR}/")
 
 for result in results_summary:
     if result["status"] == "correct":
         icon = "✓"
-        suffix = f" ({result['duration_seconds']:.2f}s)"
+        suffix = f" ({result.get('duration_seconds', 0):.2f}s)"
     elif result["status"] == "incorrect":
         icon = "✗"
-        suffix = f" ({result['duration_seconds']:.2f}s)"
+        suffix = f" ({result.get('duration_seconds', 0):.2f}s)"
+    elif result["status"] == "timeout":
+        icon = "⏱"
+        suffix = f" - timed out after {_CASE_TIMEOUT}s"
     else:
         icon = "!"
         suffix = f" - {result.get('error', 'Unknown error')}"

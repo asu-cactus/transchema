@@ -14,6 +14,7 @@ Run from: ~/transchema/
 """
 
 import os
+import json
 import pandas as pd
 from pathlib import Path
 
@@ -21,7 +22,14 @@ ROOT      = Path(__file__).resolve().parent
 AF_DIRS   = ROOT / "AgentFlow" / "results"
 MS_BASE   = ROOT / "logs-auto-suggest-llm-21-04"
 MCTS_DIRS = ROOT / "Langraph" / "results_langraph"
+MP_MCTS   = ROOT / "MontePrep"
 OUT       = ROOT / "results_analysis_monteprep.xlsx"
+
+# Token pricing per 1M tokens (input, output)
+TOKEN_PRICE = {
+    "gpt-4.1-mini": (0.40, 1.60),
+    "o4-mini":      (1.10, 4.40),
+}
 
 # Expected case counts per length for monteprep
 EXPECTED = {1: set(range(0, 100)), 4: set(range(0, 80)), 9: set(range(0, 30))}
@@ -143,11 +151,57 @@ def load_sscot(exp_dirs):
     return ms_df[["case_id", "len", "is_correct", "cost", "latency_seconds"]]
 
 
+def load_monteprep_mcts(model, length_type):
+    """Load MontePrep MCTS results from MontePrep/predict and MontePrep/result."""
+    label = f"l{length_type}"
+    summary_path = MP_MCTS / "predict" / "monteprep" / model / label / f"length{length_type}" / "per_case_summary.csv"
+    metrics_path = MP_MCTS / "result" / "monteprep" / model / "execution" / f"metrics_auto_pipeline_{length_type}.json"
+
+    if not summary_path.exists():
+        print(f"  WARNING: not found: {summary_path}")
+        return pd.DataFrame()
+
+    df = pd.read_csv(summary_path)
+    df = df.rename(columns={"case": "case_id", "exact_match": "is_correct"})
+    # Strip "length" prefix: "length1_5" → "1_5"
+    df["case_id"] = df["case_id"].str.replace(r"^length", "", regex=True)
+    df["len"] = length_type
+    df["is_correct"] = df["is_correct"].map(
+        lambda v: True if str(v).strip().lower() in ("true", "1") else False
+    )
+
+    # Compute cost and latency from metrics JSON
+    price_in, price_out = TOKEN_PRICE.get(model, (0, 0))
+    df["cost"] = 0.0
+    df["latency_seconds"] = 0.0
+
+    if metrics_path.exists():
+        with open(metrics_path) as f:
+            metrics = json.load(f)
+        for _, row in df.iterrows():
+            key = f"length{row['case_id']}"   # e.g. "length1_5"
+            if key in metrics:
+                m = metrics[key]
+                pt = m["token_usage"]["prompt_tokens"]
+                ct = m["token_usage"]["completion_tokens"]
+                df.loc[df["case_id"] == row["case_id"], "cost"] = (
+                    pt * price_in + ct * price_out
+                ) / 1_000_000
+                df.loc[df["case_id"] == row["case_id"], "latency_seconds"] = m["elapsed_time"]
+    else:
+        print(f"  WARNING: metrics not found: {metrics_path}")
+
+    return df[["case_id", "len", "is_correct", "cost", "latency_seconds"]]
+
+
 # ── Load all experiments ───────────────────────────────────────────────────────
 
 # SSCoT — gpt-4.1-mini
 sscot_41mini_l1 = load_sscot(["mp_l1_41mini_sscot_0_99_20260317_174300"])
-sscot_41mini_l4 = load_sscot(["mp_l4_41mini_sscot_0_79_20260317_174329"])
+sscot_41mini_l4 = load_sscot([
+    "mp_l4_41mini_sscot_0_79_20260317_174329",
+    "mp_l4_41mini_sscot_0_79_20260318_172419",
+]).drop_duplicates(subset="case_id", keep="last")
 sscot_41mini_l9 = load_sscot(["mp_l9_41mini_sscot_0_29_20260317_174348"])
 print(f"SSCoT 4.1-mini  L1: {len(sscot_41mini_l1)} | L4: {len(sscot_41mini_l4)} | L9: {len(sscot_41mini_l9)}")
 
@@ -157,7 +211,10 @@ sscot_o4mini_l1 = load_sscot([
     "mp_l1_o4mini_sscot_66_99_20260318_131752",
     "mp_l1_o4mini_sscot_90_99_20260318_134324",
 ]).drop_duplicates(subset="case_id", keep="last")
-sscot_o4mini_l4 = load_sscot(["mp_l4_o4mini_sscot_0_79_20260317_174516"])
+sscot_o4mini_l4 = load_sscot([
+    "mp_l4_o4mini_sscot_0_79_20260317_174516",
+    "mp_l4_o4mini_sscot_0_79_20260318_172502",
+]).drop_duplicates(subset="case_id", keep="last")
 sscot_o4mini_l9 = load_sscot(["mp_l9_o4mini_sscot_0_29_20260317_174540"])
 print(f"SSCoT o4-mini   L1: {len(sscot_o4mini_l1)} | L4: {len(sscot_o4mini_l4)} | L9: {len(sscot_o4mini_l9)}")
 
@@ -166,7 +223,10 @@ af_op_41mini_l1 = load_agentflow([
     "mp_l1_41mini_af_op_0_49_20260317_230408",
     "mp_l1_41mini_af_op_50_99_20260317_230408",
 ])
-af_op_41mini_l4 = load_agentflow([])   # blocked — not started yet
+af_op_41mini_l4 = load_agentflow([
+    "mp_l4_41mini_af_op_0_39_20260318_193931",
+    "mp_l4_41mini_af_op_40_79_20260318_193931",
+])
 af_op_41mini_l9 = load_agentflow([
     "mp_l9_41mini_af_op_0_14_20260317_183500",
     "mp_l9_41mini_af_op_15_29_20260317_183500",
@@ -179,8 +239,8 @@ af_op_o4mini_l1 = load_agentflow([
     "mp_l1_o4mini_af_op_50_99_20260317_222618",
 ])
 af_op_o4mini_l4 = load_agentflow([
-    "mp_l4_o4mini_af_op_0_39_20260318_103556",
-    "mp_l4_o4mini_af_op_40_79_20260318_103556",
+    "mp_l4_o4mini_af_op_0_39_20260318_194054",
+    "mp_l4_o4mini_af_op_40_79_20260318_194054",
 ])
 af_op_o4mini_l9 = load_agentflow([
     "mp_l9_o4mini_af_op_0_14_20260317_182940",
@@ -193,7 +253,10 @@ af_pl_41mini_l1 = load_agentflow([
     "mp_l1_41mini_af_pl_0_49_20260318_002718",
     "mp_l1_41mini_af_pl_50_99_20260318_002718",
 ])
-af_pl_41mini_l4 = load_agentflow([])   # blocked — not started yet
+af_pl_41mini_l4 = load_agentflow([
+    "mp_l4_41mini_af_pl_0_39_20260318_221019",
+    "mp_l4_41mini_af_pl_40_79_20260318_221019",
+])
 af_pl_41mini_l9 = load_agentflow([
     "mp_l9_41mini_af_pl_0_14_20260317_193251",
     "mp_l9_41mini_af_pl_15_29_20260317_193251",
@@ -205,7 +268,10 @@ af_pl_o4mini_l1 = load_agentflow([
     "mp_l1_o4mini_af_pl_0_49_20260318_020649",
     "mp_l1_o4mini_af_pl_50_99_20260318_020649",
 ])
-af_pl_o4mini_l4 = load_agentflow([])   # not started yet
+af_pl_o4mini_l4 = load_agentflow([
+    "mp_l4_o4mini_af_pl_0_39_20260318_221526",
+    "mp_l4_o4mini_af_pl_40_79_20260318_221526",
+])
 af_pl_o4mini_l9 = load_agentflow([
     "mp_l9_o4mini_af_pl_0_14_20260317_195201",
     "mp_l9_o4mini_af_pl_15_29_20260317_195201",
@@ -218,7 +284,10 @@ mcts_41mini_l1 = load_mcts([
     "mp_l1_41mini_mcts_50_99_20260318_012435",
     "mp_l1_41mini_mcts_89_99_20260318_121428",
 ])
-mcts_41mini_l4 = load_mcts([])   # blocked — not started yet
+mcts_41mini_l4 = load_mcts([
+    "mp_l4_41mini_mcts_0_39_20260319_002027",
+    "mp_l4_41mini_mcts_40_79_20260319_002027",
+])
 mcts_41mini_l9 = load_mcts([
     "mp_l9_41mini_mcts_0_14_20260317_203957",
     "mp_l9_41mini_mcts_15_29_20260317_203957",
@@ -231,12 +300,27 @@ mcts_o4mini_l1 = load_mcts([
     "mp_l1_o4mini_mcts_50_99_20260318_033536",
     "mp_l1_o4mini_mcts_89_99_20260318_124004",
 ])
-mcts_o4mini_l4 = load_mcts([])   # not started yet
+mcts_o4mini_l4 = load_mcts([
+    "mp_l4_o4mini_mcts_0_39_20260319_004032",
+    "mp_l4_o4mini_mcts_40_79_20260319_004032",
+])
 mcts_o4mini_l9 = load_mcts([
     "mp_l9_o4mini_mcts_0_14_20260317_210557",
     "mp_l9_o4mini_mcts_15_29_20260317_210557",
 ])
 print(f"MCTS o4-mini    L1: {len(mcts_o4mini_l1)} | L4: {len(mcts_o4mini_l4)} | L9: {len(mcts_o4mini_l9)}")
+
+# MontePrep MCTS — gpt-4.1-mini
+mp_mcts_41mini_l1 = load_monteprep_mcts("gpt-4.1-mini", 1)
+mp_mcts_41mini_l4 = load_monteprep_mcts("gpt-4.1-mini", 4)
+mp_mcts_41mini_l9 = load_monteprep_mcts("gpt-4.1-mini", 9)
+print(f"MP MCTS 4.1-mini L1: {len(mp_mcts_41mini_l1)} | L4: {len(mp_mcts_41mini_l4)} | L9: {len(mp_mcts_41mini_l9)}")
+
+# MontePrep MCTS — o4-mini
+mp_mcts_o4mini_l1 = load_monteprep_mcts("o4-mini", 1)
+mp_mcts_o4mini_l4 = load_monteprep_mcts("o4-mini", 4)
+mp_mcts_o4mini_l9 = load_monteprep_mcts("o4-mini", 9)
+print(f"MP MCTS o4-mini  L1: {len(mp_mcts_o4mini_l1)} | L4: {len(mp_mcts_o4mini_l4)} | L9: {len(mp_mcts_o4mini_l9)}")
 
 
 # ── Experiment registry ────────────────────────────────────────────────────────
@@ -274,6 +358,14 @@ experiments = {
     "MCTS (o4-mini)": (
         "o4-mini", "Op MCTS",
         {1: mcts_o4mini_l1, 4: mcts_o4mini_l4, 9: mcts_o4mini_l9},
+    ),
+    "MontePrep MCTS (4.1-mini)": (
+        "gpt-4.1-mini", "MontePrep MCTS",
+        {1: mp_mcts_41mini_l1, 4: mp_mcts_41mini_l4, 9: mp_mcts_41mini_l9},
+    ),
+    "MontePrep MCTS (o4-mini)": (
+        "o4-mini", "MontePrep MCTS",
+        {1: mp_mcts_o4mini_l1, 4: mp_mcts_o4mini_l4, 9: mp_mcts_o4mini_l9},
     ),
 }
 

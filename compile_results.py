@@ -14,6 +14,7 @@ Run from: ~/transchema/
 """
 
 import os
+import json
 import pandas as pd
 from pathlib import Path
 
@@ -21,7 +22,14 @@ ROOT    = Path(__file__).resolve().parent
 AF_DIRS = ROOT / "AgentFlow" / "results"
 MS_BASE = ROOT / "logs-auto-suggest-llm-21-04"
 MCTS_DIRS = ROOT / "Langraph" / "results_langraph"
+MP_MCTS   = ROOT / "MontePrep"
 OUT     = ROOT / "results_analysis.xlsx"
+
+# Token pricing per 1M tokens (input, output)
+TOKEN_PRICE = {
+    "gpt-4.1-mini": (0.40, 1.60),
+    "o4-mini":      (1.10, 4.40),
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -187,6 +195,44 @@ def load_ms_critique(exp_dirs):
     return ms_df[["case_id", "len", "is_correct", "cost", "latency_seconds"]]
 
 
+def load_monteprep_mcts_github(model, length_type):
+    """Load MontePrep MCTS results for github-pipelines dataset."""
+    summary_path = MP_MCTS / "predict" / "auto_pipeline" / model / "execution" / f"length{length_type}" / "per_case_summary.csv"
+    metrics_path = MP_MCTS / "result" / "auto_pipeline" / model / "execution" / f"metrics_auto_pipeline_{length_type}.json"
+
+    if not summary_path.exists():
+        print(f"  WARNING: not found: {summary_path}")
+        return pd.DataFrame()
+
+    df = pd.read_csv(summary_path)
+    df = df.rename(columns={"case": "case_id", "exact_match": "is_correct"})
+    df["case_id"] = df["case_id"].str.replace(r"^length", "", regex=True)
+    df["len"] = length_type
+    df["is_correct"] = df["is_correct"].map(
+        lambda v: True if str(v).strip().lower() in ("true", "1") else False
+    )
+
+    price_in, price_out = TOKEN_PRICE.get(model, (0, 0))
+    df["cost"] = 0.0
+    df["latency_seconds"] = 0.0
+
+    if metrics_path.exists():
+        with open(metrics_path) as f:
+            metrics = json.load(f)
+        for idx, row in df.iterrows():
+            key = f"length{row['case_id']}"
+            if key in metrics:
+                m = metrics[key]
+                pt = m["token_usage"]["prompt_tokens"]
+                ct = m["token_usage"]["completion_tokens"]
+                df.at[idx, "cost"] = (pt * price_in + ct * price_out) / 1_000_000
+                df.at[idx, "latency_seconds"] = m["elapsed_time"]
+    else:
+        print(f"  WARNING: metrics not found: {metrics_path}")
+
+    return df[["case_id", "len", "is_correct", "cost", "latency_seconds"]]
+
+
 # ── Load all experiments ───────────────────────────────────────────────────────
 
 _MS_L1_DIRS = ["len_1_rerun_without_materialization_0_100_20260305_013029"]
@@ -318,6 +364,21 @@ print(f"Materialization L1:    {len(mat_crit_l1)} cases")
 print(f"Materialization L4:    {len(mat_crit_l4)} cases")
 print(f"Materialization L9:    {len(mat_crit_l9)} cases")
 
+# ── MontePrep MCTS on github-pipelines ────────────────────────────────────────
+mp_mcts_41mini_l1 = load_monteprep_mcts_github("gpt-4.1-mini", 1)
+mp_mcts_41mini_l4 = load_monteprep_mcts_github("gpt-4.1-mini", 4)
+mp_mcts_41mini_l9 = load_monteprep_mcts_github("gpt-4.1-mini", 9)
+print(f"MP MCTS 4.1-mini L1:   {len(mp_mcts_41mini_l1)} cases")
+print(f"MP MCTS 4.1-mini L4:   {len(mp_mcts_41mini_l4)} cases")
+print(f"MP MCTS 4.1-mini L9:   {len(mp_mcts_41mini_l9)} cases")
+
+mp_mcts_o4mini_l1 = load_monteprep_mcts_github("o4-mini", 1)
+mp_mcts_o4mini_l4 = load_monteprep_mcts_github("o4-mini", 4)
+mp_mcts_o4mini_l9 = load_monteprep_mcts_github("o4-mini", 9)
+print(f"MP MCTS o4-mini L1:    {len(mp_mcts_o4mini_l1)} cases")
+print(f"MP MCTS o4-mini L4:    {len(mp_mcts_o4mini_l4)} cases")
+print(f"MP MCTS o4-mini L9:    {len(mp_mcts_o4mini_l9)} cases")
+
 
 # ── Experiment registry ───────────────────────────────────────────────────────
 # Format: "Name": (granularity, {len: df}, {len: [source paths]})
@@ -390,6 +451,20 @@ experiments = {
         {1: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_L1_DIRS],
          4: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_L4_DIRS],
          9: [str(MS_BASE / d / "results" / "multi_step.csv") for d in _MAT_L9_DIRS]},
+    ),
+    "MontePrep MCTS (4.1-mini)": (
+        "Operator-driven", "MontePrep MCTS (4.1-mini)",
+        {1: mp_mcts_41mini_l1, 4: mp_mcts_41mini_l4, 9: mp_mcts_41mini_l9},
+        {1: [str(MP_MCTS / "predict" / "auto_pipeline" / "gpt-4.1-mini" / "execution" / "length1" / "per_case_summary.csv")],
+         4: [str(MP_MCTS / "predict" / "auto_pipeline" / "gpt-4.1-mini" / "execution" / "length4" / "per_case_summary.csv")],
+         9: [str(MP_MCTS / "predict" / "auto_pipeline" / "gpt-4.1-mini" / "execution" / "length9" / "per_case_summary.csv")]},
+    ),
+    "MontePrep MCTS (o4-mini)": (
+        "Operator-driven", "MontePrep MCTS (o4-mini)",
+        {1: mp_mcts_o4mini_l1, 4: mp_mcts_o4mini_l4, 9: mp_mcts_o4mini_l9},
+        {1: [str(MP_MCTS / "predict" / "auto_pipeline" / "o4-mini" / "execution" / "length1" / "per_case_summary.csv")],
+         4: [str(MP_MCTS / "predict" / "auto_pipeline" / "o4-mini" / "execution" / "length4" / "per_case_summary.csv")],
+         9: [str(MP_MCTS / "predict" / "auto_pipeline" / "o4-mini" / "execution" / "length9" / "per_case_summary.csv")]},
     ),
 }
 

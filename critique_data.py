@@ -4,6 +4,7 @@ import json
 import csv
 import pdb
 import shutil
+import multiprocessing
 
 # from methods.precursor import precursor
 from methods.multi_step import multi_step
@@ -460,6 +461,51 @@ def get_parser():
     return parser
 
 
+_CASE_TIMEOUT = 600  # 10 minutes per case
+
+
+def _critique_case_worker(args, length, case, result_queue):
+    """Runs one SSCoT/multistep+critique case fully in a child process."""
+    try:
+        case_path = f"{length}_{case}"
+        ms_info, operation_history = ms(
+            args, length, case, args.log_directory, args.experiment_name
+        )
+        result = (case_path,) + ms_info
+
+        average_multistep_path = f"{args.result_directory}/average_multi_step.csv"
+        with open(average_multistep_path, "a", newline="") as f:
+            csv.writer(f).writerow(result)
+
+        main_folder_base = (
+            "autopipeline-benchmarks/monteprep-pipelines"
+            if getattr(args, "benchmark", "github") == "monteprep"
+            else "autopipeline-benchmarks/github-pipelines"
+        )
+
+        if not result[1]:
+            crit_info = crit(args, length, case, operation_history)
+
+            if crit_info[0]:
+                src = f"{main_folder_base}/length{case_path}/python_recovered.py"
+                dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
+                shutil.copy2(src, dst)
+                print("Success!")
+
+            average_crit_path = f"{args.result_directory}/final_critique.csv"
+            with open(average_crit_path, "a", newline="") as f:
+                csv.writer(f).writerow(crit_info)
+        else:
+            src = f"{main_folder_base}/length{case_path}/python_recovered.py"
+            dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
+            shutil.copy2(src, dst)
+            print("Success!")
+
+        result_queue.put(("ok", None))
+    except Exception:
+        result_queue.put(("error", traceback.format_exc()))
+
+
 if __name__ == "__main__":
 
     args = get_parser().parse_args()
@@ -490,58 +536,27 @@ if __name__ == "__main__":
         print("Processing:", case)
 
         case_path = f"{length}_{case}"
-        # log_dir = f"crit_logs/{case_path}"
 
-        try:
-            # compute multisource
-            ms_info, operation_history = ms(
-                args, length, case, args.log_directory, args.experiment_name
-            )
+        _result_queue = multiprocessing.Queue()
+        _proc = multiprocessing.Process(
+            target=_critique_case_worker,
+            args=(args, length, case, _result_queue),
+            daemon=True,
+        )
+        _proc.start()
+        _proc.join(timeout=_CASE_TIMEOUT)
 
-            # Format as a single row with consistent columns
-            # print(f"case_path: {case_path} + ms_info: {ms_info}")
-            result = (case_path,) + ms_info
-
-            # Fill the average result sheets
-            average_multistep_path = f"{args.result_directory}/average_multi_step.csv"
-            with open(average_multistep_path, "a", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(result)
-
-            if not result[1]:
-                # critique iff ms is wrong
-
-                crit_info = crit(args, length, case, operation_history)
-
-                # do the copy of the script only if critique is successful, meaning the critique judged the script to be correct after fixing the issues
-                if crit_info[0]:
-                    # copy python_recovered.py to python_recovered_successful.py
-                    main_folder_base = "autopipeline-benchmarks/monteprep-pipelines" if getattr(args, "benchmark", "github") == "monteprep" else "autopipeline-benchmarks/github-pipelines"
-                    src = f"{main_folder_base}/length{case_path}/python_recovered.py"
-                    dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
-                    shutil.copy2(src, dst)
-
-                    print("Success!")
-
-                average_crit_path = f"{args.result_directory}/final_critique.csv"
-                with open(average_crit_path, "a", newline="") as f:
-                    writer = csv.writer(f)
-                    writer.writerow(crit_info)
-
+        if _proc.is_alive():
+            print(f"[TIMEOUT] Case {case_path} exceeded {_CASE_TIMEOUT}s — killing process")
+            _proc.terminate()
+            _proc.join()
+        elif not _result_queue.empty():
+            _status, _payload = _result_queue.get()
+            if _status == "ok":
+                processed_without_exceptions += 1
             else:
-
-                # copy python_recovered.py to python_recovered_successful.py
-                main_folder_base = "autopipeline-benchmarks/monteprep-pipelines" if getattr(args, "benchmark", "github") == "monteprep" else "autopipeline-benchmarks/github-pipelines"
-                src = f"{main_folder_base}/length{case_path}/python_recovered.py"
-                dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
-                shutil.copy2(src, dst)
-
-                print("Success!")
-
-            processed_without_exceptions += 1
-
-        except Exception as e:
-            print("".join(traceback.format_exc()))
-            print(f"Error processing case {case_path}: {str(e)}")
+                print(f"Error processing case {case_path}:\n{_payload}")
+        else:
+            print(f"Case {case_path} exited without result")
 
     print(processed_without_exceptions)
