@@ -206,12 +206,19 @@ export RAY_task_events_report_interval_ms=0
 #                               'invalid argument'" in enqueue.cc.  With both
 #                               P2P and SHM disabled, NCCL falls back to plain
 #                               TCP sockets which works in any container.
+# NCCL_SOCKET_IFNAME=lo        : force all ranks to use the loopback interface
+#                               for bootstrap and data.  Without this, different
+#                               worker processes may resolve to different network
+#                               interfaces; NCCL then counts distinct IPs as
+#                               distinct nodes (nNodes=2 instead of 1) and tries
+#                               GPU-Direct RDMA transfers that fail in containers.
 # UCX_TLS=tcp,self            : restrict any residual UCX init to TCP loopback.
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
 export NCCL_SHM_DISABLE=1
+export NCCL_SOCKET_IFNAME=lo
 # Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
 # For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES per actor —
 # that only happens for whole-GPU actors (num_gpus >= 1.0).  Without any

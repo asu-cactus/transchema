@@ -253,6 +253,7 @@ def run_ppo(config) -> None:
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
             "NCCL_SHM_DISABLE",
+            "NCCL_SOCKET_IFNAME",
             "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
