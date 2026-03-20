@@ -184,16 +184,19 @@ def run_ppo(config) -> None:
         #     the first un-cached input shape.  Triton's LLVM backend in NGC
         #     25.02 cannot lower warp-shuffle intrinsics for sm_120 (Blackwell)
         #     and calls abort() → SIGABRT, killing the Ray worker.
-        # NCCL_IB_DISABLE / NCCL_P2P_DISABLE / UCX_TLS : suppress UCX IB
-        #     transport crashes that appear as SIGSEGV in ucs_handle_error
-        #     during NCCL collective operations inside FSDP workers.
+        # NCCL_IB_DISABLE / UCX_TLS : suppress UCX IB transport crashes that
+        #     appear as SIGSEGV in ucs_handle_error during NCCL collective
+        #     operations inside FSDP workers.
+        # NOTE: CUDA_VISIBLE_DEVICES is intentionally NOT forwarded here.
+        # veRL's RayWorkerGroup sets CUDA_VISIBLE_DEVICES per worker to
+        # assign exactly one GPU per rank.  Forwarding the multi-GPU value
+        # (e.g. "0,1") would override that assignment, causing NCCL to see
+        # duplicate GPUs ("rank 0 and rank 1 both on CUDA device X").
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_IB_DISABLE",
-            "NCCL_P2P_DISABLE",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
-            "CUDA_VISIBLE_DEVICES",
             "HF_HOME",
         ]
         infra_env_vars = {k: os.environ[k] for k in _infra_keys if k in os.environ}

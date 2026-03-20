@@ -183,13 +183,14 @@ export RAY_task_events_report_interval_ms=0
 # fully accessible from the container namespace.  The crash kills the colocated
 # FSDP/vLLM WorkerDict actor before compute_log_prob can return results.
 #
-# NCCL_IB_DISABLE=1  : skip InfiniBand entirely; use socket-based transport.
-# NCCL_P2P_DISABLE=1 : disable GPU-to-GPU P2P via UCX (forces NCCL to use
-#                       TCP for inter-GPU communication).
+# NCCL_IB_DISABLE=1  : skip InfiniBand entirely; use socket-based transport
+#                       for inter-node communication.
+# NCCL_P2P_DISABLE   : NOT set.  With 2 GPUs on the same node, P2P (NVLink
+#                       or PCIe) is the fastest path for FSDP all-gather /
+#                       reduce-scatter.  P2P does not use UCX/IB.
 # UCX_TLS=tcp,self   : in case any library still tries to init UCX, restrict
 #                       it to TCP loopback only.
 export NCCL_IB_DISABLE=1
-export NCCL_P2P_DISABLE=1
 export UCX_TLS=tcp,self
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.
