@@ -195,12 +195,20 @@ export RAY_task_events_report_interval_ms=0
 # PCI bus IDs as unique device fingerprints and therefore reports
 # "Duplicate GPU detected: rank 0 and rank 1 both on CUDA device 21000".
 #
-# NCCL_IB_DISABLE=1                      : skip InfiniBand; use SHM/P2P/TCP.
-# NCCL_IGNORE_DISABLED_P2P=1             : ignore PCI bus-ID uniqueness checks.
-# UCX_TLS=tcp,self                        : restrict any residual UCX to TCP.
+# NCCL_IB_DISABLE=1          : skip InfiniBand entirely; use SHM/P2P/TCP.
+# NCCL_IGNORE_DISABLED_P2P=1 : ignore PCI bus-ID uniqueness checks.
+# NCCL_P2P_DISABLE=1         : disable direct GPU P2P/IPC transfers.
+#                               The two Blackwell GPUs sit on different NUMA
+#                               nodes (SYS topology).  NCCL defaults to P2P/IPC
+#                               for intra-node comms but cuMemcpy across NUMA
+#                               fails with "Cuda failure 1 'invalid argument'"
+#                               during FSDP _broadcast_coalesced.  SHM avoids it.
+# UCX_TLS=tcp,self            : restrict any residual UCX init to TCP loopback.
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
+export NCCL_P2P_DISABLE=1
+export NCCL_SHM_DISABLE=0
 # Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
 # For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES per actor —
 # that only happens for whole-GPU actors (num_gpus >= 1.0).  Without any
