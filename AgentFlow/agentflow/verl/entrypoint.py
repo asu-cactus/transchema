@@ -196,6 +196,7 @@ def run_ppo(config) -> None:
             "TORCHDYNAMO_DISABLE",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
+            "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",

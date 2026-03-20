@@ -195,17 +195,22 @@ export RAY_task_events_report_interval_ms=0
 # PCI bus IDs as unique device fingerprints and therefore reports
 # "Duplicate GPU detected: rank 0 and rank 1 both on CUDA device 21000".
 #
-# NCCL_IB_DISABLE=1          : skip InfiniBand entirely; use SHM/P2P/TCP.
-# NCCL_IGNORE_DISABLED_P2P=1 : ignore the PCI bus-ID uniqueness check; use
-#                               CUDA device ordinals for rank-to-device mapping.
-# UCX_TLS=tcp,self            : restrict any residual UCX init to TCP loopback.
+# NCCL_IB_DISABLE=1                      : skip InfiniBand; use SHM/P2P/TCP.
+# NCCL_IGNORE_DISABLED_P2P=1             : ignore PCI bus-ID uniqueness checks.
+# UCX_TLS=tcp,self                        : restrict any residual UCX to TCP.
+# RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 : let veRL's Worker set the
+#   CUDA device via set_device(LOCAL_RANK) instead of relying on Ray to set
+#   CUDA_VISIBLE_DEVICES per-actor (which races with NCCL init).
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
-# Both Blackwell GPUs on this node share the same PCIe bridge, so NCCL's
-# device-uniqueness check sees the same PCI bus ID for rank 0 and rank 1.
-# NCCL_IGNORE_DISABLED_P2P=1 bypasses that check and uses CUDA device
-# ordinals instead of PCI bus IDs for rank-to-device mapping.
 export NCCL_IGNORE_DISABLED_P2P=1
+# Tell Ray NOT to set CUDA_VISIBLE_DEVICES per-actor.  Instead veRL's
+# Worker._setup_env_cuda_visible_devices() calls set_device(LOCAL_RANK)
+# directly, which is race-free with NCCL init.  Without this flag, Ray
+# sets CUDA_VISIBLE_DEVICES after the process starts but the timing races
+# with torch.distributed.init_process_group(), so NCCL picks up device 0
+# for both ranks → "Duplicate GPU detected".
+export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.
 #
