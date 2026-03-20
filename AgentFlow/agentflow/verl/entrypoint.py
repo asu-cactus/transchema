@@ -196,7 +196,6 @@ def run_ppo(config) -> None:
             "TORCHDYNAMO_DISABLE",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
-            "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
@@ -244,6 +243,21 @@ def run_ppo(config) -> None:
                 "worker_process_setup_hook": _worker_setup_hook,
             },
             num_cpus=config.ray_init.num_cpus,
+        )
+
+        # Diagnostic: print what GPU resources Ray has registered so we can
+        # confirm the head sees both GPUs before any workers are spawned.
+        _cluster_resources = ray.cluster_resources()
+        _avail_resources = ray.available_resources()
+        print(
+            f"[entrypoint] Ray cluster resources: "
+            f"GPU={_cluster_resources.get('GPU', 0):.1f}, "
+            f"CPU={_cluster_resources.get('CPU', 0):.0f}"
+        )
+        print(
+            f"[entrypoint] Ray available resources: "
+            f"GPU={_avail_resources.get('GPU', 0):.1f}, "
+            f"CPU={_avail_resources.get('CPU', 0):.0f}"
         )
 
     runner = TaskRunner.remote()

@@ -321,6 +321,8 @@ def restart_ray_if_available():
         print(start.stderr[-500:])
     else:
         print("Ray restarted successfully.")
+        if start.stdout:
+            print(start.stdout[-300:])
 
 
 def ensure_runtime_dependencies(auto_install: bool = True):
