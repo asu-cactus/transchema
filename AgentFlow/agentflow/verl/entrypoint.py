@@ -112,6 +112,29 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
+    # Patch 1b: pin this worker process to its assigned GPU.
+    #
+    # Ray uses fractional GPU allocation (num_gpus = 1/3 per colocated actor in
+    # the veRL FSDP resource pool).  For fractional allocations Ray does NOT set
+    # CUDA_VISIBLE_DEVICES — that only happens for whole-GPU actors.  Both worker
+    # processes therefore see all GPUs and default to cuda:0, causing NCCL to
+    # report "Duplicate GPU detected: rank 0 and rank 1 both on CUDA device X".
+    #
+    # RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 activates the path in
+    # veRL's Worker._setup_env_cuda_visible_devices() that calls
+    #   get_accelerator_ids()["GPU"][0]  →  set_device(gpu_id)
+    # but that runs *after* this hook.  We set CUDA_VISIBLE_DEVICES here (before
+    # any CUDA context is created) so NCCL's topology scan already sees only the
+    # one assigned GPU when it runs during init_process_group.
+    try:
+        import ray as _ray
+        _gpu_ids = _ray.get_runtime_context().get_accelerator_ids().get("GPU", [])
+        if _gpu_ids:
+            _assigned_gpu = str(_gpu_ids[0])
+            os.environ["CUDA_VISIBLE_DEVICES"] = _assigned_gpu
+    except Exception:
+        pass
+
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
         import torch as _torch
@@ -211,6 +234,7 @@ def run_ppo(config) -> None:
             "TORCHDYNAMO_DISABLE",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
+            "RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
