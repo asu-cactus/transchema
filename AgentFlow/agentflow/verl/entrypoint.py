@@ -131,8 +131,9 @@ def _worker_setup_hook() -> None:
     # forwards to the real init_process_group.
     try:
         import torch.distributed as _dist
+        import torch.distributed.distributed_c10d as _c10d
 
-        _real_ipg = _dist.init_process_group
+        _real_ipg = _c10d.init_process_group
 
         def _patched_init_process_group(*args, **kwargs):
             _lr = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
@@ -146,6 +147,7 @@ def _worker_setup_hook() -> None:
                     pass
             return _real_ipg(*args, **kwargs)
 
+        _c10d.init_process_group = _patched_init_process_group
         _dist.init_process_group = _patched_init_process_group
     except Exception:
         pass

@@ -198,17 +198,20 @@ export RAY_task_events_report_interval_ms=0
 # NCCL_IB_DISABLE=1          : skip InfiniBand entirely; use SHM/P2P/TCP.
 # NCCL_IGNORE_DISABLED_P2P=1 : ignore PCI bus-ID uniqueness checks.
 # NCCL_P2P_DISABLE=1         : disable direct GPU P2P/IPC transfers.
-#                               The two Blackwell GPUs sit on different NUMA
-#                               nodes (SYS topology).  NCCL defaults to P2P/IPC
-#                               for intra-node comms but cuMemcpy across NUMA
-#                               fails with "Cuda failure 1 'invalid argument'"
-#                               during FSDP _broadcast_coalesced.  SHM avoids it.
+# NCCL_SHM_DISABLE=1         : disable SHM "direct" transport.
+#                               Apptainer does not mount a shared /dev/shm with
+#                               sufficient permissions for CUDA IPC mem handles.
+#                               NCCL SHM/direct/direct calls cudaIpcGetMemHandle
+#                               across processes which fails with "Cuda failure 1
+#                               'invalid argument'" in enqueue.cc.  With both
+#                               P2P and SHM disabled, NCCL falls back to plain
+#                               TCP sockets which works in any container.
 # UCX_TLS=tcp,self            : restrict any residual UCX init to TCP loopback.
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
-export NCCL_SHM_DISABLE=0
+export NCCL_SHM_DISABLE=1
 # Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
 # For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES per actor —
 # that only happens for whole-GPU actors (num_gpus >= 1.0).  Without any
