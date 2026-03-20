@@ -187,30 +187,12 @@ def _default_smoke_overrides() -> list[str]:
         "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
         "actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1",
         "actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1",
-        "actor_rollout_ref.actor.use_kl_loss=False",
-        "actor_rollout_ref.actor.kl_loss_coef=0.0",
         "algorithm.use_kl_in_reward=False",
-        # veRL sets vLLM max_model_len = max_prompt_length + max_response_length.
-        # Qwen2.5-7B supports 128K; the limit comes from this config, not the model.
-        # 12288 + 1024 = 13312.  use_remove_padding=True keeps training fast.
         "data.max_prompt_length=12288",
         "data.max_response_length=1024",
-        # Disable sequence packing for the smoke test.
-        # use_remove_padding=True calls flash_attn_varlen_func (packed sequences),
-        # which the SDPA shim handles correctly but at padding overhead cost.
-        # For a quick validation run simplicity > throughput; the full training
-        # run uses use_remove_padding=True from the base config.
         "actor_rollout_ref.model.use_remove_padding=False",
-        "actor_rollout_ref.rollout.gpu_memory_utilization=0.25",
-        "actor_rollout_ref.actor.fsdp_config.optimizer_offload=True",
-        # enforce_eager=True disables CUDA graph capture and Triton JIT compilation,
-        # which can take 10–20 min on first inference with a 7B model.  Eager mode
-        # is slower per step but avoids the compilation delay that causes the smoke
-        # test rollout workers to time out before submitting any results.
+        "actor_rollout_ref.rollout.gpu_memory_utilization=0.30",
         "actor_rollout_ref.rollout.enforce_eager=True",
-        # param_offload=True for ref model is now the default in datamorpherconfig.yaml.
-        # Keep it explicit here so the smoke overrides are self-contained.
-        "actor_rollout_ref.ref.fsdp_config.param_offload=True",
         "trainer.total_epochs=1",
         "trainer.critic_warmup=999999",
         "trainer.save_freq=999999",

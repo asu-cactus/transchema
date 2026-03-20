@@ -118,7 +118,7 @@ CUMEM_PATCH
 fi
 
 unset ROCR_VISIBLE_DEVICES
-export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1}"
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
 export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv_current}"
@@ -184,8 +184,8 @@ export RAY_task_events_report_interval_ms=0
 # FSDP/vLLM WorkerDict actor before compute_log_prob can return results.
 #
 # NCCL_IB_DISABLE=1  : skip InfiniBand entirely; use socket-based transport.
-# NCCL_P2P_DISABLE=1 : disable GPU-to-GPU P2P (irrelevant for 1 GPU but
-#                       prevents additional UCX initialisation paths).
+# NCCL_P2P_DISABLE=1 : disable GPU-to-GPU P2P via UCX (forces NCCL to use
+#                       TCP for inter-GPU communication).
 # UCX_TLS=tcp,self   : in case any library still tries to init UCX, restrict
 #                       it to TCP loopback only.
 export NCCL_IB_DISABLE=1
