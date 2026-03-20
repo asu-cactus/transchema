@@ -154,9 +154,9 @@ python_args:
   trainer.default_local_dir: '${CHECKPOINT_DIR}'
 
   # Save a checkpoint every 2 epochs; validate every 2 epochs.
-  # To resume a stopped or crashed run, add this override on the command line:
-  #   trainer.resume_training=True
-  # veRL will automatically load the latest checkpoint from trainer.default_local_dir.
+  # resume_training=True tells veRL to load the latest checkpoint from
+  # trainer.default_local_dir automatically on startup.
   trainer.save_freq: 2
   trainer.test_freq: 2
   trainer.total_epochs: 5
+  trainer.resume_training: True
