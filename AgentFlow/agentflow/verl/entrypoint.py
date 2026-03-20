@@ -112,6 +112,21 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
+    # Diagnostic: log which GPU(s) this worker process sees at startup.
+    try:
+        import torch as _torch
+        _cvd = os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>")
+        _rank = os.environ.get("RANK", "?")
+        _local_rank = os.environ.get("LOCAL_RANK", "?")
+        _ngpu = _torch.cuda.device_count() if _torch.cuda.is_available() else 0
+        print(
+            f"[worker_hook] RANK={_rank} LOCAL_RANK={_local_rank} "
+            f"CUDA_VISIBLE_DEVICES={_cvd} visible_gpus={_ngpu}",
+            flush=True,
+        )
+    except Exception:
+        pass
+
     # Patch 2: guarantee flash_attn_shim is at the front of sys.path.
     #
     # The shim provides pure-PyTorch (SDPA) implementations of flash_attn's
@@ -204,7 +219,8 @@ def run_ppo(config) -> None:
 
         runtime_env_vars: dict = {
             "TOKENIZERS_PARALLELISM": "true",
-            "NCCL_DEBUG": "WARN",
+            "NCCL_DEBUG": "INFO",
+            "NCCL_DEBUG_SUBSYS": "INIT,TOPO,ENV",
             "VLLM_LOGGING_LEVEL": "WARN",
             **infra_env_vars,
             **agentflow_env_vars,
