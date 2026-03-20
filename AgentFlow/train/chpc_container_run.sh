@@ -264,7 +264,17 @@ print("  OK core imports")
 import torch
 print(f"  torch={torch.__version__}  cuda={torch.version.cuda}")
 if torch.cuda.is_available():
-    print(f"  device_capability={torch.cuda.get_device_capability()}")
+    device_count = torch.cuda.device_count()
+    print(f"  GPU count: {device_count}")
+    for i in range(device_count):
+        props = torch.cuda.get_device_properties(i)
+        print(f"    GPU {i}: {torch.cuda.get_device_name(i)} "
+              f"(compute={props.major}.{props.minor}, mem={props.total_memory/1024**3:.1f}GiB)")
+    if device_count < 2:
+        print("  WARNING: Only 1 GPU detected. Multi-GPU training requires 2+ GPUs.")
+        print("           Check your SLURM --gres=gpu request or node allocation.")
+else:
+    print("  WARNING: CUDA not available")
 
 print("  OK flash_attn.bert_padding import")
 PY
