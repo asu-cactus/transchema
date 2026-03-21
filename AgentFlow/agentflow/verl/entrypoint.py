@@ -112,50 +112,30 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
-    # Patch 1b: fix FSDP _broadcast_coalesced to use Gloo (CPU) instead of NCCL.
+    # Patch 1b: replace the distributed backend with Gloo-only.
     #
-    # veRL's colocated FSDP resource pool puts two workers in separate processes,
-    # each on a different physical GPU (cudaDev 0 and cudaDev 1).  NCCL 2.25
-    # treats each as a separate "node" (nNodes=2, localRanks=1) because they hold
-    # different GPU devices.  In nNodes=2 mode NCCL spawns proxy threads that call
-    # cudaSetDevice + cudaMemcpy for staging, but these threads fail with
-    # "Cuda failure 1 'invalid argument'" because CUDA contexts are per-thread and
-    # the proxy threads were not initialized with the correct device context.
+    # veRL's colocated FSDP resource pool places two workers in separate
+    # processes on different physical GPUs (cudaDev 0 and 1).  NCCL 2.25
+    # treats each as a separate node (nNodes=2, localRanks=1).  In that mode
+    # NCCL's proxy threads call cudaSetDevice + cudaMemcpy for CPU staging;
+    # those threads have uninitialised CUDA contexts → "Cuda failure 1
+    # 'invalid argument'" in enqueue.cc, crashing FSDP init every time.
     #
-    # The backend is "cpu:gloo,cuda:nccl".  FSDP's _sync_params_and_buffers calls
-    # dist._broadcast_coalesced, which routes GPU tensors through NCCL.  We patch
-    # it to move tensors to CPU first (routed through Gloo), then move back — this
-    # avoids NCCL entirely for the FSDP init broadcast.
+    # Patching dist._broadcast_coalesced at the Python level does not work
+    # because FSDP calls the underlying C++ binding directly.
+    #
+    # The correct fix: replace the backend string passed to init_process_group
+    # with "gloo" only.  Gloo handles both CPU and GPU tensors via TCP and
+    # does not use CUDA IPC or proxy threads.  For two GPUs on the same node
+    # communicating over loopback, Gloo is fully sufficient for FSDP.
     try:
-        import torch.distributed as _dist
-
-        _real_broadcast_coalesced = _dist._broadcast_coalesced
-
-        def _patched_broadcast_coalesced(process_group, tensors, buffer_size, src=0):
-            import torch as _t
-            _on_gpu = [t.is_cuda for t in tensors]
-            if any(_on_gpu):
-                _cpu_tensors = [t.cpu() if t.is_cuda else t for t in tensors]
-                _real_broadcast_coalesced(process_group, _cpu_tensors, buffer_size, src)
-                for t, cpu_t, was_gpu in zip(tensors, _cpu_tensors, _on_gpu):
-                    if was_gpu:
-                        t.copy_(cpu_t)
-            else:
-                _real_broadcast_coalesced(process_group, tensors, buffer_size, src)
-
-        _dist._broadcast_coalesced = _patched_broadcast_coalesced
-    except Exception:
-        pass
-
-    # Patch 1c: call set_device(RANK) just before init_process_group so that
-    # all CUDA allocations (model load, FSDP sharding) land on the correct GPU.
-    try:
-        import torch.distributed as _dist2
         import torch.distributed.distributed_c10d as _c10d
 
         _real_ipg = _c10d.init_process_group
 
         def _patched_init_process_group(*args, **kwargs):
+            # Pin device to LOCAL_RANK/RANK before init so CUDA allocations
+            # (model load, FSDP sharding) land on the correct GPU.
             _lr = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
             if _lr is not None and str(_lr).isdigit():
                 try:
@@ -163,10 +143,20 @@ def _worker_setup_hook() -> None:
                     _t.cuda.set_device(int(_lr))
                 except Exception:
                     pass
+
+            # Force Gloo backend: avoids NCCL's broken nNodes=2 proxy-thread
+            # path that fails with "Cuda failure 1 'invalid argument'" on this
+            # Apptainer + Blackwell setup.
+            kwargs["backend"] = "gloo"
+            # Remove any positional backend argument if passed positionally.
+            if args and isinstance(args[0], str):
+                args = args[1:]
+
             return _real_ipg(*args, **kwargs)
 
+        import torch.distributed as _dist_patch
         _c10d.init_process_group = _patched_init_process_group
-        _dist2.init_process_group = _patched_init_process_group
+        _dist_patch.init_process_group = _patched_init_process_group
     except Exception:
         pass
 
