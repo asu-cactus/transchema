@@ -63,8 +63,9 @@ class ChatVLLM(EngineLM, CachedEngine):
             import httpx
             # Set an explicit HTTP timeout so requests never hang indefinitely.
             # connect=10s: fail fast if the server is unreachable.
-            # read=120s: give vLLM enough time to generate a response on slow hardware.
-            _timeout = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
+            # read=300s: give vLLM enough time to generate on Blackwell GPUs
+            #   (first request after wake_up can be slow; allow 5 min max).
+            _timeout = httpx.Timeout(connect=10.0, read=300.0, write=10.0, pool=10.0)
             self.client = OpenAI(
                 base_url=self.base_url,
                 api_key=self.api_key,
@@ -75,8 +76,8 @@ class ChatVLLM(EngineLM, CachedEngine):
 
     @retry(
         retry=retry_if_exception_type(Exception),
-        wait=wait_exponential(multiplier=2, min=2, max=30),
-        stop=stop_after_attempt(10),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
         reraise=True,
     )
     def _generate_with_retry(self, content: Union[str, List[Union[str, bytes]]], system_prompt=None, **kwargs):
@@ -101,9 +102,8 @@ class ChatVLLM(EngineLM, CachedEngine):
         try:
             return self._generate_with_retry(content, system_prompt=system_prompt, **kwargs)
         except Exception as e:
-            print(f"Error in generate method: {str(e)}")
-            print(f"Error type: {type(e).__name__}")
-            print(f"Error details: {e.args}")
+            print(f"[ChatVLLM] generate FAILED after retries: {type(e).__name__}: {e}")
+            print(f"[ChatVLLM] base_url={self.base_url}  model={self.model_string}")
             return {
                 "error": type(e).__name__,
                 "message": str(e),
