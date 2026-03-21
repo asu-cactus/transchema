@@ -346,9 +346,21 @@ export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
 # re-enabled once Triton ships LLVM 19+ with sm_120 support.
 export TORCHDYNAMO_DISABLE=1
 
-# Note: VLLM_SLEEP_LEVEL is not a recognised env var in the vLLM version
-# shipped with NGC 25.02, so it has no effect here.  The cumem patch above
-# (torch.cuda.empty_cache before cuMemCreate) is the operative fix.
+# Force vLLM to use the v0 engine (not v1).
+#
+# vLLM v1's EngineCore runs in a spawned subprocess.  That subprocess queries
+# the actual free GPU memory at startup — and sees near-zero free memory
+# because the FSDP WorkerDict is already fully loaded (~65 GiB on GPU 0).
+# vLLM v1 then computes available_memory = min(free_mem, utilization×total)
+# and finds nothing left for even a single KV cache block → crashes.
+#
+# vLLM v0 uses CuMemAllocator (VMM) for both weights and KV cache.  VMM
+# reservations are virtual — they don't require physical GPU pages at
+# reservation time.  The physical pages are only faulted in when the pages
+# are first accessed (i.e. during wake_up(), after FSDP has offloaded to CPU
+# and freed the physical pages).  This is the intended flow for colocated
+# FSDP + vLLM training in veRL.
+export VLLM_USE_V1=0
 
 echo "Running container sanity imports ..."
 # shellcheck disable=SC2086

@@ -222,6 +222,7 @@ def run_ppo(config) -> None:
             "LD_LIBRARY_PATH",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
+            "VLLM_USE_V1",
         ]
         infra_env_vars = {k: os.environ[k] for k in _infra_keys if k in os.environ}
 
