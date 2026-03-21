@@ -219,6 +219,7 @@ def run_ppo(config) -> None:
             "NCCL_SOCKET_IFNAME",
             "NCCL_HOSTID",
             "UCX_TLS",
+            "LD_LIBRARY_PATH",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
         ]

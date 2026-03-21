@@ -80,6 +80,68 @@ fi
 export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
 
 # ---------------------------------------------------------------------------
+# NCCL upgrade: inject libnccl.so.2 >= 2.26.2 to fix Blackwell shared-memory
+# kernel launch failure.
+#
+# The container ships NCCL 2.25.1, which has a confirmed bug on Blackwell GPUs
+# (sm_120): NCCL's collective kernels request more shared memory than Blackwell
+# allows per CUDA function (82240 B requested vs 79856 B limit).  This causes
+# cuLaunchKernel to return CUDA_ERROR_INVALID_ARGUMENT (1), reported as:
+#   "NCCL INFO ncclMaxSharedMem 82240 exceeds device/fn maxSharedMem 79856"
+#   "enqueue.cc:NNNN NCCL WARN Cuda failure 1 'invalid argument'"
+# The bug was fixed in NCCL 2.26.2 (release notes: "Fixed shared memory usage
+# on recent Blackwell GPUs").
+#
+# We download the nvidia-nccl-cu12==2.26.2 PyPI wheel (a zip file) to scratch,
+# unpack only the lib/ directory, and prepend it to LD_LIBRARY_PATH.  Because
+# LD_LIBRARY_PATH is searched before the SIF's embedded library paths, the
+# dynamic linker will load our libnccl.so.2 (2.26.2) instead of the one in
+# /usr/local/lib (2.25.1).  The PyTorch NCCL binding is loaded at runtime via
+# dlopen so the newer library is picked up transparently.
+#
+# The wheel is ~250 MB (NCCL library with debug symbols); extraction is ~4 s.
+# The result is cached under _SIF_PKGS_DIR/nccl_lib; re-extracted only if
+# the marker file is absent (i.e. first run or after rm -rf _SIF_PKGS_DIR).
+# ---------------------------------------------------------------------------
+_NCCL_LIB_DIR="${_SIF_PKGS_DIR}/nccl_lib"
+_NCCL_MARKER="${_NCCL_LIB_DIR}/.nccl_extracted"
+_NCCL_WHEEL_URL="https://files.pythonhosted.org/packages/67/ca/f42388aed0fddd64ade7493dbba36e1f534d4e6fdbdd355c6a90030ae028/nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
+_NCCL_WHEEL_CACHE="${_SIF_PKGS_DIR}/nvidia_nccl_cu12-2.26.2.whl"
+
+if [[ ! -f "${_NCCL_MARKER}" ]]; then
+  echo "NCCL 2.25.1 (container) has a Blackwell shared-memory bug fixed in 2.26.2."
+  echo "Downloading nvidia-nccl-cu12==2.26.2 wheel (~250 MB) to scratch ..."
+  mkdir -p "${_NCCL_LIB_DIR}"
+  if command -v curl &>/dev/null; then
+    curl -fsSL -o "${_NCCL_WHEEL_CACHE}" "${_NCCL_WHEEL_URL}"
+  else
+    wget -q -O "${_NCCL_WHEEL_CACHE}" "${_NCCL_WHEEL_URL}"
+  fi
+  echo "Extracting libnccl.so from wheel ..."
+  # Wheels are zip archives; extract only the nvidia/nccl/lib/ subtree.
+  unzip -q -o "${_NCCL_WHEEL_CACHE}" "nvidia/nccl/lib/*" -d "${_NCCL_LIB_DIR}"
+  # Create top-level symlinks so LD_LIBRARY_PATH just needs one entry.
+  # Use a subshell so the glob expands correctly.
+  (
+    cd "${_NCCL_LIB_DIR}/nvidia/nccl/lib"
+    for f in libnccl.so.2.*; do
+      [[ -f "$f" ]] || continue
+      ln -sf "${_NCCL_LIB_DIR}/nvidia/nccl/lib/$f" "${_NCCL_LIB_DIR}/libnccl.so.2"
+      ln -sf "${_NCCL_LIB_DIR}/libnccl.so.2"        "${_NCCL_LIB_DIR}/libnccl.so"
+      echo "  Linked libnccl.so.2 -> $f"
+      break
+    done
+  )
+  rm -f "${_NCCL_WHEEL_CACHE}"
+  touch "${_NCCL_MARKER}"
+  echo "  Done. NCCL 2.26.2 cached at ${_NCCL_LIB_DIR}"
+fi
+# Prepend the scratch NCCL lib ahead of the container's LD_LIBRARY_PATH.
+# The dynamic linker resolves the first match; our 2.26.2 libnccl.so.2 wins.
+export LD_LIBRARY_PATH="${_NCCL_LIB_DIR}:${_NCCL_LIB_DIR}/nvidia/nccl/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+echo "Injected NCCL 2.26.2 into LD_LIBRARY_PATH: ${_NCCL_LIB_DIR}"
+
+# ---------------------------------------------------------------------------
 # Patch vLLM cumem_allocator: flush PyTorch cache before wake_up.
 #
 # FSDPVLLMShardingManager.__enter__ collects the FSDP state dict before
