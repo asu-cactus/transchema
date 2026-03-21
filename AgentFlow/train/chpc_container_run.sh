@@ -136,10 +136,38 @@ if [[ ! -f "${_NCCL_MARKER}" ]]; then
   touch "${_NCCL_MARKER}"
   echo "  Done. NCCL 2.26.2 cached at ${_NCCL_LIB_DIR}"
 fi
-# Prepend the scratch NCCL lib ahead of the container's LD_LIBRARY_PATH.
-# The dynamic linker resolves the first match; our 2.26.2 libnccl.so.2 wins.
+# Prepend the scratch NCCL lib to LD_LIBRARY_PATH as a belt-and-suspenders
+# measure, but the primary injection is done via bind-mounts below (see the
+# --bind lines in the apptainer exec calls): we mount the 2.26.2 .so file
+# directly over the two paths PyTorch's linker resolves libnccl.so.2 from
+# inside the container, so the version in LD_LIBRARY_PATH never even matters.
 export LD_LIBRARY_PATH="${_NCCL_LIB_DIR}:${_NCCL_LIB_DIR}/nvidia/nccl/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 echo "Injected NCCL 2.26.2 into LD_LIBRARY_PATH: ${_NCCL_LIB_DIR}"
+
+# Resolve the actual versioned .so file (not the symlink) for bind-mounting.
+# Apptainer bind-mounts a file over a file; symlinks as source don't reliably
+# override because --nv re-injects the container's own library paths afterward.
+# Binding the versioned file directly over the container's fixed paths ensures
+# dlopen("libnccl.so.2") from within torch/lib/ always loads 2.26.2.
+_NCCL_SO=""
+if [[ -d "${_NCCL_LIB_DIR}/nvidia/nccl/lib" ]]; then
+  for _f in "${_NCCL_LIB_DIR}/nvidia/nccl/lib"/libnccl.so.2.*; do
+    [[ -f "${_f}" ]] && _NCCL_SO="${_f}" && break
+  done
+fi
+if [[ -z "${_NCCL_SO}" ]]; then
+  echo "WARNING: could not find versioned libnccl.so.2.* in ${_NCCL_LIB_DIR}/nvidia/nccl/lib" >&2
+  echo "         NCCL version injection may not take effect." >&2
+  _NCCL_BIND_ARGS=""
+else
+  echo "NCCL bind-mount source: ${_NCCL_SO}"
+  # Bind the patched .so over every path the container linker might load it from:
+  #   1. PyTorch's bundled NCCL (what torch.distributed actually dlopen's)
+  #   2. The system lib path (fallback if torch/lib/ is not in RPATH)
+  _NCCL_BIND_ARGS="\
+--bind ${_NCCL_SO}:/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2 \
+--bind ${_NCCL_SO}:/usr/local/lib/libnccl.so.2"
+fi
 
 # ---------------------------------------------------------------------------
 # Patch vLLM cumem_allocator: flush PyTorch cache before wake_up.
@@ -345,9 +373,11 @@ export TORCHDYNAMO_DISABLE=1
 # (torch.cuda.empty_cache before cuMemCreate) is the operative fix.
 
 echo "Running container sanity imports ..."
+# shellcheck disable=SC2086
 apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+  ${_NCCL_BIND_ARGS} \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
   "${PYTHON_IN_CONTAINER}" - <<'PY'
@@ -400,11 +430,31 @@ else:
     print("  WARNING: CUDA not available")
 
 print("  OK flash_attn.bert_padding import")
+
+import ctypes, os
+_TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
+try:
+    _lib = ctypes.CDLL(_TORCH_NCCL)
+    _ver = ctypes.c_int(0)
+    _lib.ncclGetVersion(ctypes.byref(_ver))
+    _v = _ver.value
+    _vs = f"{_v // 10000}.{(_v % 10000) // 100}.{_v % 100}"
+    print(f"  NCCL version in torch/lib: {_vs}")
+    if _v < 22602:
+        print(f"  ERROR: NCCL {_vs} < 2.26.2 — Blackwell shared-memory bug not fixed!")
+        print( "         Check that the NCCL bind-mount succeeded.")
+        import sys; sys.exit(4)
+    else:
+        print(f"  OK NCCL >= 2.26.2 confirmed")
+except Exception as e:
+    print(f"  WARNING: could not query NCCL version from {_TORCH_NCCL}: {e}")
 PY
 
+# shellcheck disable=SC2086
 exec apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+  ${_NCCL_BIND_ARGS} \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
   "${PYTHON_IN_CONTAINER}" train/train_datamorpheragent.py --skip_dep_check "$@"
