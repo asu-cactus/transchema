@@ -206,18 +206,24 @@ export RAY_task_events_report_interval_ms=0
 # NCCL_P2P_DISABLE=1         : disable direct GPU-to-GPU P2P/IPC memory copies.
 #                               The Blackwell PCIe bridge bus-ID collision means
 #                               cudaIpcGetMemHandle fails with "invalid argument"
-#                               on this node.  P2P is disabled so NCCL uses SHM
-#                               or Socket instead.
+#                               on this node.  P2P is disabled so NCCL uses SHM.
 # NCCL_SHM_DISABLE is intentionally NOT set.  SHM (POSIX shared-memory staging)
 #                               is the correct intra-node transport when P2P is
 #                               off.  With SHM available NCCL keeps nNodes=1 and
-#                               localRanks=2 — no proxy threads are spawned.
+#                               localRanks=2 — no proxy threads for topology.
 #                               Setting NCCL_SHM_DISABLE=1 forces nNodes=2 which
-#                               activates proxy threads; those threads cannot
-#                               create CUDA contexts inside Apptainer, producing
-#                               "proxy.cc:859 WARN Failed to create CUDA context"
-#                               and "Cuda failure 1 'invalid argument'".
-# NCCL_SOCKET_IFNAME=lo        : force all ranks to use the loopback interface
+#                               activates proxy threads that cannot create CUDA
+#                               contexts inside Apptainer.
+# NCCL_DIRECT_DISABLE=1      : within the SHM transport, NCCL's "direct" mode
+#                               attempts cudaMemcpy across process CUDA contexts
+#                               (the "SHM/direct/direct" channel in NCCL INFO).
+#                               Apptainer does not allow cross-process direct GPU
+#                               memory access, so cudaMemcpy fails with
+#                               "Cuda failure 1 'invalid argument'" in enqueue.cc.
+#                               NCCL_DIRECT_DISABLE=1 forces CPU-side staging
+#                               through /dev/shm instead of direct GPU copies,
+#                               which works in any container environment.
+# NCCL_SOCKET_IFNAME=lo      : force all ranks to use the loopback interface
 #                               for bootstrap and data.  Without this, different
 #                               worker processes may resolve to different network
 #                               interfaces causing NCCL to count distinct IPs as
@@ -227,6 +233,7 @@ export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
+export NCCL_DIRECT_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
