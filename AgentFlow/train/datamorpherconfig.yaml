@@ -55,7 +55,8 @@ env:
   OUTPUT_TYPE: "final"
 
   # Timeout per rollout in seconds (pipeline code gen + execution can take ~30-60 s)
-  AGENT_MAX_TIMEOUT: 500
+  # Keep this low during training so slow/hanging trajectories don't stall a step.
+  AGENT_MAX_TIMEOUT: 120
 
   # Paths to store checkpoints and rollout logs. Use scratch space if available.
   # We use env vars so the launch script can easily redirect these.
@@ -96,8 +97,11 @@ python_args:
   data.max_response_length: 1024
   data.truncation: 'truncate'
 
-  # Run a validation pass before the first training step to get a baseline score
-  trainer.val_before_train: True
+  # Run a validation pass before the first training step to get a baseline score.
+  # Disabled: the pre-train validation loads vLLM and runs full rollouts before
+  # any gradient step, which can stall for hours on Blackwell GPUs.  Set to
+  # True once training is confirmed stable end-to-end.
+  trainer.val_before_train: False
 
   # Optimiser
   actor_rollout_ref.actor.optim.lr: 1e-6
