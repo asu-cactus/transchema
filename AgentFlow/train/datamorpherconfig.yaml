@@ -147,10 +147,18 @@ python_args:
 
   # vLLM rollout server
   actor_rollout_ref.rollout.name: 'vllm'
-  # With param+optimizer offload enabled, the GPU is fully available to
-  # vLLM during rollout.  0.85 gives ~81 GiB for weights + KV cache on
-  # each 95 GiB GPU, providing ample KV cache for long DataMorpher prompts.
-  actor_rollout_ref.rollout.gpu_memory_utilization: 0.85
+  # gpu_memory_utilization governs vLLM's KV-cache allocation at __init__
+  # time — before any sleep/wake_up cycle has run.  At that point the FSDP
+  # WorkerDict is fully loaded on GPU (~65 GiB on GPU 0).  With 95 GiB
+  # total, only ~30 GiB is free.  Setting utilization to 0.25 tells vLLM to
+  # reserve 0.25 × 95 ≈ 24 GiB total: ~15 GiB for Qwen2.5-7B weights
+  # + ~9 GiB for KV cache.  This fits comfortably in the 30 GiB headroom.
+  #
+  # After the first wake_up(), FSDPVLLMShardingManager has offloaded FSDP
+  # params+optimizer to CPU (param_offload=True), so the full GPU is free
+  # for vLLM inference regardless of this setting — the utilization cap only
+  # matters at initialization.
+  actor_rollout_ref.rollout.gpu_memory_utilization: 0.25
 
   # Ref-policy settings (only used when use_kl_loss=True above).
   # param_offload=True on the ref policy so it doesn't compete for GPU
