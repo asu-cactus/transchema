@@ -161,12 +161,34 @@ if [[ -z "${_NCCL_SO}" ]]; then
   _NCCL_BIND_ARGS=""
 else
   echo "NCCL bind-mount source: ${_NCCL_SO}"
-  # Bind the patched .so over every path the container linker might load it from:
-  #   1. PyTorch's bundled NCCL (what torch.distributed actually dlopen's)
-  #   2. The system lib path (fallback if torch/lib/ is not in RPATH)
-  _NCCL_BIND_ARGS="\
---bind ${_NCCL_SO}:/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2 \
---bind ${_NCCL_SO}:/usr/local/lib/libnccl.so.2"
+  # Bind the patched .so over every path libtorch_cuda.so's RPATH resolves
+  # libnccl.so.2 from inside the NGC 25.02 container.
+  # In the NGC container libtorch_cuda.so's RPATH includes:
+  #   /usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib   (primary)
+  #   /usr/local/lib/python3.12/dist-packages/torch/lib         (fallback)
+  #   /usr/local/lib                                             (system fallback)
+  # We must bind over all three so that whichever RPATH entry is checked first
+  # the dynamic linker finds 2.26.2 rather than 2.25.1.
+  # Only bind paths that actually exist as files inside the SIF (Apptainer
+  # refuses to bind-mount over non-existent container paths).
+  _NCCL_CANDIDATES=(
+    "/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
+    "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
+    "/usr/local/lib/libnccl.so.2"
+  )
+  _NCCL_BIND_ARGS=""
+  for _cand in "${_NCCL_CANDIDATES[@]}"; do
+    # Test if the path exists inside the SIF by running a quick apptainer exec.
+    if apptainer exec "${IMAGE}" test -e "${_cand}" 2>/dev/null; then
+      _NCCL_BIND_ARGS="${_NCCL_BIND_ARGS} --bind ${_NCCL_SO}:${_cand}"
+      echo "  Will bind-mount over: ${_cand}"
+    else
+      echo "  Skipping (not in container): ${_cand}"
+    fi
+  done
+  if [[ -z "${_NCCL_BIND_ARGS}" ]]; then
+    echo "WARNING: no NCCL target paths found in container; injection will not work." >&2
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -432,17 +454,19 @@ else:
 print("  OK flash_attn.bert_padding import")
 
 import ctypes, os
-_TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
+_TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
+if not os.path.exists(_TORCH_NCCL):
+    _TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
 try:
     _lib = ctypes.CDLL(_TORCH_NCCL)
     _ver = ctypes.c_int(0)
     _lib.ncclGetVersion(ctypes.byref(_ver))
     _v = _ver.value
     _vs = f"{_v // 10000}.{(_v % 10000) // 100}.{_v % 100}"
-    print(f"  NCCL version in torch/lib: {_vs}")
+    print(f"  NCCL version at {_TORCH_NCCL}: {_vs}")
     if _v < 22602:
         print(f"  ERROR: NCCL {_vs} < 2.26.2 — Blackwell shared-memory bug not fixed!")
-        print( "         Check that the NCCL bind-mount succeeded.")
+        print( "         Check that the NCCL bind-mounts succeeded.")
         import sys; sys.exit(4)
     else:
         print(f"  OK NCCL >= 2.26.2 confirmed")
