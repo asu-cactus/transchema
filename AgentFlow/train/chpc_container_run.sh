@@ -51,9 +51,6 @@ if [[ ! -f "${_SIF_PKGS_MARKER}" ]]; then
 elif [[ "${IMAGE}" -nt "${_SIF_PKGS_MARKER}" ]]; then
   echo "SIF image is newer than cached packages; re-extracting..."
   _need_extract=true
-elif [[ ! -d "${_SIF_PKGS_DIR}/verl" ]]; then
-  echo "verl not found in cached packages; re-extracting to include it..."
-  _need_extract=true
 fi
 
 if [[ "${_need_extract}" == "true" ]]; then
@@ -74,11 +71,6 @@ if [[ "${_need_extract}" == "true" ]]; then
       cp -rL \"\${SP}/vllm\"   \"\${DEST}/\"
       cp -rL \"\${SP}/openai\" \"\${DEST}/\"
       for d in \"\${SP}\"/vllm-*.dist-info \"\${SP}\"/openai-*.dist-info; do
-        [ -d \"\${d}\" ] && cp -rL \"\${d}\" \"\${DEST}/\"
-      done
-      # Copy verl so we can patch fsdp_workers.py on writable scratch storage.
-      cp -rL \"\${SP}/verl\"  \"\${DEST}/\"
-      for d in \"\${SP}\"/verl-*.dist-info; do
         [ -d \"\${d}\" ] && cp -rL \"\${d}\" \"\${DEST}/\"
       done
     "
@@ -123,49 +115,6 @@ def _patched_cumem_wake_up(self, tags=None):
 CuMemAllocator.wake_up = _patched_cumem_wake_up
 CUMEM_PATCH
   echo "  Patched ${_CUMEM_PY}: torch.cuda.empty_cache() added before cuMemCreate."
-fi
-
-# ---------------------------------------------------------------------------
-# Patch verl/utils/device.py: force get_nccl_backend() to return "gloo".
-#
-# Root cause: NCCL 2.25 inside Apptainer assigns nNodes=2 / localRanks=1
-# to each Ray worker even though they share the same physical machine.
-# In multi-node mode NCCL spawns proxy threads that call cudaSetDevice +
-# cudaMemcpy into CPU staging buffers.  Those threads start without a CUDA
-# context and fail with "Cuda failure 1 'invalid argument'" in enqueue.cc.
-#
-# Fix: make verl's get_nccl_backend() return "gloo" instead of "nccl".
-# This propagates automatically to every init_process_group call in verl
-# since fsdp_workers.py calls: backend=f"cpu:gloo,{device}:{get_nccl_backend()}"
-# With gloo returned, the combined string becomes "cpu:gloo,cuda:gloo", and
-# PyTorch selects Gloo for both CPU and CUDA tensors — no NCCL proxy threads.
-#
-# Patching device.py (not fsdp_workers.py) is the correct level: it's the
-# single authoritative source of the backend name for all of verl.
-#
-# We bind-mount this patched file directly over the container's immutable
-# copy, so every worker process — regardless of when it was spawned — sees
-# the Gloo-returning version.  No PYTHONPATH tricks needed.
-# ---------------------------------------------------------------------------
-_DEVICE_PY="${_SIF_PKGS_DIR}/verl/utils/device.py"
-if [[ -f "${_DEVICE_PY}" ]] && ! grep -q "PATCHED_GLOO_BACKEND" "${_DEVICE_PY}"; then
-  # Replace the get_nccl_backend function body to return "gloo".
-  python3 - "${_DEVICE_PY}" << 'DEVICE_PATCH_PY'
-import sys, re
-path = sys.argv[1]
-src = open(path).read()
-# Replace the return "nccl" inside get_nccl_backend with return "gloo"
-patched = re.sub(
-    r'(def get_nccl_backend\(\)[^#]*?# default to nccl\n\s+return\s+)"nccl"',
-    r'\1"gloo"  # PATCHED_GLOO_BACKEND: forced gloo for Apptainer/NCCL proxy-thread workaround',
-    src, flags=re.DOTALL
-)
-if patched == src:
-    # fallback: simpler replacement
-    patched = src.replace('return "nccl"', 'return "gloo"  # PATCHED_GLOO_BACKEND')
-open(path, 'w').write(patched)
-print(f"Patched {path}: get_nccl_backend() now returns 'gloo'")
-DEVICE_PATCH_PY
 fi
 
 unset ROCR_VISIBLE_DEVICES
@@ -281,6 +230,20 @@ export NCCL_SOCKET_IFNAME=lo
 # Setting NCCL_HOSTID to a fixed string forces all ranks on this job to share
 # the same host identity → nNodes=1 → intra-node transport → correct operation.
 export NCCL_HOSTID=datamorphernode0
+# NCCL_CREATE_THREAD_CONTEXT=1: force NCCL proxy threads to create their own
+# CUDA context instead of inheriting the parent thread's context.
+#
+# Root cause of "Cuda failure 1 'invalid argument'" in enqueue.cc / proxy.cc:
+# verl's Ray resource pool runs each FSDP worker as a separate OS process with
+# one GPU each (process 0 → GPU 0, process 1 → GPU 1).  NCCL 2.25 identifies
+# this topology as nNodes=2 / localRanks=1 (each process is its own "node")
+# and falls back to the network (Socket) transport path.  Socket transport
+# uses proxy progress threads that call cudaMemcpy to stage data through CPU
+# buffers.  Those threads inherit no CUDA context from the parent process,
+# so cudaMemcpy fails with cudaErrorInvalidValue (error 1).
+# NCCL_CREATE_THREAD_CONTEXT=1 tells each proxy thread to call cudaSetDevice
+# and cuCtxCreate before any CUDA operations, giving it a valid context.
+export NCCL_CREATE_THREAD_CONTEXT=1
 # Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
 # For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES — that only
 # happens for whole-GPU actors.  We do NOT set CUDA_VISIBLE_DEVICES either:
@@ -370,19 +333,9 @@ else:
 print("  OK flash_attn.bert_padding import")
 PY
 
-if [[ ! -f "${_DEVICE_PY}" ]]; then
-  echo "ERROR: Patched verl/utils/device.py not found at ${_DEVICE_PY}" >&2
-  echo "       Delete ${_SIF_PKGS_DIR} and re-run to force re-extraction." >&2
-  exit 1
-fi
-echo "Bind-mounting patched verl/utils/device.py over container version."
-echo "  Host:      ${_DEVICE_PY}"
-echo "  Container: /usr/local/lib/python3.12/dist-packages/verl/utils/device.py"
-
 exec apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
-  --bind "${_DEVICE_PY}:/usr/local/lib/python3.12/dist-packages/verl/utils/device.py" \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
   "${PYTHON_IN_CONTAINER}" train/train_datamorpheragent.py --skip_dep_check "$@"
