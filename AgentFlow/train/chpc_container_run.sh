@@ -51,6 +51,9 @@ if [[ ! -f "${_SIF_PKGS_MARKER}" ]]; then
 elif [[ "${IMAGE}" -nt "${_SIF_PKGS_MARKER}" ]]; then
   echo "SIF image is newer than cached packages; re-extracting..."
   _need_extract=true
+elif [[ ! -d "${_SIF_PKGS_DIR}/verl" ]]; then
+  echo "verl not found in cached packages; re-extracting to include it..."
+  _need_extract=true
 fi
 
 if [[ "${_need_extract}" == "true" ]]; then
@@ -71,6 +74,11 @@ if [[ "${_need_extract}" == "true" ]]; then
       cp -rL \"\${SP}/vllm\"   \"\${DEST}/\"
       cp -rL \"\${SP}/openai\" \"\${DEST}/\"
       for d in \"\${SP}\"/vllm-*.dist-info \"\${SP}\"/openai-*.dist-info; do
+        [ -d \"\${d}\" ] && cp -rL \"\${d}\" \"\${DEST}/\"
+      done
+      # Copy verl so we can patch fsdp_workers.py on writable scratch storage.
+      cp -rL \"\${SP}/verl\"  \"\${DEST}/\"
+      for d in \"\${SP}\"/verl-*.dist-info; do
         [ -d \"\${d}\" ] && cp -rL \"\${d}\" \"\${DEST}/\"
       done
     "
@@ -115,6 +123,65 @@ def _patched_cumem_wake_up(self, tags=None):
 CuMemAllocator.wake_up = _patched_cumem_wake_up
 CUMEM_PATCH
   echo "  Patched ${_CUMEM_PY}: torch.cuda.empty_cache() added before cuMemCreate."
+fi
+
+# ---------------------------------------------------------------------------
+# Patch verl fsdp_workers: force Gloo backend for init_process_group.
+#
+# Root cause: NCCL 2.25 inside Apptainer assigns nNodes=2 / localRanks=1
+# to each Ray worker even though they share the same physical machine.
+# In "multi-node" mode NCCL spawns proxy threads that call cudaSetDevice +
+# cudaMemcpy into CPU staging buffers.  Those threads start without a CUDA
+# context and fail with "Cuda failure 1 'invalid argument'" in enqueue.cc.
+#
+# Fix: intercept init_process_group in fsdp_workers.py and force backend=gloo.
+# Gloo stages all tensors through host memory over TCP — no proxy threads,
+# no CUDA IPC, fully functional for FSDP weight sync and grad reduction.
+#
+# We also call torch.cuda.set_device(rank) before init to pin each worker's
+# CUDA context to its assigned GPU.
+#
+# The patch is applied here (not in the entrypoint hook) because:
+#   1. Ray's worker_process_setup_hook only fires for *newly spawned* workers.
+#      Workers pre-spawned by `ray start --head` never receive the hook.
+#   2. Patching the file on disk (in the writable _SIF_PKGS_DIR copy) guarantees
+#      every import of verl.workers.fsdp_workers sees the patched version,
+#      regardless of when or how the worker process started.
+# ---------------------------------------------------------------------------
+_FSDP_WORKERS_PY="${_SIF_PKGS_DIR}/verl/workers/fsdp_workers.py"
+if [[ -f "${_FSDP_WORKERS_PY}" ]] && ! grep -q "PATCHED_GLOO_BACKEND" "${_FSDP_WORKERS_PY}"; then
+  cat >> "${_FSDP_WORKERS_PY}" << 'FSDP_PATCH'
+
+# PATCHED_GLOO_BACKEND
+# Force torch.distributed.init_process_group to use the Gloo backend.
+# Applied by chpc_container_run.sh to work around NCCL proxy-thread failures
+# inside Apptainer containers where nNodes=2/localRanks=1 causes CUDA errors.
+import torch.distributed as _td
+import torch.distributed.distributed_c10d as _c10d
+if not getattr(_c10d, "_datamorpher_gloo_patch_applied", False):
+    _orig_ipg = _c10d.init_process_group
+    def _gloo_ipg(*_a, **_kw):
+        import os as _os
+        _lr = _os.environ.get("LOCAL_RANK") or _os.environ.get("RANK") or str(_kw.get("rank", ""))
+        if _lr and str(_lr).isdigit():
+            try:
+                import torch as _t
+                _t.cuda.set_device(int(_lr))
+                print(f"[gloo_patch] set_device({int(_lr)}) rank={_kw.get('rank','?')}", flush=True)
+            except Exception:
+                pass
+        if _a and isinstance(_a[0], str):
+            _a = _a[1:]
+        _orig_be = _kw.get("backend", "<none>")
+        _kw["backend"] = "gloo"
+        print(f"[gloo_patch] init_process_group: {_orig_be} -> gloo", flush=True)
+        return _orig_ipg(*_a, **_kw)
+    _c10d.init_process_group = _gloo_ipg
+    _td.init_process_group = _gloo_ipg
+    _c10d._datamorpher_gloo_patch_applied = True
+    print("[gloo_patch] Gloo backend patch installed in fsdp_workers", flush=True)
+FSDP_PATCH
+  echo "  Patched ${_FSDP_WORKERS_PY}: init_process_group forced to gloo backend."
 fi
 
 unset ROCR_VISIBLE_DEVICES
