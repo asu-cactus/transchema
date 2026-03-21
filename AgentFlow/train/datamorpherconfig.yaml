@@ -90,10 +90,22 @@ python_args:
   actor_rollout_ref.model.path: '${BASE_MODEL}'
 
   # veRL sets vLLM max_model_len = max_prompt_length + max_response_length.
-  # Qwen2.5-7B supports 128K; the ceiling is this config, not the model or GPU.
-  # 12288 + 1024 = 13312.  use_remove_padding=True keeps training fast.
-  data.max_prompt_length: 12288
-  # Generated pipelines are usually <512 tokens in smoke/early training.
+  # Qwen2.5-7B supports 128K; the ceiling here is GPU memory, not the model.
+  #
+  # Memory budget at vLLM init time (gpu_memory_utilization=0.25, 95 GiB GPU):
+  #   Total reserved : 0.25 × 95 = 23.75 GiB
+  #   Qwen2.5-7B weights (bf16) : ~14.5 GiB
+  #   Available for KV cache : ~9.25 GiB
+  #   KV block size (32 layers, 8 KV heads, 128 dim, bf16, block=16 tokens):
+  #     32 × 2 × 8 × 128 × 2B × 16 = 2 MiB/block → ~4,600 blocks (~73K tokens)
+  #   max_model_len=5120 → worst-case 320 blocks/seq × 4 seqs = 1,280 blocks ✓
+  #
+  # DataMorpher prompts include a table schema + task description.  4096 tokens
+  # is sufficient for all training examples; the FSDP training sequence length
+  # (max_prompt_length + max_response_length) uses the same value.
+  # Increase to 8192 or 12288 if any prompts are being truncated (check the
+  # data.truncation='truncate' warning in training logs).
+  data.max_prompt_length: 4096
   data.max_response_length: 1024
   data.truncation: 'truncate'
 
