@@ -112,53 +112,13 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
-    # Patch 1b: replace the distributed backend with Gloo-only.
+    # Patch 1b: force Gloo-only distributed backend via environment variable.
     #
-    # veRL's colocated FSDP resource pool places two workers in separate
-    # processes on different physical GPUs (cudaDev 0 and 1).  NCCL 2.25
-    # treats each as a separate node (nNodes=2, localRanks=1).  In that mode
-    # NCCL's proxy threads call cudaSetDevice + cudaMemcpy for CPU staging;
-    # those threads have uninitialised CUDA contexts → "Cuda failure 1
-    # 'invalid argument'" in enqueue.cc, crashing FSDP init every time.
-    #
-    # Patching dist._broadcast_coalesced at the Python level does not work
-    # because FSDP calls the underlying C++ binding directly.
-    #
-    # The correct fix: replace the backend string passed to init_process_group
-    # with "gloo" only.  Gloo handles both CPU and GPU tensors via TCP and
-    # does not use CUDA IPC or proxy threads.  For two GPUs on the same node
-    # communicating over loopback, Gloo is fully sufficient for FSDP.
-    try:
-        import torch.distributed.distributed_c10d as _c10d
-
-        _real_ipg = _c10d.init_process_group
-
-        def _patched_init_process_group(*args, **kwargs):
-            # Pin device to LOCAL_RANK/RANK before init so CUDA allocations
-            # (model load, FSDP sharding) land on the correct GPU.
-            _lr = os.environ.get("LOCAL_RANK") or os.environ.get("RANK")
-            if _lr is not None and str(_lr).isdigit():
-                try:
-                    import torch as _t
-                    _t.cuda.set_device(int(_lr))
-                except Exception:
-                    pass
-
-            # Force Gloo backend: avoids NCCL's broken nNodes=2 proxy-thread
-            # path that fails with "Cuda failure 1 'invalid argument'" on this
-            # Apptainer + Blackwell setup.
-            kwargs["backend"] = "gloo"
-            # Remove any positional backend argument if passed positionally.
-            if args and isinstance(args[0], str):
-                args = args[1:]
-
-            return _real_ipg(*args, **kwargs)
-
-        import torch.distributed as _dist_patch
-        _c10d.init_process_group = _patched_init_process_group
-        _dist_patch.init_process_group = _patched_init_process_group
-    except Exception:
-        pass
+    # The actual Gloo patch is installed by datamorphergloopatch.py which is
+    # executed at Python startup via gloo_patch.pth (in AgentFlow/train/).
+    # That module patches torch.distributed.init_process_group before any
+    # user code runs, replacing the backend with "gloo" and calling
+    # set_device(LOCAL_RANK) first.  Nothing more needed here.
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -278,6 +238,15 @@ def run_ppo(config) -> None:
             **agentflow_env_vars,
         }
 
+        # Always include AgentFlow/train in PYTHONPATH for Ray workers so that
+        # gloo_patch.pth is found by Python's site machinery and
+        # datamorphergloopatch.py runs at interpreter startup in every worker.
+        train_dir = str(Path(__file__).parent.parent.parent / "train")
+        existing = os.environ.get("PYTHONPATH", "")
+        runtime_env_vars["PYTHONPATH"] = (
+            f"{train_dir}:{existing}" if existing else train_dir
+        )
+
         if _should_use_flash_attn_shim():
             # Prepend the SDPA-backed flash_attn compatibility shim to PYTHONPATH
             # so every Ray actor uses it in place of the system flash_attn package.
@@ -287,9 +256,9 @@ def run_ppo(config) -> None:
                 Path(__file__).parent.parent.parent  # AgentFlow/
                 / "train" / "flash_attn_shim"
             )
-            existing = os.environ.get("PYTHONPATH", "")
+            existing_pp = runtime_env_vars.get("PYTHONPATH", "")
             runtime_env_vars["PYTHONPATH"] = (
-                f"{shim_dir}:{existing}" if existing else shim_dir
+                f"{shim_dir}:{existing_pp}" if existing_pp else shim_dir
             )
             print(
                 f"[entrypoint] GPU sm_120 detected without native flash_attn build.\n"

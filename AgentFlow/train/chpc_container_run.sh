@@ -127,7 +127,9 @@ unset ROCR_VISIBLE_DEVICES
 # sub-assign from whatever is visible.  We just don't override it here.
 unset CUDA_VISIBLE_DEVICES 2>/dev/null || true
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
-export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+# Include AgentFlow/train/ so that gloo_patch.pth is on sys.path and Python's
+# site machinery executes datamorphergloopatch.py at startup in every process.
+export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}:${AGENTFLOW_ROOT}/train${PYTHONPATH:+:${PYTHONPATH}}"
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv_current}"
 LEGACY_RUNTIME_VENV="/scratch/general/vast/u1592362/AgentFlow_runtime_venv"
 PYTHON_IN_CONTAINER="python"
