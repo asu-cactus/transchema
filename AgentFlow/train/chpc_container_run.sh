@@ -214,15 +214,22 @@ export RAY_task_events_report_interval_ms=0
 #                               Setting NCCL_SHM_DISABLE=1 forces nNodes=2 which
 #                               activates proxy threads that cannot create CUDA
 #                               contexts inside Apptainer.
-# NCCL_DIRECT_DISABLE=1      : within the SHM transport, NCCL's "direct" mode
-#                               attempts cudaMemcpy across process CUDA contexts
-#                               (the "SHM/direct/direct" channel in NCCL INFO).
-#                               Apptainer does not allow cross-process direct GPU
-#                               memory access, so cudaMemcpy fails with
-#                               "Cuda failure 1 'invalid argument'" in enqueue.cc.
-#                               NCCL_DIRECT_DISABLE=1 forces CPU-side staging
-#                               through /dev/shm instead of direct GPU copies,
-#                               which works in any container environment.
+# NCCL_CUMEM_HOST_ENABLE=0   : NCCL 2.23+ (driver ≥ 12.6) defaults to using the
+#                               cuMem VMM API (cuMemCreate / cuMemMap) to allocate
+#                               the SHM host-side staging buffer.  Within the SHM
+#                               transport those VMM handles are shared across Ray
+#                               worker processes; the receiving process calls
+#                               cuMemImportFromShareableHandle then cuMemMap to map
+#                               the peer buffer into its own address space.
+#                               Apptainer restricts cross-process CUDA VMM, so that
+#                               cuMemMap returns CUDA_ERROR_INVALID_ARGUMENT (1),
+#                               which propagates up as
+#                               "Cuda failure 1 'invalid argument'" in enqueue.cc
+#                               (channel shows "SHM/direct/direct" in NCCL INFO).
+#                               Setting NCCL_CUMEM_HOST_ENABLE=0 disables cuMem for
+#                               SHM host buffers and forces NCCL to use the legacy
+#                               POSIX /dev/shm/ path instead — pure mmap, no VMM,
+#                               fully supported in any container environment.
 # NCCL_SOCKET_IFNAME=lo      : force all ranks to use the loopback interface
 #                               for bootstrap and data.  Without this, different
 #                               worker processes may resolve to different network
@@ -233,7 +240,7 @@ export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
-export NCCL_DIRECT_DISABLE=1
+export NCCL_CUMEM_HOST_ENABLE=0
 export NCCL_SOCKET_IFNAME=lo
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
