@@ -386,9 +386,19 @@ else:
 print("  OK flash_attn.bert_padding import")
 PY
 
+if [[ ! -f "${_FSDP_WORKERS_PY}" ]]; then
+  echo "ERROR: Patched fsdp_workers.py not found at ${_FSDP_WORKERS_PY}" >&2
+  echo "       Delete ${_SIF_PKGS_DIR} and re-run to force re-extraction." >&2
+  exit 1
+fi
+echo "Bind-mounting patched fsdp_workers.py over container version."
+echo "  Host:      ${_FSDP_WORKERS_PY}"
+echo "  Container: /usr/local/lib/python3.12/dist-packages/verl/workers/fsdp_workers.py"
+
 exec apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+  --bind "${_FSDP_WORKERS_PY}:/usr/local/lib/python3.12/dist-packages/verl/workers/fsdp_workers.py" \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
   "${PYTHON_IN_CONTAINER}" train/train_datamorpheragent.py --skip_dep_check "$@"
