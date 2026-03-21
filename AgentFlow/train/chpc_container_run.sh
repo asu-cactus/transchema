@@ -70,7 +70,8 @@ if [[ "${_need_extract}" == "true" ]]; then
       SP=/usr/local/lib/python3.12/dist-packages
       cp -rL \"\${SP}/vllm\"   \"\${DEST}/\"
       cp -rL \"\${SP}/openai\" \"\${DEST}/\"
-      for d in \"\${SP}\"/vllm-*.dist-info \"\${SP}\"/openai-*.dist-info; do
+      cp -rL \"\${SP}/verl\"   \"\${DEST}/\"
+      for d in \"\${SP}\"/vllm-*.dist-info \"\${SP}\"/openai-*.dist-info \"\${SP}\"/verl-*.dist-info; do
         [ -d \"\${d}\" ] && cp -rL \"\${d}\" \"\${DEST}/\"
       done
     "
@@ -78,6 +79,112 @@ if [[ "${_need_extract}" == "true" ]]; then
   echo "  Done. Packages cached at ${_SIF_PKGS_DIR}"
 fi
 export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
+
+# ---------------------------------------------------------------------------
+# Patch verl fsdp_workers.py: force Gloo backend + set_device before FSDP init.
+#
+# Root cause: NCCL 2.25 inside Apptainer treats each Ray worker process as a
+# separate node (nNodes=2 / localRanks=1) because each process owns a different
+# GPU.  In nNodes=2 mode NCCL spawns proxy threads that call cudaMemcpy to
+# stage data through CPU buffers.  Those threads are created WITHOUT an active
+# CUDA context; Apptainer blocks secondary-thread CUDA context creation
+# (proxy.cc:859 "Failed to create CUDA context"), so cudaMemcpy fails with
+# CUDA_ERROR_INVALID_VALUE (error 1 "invalid argument").
+#
+# Fix: replace init_process_group calls in fsdp_workers.py to use backend="gloo".
+# Gloo stages GPU tensors through host memory over TCP — no proxy threads, no
+# CUDA IPC, no cudaMemcpy across CUDA contexts.  Gloo is fully correct for FSDP
+# weight sync and gradient reduction.  We also call torch.cuda.set_device(rank)
+# before init_process_group to pin each worker to its assigned GPU.
+#
+# Why here (not in _worker_setup_hook / .pth / sitecustomize): The Ray head
+# daemon pre-creates a worker process pool.  worker_process_setup_hook only
+# fires for NEWLY spawned worker processes, not for reused pool workers.  Since
+# WorkerDict actors are typically assigned to pre-existing pool workers, the
+# hook never fires.  Patching the extracted verl/workers/fsdp_workers.py file
+# in _SIF_PKGS_DIR (which is first on PYTHONPATH) guarantees the patch applies
+# at module import time in every process that loads verl.
+# ---------------------------------------------------------------------------
+_FSDP_WORKERS_PY="${_SIF_PKGS_DIR}/verl/workers/fsdp_workers.py"
+if [[ -f "${_FSDP_WORKERS_PY}" ]] && ! grep -q "_datamorpher_gloo_patch" "${_FSDP_WORKERS_PY}"; then
+  # Prepend a gloo-backend shim to fsdp_workers.py.
+  # The shim runs at module import time (top-level code) and replaces
+  # torch.distributed.init_process_group with a wrapper that:
+  #   1. Calls torch.cuda.set_device(rank) to pin the worker's CUDA context.
+  #   2. Forces backend="gloo", bypassing NCCL's broken proxy-thread path.
+  # Run the patch script inside the container so Python is guaranteed to exist.
+  apptainer exec \
+    --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+    "${IMAGE}" \
+    python3 - "${_FSDP_WORKERS_PY}" << 'PATCH_SCRIPT'
+import sys, re
+
+path = sys.argv[1]
+with open(path, "r") as f:
+    src = f.read()
+
+shim = '''# --- DataMorpher Gloo patch (injected by chpc_container_run.sh) ---
+# NCCL 2.25 inside Apptainer cannot create CUDA contexts in proxy threads,
+# causing "Cuda failure 1 'invalid argument'" in every NCCL collective.
+# Gloo stages all tensors through host-memory TCP — no proxy threads needed.
+import torch as _dm_torch
+import torch.distributed as _dm_dist
+import torch.distributed.distributed_c10d as _dm_c10d
+
+if not getattr(_dm_c10d, "_datamorpher_gloo_patch", False):
+    _dm_orig_ipg = _dm_c10d.init_process_group
+    def _dm_gloo_ipg(*_a, **_kw):
+        _rank = _kw.get("rank")
+        if _rank is None:
+            import os as _os
+            try:
+                _rank = int(_os.environ.get("LOCAL_RANK") or _os.environ.get("RANK") or 0)
+            except Exception:
+                _rank = 0
+        try:
+            _dm_torch.cuda.set_device(int(_rank))
+            print(f"[gloo_patch] cuda.set_device({_rank})", flush=True)
+        except Exception:
+            pass
+        if _a and isinstance(_a[0], str):
+            _a = _a[1:]
+        _orig_backend = _kw.get("backend", "<unset>")
+        _kw["backend"] = "gloo"
+        print(f"[gloo_patch] init_process_group: {_orig_backend} -> gloo", flush=True)
+        return _dm_orig_ipg(*_a, **_kw)
+    _dm_c10d.init_process_group = _dm_gloo_ipg
+    _dm_dist.init_process_group = _dm_gloo_ipg
+    _dm_c10d._datamorpher_gloo_patch = True
+    print("[gloo_patch] Gloo backend patch installed in fsdp_workers", flush=True)
+# --- End DataMorpher Gloo patch ---
+
+'''
+
+# Insert shim after the last top-level import block (before first class/def/if __name__)
+# Find the position of the first non-import top-level statement
+lines = src.splitlines(keepends=True)
+insert_at = 0
+in_imports = False
+for i, line in enumerate(lines):
+    stripped = line.strip()
+    if stripped.startswith("import ") or stripped.startswith("from ") or stripped.startswith("#") or stripped == "" or stripped.startswith("__"):
+        insert_at = i + 1
+    elif stripped.startswith("logger") or stripped.startswith("_logger"):
+        insert_at = i + 1
+    else:
+        break
+
+new_src = "".join(lines[:insert_at]) + shim + "".join(lines[insert_at:])
+with open(path, "w") as f:
+    f.write(new_src)
+print(f"  Patched {path}")
+PATCH_SCRIPT
+  echo "  Patched ${_FSDP_WORKERS_PY}: init_process_group will use gloo backend."
+elif [[ ! -f "${_FSDP_WORKERS_PY}" ]]; then
+  echo "  WARNING: ${_FSDP_WORKERS_PY} not found; gloo patch not applied."
+else
+  echo "  ${_FSDP_WORKERS_PY}: gloo patch already present."
+fi
 
 # ---------------------------------------------------------------------------
 # Patch vLLM cumem_allocator: flush PyTorch cache before wake_up.
@@ -150,14 +257,16 @@ if [[ -x "${RUNTIME_VENV}/bin/python" ]]; then
   PYTHON_IN_CONTAINER="${RUNTIME_VENV}/bin/python"
   echo "Using scratch runtime env: ${RUNTIME_VENV}"
   if RUNTIME_SITE_PACKAGES="$(runtime_site_packages_dir "${RUNTIME_VENV}")"; then
-    export PYTHONPATH="${RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
+    # _SIF_PKGS_DIR must stay first so sitecustomize.py is found before venv packages.
+    export PYTHONPATH="${_SIF_PKGS_DIR}:${RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
     echo "Injected runtime site-packages into PYTHONPATH for Ray workers."
   fi
 elif [[ -x "${LEGACY_RUNTIME_VENV}/bin/python" ]]; then
   PYTHON_IN_CONTAINER="${LEGACY_RUNTIME_VENV}/bin/python"
   echo "Using legacy scratch runtime env: ${LEGACY_RUNTIME_VENV}"
   if LEGACY_RUNTIME_SITE_PACKAGES="$(runtime_site_packages_dir "${LEGACY_RUNTIME_VENV}")"; then
-    export PYTHONPATH="${LEGACY_RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
+    # _SIF_PKGS_DIR must stay first so sitecustomize.py is found before venv packages.
+    export PYTHONPATH="${_SIF_PKGS_DIR}:${LEGACY_RUNTIME_SITE_PACKAGES}:${PYTHONPATH}"
     echo "Injected legacy runtime site-packages into PYTHONPATH for Ray workers."
   fi
 else

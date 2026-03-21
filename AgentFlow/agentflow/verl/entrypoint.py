@@ -297,8 +297,7 @@ def run_ppo(config) -> None:
         }
 
         # Always include AgentFlow/train in PYTHONPATH for Ray workers so that
-        # gloo_patch.pth is found by Python's site machinery and
-        # datamorphergloopatch.py runs at interpreter startup in every worker.
+        # flash_attn_shim and other local packages are importable in workers.
         train_dir = str(Path(__file__).parent.parent.parent / "train")
         existing = os.environ.get("PYTHONPATH", "")
         runtime_env_vars["PYTHONPATH"] = (
