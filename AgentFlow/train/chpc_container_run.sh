@@ -70,8 +70,7 @@ if [[ "${_need_extract}" == "true" ]]; then
       SP=/usr/local/lib/python3.12/dist-packages
       cp -rL \"\${SP}/vllm\"   \"\${DEST}/\"
       cp -rL \"\${SP}/openai\" \"\${DEST}/\"
-      cp -rL \"\${SP}/verl\"   \"\${DEST}/\"
-      for d in \"\${SP}\"/vllm-*.dist-info \"\${SP}\"/openai-*.dist-info \"\${SP}\"/verl-*.dist-info; do
+      for d in \"\${SP}\"/vllm-*.dist-info \"\${SP}\"/openai-*.dist-info; do
         [ -d \"\${d}\" ] && cp -rL \"\${d}\" \"\${DEST}/\"
       done
     "
@@ -79,112 +78,6 @@ if [[ "${_need_extract}" == "true" ]]; then
   echo "  Done. Packages cached at ${_SIF_PKGS_DIR}"
 fi
 export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
-
-# ---------------------------------------------------------------------------
-# Patch verl fsdp_workers.py: force Gloo backend + set_device before FSDP init.
-#
-# Root cause: NCCL 2.25 inside Apptainer treats each Ray worker process as a
-# separate node (nNodes=2 / localRanks=1) because each process owns a different
-# GPU.  In nNodes=2 mode NCCL spawns proxy threads that call cudaMemcpy to
-# stage data through CPU buffers.  Those threads are created WITHOUT an active
-# CUDA context; Apptainer blocks secondary-thread CUDA context creation
-# (proxy.cc:859 "Failed to create CUDA context"), so cudaMemcpy fails with
-# CUDA_ERROR_INVALID_VALUE (error 1 "invalid argument").
-#
-# Fix: replace init_process_group calls in fsdp_workers.py to use backend="gloo".
-# Gloo stages GPU tensors through host memory over TCP — no proxy threads, no
-# CUDA IPC, no cudaMemcpy across CUDA contexts.  Gloo is fully correct for FSDP
-# weight sync and gradient reduction.  We also call torch.cuda.set_device(rank)
-# before init_process_group to pin each worker to its assigned GPU.
-#
-# Why here (not in _worker_setup_hook / .pth / sitecustomize): The Ray head
-# daemon pre-creates a worker process pool.  worker_process_setup_hook only
-# fires for NEWLY spawned worker processes, not for reused pool workers.  Since
-# WorkerDict actors are typically assigned to pre-existing pool workers, the
-# hook never fires.  Patching the extracted verl/workers/fsdp_workers.py file
-# in _SIF_PKGS_DIR (which is first on PYTHONPATH) guarantees the patch applies
-# at module import time in every process that loads verl.
-# ---------------------------------------------------------------------------
-_FSDP_WORKERS_PY="${_SIF_PKGS_DIR}/verl/workers/fsdp_workers.py"
-if [[ -f "${_FSDP_WORKERS_PY}" ]] && ! grep -q "_datamorpher_gloo_patch" "${_FSDP_WORKERS_PY}"; then
-  # Prepend a gloo-backend shim to fsdp_workers.py.
-  # The shim runs at module import time (top-level code) and replaces
-  # torch.distributed.init_process_group with a wrapper that:
-  #   1. Calls torch.cuda.set_device(rank) to pin the worker's CUDA context.
-  #   2. Forces backend="gloo", bypassing NCCL's broken proxy-thread path.
-  # Run the patch script inside the container so Python is guaranteed to exist.
-  apptainer exec \
-    --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
-    "${IMAGE}" \
-    python3 - "${_FSDP_WORKERS_PY}" << 'PATCH_SCRIPT'
-import sys, re
-
-path = sys.argv[1]
-with open(path, "r") as f:
-    src = f.read()
-
-shim = '''# --- DataMorpher Gloo patch (injected by chpc_container_run.sh) ---
-# NCCL 2.25 inside Apptainer cannot create CUDA contexts in proxy threads,
-# causing "Cuda failure 1 'invalid argument'" in every NCCL collective.
-# Gloo stages all tensors through host-memory TCP — no proxy threads needed.
-import torch as _dm_torch
-import torch.distributed as _dm_dist
-import torch.distributed.distributed_c10d as _dm_c10d
-
-if not getattr(_dm_c10d, "_datamorpher_gloo_patch", False):
-    _dm_orig_ipg = _dm_c10d.init_process_group
-    def _dm_gloo_ipg(*_a, **_kw):
-        _rank = _kw.get("rank")
-        if _rank is None:
-            import os as _os
-            try:
-                _rank = int(_os.environ.get("LOCAL_RANK") or _os.environ.get("RANK") or 0)
-            except Exception:
-                _rank = 0
-        try:
-            _dm_torch.cuda.set_device(int(_rank))
-            print(f"[gloo_patch] cuda.set_device({_rank})", flush=True)
-        except Exception:
-            pass
-        if _a and isinstance(_a[0], str):
-            _a = _a[1:]
-        _orig_backend = _kw.get("backend", "<unset>")
-        _kw["backend"] = "gloo"
-        print(f"[gloo_patch] init_process_group: {_orig_backend} -> gloo", flush=True)
-        return _dm_orig_ipg(*_a, **_kw)
-    _dm_c10d.init_process_group = _dm_gloo_ipg
-    _dm_dist.init_process_group = _dm_gloo_ipg
-    _dm_c10d._datamorpher_gloo_patch = True
-    print("[gloo_patch] Gloo backend patch installed in fsdp_workers", flush=True)
-# --- End DataMorpher Gloo patch ---
-
-'''
-
-# Insert shim after the last top-level import block (before first class/def/if __name__)
-# Find the position of the first non-import top-level statement
-lines = src.splitlines(keepends=True)
-insert_at = 0
-in_imports = False
-for i, line in enumerate(lines):
-    stripped = line.strip()
-    if stripped.startswith("import ") or stripped.startswith("from ") or stripped.startswith("#") or stripped == "" or stripped.startswith("__"):
-        insert_at = i + 1
-    elif stripped.startswith("logger") or stripped.startswith("_logger"):
-        insert_at = i + 1
-    else:
-        break
-
-new_src = "".join(lines[:insert_at]) + shim + "".join(lines[insert_at:])
-with open(path, "w") as f:
-    f.write(new_src)
-print(f"  Patched {path}")
-PATCH_SCRIPT
-  echo "  Patched ${_FSDP_WORKERS_PY}: init_process_group will use gloo backend."
-elif [[ ! -f "${_FSDP_WORKERS_PY}" ]]; then
-  echo "  WARNING: ${_FSDP_WORKERS_PY} not found; gloo patch not applied."
-else
-  echo "  ${_FSDP_WORKERS_PY}: gloo patch already present."
-fi
 
 # ---------------------------------------------------------------------------
 # Patch vLLM cumem_allocator: flush PyTorch cache before wake_up.
@@ -234,8 +127,6 @@ unset ROCR_VISIBLE_DEVICES
 # sub-assign from whatever is visible.  We just don't override it here.
 unset CUDA_VISIBLE_DEVICES 2>/dev/null || true
 export HF_HOME="${HF_HOME:-/scratch/general/vast/u1592362/hf_cache}"
-# Include AgentFlow/train/ so that gloo_patch.pth is on sys.path and Python's
-# site machinery executes datamorphergloopatch.py at startup in every process.
 export PYTHONPATH="${REPO_ROOT}:${AGENTFLOW_ROOT}:${AGENTFLOW_ROOT}/train${PYTHONPATH:+:${PYTHONPATH}}"
 RUNTIME_VENV="${AGENTFLOW_RUNTIME_VENV:-/scratch/general/vast/u1592362/AgentFlow_runtime_venv_current}"
 LEGACY_RUNTIME_VENV="/scratch/general/vast/u1592362/AgentFlow_runtime_venv"
@@ -306,29 +197,36 @@ export RAY_task_events_report_interval_ms=0
 # PCI bus IDs as unique device fingerprints and therefore reports
 # "Duplicate GPU detected: rank 0 and rank 1 both on CUDA device 21000".
 #
-# NCCL_IB_DISABLE=1          : skip InfiniBand entirely; use SHM/P2P/TCP.
+# NCCL_IB_DISABLE=1          : skip InfiniBand entirely; use intra-node transports.
 # NCCL_IGNORE_DISABLED_P2P=1 : ignore PCI bus-ID uniqueness checks.
-# NCCL_P2P_DISABLE=1         : disable direct GPU P2P/IPC transfers.
-# NCCL_SHM_DISABLE=1         : disable SHM "direct" transport.
-#                               Apptainer does not mount a shared /dev/shm with
-#                               sufficient permissions for CUDA IPC mem handles.
-#                               NCCL SHM/direct/direct calls cudaIpcGetMemHandle
-#                               across processes which fails with "Cuda failure 1
-#                               'invalid argument'" in enqueue.cc.  With both
-#                               P2P and SHM disabled, NCCL falls back to plain
-#                               TCP sockets which works in any container.
+#                               Both Blackwell GPUs on this node share the same
+#                               PCIe bridge and expose the same bus ID (0x21000).
+#                               Without this flag NCCL reports "Duplicate GPU
+#                               detected" and aborts.
+# NCCL_P2P_DISABLE=1         : disable direct GPU-to-GPU P2P/IPC memory copies.
+#                               The Blackwell PCIe bridge bus-ID collision means
+#                               cudaIpcGetMemHandle fails with "invalid argument"
+#                               on this node.  P2P is disabled so NCCL uses SHM
+#                               or Socket instead.
+# NCCL_SHM_DISABLE is intentionally NOT set.  SHM (POSIX shared-memory staging)
+#                               is the correct intra-node transport when P2P is
+#                               off.  With SHM available NCCL keeps nNodes=1 and
+#                               localRanks=2 — no proxy threads are spawned.
+#                               Setting NCCL_SHM_DISABLE=1 forces nNodes=2 which
+#                               activates proxy threads; those threads cannot
+#                               create CUDA contexts inside Apptainer, producing
+#                               "proxy.cc:859 WARN Failed to create CUDA context"
+#                               and "Cuda failure 1 'invalid argument'".
 # NCCL_SOCKET_IFNAME=lo        : force all ranks to use the loopback interface
 #                               for bootstrap and data.  Without this, different
 #                               worker processes may resolve to different network
-#                               interfaces; NCCL then counts distinct IPs as
-#                               distinct nodes (nNodes=2 instead of 1) and tries
-#                               GPU-Direct RDMA transfers that fail in containers.
+#                               interfaces causing NCCL to count distinct IPs as
+#                               distinct nodes.
 # UCX_TLS=tcp,self            : restrict any residual UCX init to TCP loopback.
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
-export NCCL_SHM_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
@@ -339,20 +237,6 @@ export NCCL_SOCKET_IFNAME=lo
 # Setting NCCL_HOSTID to a fixed string forces all ranks on this job to share
 # the same host identity → nNodes=1 → intra-node transport → correct operation.
 export NCCL_HOSTID=datamorphernode0
-# NCCL_CREATE_THREAD_CONTEXT=1: force NCCL proxy threads to create their own
-# CUDA context instead of inheriting the parent thread's context.
-#
-# Root cause of "Cuda failure 1 'invalid argument'" in enqueue.cc / proxy.cc:
-# verl's Ray resource pool runs each FSDP worker as a separate OS process with
-# one GPU each (process 0 → GPU 0, process 1 → GPU 1).  NCCL 2.25 identifies
-# this topology as nNodes=2 / localRanks=1 (each process is its own "node")
-# and falls back to the network (Socket) transport path.  Socket transport
-# uses proxy progress threads that call cudaMemcpy to stage data through CPU
-# buffers.  Those threads inherit no CUDA context from the parent process,
-# so cudaMemcpy fails with cudaErrorInvalidValue (error 1).
-# NCCL_CREATE_THREAD_CONTEXT=1 tells each proxy thread to call cudaSetDevice
-# and cuCtxCreate before any CUDA operations, giving it a valid context.
-export NCCL_CREATE_THREAD_CONTEXT=1
 # Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
 # For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES — that only
 # happens for whole-GPU actors.  We do NOT set CUDA_VISIBLE_DEVICES either:

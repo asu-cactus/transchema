@@ -112,71 +112,6 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
-    # Patch 1b: force Gloo-only distributed backend.
-    #
-    # Root cause: NCCL 2.25 inside Apptainer treats each Ray worker process as
-    # a separate node (nNodes=2, localRanks=1) because each process owns a
-    # different physical GPU.  In nNodes=2 mode NCCL spawns proxy threads that
-    # call cudaSetDevice + cudaMemcpy into CPU staging buffers.  Those proxy
-    # threads are created without an active CUDA context, so cudaMemcpy fails
-    # with CUDA_ERROR_INVALID_VALUE (error 1 "invalid argument") in enqueue.cc.
-    # This happens even with NCCL_P2P_DISABLE=1 / NCCL_SHM_DISABLE=1 because
-    # the proxy threads are part of the network (Socket) transport path, not
-    # just P2P/SHM.  NCCL_HOSTID=datamorphernode0 is insufficient: NCCL still
-    # counts nNodes from the process-group topology (GPU indices), not hostnames.
-    #
-    # Fix: replace the NCCL backend with Gloo for all init_process_group calls.
-    # Gloo stages GPU tensors through host memory over TCP — no proxy threads,
-    # no CUDA IPC, no cudaMemcpy across CUDA contexts.  Gloo is fully correct
-    # for FSDP weight synchronisation and gradient reduction.
-    #
-    # Implementation: patch torch.distributed.init_process_group at the
-    # distributed_c10d module level (the canonical import path).  The patch is
-    # applied here (inside _worker_setup_hook) rather than via a .pth file
-    # because .pth files are only processed for directories in *site-packages*,
-    # not for arbitrary PYTHONPATH entries.  _worker_setup_hook runs before any
-    # user/verl code in every Ray worker process, making it the earliest safe
-    # place to intercept the backend selection.
-    try:
-        import torch.distributed.distributed_c10d as _dist_c10d
-        import torch.distributed as _dist_td
-
-        if not getattr(_dist_c10d, "_datamorpher_gloo_patch_applied", False):
-            _orig_ipg = _dist_c10d.init_process_group
-
-            def _gloo_only_ipg(*_args, **_kwargs):
-                # Pin the CUDA device to the correct GPU for this rank.
-                # Priority: LOCAL_RANK env var > RANK env var > rank kwarg.
-                # This ensures each worker's CUDA context is on its own GPU
-                # before the process group (and FSDP) creates any CUDA objects.
-                import os as _os
-                _lr = (
-                    _os.environ.get("LOCAL_RANK")
-                    or _os.environ.get("RANK")
-                    or str(_kwargs.get("rank", ""))
-                )
-                if _lr and str(_lr).isdigit():
-                    try:
-                        import torch as _torch
-                        _torch.cuda.set_device(int(_lr))
-                        print(f"[gloo_patch] set_device({int(_lr)}) rank={_kwargs.get('rank','?')}", flush=True)
-                    except Exception:
-                        pass
-                # Remove positional backend arg if present; always use gloo.
-                if _args and isinstance(_args[0], str):
-                    _args = _args[1:]
-                orig_backend = _kwargs.get("backend", "<not set>")
-                _kwargs["backend"] = "gloo"
-                print(f"[gloo_patch] init_process_group backend: {orig_backend} → gloo", flush=True)
-                return _orig_ipg(*_args, **_kwargs)
-
-            _dist_c10d.init_process_group = _gloo_only_ipg
-            _dist_td.init_process_group = _gloo_only_ipg
-            _dist_c10d._datamorpher_gloo_patch_applied = True
-            print("[worker_hook] Gloo patch applied: init_process_group → gloo", flush=True)
-    except Exception as _e:
-        print(f"[worker_hook] WARNING: Gloo patch failed: {_e}", flush=True)
-
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
         import torch as _torch
@@ -267,6 +202,9 @@ def run_ppo(config) -> None:
         # NCCL_IB_DISABLE / NCCL_IGNORE_DISABLED_P2P / UCX_TLS : suppress UCX
         #     IB transport crashes and PCIe bridge device-ID collisions on this
         #     Blackwell workstation node (both GPUs share the same PCI bus ID).
+        # NCCL_P2P_DISABLE : disable GPU-to-GPU P2P/IPC transfers.  The PCIe
+        #     bridge bus-ID collision causes cudaIpcGetMemHandle to fail.
+        #     SHM transport is left enabled so NCCL stays in nNodes=1 mode.
         # NOTE: CUDA_VISIBLE_DEVICES is intentionally NOT forwarded here.
         # veRL's RayWorkerGroup sets CUDA_VISIBLE_DEVICES per worker to
         # assign exactly one GPU per rank.  Forwarding the multi-GPU value
@@ -277,10 +215,8 @@ def run_ppo(config) -> None:
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
-            "NCCL_SHM_DISABLE",
             "NCCL_SOCKET_IFNAME",
             "NCCL_HOSTID",
-            "NCCL_CREATE_THREAD_CONTEXT",
             "UCX_TLS",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
