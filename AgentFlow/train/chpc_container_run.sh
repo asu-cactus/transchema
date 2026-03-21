@@ -161,17 +161,14 @@ if [[ -z "${_NCCL_SO}" ]]; then
   _NCCL_BIND_ARGS=""
 else
   echo "NCCL bind-mount source: ${_NCCL_SO}"
-  # Bind the patched .so over every path libtorch_cuda.so's RPATH resolves
-  # libnccl.so.2 from inside the NGC 25.02 container.
-  # In the NGC container libtorch_cuda.so's RPATH includes:
-  #   /usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib   (primary)
-  #   /usr/local/lib/python3.12/dist-packages/torch/lib         (fallback)
-  #   /usr/local/lib                                             (system fallback)
-  # We must bind over all three so that whichever RPATH entry is checked first
-  # the dynamic linker finds 2.26.2 rather than 2.25.1.
-  # Only bind paths that actually exist as files inside the SIF (Apptainer
-  # refuses to bind-mount over non-existent container paths).
+  # In the NGC 25.02 container libtorch_cuda.so's RUNPATH is:
+  #   $ORIGIN:/lib/intel64:...:/usr/local/cuda/lib64
+  # ldd resolves libnccl.so.2 to: /lib/x86_64-linux-gnu/libnccl.so.2
+  # That is the one and only path we must bind-mount over.
+  # The pip install paths (nvidia/nccl/lib, torch/lib) are NOT in the RUNPATH
+  # and were never consulted — which is why all previous bind attempts failed.
   _NCCL_CANDIDATES=(
+    "/lib/x86_64-linux-gnu/libnccl.so.2"
     "/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
     "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
     "/usr/local/lib/libnccl.so.2"
@@ -454,7 +451,10 @@ else:
 print("  OK flash_attn.bert_padding import")
 
 import ctypes, os
-_TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
+# ldd confirms libtorch_cuda.so resolves libnccl.so.2 from /lib/x86_64-linux-gnu/
+_TORCH_NCCL = "/lib/x86_64-linux-gnu/libnccl.so.2"
+if not os.path.exists(_TORCH_NCCL):
+    _TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
 if not os.path.exists(_TORCH_NCCL):
     _TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
 try:
