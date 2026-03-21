@@ -92,12 +92,12 @@ export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
 # The bug was fixed in NCCL 2.26.2 (release notes: "Fixed shared memory usage
 # on recent Blackwell GPUs").
 #
-# We download the nvidia-nccl-cu12==2.26.2 PyPI wheel (a zip file) to scratch,
-# unpack only the lib/ directory, and prepend it to LD_LIBRARY_PATH.  Because
-# LD_LIBRARY_PATH is searched before the SIF's embedded library paths, the
-# dynamic linker will load our libnccl.so.2 (2.26.2) instead of the one in
-# /usr/local/lib (2.25.1).  The PyTorch NCCL binding is loaded at runtime via
-# dlopen so the newer library is picked up transparently.
+# We download the nvidia-nccl-cu12==2.26.2 PyPI wheel (a zip file) to scratch
+# and unpack only the lib/ directory.  The 2.26.2 libnccl.so.2 is then
+# bind-mounted directly over /lib/x86_64-linux-gnu/libnccl.so.2 — the exact
+# path confirmed by `ldd libtorch_cuda.so` inside the NGC 25.02 container.
+# LD_LIBRARY_PATH injection is not used because --nv re-injects the container's
+# own library paths after environment setup, overriding LD_LIBRARY_PATH.
 #
 # The wheel is ~250 MB (NCCL library with debug symbols); extraction is ~4 s.
 # The result is cached under _SIF_PKGS_DIR/nccl_lib; re-extracted only if
@@ -118,46 +118,19 @@ if [[ ! -f "${_NCCL_MARKER}" ]]; then
     wget -q -O "${_NCCL_WHEEL_CACHE}" "${_NCCL_WHEEL_URL}"
   fi
   echo "Extracting libnccl.so from wheel ..."
-  # Wheels are zip archives; extract only the nvidia/nccl/lib/ subtree.
+  # The wheel (a zip archive) stores the library as nvidia/nccl/lib/libnccl.so.2
+  # (no version suffix in this PyPI wheel — the SONAME is the filename).
   unzip -q -o "${_NCCL_WHEEL_CACHE}" "nvidia/nccl/lib/*" -d "${_NCCL_LIB_DIR}"
-  # Create top-level symlinks so LD_LIBRARY_PATH just needs one entry.
-  # Use a subshell so the glob expands correctly.
-  (
-    cd "${_NCCL_LIB_DIR}/nvidia/nccl/lib"
-    for f in libnccl.so.2.*; do
-      [[ -f "$f" ]] || continue
-      ln -sf "${_NCCL_LIB_DIR}/nvidia/nccl/lib/$f" "${_NCCL_LIB_DIR}/libnccl.so.2"
-      ln -sf "${_NCCL_LIB_DIR}/libnccl.so.2"        "${_NCCL_LIB_DIR}/libnccl.so"
-      echo "  Linked libnccl.so.2 -> $f"
-      break
-    done
-  )
   rm -f "${_NCCL_WHEEL_CACHE}"
   touch "${_NCCL_MARKER}"
   echo "  Done. NCCL 2.26.2 cached at ${_NCCL_LIB_DIR}"
 fi
-# Prepend the scratch NCCL lib to LD_LIBRARY_PATH as a belt-and-suspenders
-# measure, but the primary injection is done via bind-mounts below (see the
-# --bind lines in the apptainer exec calls): we mount the 2.26.2 .so file
-# directly over the two paths PyTorch's linker resolves libnccl.so.2 from
-# inside the container, so the version in LD_LIBRARY_PATH never even matters.
-export LD_LIBRARY_PATH="${_NCCL_LIB_DIR}:${_NCCL_LIB_DIR}/nvidia/nccl/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-echo "Injected NCCL 2.26.2 into LD_LIBRARY_PATH: ${_NCCL_LIB_DIR}"
 
-# Resolve the actual versioned .so file (not the symlink) for bind-mounting.
-# Apptainer bind-mounts a file over a file; symlinks as source don't reliably
-# override because --nv re-injects the container's own library paths afterward.
-# Binding the versioned file directly over the container's fixed paths ensures
-# dlopen("libnccl.so.2") from within torch/lib/ always loads 2.26.2.
-_NCCL_SO=""
-if [[ -d "${_NCCL_LIB_DIR}/nvidia/nccl/lib" ]]; then
-  for _f in "${_NCCL_LIB_DIR}/nvidia/nccl/lib"/libnccl.so.2.*; do
-    [[ -f "${_f}" ]] && _NCCL_SO="${_f}" && break
-  done
-fi
-if [[ -z "${_NCCL_SO}" ]]; then
-  echo "WARNING: could not find versioned libnccl.so.2.* in ${_NCCL_LIB_DIR}/nvidia/nccl/lib" >&2
-  echo "         NCCL version injection may not take effect." >&2
+# The .so inside the wheel is named libnccl.so.2 (SONAME = filename; no extra
+# version suffix).  Use it directly as the bind-mount source.
+_NCCL_SO="${_NCCL_LIB_DIR}/nvidia/nccl/lib/libnccl.so.2"
+if [[ ! -f "${_NCCL_SO}" ]]; then
+  echo "WARNING: ${_NCCL_SO} not found after extraction — NCCL injection will not work." >&2
   _NCCL_BIND_ARGS=""
 else
   echo "NCCL bind-mount source: ${_NCCL_SO}"
@@ -167,25 +140,11 @@ else
   # That is the one and only path we must bind-mount over.
   # The pip install paths (nvidia/nccl/lib, torch/lib) are NOT in the RUNPATH
   # and were never consulted — which is why all previous bind attempts failed.
-  _NCCL_CANDIDATES=(
-    "/lib/x86_64-linux-gnu/libnccl.so.2"
-    "/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
-    "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
-    "/usr/local/lib/libnccl.so.2"
-  )
-  _NCCL_BIND_ARGS=""
-  for _cand in "${_NCCL_CANDIDATES[@]}"; do
-    # Test if the path exists inside the SIF by running a quick apptainer exec.
-    if apptainer exec "${IMAGE}" test -e "${_cand}" 2>/dev/null; then
-      _NCCL_BIND_ARGS="${_NCCL_BIND_ARGS} --bind ${_NCCL_SO}:${_cand}"
-      echo "  Will bind-mount over: ${_cand}"
-    else
-      echo "  Skipping (not in container): ${_cand}"
-    fi
-  done
-  if [[ -z "${_NCCL_BIND_ARGS}" ]]; then
-    echo "WARNING: no NCCL target paths found in container; injection will not work." >&2
-  fi
+  #
+  # We bind unconditionally over the confirmed path (no apptainer probe needed;
+  # Apptainer silently ignores bind-mounts over non-existent target paths).
+  _NCCL_BIND_ARGS="--bind ${_NCCL_SO}:/lib/x86_64-linux-gnu/libnccl.so.2"
+  echo "  Will bind-mount over: /lib/x86_64-linux-gnu/libnccl.so.2"
 fi
 
 # ---------------------------------------------------------------------------
