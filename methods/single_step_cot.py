@@ -13,7 +13,7 @@ import os
 import traceback
 
 
-def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
+def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_context_str=""):
     # Initialize required variables
     case_path = f"{length}_{id_}"
     is_correct = False
@@ -134,9 +134,10 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
             token_limit=token_limit,
             directory=directory,
             static_hints=getattr(args, "static_hints", True),
+            past_context=past_context_str,
         )
 
- 
+
         ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
         target_file_location = (
             f"{main_folder}/length{len_idx_target_idx}/target_multisource_cot.csv"

@@ -13,12 +13,14 @@ def get_next_operator_prompt(
     hints,
     all_intermediate_results: dict = {},
     static_hints=False,
+    past_context="",
 ):
+    past_context_section = f"\nPast Failed Attempts:\n{past_context}\n" if past_context else ""
     prompt_start = f"""
     query1
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what operation should be performed next?". Take this decision based on "operation history", the schema of the source, target tables, and examples in the target table.
 Allowed Operations: {allowed_operation_list}.
-Operation History: {operation_history}
+Operation History: {operation_history}{past_context_section}
 
 1. Target Table Name: {target_data_name}
 2. Target Schema: {target_data_schema}

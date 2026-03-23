@@ -69,6 +69,7 @@ def get_prompt(
     few_shot=False,
     mcts_expand_k=3,
     static_hints=False,
+    past_context="",
 ):
     """
     Args:
@@ -210,6 +211,7 @@ def get_prompt(
                 fd_hints,
                 hints,
                 static_hints=static_hints,
+                past_context=past_context,
             )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -251,6 +253,7 @@ def get_prompt(
                 hints,
                 all_intermediate_results,
                 static_hints,
+                past_context=past_context,
             )[0]
 
         # print(prompt,static_prompt_length)

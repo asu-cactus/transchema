@@ -13,6 +13,22 @@ from methods.critique import critique
 from log_util.log_util import setup_logging
 
 
+def format_past_attempts(past_attempts):
+    """Format a list of past failed attempt dicts into a context string for prompts."""
+    if not past_attempts:
+        return ""
+    lines = ["--- Past Failed Attempt(s) from Previous Iteration(s) ---"]
+    for attempt in past_attempts:
+        lines.append(f"\n[Iteration {attempt['iteration']}] Score: {attempt['score']:.4f}, Succeeded: False")
+        lines.append(f"Operations Tried: {attempt['operation_history']}")
+        lines.append("Generated Code:")
+        lines.append("```python")
+        lines.append(attempt["code"])
+        lines.append("```")
+    lines.append("\n---")
+    return "\n".join(lines)
+
+
 def avg_tup(list_tup):
     if len(list_tup) == 0:
         return (0, 0, 0)
@@ -48,7 +64,7 @@ def avg_tup_(list_tup):
     return avg
 
 
-def ms(args, length, id, log_dir, experiment_name):
+def ms(args, length, id, log_dir, experiment_name, past_context_str=""):
     results = []
     true_tup = []
     false_tup = []
@@ -56,9 +72,9 @@ def ms(args, length, id, log_dir, experiment_name):
     false_tup_ = []
     for i in range(0, args.no_of_runs):
         if args.single_step_cot:
-            ms_info = single_step_cot(args, length, id, log_dir, experiment_name, i)
+            ms_info = single_step_cot(args, length, id, log_dir, experiment_name, i, past_context_str)
         else:
-            ms_info = multi_step(args, length, id, log_dir, experiment_name, i)
+            ms_info = multi_step(args, length, id, log_dir, experiment_name, i, past_context_str)
         results.append(ms_info)
 
     for tup in results:
@@ -102,7 +118,7 @@ def ms(args, length, id, log_dir, experiment_name):
     return avged_tup + avged_tup_, ms_info[-1]
 
 
-def crit(args, length, id_, operation_history):
+def crit(args, length, id_, operation_history, past_context_str=""):
     critique_path = f"{args.result_directory}/critique.csv"
 
     print("CRITIQUE FINAL RESULTS:")
@@ -116,7 +132,7 @@ def crit(args, length, id_, operation_history):
             fd_flags = [1, 0, 0, 0]
 
         abl_a = critique(
-            args, length, id_, args.log_directory, fd_flags, 0, operation_history
+            args, length, id_, args.log_directory, fd_flags, 0, operation_history, past_context_str=past_context_str
         )
 
         with open(critique_path, "a", newline="") as f:
@@ -140,7 +156,7 @@ def crit(args, length, id_, operation_history):
             metadata_flags = [1, 1, 0, 0]
 
         abl_ab = critique(
-            args, length, id_, args.log_directory, metadata_flags, 0, operation_history
+            args, length, id_, args.log_directory, metadata_flags, 0, operation_history, past_context_str=past_context_str
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -169,6 +185,7 @@ def crit(args, length, id_, operation_history):
             anonymization_flags,
             0,
             operation_history,
+            past_context_str=past_context_str,
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -446,6 +463,14 @@ def get_parser():
         help="Use Single Step CoT instead of Multi Step",
     )
 
+    parser.add_argument(
+        "--iterative",
+        type=int,
+        default=1,
+        help="Number of full ms+critique iterations per case. In iterations >=2, past "
+             "operation history, code, and score are injected into prompts.",
+    )
+
     # parser.add_argument(
     #     "--combine_ask_and_configure",
     #     action="store_true",
@@ -468,38 +493,70 @@ def _critique_case_worker(args, length, case, result_queue):
     """Runs one SSCoT/multistep+critique case fully in a child process."""
     try:
         case_path = f"{length}_{case}"
-        ms_info, operation_history = ms(
-            args, length, case, args.log_directory, args.experiment_name
-        )
-        result = (case_path,) + ms_info
-
-        average_multistep_path = f"{args.result_directory}/average_multi_step.csv"
-        with open(average_multistep_path, "a", newline="") as f:
-            csv.writer(f).writerow(result)
-
         main_folder_base = (
             "autopipeline-benchmarks/monteprep-pipelines"
             if getattr(args, "benchmark", "github") == "monteprep"
             else "autopipeline-benchmarks/github-pipelines"
         )
+        code_path = f"{main_folder_base}/length{case_path}/python_recovered.py"
+        num_iterations = getattr(args, "iterative", 1)
+        past_attempts = []
+        succeeded = False
 
-        if not result[1]:
-            crit_info = crit(args, length, case, operation_history)
+        for iter_num in range(1, num_iterations + 1):
+            past_context_str = format_past_attempts(past_attempts)
 
-            if crit_info[0]:
-                src = f"{main_folder_base}/length{case_path}/python_recovered.py"
-                dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
-                shutil.copy2(src, dst)
+            ms_info, operation_history = ms(
+                args, length, case, args.log_directory, args.experiment_name, past_context_str
+            )
+            result = (case_path,) + ms_info
+
+            average_multistep_path = f"{args.result_directory}/average_multi_step.csv"
+            with open(average_multistep_path, "a", newline="") as f:
+                csv.writer(f).writerow(result)
+
+            # Read generated code and save a per-iteration copy for reproducibility
+            code = ""
+            try:
+                with open(code_path) as f:
+                    code = f.read()
+            except Exception:
+                pass
+            if code:
+                shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_iter_{iter_num}.py")
+
+            if result[1]:  # ms succeeded
+                shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_successful.py")
                 print("Success!")
+                succeeded = True
+                break
+
+            crit_info = crit(args, length, case, operation_history, past_context_str)
 
             average_crit_path = f"{args.result_directory}/final_critique.csv"
             with open(average_crit_path, "a", newline="") as f:
                 csv.writer(f).writerow(crit_info)
-        else:
-            src = f"{main_folder_base}/length{case_path}/python_recovered.py"
-            dst = f"{main_folder_base}/length{case_path}/python_recovered_successful.py"
-            shutil.copy2(src, dst)
-            print("Success!")
+
+            if crit_info[0]:  # critique succeeded
+                shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_successful.py")
+                print("Success!")
+                succeeded = True
+                break
+
+            # Accumulate past attempt context for the next iteration (if any remain)
+            if iter_num < num_iterations:
+                # ms_info tuple: (is_correct, avg_cost, avg_lat, …, avg_score)
+                # avg_score sits at index 6 (avged_tup_[3])
+                score = ms_info[6] if len(ms_info) > 6 else 0.0
+                past_attempts.append({
+                    "iteration": iter_num,
+                    "operation_history": str(operation_history),
+                    "code": code,
+                    "score": score,
+                })
+
+        if not succeeded:
+            print("Failed!")
 
         result_queue.put(("ok", None))
     except Exception:

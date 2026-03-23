@@ -63,17 +63,20 @@ class Config:
     model: str
     token_limit: int
     static_hints: bool
+    past_context: str = ""
 
 
 def get_python_response(operation_history, break_flag, csv_save_path, config: Config):
     logger = config.logger
     llm_client = config.llm_client
+    past_context = getattr(config, "past_context", "")
 
     max_trails = 5
     error_str = ""
     script = ""
     response = ""
     for _ in range(max_trails):
+        combined_error = (past_context + "\n\n" + error_str).strip() if past_context else error_str
         prompt = get_prompt(
             prompt_type="python_script",
             max_tokens=config.token_limit,
@@ -92,7 +95,7 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
             target_perc=config.target_perc,
             is_perc=config.is_perc,
             target_length=config.target_length,
-            error_string=error_str,
+            error_string=combined_error,
             csv_save_path=csv_save_path,
             hint_source=config.hint_source,
             static_hints=config.static_hints,
@@ -144,7 +147,7 @@ def create_intermediate_space(main_folder, len_id, target_id):
     return _source_space_dir
 
 
-def multi_step(args, length, id_, log_dir_, experiment_name, i_):
+def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_str=""):
     # Initialize required variables
     case_path = f"{length}_{id_}"
     is_correct = False
@@ -274,6 +277,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
             token_limit=token_limit,
             directory=directory,
             static_hints=static_hints,
+            past_context=past_context_str,
         )
 
         history_elements = []
@@ -306,6 +310,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_):
                 few_shot=few_shot,
                 nth_intermediate_step=step if args.intermediate_materialization else 0,
                 static_hints=static_hints,
+                past_context=past_context_str,
             )
             if prompt[0] == "-1":
                 logger.info("Token Limit Exceeded")

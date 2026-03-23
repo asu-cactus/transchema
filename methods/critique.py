@@ -121,6 +121,7 @@ def critique(
     is_def,
     operation_history,
     rag_examples_base: Optional[Union[str, Path]] = None,
+    past_context_str: str = "",
 ):
     """
     Run critique on a data-pipeline transformation using RAG few-shot examples.
@@ -164,6 +165,11 @@ def critique(
         query = query.replace("$STATIC_HINTS$", get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered"))
     else:
         query = query.replace("$STATIC_HINTS$", "")
+
+    if past_context_str:
+        query = query.replace("$PAST_ITERATION_CONTEXT$", past_context_str)
+    else:
+        query = query.replace("$PAST_ITERATION_CONTEXT$", "")
 
     log_dir = log_dir_
 
