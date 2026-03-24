@@ -122,6 +122,7 @@ def critique(
     operation_history,
     rag_examples_base: Optional[Union[str, Path]] = None,
     past_context_str: str = "",
+    judge_reason: str = "",
 ):
     """
     Run critique on a data-pipeline transformation using RAG few-shot examples.
@@ -171,6 +172,16 @@ def critique(
     else:
         query = query.replace("$PAST_ITERATION_CONTEXT$", "")
 
+    if judge_reason:
+        judge_reason_block = (
+            f"Automated Judge Assessment:\n"
+            f"The automated judge determined this output is INCORRECT.\n"
+            f"Judge reasoning: \"{judge_reason}\""
+        )
+        query = query.replace("$JUDGE_REASON$", judge_reason_block)
+    else:
+        query = query.replace("$JUDGE_REASON$", "")
+
     log_dir = log_dir_
 
     # Benchmark selector: github | monteprep
@@ -213,6 +224,11 @@ def critique(
         type_ = "NEW_CRITIQUE"
 
     logger = create_logger(type_, log_dir, len_id, target_id, max_target_id)
+
+    if judge_reason:
+        logger.info(f"JUDGE_CALL: judge={getattr(args, 'judge', 'unknown')} verdict=INCORRECT reason={judge_reason!r}")
+    elif getattr(args, "judge", "gt") != "gt":
+        logger.info(f"JUDGE_CALL: judge={args.judge} verdict=INCORRECT reason=(none)")
 
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
 

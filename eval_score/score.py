@@ -4,6 +4,9 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
+import numpy as np
+from scipy.stats import wasserstein_distance
+
 # Ensure this directory is on sys.path so fdtool and column_map_utils are importable
 _SCORE_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCORE_DIR not in sys.path:
@@ -57,6 +60,100 @@ def serialize_column_map(col_map):
         })
     return serialized
 MAX_FD_COLS = 52
+
+
+def compute_distribution_scores(df_a, df_b, col_map=None):
+    """
+    Compute per-column normalized Wasserstein distance for numerical columns
+    that appear in both the generated (df_a) and ground-truth (df_b) tables.
+
+    Matching uses the column map when available, otherwise falls back to
+    shared column names.
+
+    Returns a dict:
+      {
+        "per_column": {
+          "<gt_col>": {
+            "gen_col": str,
+            "distribution_similarity": float,   # 1.0 = identical, 0.0 = maximally different
+            "gen_stats":  {"min": float, "max": float, "mean": float},
+            "gt_stats":   {"min": float, "max": float, "mean": float},
+            "wasserstein_normalized": float,
+          }, ...
+        },
+        "avg_distribution_similarity": float,   # mean over matched numerical columns
+      }
+    """
+    per_column = {}
+
+    # Build (gen_col, gt_col) pairs to compare
+    pairs = []
+    if col_map:
+        for candidate_group in col_map:
+            if not candidate_group:
+                continue
+            gt_col = candidate_group[0].col_r.col_name
+            gen_col = candidate_group[0].col_l.col_name
+            pairs.append((gen_col, gt_col))
+    else:
+        shared = set(df_a.columns) & set(df_b.columns)
+        pairs = [(c, c) for c in shared]
+
+    for gen_col, gt_col in pairs:
+        if gen_col not in df_a.columns or gt_col not in df_b.columns:
+            continue
+
+        gen_series = df_a[gen_col]
+        gt_series  = df_b[gt_col]
+
+        # Only process numerical columns
+        if not (np.issubdtype(gen_series.dtype, np.number) or
+                np.issubdtype(gt_series.dtype, np.number)):
+            continue
+
+        try:
+            gen_vals = gen_series.dropna().astype(float).values
+            gt_vals  = gt_series.dropna().astype(float).values
+        except (ValueError, TypeError):
+            continue
+
+        if len(gen_vals) == 0 or len(gt_vals) == 0:
+            continue
+
+        w = wasserstein_distance(gen_vals, gt_vals)
+
+        # Normalize by the larger range of either distribution
+        gen_range = float(gen_vals.max() - gen_vals.min())
+        gt_range  = float(gt_vals.max()  - gt_vals.min())
+        r = max(gen_range, gt_range, 1e-10)
+        w_norm = w / r
+        similarity = max(0.0, 1.0 - min(w_norm, 1.0))
+
+        per_column[gt_col] = {
+            "gen_col":  gen_col,
+            "distribution_similarity": round(similarity, 4),
+            "wasserstein_normalized":  round(w_norm, 4),
+            "gen_stats": {
+                "min":  round(float(gen_vals.min()),  4),
+                "max":  round(float(gen_vals.max()),  4),
+                "mean": round(float(gen_vals.mean()), 4),
+            },
+            "gt_stats": {
+                "min":  round(float(gt_vals.min()),  4),
+                "max":  round(float(gt_vals.max()),  4),
+                "mean": round(float(gt_vals.mean()), 4),
+            },
+        }
+
+    if per_column:
+        avg_sim = round(
+            sum(v["distribution_similarity"] for v in per_column.values()) / len(per_column), 4
+        )
+    else:
+        avg_sim = None  # no numerical columns to compare
+
+    return {"per_column": per_column, "avg_distribution_similarity": avg_sim}
+
 
 def relative_csv_score(df_a, df_b):
     column_map_utils.GLOBAL_SUMMARY = None  # Reset the actual module-level cache
@@ -113,6 +210,8 @@ def relative_csv_score(df_a, df_b):
     combined_score = (fd_ratio + col_ratio) / 2
     true_combined_score = (fd_f1 + col_ratio) / 2  # new score using FD F1
 
+    distribution_info = compute_distribution_scores(df_a, df_b, col_map)
+
     debug_dict = {
         "fd": {
             "A": {
@@ -146,7 +245,8 @@ def relative_csv_score(df_a, df_b):
             "ratio": col_ratio,
         },
         "combined_score": combined_score,
-        "true_combined_score": true_combined_score
+        "true_combined_score": true_combined_score,
+        "distribution": distribution_info,
     }
 
     return fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict

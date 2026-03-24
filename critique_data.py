@@ -4,6 +4,7 @@ import json
 import csv
 import pdb
 import shutil
+import pandas as pd 
 import multiprocessing
 
 # from methods.precursor import precursor
@@ -11,6 +12,8 @@ from methods.multi_step import multi_step
 from methods.single_step_cot import single_step_cot
 from methods.critique import critique
 from log_util.log_util import setup_logging
+from judges import judge
+from llm.llm_models import LLMClient, TokenUsageTracker
 
 
 def format_past_attempts(past_attempts):
@@ -118,7 +121,7 @@ def ms(args, length, id, log_dir, experiment_name, past_context_str=""):
     return avged_tup + avged_tup_, ms_info[-1]
 
 
-def crit(args, length, id_, operation_history, past_context_str=""):
+def crit(args, length, id_, operation_history, past_context_str="", judge_reason=""):
     critique_path = f"{args.result_directory}/critique.csv"
 
     print("CRITIQUE FINAL RESULTS:")
@@ -132,7 +135,8 @@ def crit(args, length, id_, operation_history, past_context_str=""):
             fd_flags = [1, 0, 0, 0]
 
         abl_a = critique(
-            args, length, id_, args.log_directory, fd_flags, 0, operation_history, past_context_str=past_context_str
+            args, length, id_, args.log_directory, fd_flags, 0, operation_history,
+            past_context_str=past_context_str, judge_reason=judge_reason
         )
 
         with open(critique_path, "a", newline="") as f:
@@ -156,7 +160,8 @@ def crit(args, length, id_, operation_history, past_context_str=""):
             metadata_flags = [1, 1, 0, 0]
 
         abl_ab = critique(
-            args, length, id_, args.log_directory, metadata_flags, 0, operation_history, past_context_str=past_context_str
+            args, length, id_, args.log_directory, metadata_flags, 0, operation_history,
+            past_context_str=past_context_str, judge_reason=judge_reason
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -186,6 +191,7 @@ def crit(args, length, id_, operation_history, past_context_str=""):
             0,
             operation_history,
             past_context_str=past_context_str,
+            judge_reason=judge_reason,
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -221,6 +227,15 @@ def get_parser():
         "--no-perc", dest="is_perc", action="store_false", help="Set is_perc to False"
     )
     parser.set_defaults(is_perc=False)
+    
+    #corresponds to table 9 from paper
+    parser.add_argument(
+        "--judge",
+        type=str,
+        default="gt",
+        choices=["gt", "llm", "det_score", "llm_score", "llm_score_hybrid"],
+        help="Judging technique for critique planning", 
+    )
 
     parser.add_argument(
         "--hint-source",
@@ -503,6 +518,12 @@ def _critique_case_worker(args, length, case, result_queue):
         past_attempts = []
         succeeded = False
 
+        # Create llm_client here (subprocess cannot share the parent's client)
+        import logging as _logging
+        _logger = _logging.getLogger("judge")
+        _token_tracker = TokenUsageTracker()
+        _llm_client = LLMClient(model=args.model, tracker=_token_tracker, logger=_logger)
+
         for iter_num in range(1, num_iterations + 1):
             past_context_str = format_past_attempts(past_attempts)
 
@@ -525,13 +546,33 @@ def _critique_case_worker(args, length, case, result_queue):
             if code:
                 shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_iter_{iter_num}.py")
 
-            if result[1]:  # ms succeeded
+            # Determine whether to enact critique using the configured judge
+            judge_reason = ""
+            enact_critique = not result[1]
+            if args.judge != "gt":
+                df_generated_path = f"{main_folder_base}/length{case_path}/target_multisource.csv"
+                df_ground_truth_path = f"{main_folder_base}/length{case_path}/target.csv"
+                try:
+                    df_generated = pd.read_csv(df_generated_path, low_memory=False)
+                    df_ground_truth = pd.read_csv(df_ground_truth_path, low_memory=False)
+                    df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+                    is_correct, judge_reason = judge(df_generated, df_ground_truth, args.judge, _llm_client)
+                    enact_critique = not is_correct
+                except Exception as e:
+                    print(f"Judge failed for {case_path}, falling back to gt: {e}")
+                    enact_critique = not result[1]
+
+            if not enact_critique:  # output judged as correct
                 shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_successful.py")
                 print("Success!")
                 succeeded = True
                 break
 
-            crit_info = crit(args, length, case, operation_history, past_context_str)
+            # No critique for single-step CoT
+            if args.single_step_cot:
+                break
+
+            crit_info = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason)
 
             average_crit_path = f"{args.result_directory}/final_critique.csv"
             with open(average_crit_path, "a", newline="") as f:
@@ -576,7 +617,6 @@ if __name__ == "__main__":
     )
     args.log_directory = log_directory
     args.result_directory = results_directory
-    # sys.exit()
 
     # Build case list: --cases overrides --len_id / --target_id / --max_target_id
     if args.cases:
