@@ -311,11 +311,26 @@ export RAY_task_events_report_interval_ms=0
 # "CUDA error: an illegal memory access" in ncclCommWatchdog during
 # FSDP init_model, because the SHM direct path requires cuMem-backed
 # buffers to be addressable across processes.
+#
+# NCCL_CUMEM_ENABLE=1 is set explicitly below to override CHPC's host
+# environment which injects NCCL_CUMEM_ENABLE=0 via its RDMA/HPC plugin.
+# NCCL 2.26.2 on Blackwell requires VMM (cuMemCreate) for communicator
+# scratch buffers even on the intra-node SHM path; without it the CUDA
+# context on rank 1 becomes corrupted after Init COMPLETE.
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
+# NCCL_CUMEM_ENABLE=1: explicitly override the CHPC host environment, which
+# injects NCCL_CUMEM_ENABLE=0 via the RDMA plugin.  NCCL 2.26.2 on Blackwell
+# (sm_120) requires CUDA VMM (cuMemCreate) for its internal communicator
+# scratch buffers even on the intra-node SHM path.  With =0 those allocations
+# fail silently during ncclCommInitRank, leaving the CUDA context on rank 1 in
+# a partially initialized state.  The corruption surfaces immediately after
+# Init COMPLETE as "illegal memory access" in torch.cuda.empty_cache() and
+# param.to(device).  Setting =1 restores the default VMM-enabled behavior.
+export NCCL_CUMEM_ENABLE=1
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on
