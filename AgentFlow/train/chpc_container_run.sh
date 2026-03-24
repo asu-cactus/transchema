@@ -409,6 +409,16 @@ export NCCL_CUMEM_HOST_ENABLE=0
 # NCCL 2.17 (GitHub NCCL issue #803) has been fixed since NCCL 2.18.
 # NCCL 2.26.2 is unaffected.
 export NCCL_SHM_USE_CUDA_MEMCPY=1
+# NCCL_SHM_MEMCPY_MODE=3: enable CE (Copy Engine) on BOTH the send and
+# receive sides of the SHM transport (sender=1, receiver=2, both=3).
+#
+# NCCL_SHM_USE_CUDA_MEMCPY=1 alone only enables CE on the sender side
+# (NCCL_SHM_MEMCPY_MODE defaults to SHM_SEND_SIDE=1).  The channel log then
+# shows "SHM/CE/direct" — the receiver still uses the direct
+# cudaHostRegisterPortable path and will still fault across Apptainer
+# process boundaries.  Setting NCCL_SHM_MEMCPY_MODE=3 enables CE on both
+# sides, producing "SHM/CE/CE" which is fully cross-process safe.
+export NCCL_SHM_MEMCPY_MODE=3
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on

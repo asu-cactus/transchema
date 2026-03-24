@@ -142,6 +142,9 @@ def _worker_setup_hook() -> None:
     # CE mode (SHM/CE/CE) stages data via cudaMemcpy in the proxy thread
     # instead, which is fully cross-process safe.
     os.environ["NCCL_SHM_USE_CUDA_MEMCPY"] = "1"
+    # Enable CE on both send AND receive sides (default mode=1 is send-only,
+    # giving SHM/CE/direct; mode=3 gives SHM/CE/CE which is cross-process safe).
+    os.environ["NCCL_SHM_MEMCPY_MODE"] = "3"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -265,6 +268,7 @@ def run_ppo(config) -> None:
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",
             "NCCL_SHM_USE_CUDA_MEMCPY",
+            "NCCL_SHM_MEMCPY_MODE",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
