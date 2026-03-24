@@ -215,7 +215,6 @@ def run_ppo(config) -> None:
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
-            "NCCL_CUMEM_HOST_ENABLE",
             "NCCL_SOCKET_IFNAME",
             "NCCL_HOSTID",
             "UCX_TLS",
