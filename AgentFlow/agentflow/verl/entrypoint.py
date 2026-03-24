@@ -168,10 +168,42 @@ def _worker_setup_hook() -> None:
         # the env var above still applies.
         pass
 
-    # Patch 4 (REMOVED): Previously attempted to force-offload FSDP optimizer
-    # states to CPU on single-GPU NO_SHARD setups.  With 2 GPUs, FSDP uses
-    # FULL_SHARD and the model/optimizer states are properly sharded across
-    # GPUs, so no custom offload logic is needed.
+    # Patch 4: remove empty_cache() from verl's FSDP param_init_fn.
+    #
+    # verl/utils/fsdp_utils.py calls get_torch_device().empty_cache() inside
+    # the FSDP param_init_fn that runs once per transformer layer during FSDP
+    # wrapping.  On this Blackwell/Apptainer node, NCCL's SHM transport uses
+    # the "direct" submode (SHM/direct/direct) which calls cudaIpcOpenMemHandle
+    # across Ray worker processes.  Apptainer blocks cross-process CUDA IPC,
+    # silently corrupting the CUDA context during ncclCommInitRank kernels.
+    # The corruption is not visible until the first subsequent CUDA API call —
+    # which is empty_cache() in fsdp_utils.py — causing "illegal memory access".
+    #
+    # Fix: monkey-patch get_torch_device on the fsdp_utils module to return a
+    # no-op proxy whose empty_cache() does nothing.  All other device operations
+    # (e.g. module.to(device)) still work because the real device is used for
+    # actual tensor operations; only the cache-flush call is suppressed.
+    try:
+        import verl.utils.fsdp_utils as _fsdp_utils
+
+        class _NoOpDevice:
+            """Proxy that forwards all attribute access to the real device
+            except empty_cache(), which is silently suppressed."""
+            def __init__(self, real_device):
+                object.__setattr__(self, '_real', real_device)
+            def empty_cache(self):
+                pass  # suppressed: CUDA context is corrupted by NCCL SHM IPC
+            def __getattr__(self, name):
+                return getattr(object.__getattribute__(self, '_real'), name)
+
+        _real_get_torch_device = _fsdp_utils.get_torch_device
+
+        def _patched_get_torch_device():
+            return _NoOpDevice(_real_get_torch_device())
+
+        _fsdp_utils.get_torch_device = _patched_get_torch_device
+    except Exception:
+        pass
 
 
 @hydra.main(config_path="pkg://agentflow/verl", config_name="config", version_base=None)
