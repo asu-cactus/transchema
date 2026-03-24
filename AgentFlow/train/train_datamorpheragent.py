@@ -78,13 +78,11 @@ def set_env_vars(env_section: dict):
         Path(hf_cache).mkdir(parents=True, exist_ok=True)
         print(f"  HF_HOME={hf_cache}")
 
-    # Respect VLLM_USE_V1 if already set by the launch environment
-    # (e.g. chpc_container_run.sh sets =0 to use the v0 engine with
-    # CuMemAllocator / VMM lazy allocation, which avoids OOM on GPUs that
-    # also hold FSDP weights).  Only default to 1 when not already set.
-    if "VLLM_USE_V1" not in os.environ:
-        os.environ["VLLM_USE_V1"] = "1"
-    print(f"  VLLM_USE_V1={os.environ['VLLM_USE_V1']}")
+    # vLLM 0.9.x + this AgentFlow async path requires V1 engine mode.
+    # PatchedvLLMServer uses AsyncLLM.from_vllm_config which is v1-only and
+    # raises ValueError if VLLM_USE_V1=False.  Always force v1 here.
+    os.environ["VLLM_USE_V1"] = "1"
+    print("  VLLM_USE_V1=1")
     # vLLM CuMem allocator is incompatible with expandable_segments:True.
     # Keep allocator config conservative and vLLM-safe.
     alloc_conf = os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "")

@@ -452,19 +452,13 @@ export TORCHDYNAMO_DISABLE=1
 
 # Force vLLM to use the v0 engine (not v1).
 #
-# vLLM v1's EngineCore runs in a spawned subprocess.  That subprocess queries
-# the actual free GPU memory at startup — and sees near-zero free memory
-# because the FSDP WorkerDict is already fully loaded (~65 GiB on GPU 0).
-# vLLM v1 then computes available_memory = min(free_mem, utilization×total)
-# and finds nothing left for even a single KV cache block → crashes.
-#
-# vLLM v0 uses CuMemAllocator (VMM) for both weights and KV cache.  VMM
-# reservations are virtual — they don't require physical GPU pages at
-# reservation time.  The physical pages are only faulted in when the pages
-# are first accessed (i.e. during wake_up(), after FSDP has offloaded to CPU
-# and freed the physical pages).  This is the intended flow for colocated
-# FSDP + vLLM training in veRL.
-export VLLM_USE_V1=0
+# VLLM_USE_V1: verl's PatchedvLLMServer uses AsyncLLM.from_vllm_config which
+# is a v1-only API; it raises ValueError if VLLM_USE_V1=False.
+# We must keep v1 enabled.  The OOM that previously required v0 is instead
+# managed by keeping gpu_memory_utilization low enough that vLLM's KV cache
+# fits in the free memory after FSDP param offload has released GPU pages.
+# See gpu_memory_utilization in datamorpherconfig.yaml / train overrides.
+export VLLM_USE_V1=1
 
 echo "Running container sanity imports ..."
 # shellcheck disable=SC2086

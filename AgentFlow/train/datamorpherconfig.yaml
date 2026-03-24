@@ -90,10 +90,9 @@ python_args:
   actor_rollout_ref.model.path: '${BASE_MODEL}'
 
   # veRL sets vLLM max_model_len = max_prompt_length + max_response_length.
-  # Qwen2.5-7B supports 128K; with VLLM_USE_V1=0 and CuMemAllocator (VMM),
-  # the KV cache is allocated virtually at init and physically only on wake_up
-  # after FSDP offloads to CPU — so max_model_len doesn't constrain init-time
-  # memory.  12288 + 1024 = 13312 tokens; use_remove_padding=True keeps fast.
+  # Qwen2.5-7B supports 128K; with VLLM_USE_V1=1 and param_offload=True,
+  # the FSDP model is on CPU when vLLM initializes KV cache, so the full GPU
+  # is available.  12288 + 1024 = 13312 tokens; use_remove_padding=True keeps fast.
   data.max_prompt_length: 12288
   data.max_response_length: 1024
   data.truncation: 'truncate'
@@ -148,14 +147,15 @@ python_args:
 
   # vLLM rollout server
   actor_rollout_ref.rollout.name: 'vllm'
-  # With VLLM_USE_V1=0 (v0 engine), vLLM uses CuMemAllocator (VMM) for both
-  # model weights and KV cache.  VMM reservations are virtual — they don't
-  # require physical GPU pages at init time.  Physical pages are only faulted
-  # in during wake_up(), by which point FSDPVLLMShardingManager has already
-  # offloaded FSDP params+optimizer to CPU (param_offload=True), so the full
-  # GPU is free.  0.85 gives vLLM ~81 GiB for weights + KV cache — ample for
-  # Qwen2.5-7B (~14.5 GiB) plus a large KV cache for long DataMorpher prompts.
-  actor_rollout_ref.rollout.gpu_memory_utilization: 0.85
+  # With VLLM_USE_V1=1 (v1 engine, required by PatchedvLLMServer/AsyncLLM),
+  # vLLM allocates KV cache with torch.zeros — physical GPU pages are reserved
+  # immediately at init time.  With param_offload=True, the FSDP model is on
+  # CPU by the time vLLM calls initialize_kv_cache, so the full GPU is
+  # available.  However vLLM v1 computes available_memory = min(free, util×total)
+  # and uses that budget for both model weights + KV cache tensors.
+  # 0.4 × 94.97 GiB ≈ 38 GiB: enough for Qwen2.5-7B weights (~14.5 GiB) plus
+  # ~23 GiB of KV cache, which supports long DataMorpher prompts.
+  actor_rollout_ref.rollout.gpu_memory_utilization: 0.4
 
   # Ref-policy settings (only used when use_kl_loss=True above).
   # param_offload=True on the ref policy so it doesn't compete for GPU
