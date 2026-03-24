@@ -133,18 +133,15 @@ def _worker_setup_hook() -> None:
     # Blackwell shared-mem kernel size in the kernel code itself, so cuMem
     # is no longer required for correctness.
     os.environ["NCCL_CUMEM_ENABLE"] = "0"
-    # Force NCCL SHM transport to use the Copy Engine (CE) path, not the
-    # "direct" path.  In direct mode (the default), NCCL calls
-    # cudaHostRegisterPortable on the /dev/shm buffer so every GPU in the
-    # same *process* can DMA into it.  Across separate Apptainer worker
-    # processes the registered pointer is invalid → both GPUs fault with
-    # "illegal memory access" at the same instant during ncclCommInitRank.
-    # CE mode (SHM/CE/CE) stages data via cudaMemcpy in the proxy thread
-    # instead, which is fully cross-process safe.
-    os.environ["NCCL_SHM_USE_CUDA_MEMCPY"] = "1"
-    # Enable CE on both send AND receive sides (default mode=1 is send-only,
-    # giving SHM/CE/direct; mode=3 gives SHM/CE/CE which is cross-process safe).
-    os.environ["NCCL_SHM_MEMCPY_MODE"] = "3"
+    # Disable SHM transport entirely.  Even in CE mode (SHM_USE_CUDA_MEMCPY=1 +
+    # SHM_MEMCPY_MODE=3), ncclShmOpen in NCCL's shmutils.cc always calls
+    # cudaHostRegister + cudaHostGetDevicePointer on the /dev/shm buffer when
+    # dptr is non-NULL (which is always requested by the proxy setup path).
+    # That pointer is registered in one process's CUDA context and used by the
+    # GPU in a different Apptainer worker process → "illegal memory access".
+    # Disabling SHM forces loopback-socket transport (NCCL_SOCKET_IFNAME=lo),
+    # which is fully cross-process safe.
+    os.environ["NCCL_SHM_DISABLE"] = "1"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -267,8 +264,7 @@ def run_ppo(config) -> None:
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",
-            "NCCL_SHM_USE_CUDA_MEMCPY",
-            "NCCL_SHM_MEMCPY_MODE",
+            "NCCL_SHM_DISABLE",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",

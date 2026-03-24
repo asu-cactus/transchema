@@ -392,33 +392,29 @@ export NCCL_CUMEM_HOST_ENABLE=0
 # address → "CUDA error: an illegal memory access was encountered" on both
 # ranks simultaneously, followed by the watchdog thread aborting the process.
 #
-# In CE mode (SHM_USE_CUDA_MEMCPY=1), NCCL uses the CUDA Copy Engine to
-# stage data between GPU device memory and the /dev/shm host buffer.  The CE
-# path does NOT use cudaHostGetDevicePointer across processes: instead, each
-# process's GPU copies data into/from its own device buffer, and the proxy
-# thread moves it via cudaMemcpy to/from the shared host buffer.  This is
-# fully container-safe and has been the standard fix for NCCL SHM in
-# multi-process-per-node container environments since NCCL 2.19+.
+# NCCL_SHM_DISABLE=1: completely disable the SHM (shared-memory) transport.
 #
-# Performance note: CE mode has higher latency than direct mode for small
-# messages due to the extra cudaMemcpy hop, but for the FSDP allreduce
-# workload (large gradient tensors, MB-scale messages), the bandwidth is
-# comparable.  Correctness takes priority here.
+# Root cause: NCCL's SHM transport always calls cudaHostRegister(...,
+# cudaHostRegisterPortable | cudaHostRegisterMapped) on the /dev/shm buffer
+# and then cudaHostGetDevicePointer to get a GPU-visible device pointer.
+# Even in CE mode (NCCL_SHM_USE_CUDA_MEMCPY=1 + NCCL_SHM_MEMCPY_MODE=3),
+# the proxy setup path (shmSendProxySetup / shmRecvProxySetup) passes a
+# non-NULL dptr to ncclShmAllocateShareableBuffer, which calls the same
+# cudaHostRegister in shmutils.cc::ncclShmOpen.  The pointer is registered
+# in the proxy's CUDA context (owned by one OS process) and then used by
+# the GPU kernels in a different Ray worker process.  Across Apptainer's
+# separate process namespaces, the registered device pointer is invalid
+# in the peer process → "CUDA error: an illegal memory access was
+# encountered" during the first NCCL collective after ncclCommInitRank.
 #
-# The proxy-thread context bug that affected NCCL_SHM_USE_CUDA_MEMCPY in
-# NCCL 2.17 (GitHub NCCL issue #803) has been fixed since NCCL 2.18.
-# NCCL 2.26.2 is unaffected.
-export NCCL_SHM_USE_CUDA_MEMCPY=1
-# NCCL_SHM_MEMCPY_MODE=3: enable CE (Copy Engine) on BOTH the send and
-# receive sides of the SHM transport (sender=1, receiver=2, both=3).
-#
-# NCCL_SHM_USE_CUDA_MEMCPY=1 alone only enables CE on the sender side
-# (NCCL_SHM_MEMCPY_MODE defaults to SHM_SEND_SIDE=1).  The channel log then
-# shows "SHM/CE/direct" — the receiver still uses the direct
-# cudaHostRegisterPortable path and will still fault across Apptainer
-# process boundaries.  Setting NCCL_SHM_MEMCPY_MODE=3 enables CE on both
-# sides, producing "SHM/CE/CE" which is fully cross-process safe.
-export NCCL_SHM_MEMCPY_MODE=3
+# Disabling SHM forces NCCL to use the loopback socket transport for all
+# intra-node rank-to-rank communication.  We already set
+# NCCL_SOCKET_IFNAME=lo, so loopback is always available.  The socket path
+# has higher latency than SHM/CE for very small messages, but for the large
+# FSDP gradient all-reduces (MB-scale tensors) the bandwidth is identical.
+# Correctness is the priority here; SHM simply cannot work safely across
+# separate Apptainer worker processes without kernel-level CUDA IPC support.
+export NCCL_SHM_DISABLE=1
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on
