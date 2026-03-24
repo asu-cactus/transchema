@@ -345,6 +345,12 @@ export NCCL_SOCKET_IFNAME=lo
 # Init COMPLETE as "illegal memory access" in torch.cuda.empty_cache() and
 # param.to(device).  Setting =1 restores the default VMM-enabled behavior.
 export NCCL_CUMEM_ENABLE=1
+# Suppress the PyTorch NCCL watchdog abort.  The watchdog thread monitors
+# in-flight NCCL ops; if it sees a CUDA error it calls abort() immediately,
+# killing the worker before our init_process_group post-hook can flush the
+# sticky error from the CUDA context.  Setting this to 0 disables the abort,
+# allowing our synchronize-to-clear to consume the error after NCCL init.
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=0
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on

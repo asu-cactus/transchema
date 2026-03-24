@@ -112,6 +112,14 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
+    # Suppress the NCCL watchdog abort so our init_process_group patch (below)
+    # can flush the sticky CUDA error after ncclCommInitRank completes.
+    # On this Blackwell/Apptainer node NCCL's SHM/direct/direct init kernels
+    # corrupt the CUDA context; the watchdog detects it and calls abort() before
+    # our synchronize-to-clear can run.  Setting this to 0 keeps the process
+    # alive long enough for the error to be consumed by the synchronize call.
+    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "0"
+
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
         import torch as _torch
@@ -248,6 +256,7 @@ def run_ppo(config) -> None:
         # duplicate GPUs ("rank 0 and rank 1 both on CUDA device X").
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
+            "TORCH_NCCL_ASYNC_ERROR_HANDLING",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
