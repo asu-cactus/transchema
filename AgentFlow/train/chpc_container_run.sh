@@ -339,18 +339,38 @@ export NCCL_SOCKET_IFNAME=lo
 # NCCL_CUMEM_ENABLE=1: explicitly override the CHPC host environment, which
 # injects NCCL_CUMEM_ENABLE=0 via the RDMA plugin.  NCCL 2.26.2 on Blackwell
 # (sm_120) requires CUDA VMM (cuMemCreate) for its internal communicator
-# scratch buffers even on the intra-node SHM path.  With =0 those allocations
-# fail silently during ncclCommInitRank, leaving the CUDA context on rank 1 in
-# a partially initialized state.  The corruption surfaces immediately after
-# Init COMPLETE as "illegal memory access" in torch.cuda.empty_cache() and
-# param.to(device).  Setting =1 restores the default VMM-enabled behavior.
+# scratch buffers on the intra-node SHM path.  With =0 those allocations
+# fail silently during ncclCommInitRank, corrupting rank 1's CUDA context.
 export NCCL_CUMEM_ENABLE=1
-# Suppress the PyTorch NCCL watchdog abort.  The watchdog thread monitors
-# in-flight NCCL ops; if it sees a CUDA error it calls abort() immediately,
-# killing the worker before our init_process_group post-hook can flush the
-# sticky error from the CUDA context.  Setting this to 0 disables the abort,
-# allowing our synchronize-to-clear to consume the error after NCCL init.
-export TORCH_NCCL_ASYNC_ERROR_HANDLING=0
+# NCCL_CUMEM_HOST_ENABLE=0: disable cuMem-based host-memory allocation for
+# NCCL's SHM transport buffers.
+#
+# Since NCCL 2.24, if CUDA driver >= 12.6 and runtime >= 12.2, NCCL defaults
+# NCCL_CUMEM_HOST_ENABLE to 1.  When enabled, NCCL allocates the SHM staging
+# buffers using cuMemCreate + cuMemExportToShareableHandle with handle type
+# CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR, and transfers those fd handles
+# between processes via Unix Domain Sockets (UDS).
+#
+# Apptainer enforces separate filesystem namespaces per worker process, so the
+# abstract UDS paths used for fd exchange are not visible across processes.
+# This causes cuMemImportFromShareableHandle to fail silently during
+# ncclCommInitRank, leaving the CUDA context on rank 1 corrupted.  Every
+# subsequent GPU API call (empty_cache, param.to(device), etc.) then fails
+# with "CUDA error: an illegal memory access was encountered" or
+# "peer access is not supported between these two devices"
+# (confirmed as a driver bug fixed in r580+ per NCCL issue #1838).
+#
+# Setting NCCL_CUMEM_HOST_ENABLE=0 forces NCCL to use the legacy POSIX SHM
+# path (mmap over /dev/shm/nccl-*) for all host-side staging buffers.  This
+# path requires no cross-process handle transfer and works correctly in any
+# container environment that shares /dev/shm (which Apptainer does by default).
+#
+# NOTE: This is safe to combine with NCCL_CUMEM_ENABLE=1 above.
+# NCCL_CUMEM_ENABLE controls device-side communicator scratch buffers
+# (cuMemCreate for GPU VRAM), which still work correctly inside Apptainer.
+# NCCL_CUMEM_HOST_ENABLE controls only the host-memory SHM staging buffers.
+# The two env vars are orthogonal.
+export NCCL_CUMEM_HOST_ENABLE=0
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on
@@ -365,9 +385,8 @@ export NCCL_HOSTID=datamorphernode0
 # happens for whole-GPU actors.  We do NOT set CUDA_VISIBLE_DEVICES either:
 # NCCL uses physical GPU indices internally, so remapping via CUDA_VISIBLE_DEVICES
 # causes cudaSetDevice(1) to fail with "invalid argument" when only one device
-# is visible.  Instead, the _patched_init_process_group hook in entrypoint.py
-# calls torch.cuda.set_device(LOCAL_RANK) just before init_process_group so
-# all CUDA allocations land on the correct GPU without restricting visibility.
+# is visible.  veRL's RayWorkerGroup sets CUDA_VISIBLE_DEVICES per worker to
+# assign exactly one GPU per rank using the physical device index.
 export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.

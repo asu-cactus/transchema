@@ -112,13 +112,19 @@ def _worker_setup_hook() -> None:
     # Must be set before any @torch.compile call; torch._dynamo reads this lazily.
     os.environ["TORCHDYNAMO_DISABLE"] = "1"
 
-    # Suppress the NCCL watchdog abort so our init_process_group patch (below)
-    # can flush the sticky CUDA error after ncclCommInitRank completes.
-    # On this Blackwell/Apptainer node NCCL's SHM/direct/direct init kernels
-    # corrupt the CUDA context; the watchdog detects it and calls abort() before
-    # our synchronize-to-clear can run.  Setting this to 0 keeps the process
-    # alive long enough for the error to be consumed by the synchronize call.
-    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "0"
+    # Patch 1b: force NCCL to use legacy POSIX SHM (mmap over /dev/shm) for
+    # host-side staging buffers instead of the cuMem/UDS fd-transfer path.
+    #
+    # Since NCCL 2.24, NCCL_CUMEM_HOST_ENABLE defaults to 1 when CUDA driver
+    # >= 12.6 and runtime >= 12.2.  When enabled, NCCL allocates SHM staging
+    # buffers via cuMemCreate + cuMemExportToShareableHandle with handle type
+    # CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR, exchanged via Unix Domain
+    # Sockets.  Apptainer's separate filesystem namespaces block that UDS fd
+    # exchange, silently corrupting the CUDA context on rank 1 during
+    # ncclCommInitRank.  Every subsequent GPU call then fails with
+    # "CUDA error: an illegal memory access was encountered".
+    # Setting =0 forces the safe legacy /dev/shm/nccl-* MMAP path.
+    os.environ["NCCL_CUMEM_HOST_ENABLE"] = "0"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -176,47 +182,6 @@ def _worker_setup_hook() -> None:
         # the env var above still applies.
         pass
 
-    # Patch 4: reset the CUDA context after NCCL init to undo SHM/direct IPC damage.
-    #
-    # NCCL's ncclCommInitRank runs ~330ms of CUDA kernels over its SHM/direct/direct
-    # channels, which use cross-process CUDA IPC (cudaIpcOpenMemHandle).  Apptainer
-    # blocks cross-process CUDA IPC, so these kernels corrupt the CUDA context on
-    # rank 1 silently.  Every subsequent GPU operation (empty_cache, to_empty,
-    # param.to(device)) then fails with "illegal memory access".
-    #
-    # Fix: monkey-patch torch.distributed.init_process_group to call
-    # torch.cuda.reset_peak_memory_stats() + synchronize() after NCCL init
-    # completes.  cudaDeviceSynchronize flushes pending CUDA errors and, on
-    # CUDA 12+, clears the "sticky" illegal-access error state from the context.
-    # This allows subsequent GPU operations to succeed.
-    try:
-        import torch.distributed as _dist
-        import torch.cuda as _cuda
-
-        _orig_init_pg = _dist.init_process_group
-
-        def _patched_init_process_group(*args, **kwargs):
-            result = _orig_init_pg(*args, **kwargs)
-            # After NCCL init, force a synchronize to flush any pending CUDA
-            # errors from the SHM/direct init kernels.  On CUDA 12+, a
-            # cudaDeviceSynchronize after a sticky error returns the error once
-            # and clears it, allowing the context to continue.
-            try:
-                _cuda.synchronize()
-            except RuntimeError:
-                # The synchronize itself may raise the sticky error — that's
-                # expected.  After it raises once, the error is consumed and
-                # the context is clean for subsequent operations.
-                try:
-                    _cuda.synchronize()
-                except RuntimeError:
-                    pass
-            return result
-
-        _dist.init_process_group = _patched_init_process_group
-    except Exception:
-        pass
-
 
 @hydra.main(config_path="pkg://agentflow/verl", config_name="config", version_base=None)
 def main(config):
@@ -243,6 +208,14 @@ def run_ppo(config) -> None:
         #     the first un-cached input shape.  Triton's LLVM backend in NGC
         #     25.02 cannot lower warp-shuffle intrinsics for sm_120 (Blackwell)
         #     and calls abort() → SIGABRT, killing the Ray worker.
+        # NCCL_CUMEM_HOST_ENABLE=0 : forces NCCL to use legacy POSIX SHM
+        #     (mmap over /dev/shm/nccl-*) for host-side staging buffers.
+        #     Since NCCL 2.24, the default is 1 (cuMem/UDS fd transfer).
+        #     Apptainer's filesystem namespace isolation blocks UDS fd exchange,
+        #     silently corrupting rank 1's CUDA context during ncclCommInitRank
+        #     → "CUDA error: an illegal memory access" on every subsequent GPU
+        #     API call.  The legacy mmap path works in any container that shares
+        #     /dev/shm, which Apptainer does by default (NCCL issue #1838).
         # NCCL_IB_DISABLE / NCCL_IGNORE_DISABLED_P2P / UCX_TLS : suppress UCX
         #     IB transport crashes and PCIe bridge device-ID collisions on this
         #     Blackwell workstation node (both GPUs share the same PCI bus ID).
@@ -256,7 +229,7 @@ def run_ppo(config) -> None:
         # duplicate GPUs ("rank 0 and rank 1 both on CUDA device X").
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
-            "TORCH_NCCL_ASYNC_ERROR_HANDLING",
+            "NCCL_CUMEM_HOST_ENABLE",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
