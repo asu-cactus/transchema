@@ -424,14 +424,21 @@ export NCCL_SHM_DISABLE=1
 # Setting NCCL_HOSTID to a fixed string forces all ranks on this job to share
 # the same host identity → nNodes=1 → intra-node transport → correct operation.
 export NCCL_HOSTID=datamorphernode0
-# Ray uses fractional GPU allocation (num_gpus=1/3 per colocated actor).
-# For fractional allocations Ray does NOT set CUDA_VISIBLE_DEVICES — that only
-# happens for whole-GPU actors.  We do NOT set CUDA_VISIBLE_DEVICES either:
-# NCCL uses physical GPU indices internally, so remapping via CUDA_VISIBLE_DEVICES
-# causes cudaSetDevice(1) to fail with "invalid argument" when only one device
-# is visible.  veRL's RayWorkerGroup sets CUDA_VISIBLE_DEVICES per worker to
-# assign exactly one GPU per rank using the physical device index.
-export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
+# Device assignment: let Ray set CUDA_VISIBLE_DEVICES per worker.
+#
+# With RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1, Ray does NOT restrict
+# each worker to its assigned GPU, so both workers see all GPUs.  NCCL then
+# computes nNodes=2 / localRanks=1 (because it can't detect co-locality
+# without SHM), assigning localRank=0 to both workers.  Both then call
+# torch.cuda.set_device(0), putting both flat_params on cuda:0 → FSDP
+# assertion "Expects tensor on cuda:1, was on cuda:0".
+#
+# Without that flag Ray sets CUDA_VISIBLE_DEVICES="0" for rank 0 and
+# CUDA_VISIBLE_DEVICES="1" for rank 1 (physical GPU indices).  Each worker
+# sees exactly one GPU as cuda:0.  FSDP always calls set_device(0), which
+# maps to the correct physical GPU for that rank.  NCCL uses the loopback
+# socket transport (NCCL_SOCKET_IFNAME=lo) for communication between the two
+# workers, which is fully process-safe and does not require shared GPU memory.
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.
 #

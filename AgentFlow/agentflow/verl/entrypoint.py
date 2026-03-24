@@ -257,10 +257,9 @@ def run_ppo(config) -> None:
         #     bridge bus-ID collision causes cudaIpcGetMemHandle to fail.
         #     SHM transport is left enabled so NCCL stays in nNodes=1 mode.
         # NOTE: CUDA_VISIBLE_DEVICES is intentionally NOT forwarded here.
-        # veRL's RayWorkerGroup sets CUDA_VISIBLE_DEVICES per worker to
-        # assign exactly one GPU per rank.  Forwarding the multi-GPU value
-        # (e.g. "0,1") would override that assignment, causing NCCL to see
-        # duplicate GPUs ("rank 0 and rank 1 both on CUDA device X").
+        # Ray sets CUDA_VISIBLE_DEVICES per worker (one physical GPU per rank).
+        # Forwarding the multi-GPU value (e.g. "0,1") would override that
+        # per-worker assignment.
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",
