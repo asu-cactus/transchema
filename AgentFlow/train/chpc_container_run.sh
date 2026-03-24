@@ -294,14 +294,20 @@ export RAY_task_events_report_interval_ms=0
 #                               the two processes as separate nodes), which leaves
 #                               no valid intra-node transport and causes
 #                               "No transport found" errors.
-# NCCL_PROTO=Simple           : force NCCL to use only the Simple protocol.
-#                               The LL/LL128 protocols use proxy threads that
-#                               perform cross-process GPU memory access via CUDA
-#                               IPC (the "SHM/direct/direct" channel path).
-#                               Apptainer blocks cross-process CUDA IPC, silently
-#                               corrupting the CUDA context during ncclCommInitRank.
-#                               The Simple protocol avoids proxy-thread GPU access
-#                               and copies through host /dev/shm staging buffers.
+# NCCL_P2P_DIRECT_DISABLE=1  : forbid NCCL from directly accessing user GPU
+#                               buffers across processes via CUDA IPC/peer access.
+#                               Without this, NCCL's SHM transport uses the
+#                               "direct" submode (logged as "SHM/direct/direct"),
+#                               which calls cudaMemcpyPeerAsync to copy data
+#                               directly between GPU contexts across processes.
+#                               Apptainer blocks cross-process CUDA peer access,
+#                               causing a silent CUDA context corruption during
+#                               ncclCommInitRank that surfaces as "illegal memory
+#                               access" at the next CUDA API call after Init COMPLETE.
+#                               With NCCL_P2P_DIRECT_DISABLE=1 NCCL falls back to
+#                               the host-copy SHM submode, staging data through
+#                               /dev/shm CPU-side buffers — fully supported in any
+#                               container environment.
 # NCCL_SOCKET_IFNAME=lo      : force all ranks to use the loopback interface
 #                               for bootstrap and data.  Without this, different
 #                               worker processes may resolve to different network
@@ -328,16 +334,8 @@ export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
+export NCCL_P2P_DIRECT_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
-# NCCL_PROTO=Simple: force NCCL to use only the Simple protocol (no LL/LL128).
-# The LL and LL128 protocols use proxy threads that perform cross-process GPU
-# memory copies via CUDA IPC.  Inside Apptainer, cross-process CUDA IPC is
-# blocked, causing the proxy threads to access invalid memory addresses.
-# The Simple protocol avoids proxy threads for intra-node SHM collectives and
-# copies data through host-side /dev/shm staging buffers instead.
-# This eliminates the "SHM/direct/direct" transport path that was causing
-# "CUDA error: an illegal memory access" after ncclCommInitRank.
-export NCCL_PROTO=Simple
 # NCCL_CUMEM_ENABLE=1: explicitly override the CHPC host environment, which
 # injects NCCL_CUMEM_ENABLE=0 via the RDMA plugin.  NCCL 2.26.2 on Blackwell
 # (sm_120) requires CUDA VMM (cuMemCreate) for its internal communicator
