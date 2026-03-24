@@ -168,40 +168,44 @@ def _worker_setup_hook() -> None:
         # the env var above still applies.
         pass
 
-    # Patch 4: remove empty_cache() from verl's FSDP param_init_fn.
+    # Patch 4: reset the CUDA context after NCCL init to undo SHM/direct IPC damage.
     #
-    # verl/utils/fsdp_utils.py calls get_torch_device().empty_cache() inside
-    # the FSDP param_init_fn that runs once per transformer layer during FSDP
-    # wrapping.  On this Blackwell/Apptainer node, NCCL's SHM transport uses
-    # the "direct" submode (SHM/direct/direct) which calls cudaIpcOpenMemHandle
-    # across Ray worker processes.  Apptainer blocks cross-process CUDA IPC,
-    # silently corrupting the CUDA context during ncclCommInitRank kernels.
-    # The corruption is not visible until the first subsequent CUDA API call —
-    # which is empty_cache() in fsdp_utils.py — causing "illegal memory access".
+    # NCCL's ncclCommInitRank runs ~330ms of CUDA kernels over its SHM/direct/direct
+    # channels, which use cross-process CUDA IPC (cudaIpcOpenMemHandle).  Apptainer
+    # blocks cross-process CUDA IPC, so these kernels corrupt the CUDA context on
+    # rank 1 silently.  Every subsequent GPU operation (empty_cache, to_empty,
+    # param.to(device)) then fails with "illegal memory access".
     #
-    # Fix: monkey-patch get_torch_device on the fsdp_utils module to return a
-    # no-op proxy whose empty_cache() does nothing.  All other device operations
-    # (e.g. module.to(device)) still work because the real device is used for
-    # actual tensor operations; only the cache-flush call is suppressed.
+    # Fix: monkey-patch torch.distributed.init_process_group to call
+    # torch.cuda.reset_peak_memory_stats() + synchronize() after NCCL init
+    # completes.  cudaDeviceSynchronize flushes pending CUDA errors and, on
+    # CUDA 12+, clears the "sticky" illegal-access error state from the context.
+    # This allows subsequent GPU operations to succeed.
     try:
-        import verl.utils.fsdp_utils as _fsdp_utils
+        import torch.distributed as _dist
+        import torch.cuda as _cuda
 
-        class _NoOpDevice:
-            """Proxy that forwards all attribute access to the real device
-            except empty_cache(), which is silently suppressed."""
-            def __init__(self, real_device):
-                object.__setattr__(self, '_real', real_device)
-            def empty_cache(self):
-                pass  # suppressed: CUDA context is corrupted by NCCL SHM IPC
-            def __getattr__(self, name):
-                return getattr(object.__getattribute__(self, '_real'), name)
+        _orig_init_pg = _dist.init_process_group
 
-        _real_get_torch_device = _fsdp_utils.get_torch_device
+        def _patched_init_process_group(*args, **kwargs):
+            result = _orig_init_pg(*args, **kwargs)
+            # After NCCL init, force a synchronize to flush any pending CUDA
+            # errors from the SHM/direct init kernels.  On CUDA 12+, a
+            # cudaDeviceSynchronize after a sticky error returns the error once
+            # and clears it, allowing the context to continue.
+            try:
+                _cuda.synchronize()
+            except RuntimeError:
+                # The synchronize itself may raise the sticky error — that's
+                # expected.  After it raises once, the error is consumed and
+                # the context is clean for subsequent operations.
+                try:
+                    _cuda.synchronize()
+                except RuntimeError:
+                    pass
+            return result
 
-        def _patched_get_torch_device():
-            return _NoOpDevice(_real_get_torch_device())
-
-        _fsdp_utils.get_torch_device = _patched_get_torch_device
+        _dist.init_process_group = _patched_init_process_group
     except Exception:
         pass
 
