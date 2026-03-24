@@ -336,12 +336,23 @@ export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
 export NCCL_P2P_DIRECT_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
-# NCCL_CUMEM_ENABLE=1: explicitly override the CHPC host environment, which
-# injects NCCL_CUMEM_ENABLE=0 via the RDMA plugin.  NCCL 2.26.2 on Blackwell
-# (sm_120) requires CUDA VMM (cuMemCreate) for its internal communicator
-# scratch buffers on the intra-node SHM path.  With =0 those allocations
-# fail silently during ncclCommInitRank, corrupting rank 1's CUDA context.
-export NCCL_CUMEM_ENABLE=1
+# NCCL_CUMEM_ENABLE=0: disable cuMem (CUDA Virtual Memory Management) for
+# NCCL's device-side communicator scratch buffers.
+#
+# Although the CHPC host injects NCCL_CUMEM_ENABLE=0 via its RDMA plugin and
+# our previous approach overrode it to 1, testing confirms that cuMem-backed
+# device allocations via cuMemCreate + cuMemSetAccess also fail on GPU 1 in
+# this Apptainer environment.  GPU 1 shares the same PCIe busId (0x61000) as
+# GPU 0 due to the Blackwell PCIe bridge topology; CUDA VMM resolves physical
+# device identity via busId, so cuMemCreate / cuMemSetAccess on GPU 1 may be
+# routed incorrectly, silently corrupting GPU 1's CUDA context.
+#
+# NCCL 2.26.2 fixed the shared-memory kernel size bug for Blackwell (sm_120)
+# that required cuMem in NCCL 2.25 -- the fix is in the kernel code itself,
+# not in the cuMem allocator.  With 2.26.2, fully disabling cuMem for NCCL's
+# internal scratch buffers is safe: NCCL falls back to legacy cudaMalloc-based
+# allocation, which correctly targets the current CUDA context's device.
+export NCCL_CUMEM_ENABLE=0
 # NCCL_CUMEM_HOST_ENABLE=0: disable cuMem-based host-memory allocation for
 # NCCL's SHM transport buffers.
 #
@@ -364,12 +375,6 @@ export NCCL_CUMEM_ENABLE=1
 # path (mmap over /dev/shm/nccl-*) for all host-side staging buffers.  This
 # path requires no cross-process handle transfer and works correctly in any
 # container environment that shares /dev/shm (which Apptainer does by default).
-#
-# NOTE: This is safe to combine with NCCL_CUMEM_ENABLE=1 above.
-# NCCL_CUMEM_ENABLE controls device-side communicator scratch buffers
-# (cuMemCreate for GPU VRAM), which still work correctly inside Apptainer.
-# NCCL_CUMEM_HOST_ENABLE controls only the host-memory SHM staging buffers.
-# The two env vars are orthogonal.
 export NCCL_CUMEM_HOST_ENABLE=0
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),

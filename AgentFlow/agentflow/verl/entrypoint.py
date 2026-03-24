@@ -125,6 +125,14 @@ def _worker_setup_hook() -> None:
     # "CUDA error: an illegal memory access was encountered".
     # Setting =0 forces the safe legacy /dev/shm/nccl-* MMAP path.
     os.environ["NCCL_CUMEM_HOST_ENABLE"] = "0"
+    # Disable NCCL's CUDA VMM (cuMemCreate) for device-side scratch buffers.
+    # GPU 1 shares the same PCIe busId as GPU 0 (Blackwell bridge topology);
+    # cuMemCreate/cuMemSetAccess may be routed to the wrong device via busId,
+    # silently corrupting GPU 1's context.  Legacy cudaMalloc correctly
+    # targets the active CUDA context device.  NCCL 2.26.2 fixed the
+    # Blackwell shared-mem kernel size in the kernel code itself, so cuMem
+    # is no longer required for correctness.
+    os.environ["NCCL_CUMEM_ENABLE"] = "0"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -216,6 +224,14 @@ def run_ppo(config) -> None:
         #     → "CUDA error: an illegal memory access" on every subsequent GPU
         #     API call.  The legacy mmap path works in any container that shares
         #     /dev/shm, which Apptainer does by default (NCCL issue #1838).
+        # NCCL_CUMEM_ENABLE=0 : disables NCCL's CUDA VMM (cuMemCreate) for
+        #     device-side communicator scratch buffers.  GPU 1 shares the same
+        #     PCIe busId as GPU 0 (Blackwell PCIe bridge topology); cuMemCreate
+        #     / cuMemSetAccess resolve physical device identity via busId and
+        #     may be routed to the wrong device, silently corrupting GPU 1's
+        #     CUDA context.  NCCL 2.26.2 fixed the Blackwell shared-mem kernel
+        #     size in the kernel code, so cuMem is no longer required.
+        #     Legacy cudaMalloc correctly targets the active CUDA context.
         # NCCL_IB_DISABLE / NCCL_IGNORE_DISABLED_P2P / UCX_TLS : suppress UCX
         #     IB transport crashes and PCIe bridge device-ID collisions on this
         #     Blackwell workstation node (both GPUs share the same PCI bus ID).
