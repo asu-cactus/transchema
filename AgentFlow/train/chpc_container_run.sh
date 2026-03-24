@@ -288,13 +288,20 @@ export RAY_task_events_report_interval_ms=0
 #                               The Blackwell PCIe bridge bus-ID collision means
 #                               cudaIpcGetMemHandle fails with "invalid argument"
 #                               on this node.  P2P is disabled so NCCL uses SHM.
-# NCCL_SHM_DISABLE is intentionally NOT set.  SHM (POSIX shared-memory staging)
-#                               is the correct intra-node transport when P2P is
-#                               off.  With SHM available NCCL keeps nNodes=1 and
-#                               localRanks=2 — no proxy threads for topology.
-#                               Setting NCCL_SHM_DISABLE=1 forces nNodes=2 which
-#                               activates proxy threads that cannot create CUDA
-#                               contexts inside Apptainer.
+# NCCL_SHM_DISABLE=1         : disable SHM transport entirely.
+#                               The SHM "direct" submode (shown as "SHM/direct/direct"
+#                               in NCCL INFO channel lines) requires one process to
+#                               directly read/write into another process's GPU memory
+#                               mapping.  Apptainer's security model blocks this
+#                               cross-process GPU memory access, corrupting the CUDA
+#                               context silently during ncclCommInitRank.  The
+#                               corruption surfaces as "CUDA error: illegal memory
+#                               access" at the next CUDA API call (empty_cache /
+#                               param.to(device)) immediately after Init COMPLETE.
+#                               With SHM disabled and P2P disabled, NCCL falls back
+#                               to NET/Socket (TCP loopback) for intra-node traffic.
+#                               NCCL_SOCKET_IFNAME=lo and NCCL_HOSTID ensure
+#                               nNodes=1 and the socket transport uses 127.0.0.1.
 # NCCL_SOCKET_IFNAME=lo      : force all ranks to use the loopback interface
 #                               for bootstrap and data.  Without this, different
 #                               worker processes may resolve to different network
@@ -321,7 +328,15 @@ export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
+export NCCL_SHM_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
+# NCCL_NET_DISABLE_INTRA=1: when P2P and SHM are both disabled, NCCL's
+# NET/Socket transport falls back to AF_UNIX (Unix domain socket) for
+# intra-node ranks.  PyTorch's ProcessGroupNCCL rejects AF_UNIX addresses
+# (expects AF_INET/AF_INET6) and crashes with "internal error".
+# Setting NCCL_NET_DISABLE_INTRA=1 prevents the AF_UNIX shortcut, forcing
+# NCCL to use the full TCP socket path (governed by NCCL_SOCKET_IFNAME=lo).
+export NCCL_NET_DISABLE_INTRA=1
 # NCCL_CUMEM_ENABLE=1: explicitly override the CHPC host environment, which
 # injects NCCL_CUMEM_ENABLE=0 via the RDMA plugin.  NCCL 2.26.2 on Blackwell
 # (sm_120) requires CUDA VMM (cuMemCreate) for its internal communicator
