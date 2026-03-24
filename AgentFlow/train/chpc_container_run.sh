@@ -376,6 +376,39 @@ export NCCL_CUMEM_ENABLE=0
 # path requires no cross-process handle transfer and works correctly in any
 # container environment that shares /dev/shm (which Apptainer does by default).
 export NCCL_CUMEM_HOST_ENABLE=0
+# NCCL_SHM_USE_CUDA_MEMCPY=1: force the SHM transport to use the CUDA Copy
+# Engine (CE) path instead of the "direct" path (logged as SHM/CE/CE vs
+# SHM/direct/direct).
+#
+# In the default "direct" mode, NCCL calls cudaHostRegister(...,
+# cudaHostRegisterPortable | cudaHostRegisterMapped) on each /dev/shm buffer
+# and then cudaHostGetDevicePointer() to obtain a device-accessible address.
+# The Portable flag is supposed to make the device pointer visible across all
+# CUDA contexts *in the same process*.  However, across *separate processes*
+# in Apptainer (which runs each Ray worker as a separate process), the
+# device pointer obtained in one process is NOT accessible from GPU code in
+# another process.  During ncclCommInitRank, NCCL's initialization kernels
+# write to these cross-process device pointers → the GPU accesses an invalid
+# address → "CUDA error: an illegal memory access was encountered" on both
+# ranks simultaneously, followed by the watchdog thread aborting the process.
+#
+# In CE mode (SHM_USE_CUDA_MEMCPY=1), NCCL uses the CUDA Copy Engine to
+# stage data between GPU device memory and the /dev/shm host buffer.  The CE
+# path does NOT use cudaHostGetDevicePointer across processes: instead, each
+# process's GPU copies data into/from its own device buffer, and the proxy
+# thread moves it via cudaMemcpy to/from the shared host buffer.  This is
+# fully container-safe and has been the standard fix for NCCL SHM in
+# multi-process-per-node container environments since NCCL 2.19+.
+#
+# Performance note: CE mode has higher latency than direct mode for small
+# messages due to the extra cudaMemcpy hop, but for the FSDP allreduce
+# workload (large gradient tensors, MB-scale messages), the bandwidth is
+# comparable.  Correctness takes priority here.
+#
+# The proxy-thread context bug that affected NCCL_SHM_USE_CUDA_MEMCPY in
+# NCCL 2.17 (GitHub NCCL issue #803) has been fixed since NCCL 2.18.
+# NCCL 2.26.2 is unaffected.
+export NCCL_SHM_USE_CUDA_MEMCPY=1
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on

@@ -133,6 +133,15 @@ def _worker_setup_hook() -> None:
     # Blackwell shared-mem kernel size in the kernel code itself, so cuMem
     # is no longer required for correctness.
     os.environ["NCCL_CUMEM_ENABLE"] = "0"
+    # Force NCCL SHM transport to use the Copy Engine (CE) path, not the
+    # "direct" path.  In direct mode (the default), NCCL calls
+    # cudaHostRegisterPortable on the /dev/shm buffer so every GPU in the
+    # same *process* can DMA into it.  Across separate Apptainer worker
+    # processes the registered pointer is invalid → both GPUs fault with
+    # "illegal memory access" at the same instant during ncclCommInitRank.
+    # CE mode (SHM/CE/CE) stages data via cudaMemcpy in the proxy thread
+    # instead, which is fully cross-process safe.
+    os.environ["NCCL_SHM_USE_CUDA_MEMCPY"] = "1"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -224,6 +233,15 @@ def run_ppo(config) -> None:
         #     → "CUDA error: an illegal memory access" on every subsequent GPU
         #     API call.  The legacy mmap path works in any container that shares
         #     /dev/shm, which Apptainer does by default (NCCL issue #1838).
+        # NCCL_SHM_USE_CUDA_MEMCPY=1 : forces NCCL SHM to use Copy Engine
+        #     (CE) staging instead of the "direct" cross-process device pointer
+        #     path.  In direct mode (SHM/direct/direct), NCCL registers each
+        #     /dev/shm buffer with cudaHostRegisterPortable so all CUDA contexts
+        #     in the same process can DMA into it — but across separate Apptainer
+        #     worker processes, the registered address is invalid, causing both
+        #     GPUs to fault with "illegal memory access" simultaneously during
+        #     ncclCommInitRank.  CE mode (SHM/CE/CE) uses cudaMemcpy in the proxy
+        #     thread instead, which is fully cross-process safe.
         # NCCL_CUMEM_ENABLE=0 : disables NCCL's CUDA VMM (cuMemCreate) for
         #     device-side communicator scratch buffers.  GPU 1 shares the same
         #     PCIe busId as GPU 0 (Blackwell PCIe bridge topology); cuMemCreate
@@ -246,6 +264,7 @@ def run_ppo(config) -> None:
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",
+            "NCCL_SHM_USE_CUDA_MEMCPY",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
