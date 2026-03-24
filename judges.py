@@ -12,6 +12,7 @@
 # Output: bool — True = correct (do NOT enact critique), False = wrong (enact critique)
 
 import json
+import logging
 import pandas as pd
 from eval_score.score import relative_csv_score
 from llm.llm_models import LLMClient, TokenUsageTracker
@@ -19,18 +20,18 @@ from llm.llm_models import LLMClient, TokenUsageTracker
 EPS = 1e-2  # true_combined_score must exceed 1 - EPS to be considered correct
 
 
-def judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, judge_type: str, llm_client: LLMClient) -> tuple:
+def judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, judge_type: str, llm_client: LLMClient, logger: logging.Logger = None) -> tuple:
     """Returns (is_correct: bool, reason: str). reason is empty for non-LLM judges."""
     if judge_type == "gt":
         raise ValueError("gt judge is handled upstream via compare_lists_matching — don't call judge() for it")
     elif judge_type == "det_score":
-        return score_judge(df_generated, df_ground_truth), ""
+        return score_judge(df_generated, df_ground_truth, logger=logger), ""
     elif judge_type == "llm":
-        return llm_judge(df_generated, df_ground_truth, llm_client)
+        return llm_judge(df_generated, df_ground_truth, llm_client, logger=logger)
     elif judge_type == "llm_score":
-        return llm_score_judge(df_generated, df_ground_truth, llm_client)
+        return llm_score_judge(df_generated, df_ground_truth, llm_client, logger=logger)
     elif judge_type == "llm_score_hybrid":
-        return llm_nl_score_judge(df_generated, df_ground_truth, llm_client)
+        return llm_nl_score_judge(df_generated, df_ground_truth, llm_client, logger=logger)
     else:
         raise ValueError(f"Unknown judge type: {judge_type}")
 
@@ -47,17 +48,21 @@ def _df_to_prompt_str(df: pd.DataFrame, max_rows: int = 10) -> str:
     return df.head(max_rows).to_string(index=False)
 
 
-def score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame) -> bool:
+def score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, logger: logging.Logger = None) -> bool:
     """
     Pure deterministic judge. Uses true_combined_score = (fd_f1 + col_ratio) / 2.
     Returns True (correct) iff score >= 1 - EPS.
     """
     _, _, _, _, true_combined_score, _ = _score_tuple(df_generated, df_ground_truth)
-    print(f"DET_SCORE: true_combined_score={true_combined_score:.4f}, threshold={1.0 - EPS:.4f}, result={true_combined_score >= (1.0 - EPS)}")
+    msg = f"DET_SCORE: true_combined_score={true_combined_score:.4f}, threshold={1.0 - EPS:.4f}, result={true_combined_score >= (1.0 - EPS)}"
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
     return true_combined_score >= (1.0 - EPS)
 
 
-def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient) -> bool:
+def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None) -> bool:
     """
     LLM sees both tables, no score information. Returns True if LLM judges correct.
     Expects JSON response: {"correct": true/false, "reason": "..."}
@@ -78,11 +83,13 @@ def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_cli
     or
     {{"correct": false, "reason": "brief explanation"}}"""
 
+    if logger:
+        logger.info(f"JUDGE_PROMPT (llm):\n{prompt}")
     response_str = llm_client.gpt(prompt)[0]
-    return _parse_llm_bool_response(response_str)
+    return _parse_llm_bool_response(response_str, logger=logger)
 
 
-def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient) -> bool:
+def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None) -> bool:
     """
     LLM sees both tables + raw numeric score metrics.
     Returns True if LLM judges correct.
@@ -112,11 +119,13 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
     or
     {{"correct": false, "reason": "brief explanation"}}"""
 
+    if logger:
+        logger.info(f"JUDGE_PROMPT (llm_score):\n{prompt}")
     response_str = llm_client.gpt(prompt)[0]
-    return _parse_llm_bool_response(response_str)
+    return _parse_llm_bool_response(response_str, logger=logger)
 
 
-def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient) -> bool:
+def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None) -> bool:
     """
     LLM sees both tables + natural language interpretation of the score.
     Softer signal than raw numbers — tells the LLM what the score *means*.
@@ -147,8 +156,10 @@ def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame
     or
     {{"correct": false, "reason": "brief explanation"}}"""
 
+    if logger:
+        logger.info(f"JUDGE_PROMPT (llm_score_hybrid):\n{prompt}")
     response_str = llm_client.gpt(prompt)[0]
-    return _parse_llm_bool_response(response_str)
+    return _parse_llm_bool_response(response_str, logger=logger)
 
 def _build_nl_score_interpretation(
     fd_f1: float,
@@ -333,9 +344,15 @@ def _build_nl_score_interpretation(
 
     return "\n".join(lines)
 
-def _parse_llm_bool_response(response_str: str) -> tuple:
+def _parse_llm_bool_response(response_str: str, logger: logging.Logger = None) -> tuple:
     """Returns (is_correct: bool, reason: str)."""
-    print(f"JUDGE RAW RESPONSE: {repr(response_str)}")
+    def _log(msg):
+        if logger:
+            logger.info(msg)
+        else:
+            print(msg)
+
+    _log(f"JUDGE RAW RESPONSE: {repr(response_str)}")
 
     cleaned = response_str.strip()
     if cleaned.startswith("```"):
@@ -349,12 +366,12 @@ def _parse_llm_bool_response(response_str: str) -> tuple:
         parsed = json.loads(cleaned)
         result = bool(parsed["correct"])
         reason = parsed.get("reason", "")
-        print(f"JUDGE PARSED RESULT: {result} | REASON: {reason}")
+        _log(f"JUDGE PARSED RESULT: {result} | REASON: {reason}")
         return result, reason
     except (json.JSONDecodeError, KeyError):
         lower = response_str.lower()
         if '"correct": true' in lower or '"correct":true' in lower:
-            print("JUDGE PARSED RESULT: True (fallback grep)")
+            _log("JUDGE PARSED RESULT: True (fallback grep)")
             return True, ""
-        print("JUDGE PARSED RESULT: False (parse failed, conservative default)")
+        _log("JUDGE PARSED RESULT: False (parse failed, conservative default)")
         return False, ""

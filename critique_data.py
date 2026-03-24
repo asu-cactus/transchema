@@ -11,7 +11,7 @@ import multiprocessing
 from methods.multi_step import multi_step
 from methods.single_step_cot import single_step_cot
 from methods.critique import critique
-from log_util.log_util import setup_logging
+from log_util.log_util import setup_logging, create_logger
 from judges import judge
 from llm.llm_models import LLMClient, TokenUsageTracker
 
@@ -519,10 +519,9 @@ def _critique_case_worker(args, length, case, result_queue):
         succeeded = False
 
         # Create llm_client here (subprocess cannot share the parent's client)
-        import logging as _logging
-        _logger = _logging.getLogger("judge")
         _token_tracker = TokenUsageTracker()
-        _llm_client = LLMClient(model=args.model, tracker=_token_tracker, logger=_logger)
+        _case_logger = create_logger("JUDGE", args.log_directory, length, case, case)
+        _llm_client = LLMClient(model=args.model, tracker=_token_tracker, logger=_case_logger)
 
         for iter_num in range(1, num_iterations + 1):
             past_context_str = format_past_attempts(past_attempts)
@@ -556,7 +555,7 @@ def _critique_case_worker(args, length, case, result_queue):
                     df_generated = pd.read_csv(df_generated_path, low_memory=False)
                     df_ground_truth = pd.read_csv(df_ground_truth_path, low_memory=False)
                     df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-                    is_correct, judge_reason = judge(df_generated, df_ground_truth, args.judge, _llm_client)
+                    is_correct, judge_reason = judge(df_generated, df_ground_truth, args.judge, _llm_client, logger=_case_logger)
                     enact_critique = not is_correct
                 except Exception as e:
                     print(f"Judge failed for {case_path}, falling back to gt: {e}")

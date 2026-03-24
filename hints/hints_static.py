@@ -210,7 +210,7 @@ NEXT_OPERATOR_HINT_IDS = [1, 2, 3, 4, 5, 6, 9, 11, 16]
 JOIN_HINT_IDS = [7, 8, 9]
 GROUPBY_AGG_HINT_IDS = [10, 14, 16, 17, 18, 20, 21]
 PYTHON_SCRIPT_HINT_IDS = [1, 2, 3, 4, 5, 10, 11, 16, 17, 24, 27, 28, 29, 30, 31, 32]
-CRITIQUE_HINT_IDS = [4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19, 22, 23, 24, 25, 26, 28]
+CRITIQUE_HINT_IDS = [4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28]
 # Pipeline-level: combined design + code generation (single_step_cot / Create_New_Pipeline)
 PIPELINE_HINT_IDS = [
     1, 2, 3, 4, 5, 6,        # Operator selection (UNION vs JOIN, all tables used)

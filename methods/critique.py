@@ -325,10 +325,17 @@ def critique(
             query = replace_history_info(query, operation_history)
             result_path = get_result_path(args, main_folder, len_idx_target_idx)
             query = replace_result_info(query, num_target_samples, result_path)
+            try:
+                df_generated = pd.read_csv(result_path, low_memory=False)
+                dist_section = build_column_distribution_section(df_ground_truth, df_generated)
+                query = query.replace("$COLUMN_DISTRIBUTIONS$", dist_section)
+            except Exception:
+                query = query.replace("$COLUMN_DISTRIBUTIONS$", "")
+        else:
+            query = query.replace("$COLUMN_DISTRIBUTIONS$", "")
     except Exception as e:
-        query = query.replace(
-            "$NUM_TUPLES$", "Last python script failed to produce any output."
-        )
+        query = query.replace("$NUM_TUPLES$", "Last python script failed to produce any output.")
+        query = query.replace("$COLUMN_DISTRIBUTIONS$", "")
 
     if fd == 1:
         df_ground_truth_fd = df_ground_truth.sample(
@@ -703,6 +710,94 @@ def critique(
 
 def replace_history_info(query, operation_history):
     return query.replace("$OPERATIONS$", operation_history)
+
+
+def build_column_distribution_section(df_gt: pd.DataFrame, df_gen: pd.DataFrame) -> str:
+    """
+    Per-column distribution comparison between the ground-truth and generated tables.
+    Numeric columns: min, max, mean with range/mean ratio warnings.
+    Categorical columns: unique count and top values.
+    Also reports missing/extra columns.
+    """
+    lines = ["Column-Level Distribution Comparison (Target vs Generated):"]
+
+    gt_cols_lower  = {c.lower(): c for c in df_gt.columns}
+    gen_cols_lower = {c.lower(): c for c in df_gen.columns}
+    shared = sorted(set(gt_cols_lower) & set(gen_cols_lower))
+
+    for col_lower in shared:
+        gt_col  = gt_cols_lower[col_lower]
+        gen_col = gen_cols_lower[col_lower]
+        gt_series  = df_gt[gt_col].dropna()
+        gen_series = df_gen[gen_col].dropna()
+
+        gt_dtype  = str(df_gt[gt_col].dtype)
+        gen_dtype = str(df_gen[gen_col].dtype)
+        dtype_note = (
+            f" [dtype mismatch: target={gt_dtype}, generated={gen_dtype}]"
+            if gt_dtype != gen_dtype
+            else f" [dtype: {gt_dtype}]"
+        )
+        lines.append(f"\n  Column '{gt_col}'{dtype_note}:")
+
+        try:
+            gt_vals  = gt_series.astype(float).values
+            gen_vals = gen_series.astype(float).values
+            gt_min,  gt_max,  gt_mean  = float(gt_vals.min()),  float(gt_vals.max()),  float(gt_vals.mean())
+            gen_min, gen_max, gen_mean = float(gen_vals.min()), float(gen_vals.max()), float(gen_vals.mean())
+
+            lines.append(f"    Target   : min={gt_min:.4g},  max={gt_max:.4g},  mean={gt_mean:.4g}")
+            lines.append(f"    Generated: min={gen_min:.4g}, max={gen_max:.4g}, mean={gen_mean:.4g}")
+
+            # gt_range  = gt_max  - gt_min
+            # gen_range = gen_max - gen_min
+            # if gt_range > 1e-6:
+            #     ratio = gen_range / gt_range
+            #     if ratio > 5:
+            #         lines.append(
+            #             f"    WARNING: generated range is {ratio:.1f}x larger than target — "
+            #             "likely SUM used instead of AVG or COUNT."
+            #         )
+            #     elif ratio < 0.2:
+            #         lines.append(
+            #             f"    WARNING: generated range is {ratio:.2f}x of target — "
+            #             "possible over-aggregation or wrong GROUP BY."
+            #         )
+
+            # if abs(gt_mean) > 1e-6:
+            #     mean_ratio = gen_mean / gt_mean
+            #     if mean_ratio > 5:
+            #         lines.append(
+            #             f"    WARNING: generated mean is {mean_ratio:.1f}x larger than target — "
+            #             "consider AVG instead of SUM."
+            #         )
+            #     elif mean_ratio < 0.2:
+            #         lines.append(
+            #             f"    WARNING: generated mean is {mean_ratio:.2f}x of target — "
+            #             "values may be under-aggregated."
+            #         )
+
+        except (ValueError, TypeError):
+            gt_nunique  = int(gt_series.nunique())
+            gen_nunique = int(gen_series.nunique())
+            gt_top  = gt_series.value_counts().head(5).index.tolist()
+            gen_top = gen_series.value_counts().head(5).index.tolist()
+            lines.append(f"    Target   : {gt_nunique} unique values, top: {gt_top}")
+            lines.append(f"    Generated: {gen_nunique} unique values, top: {gen_top}")
+            # if gt_nunique != gen_nunique:
+            #     lines.append(
+            #         f"    WARNING: unique value counts differ ({gt_nunique} vs {gen_nunique}) — "
+            #         "check string normalization or grouping."
+            #     )
+
+    missing = sorted(set(df_gt.columns) - set(df_gen.columns))
+    extra   = sorted(set(df_gen.columns) - set(df_gt.columns))
+    if missing:
+        lines.append(f"\n  Columns in target but MISSING in generated: {missing}")
+    if extra:
+        lines.append(f"  Columns in generated but NOT in target: {extra}")
+
+    return "\n".join(lines)
 
 
 def get_result_path(args, main_folder, len_idx_target_idx):
