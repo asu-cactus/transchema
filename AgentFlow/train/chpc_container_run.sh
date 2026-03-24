@@ -143,8 +143,21 @@ else
   #
   # We bind unconditionally over the confirmed path (no apptainer probe needed;
   # Apptainer silently ignores bind-mounts over non-existent target paths).
-  _NCCL_BIND_ARGS="--bind ${_NCCL_SO}:/lib/x86_64-linux-gnu/libnccl.so.2"
-  echo "  Will bind-mount over: /lib/x86_64-linux-gnu/libnccl.so.2"
+  # /lib/x86_64-linux-gnu/libnccl.so.2 is a symlink → libnccl.so.2.25.1.
+  # Apptainer cannot bind-mount over a symlink; the dynamic linker follows
+  # the symlink and loads the versioned file directly.  We must bind-mount
+  # over the symlink TARGET (the versioned filename) to intercept the load.
+  _NCCL_VERSIONED_TARGET=""
+  _nccl_link=$(apptainer exec "${IMAGE}" readlink /lib/x86_64-linux-gnu/libnccl.so.2 2>/dev/null || true)
+  if [[ -n "${_nccl_link}" ]]; then
+    # readlink returns just the filename (e.g. libnccl.so.2.25.1); prepend dir.
+    _NCCL_VERSIONED_TARGET="/lib/x86_64-linux-gnu/${_nccl_link}"
+  else
+    # Fallback: not a symlink, bind over the path directly.
+    _NCCL_VERSIONED_TARGET="/lib/x86_64-linux-gnu/libnccl.so.2"
+  fi
+  _NCCL_BIND_ARGS="--bind ${_NCCL_SO}:${_NCCL_VERSIONED_TARGET}"
+  echo "  Will bind-mount over: ${_NCCL_VERSIONED_TARGET}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -422,19 +435,23 @@ else:
 print("  OK flash_attn.bert_padding import")
 
 import ctypes, os
-# ldd confirms libtorch_cuda.so resolves libnccl.so.2 from /lib/x86_64-linux-gnu/
-_TORCH_NCCL = "/lib/x86_64-linux-gnu/libnccl.so.2"
-if not os.path.exists(_TORCH_NCCL):
-    _TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
-if not os.path.exists(_TORCH_NCCL):
-    _TORCH_NCCL = "/usr/local/lib/python3.12/dist-packages/torch/lib/libnccl.so.2"
+# ldd confirms libtorch_cuda.so resolves libnccl.so.2 via symlink to
+# /lib/x86_64-linux-gnu/libnccl.so.2.25.1 (versioned target).
+# We must load the versioned file directly to check the injected version.
+import glob as _glob
+_NCCL_VERSIONED = ""
+for _candidate in _glob.glob("/lib/x86_64-linux-gnu/libnccl.so.2.*"):
+    _NCCL_VERSIONED = _candidate
+    break
+if not _NCCL_VERSIONED:
+    _NCCL_VERSIONED = "/lib/x86_64-linux-gnu/libnccl.so.2"
 try:
-    _lib = ctypes.CDLL(_TORCH_NCCL)
+    _lib = ctypes.CDLL(_NCCL_VERSIONED)
     _ver = ctypes.c_int(0)
     _lib.ncclGetVersion(ctypes.byref(_ver))
     _v = _ver.value
     _vs = f"{_v // 10000}.{(_v % 10000) // 100}.{_v % 100}"
-    print(f"  NCCL version at {_TORCH_NCCL}: {_vs}")
+    print(f"  NCCL version at {_NCCL_VERSIONED}: {_vs}")
     if _v < 22602:
         print(f"  ERROR: NCCL {_vs} < 2.26.2 — Blackwell shared-memory bug not fixed!")
         print( "         Check that the NCCL bind-mounts succeeded.")
@@ -442,7 +459,7 @@ try:
     else:
         print(f"  OK NCCL >= 2.26.2 confirmed")
 except Exception as e:
-    print(f"  WARNING: could not query NCCL version from {_TORCH_NCCL}: {e}")
+    print(f"  WARNING: could not query NCCL version from {_NCCL_VERSIONED}: {e}")
 PY
 
 # shellcheck disable=SC2086
