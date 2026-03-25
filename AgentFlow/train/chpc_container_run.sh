@@ -219,15 +219,19 @@ _SHIM_SRC="${REPO_ROOT}/AgentFlow/train/nccl_shm_shim.c"
 _SHIM_SO="${_SIF_PKGS_DIR}/nccl_shm_shim.so"
 if [[ -f "${_SHIM_SRC}" ]] && [[ ! -f "${_SHIM_SO}" ]]; then
   echo "Building NCCL SHM shim on host (strips cudaHostRegisterMapped) ..."
-  # Build on the HOST, not inside the container.  Apptainer's LD_PRELOAD is
-  # resolved by the host dynamic linker, so the .so must be compatible with
-  # the host glibc.  Building inside the container produces a glibc-2.34+
-  # binary that the host linker rejects with "GLIBC_2.34 not found".
+  # Build on the HOST.  Apptainer resolves LD_PRELOAD with the host dynamic
+  # linker, so the .so must match the host glibc, not the container's newer one.
+  #
+  # The .symver directive in nccl_shm_shim.c pins dlsym to GLIBC_2.2.5 —
+  # the oldest x86-64 ABI version, present on every Linux since 2001 — so
+  # even if the host compiler is newer, the produced .so has no GLIBC_2.17+
+  # (or GLIBC_2.34+) requirements and loads cleanly under any host glibc.
   cc -O2 -shared -fPIC \
     -o "${_SHIM_SO}" \
     "${_SHIM_SRC}" \
     -ldl \
     && echo "  Built: ${_SHIM_SO}" \
+    && objdump -p "${_SHIM_SO}" 2>/dev/null | grep -E "GLIBC|NEEDED" || true \
     || echo "  WARNING: shim build failed — cross-process CUDA fault may occur"
 fi
 if [[ -f "${_SHIM_SO}" ]]; then
