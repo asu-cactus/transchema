@@ -167,15 +167,43 @@ def _worker_setup_hook() -> None:
     # This is set in chpc_container_run.sh and forwarded to workers below.
     os.environ["NCCL_SHM_DISABLE"] = "1"
 
+    # Pre-set the CUDA device based on global RANK so NCCL sees distinct
+    # busIds for each rank before torch.distributed.init_process_group.
+    #
+    # Problem: Ray assigns fractional GPUs (num_gpus = 1/max_colocate_count)
+    # to colocated workers.  With fractional allocation, Ray cannot assign
+    # CUDA_VISIBLE_DEVICES per-worker, so both workers start with CUDA
+    # default device 0.  When NCCL calls cudaGetDevice() during
+    # ncclCommInitRank it sees the same busId for both ranks → "Duplicate
+    # GPU detected" → ncclInvalidUsage.
+    #
+    # Fix: call torch.cuda.set_device(local_rank) in the worker_setup_hook
+    # (which runs before any user code or NCCL init).  veRL sets RANK and
+    # RAY_LOCAL_WORLD_SIZE env vars for every worker; local_rank = RANK %
+    # local_world_size gives the correct GPU index.
+    try:
+        import torch as _torch
+        _rank = int(os.environ.get("RANK", "0"))
+        _local_world_size = int(os.environ.get("RAY_LOCAL_WORLD_SIZE",
+                                               os.environ.get("LOCAL_WORLD_SIZE", "1")))
+        _local_rank = _rank % _local_world_size
+        if _torch.cuda.is_available() and _torch.cuda.device_count() > _local_rank:
+            _torch.cuda.set_device(_local_rank)
+            os.environ["LOCAL_RANK"] = str(_local_rank)
+    except Exception:
+        pass
+
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
         import torch as _torch
         _cvd = os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>")
         _rank = os.environ.get("RANK", "?")
         _local_rank = os.environ.get("LOCAL_RANK", "?")
+        _cur_dev = _torch.cuda.current_device() if _torch.cuda.is_available() else "N/A"
         _ngpu = _torch.cuda.device_count() if _torch.cuda.is_available() else 0
         print(
             f"[worker_hook] RANK={_rank} LOCAL_RANK={_local_rank} "
+            f"current_device={_cur_dev} "
             f"CUDA_VISIBLE_DEVICES={_cvd} visible_gpus={_ngpu}",
             flush=True,
         )
@@ -279,10 +307,11 @@ def run_ppo(config) -> None:
         # NCCL_P2P_DISABLE : disable GPU-to-GPU P2P/IPC transfers.  The PCIe
         #     bridge bus-ID collision causes cudaIpcGetMemHandle to fail.
         # NOTE: CUDA_VISIBLE_DEVICES is intentionally NOT forwarded here.
-        # Ray assigns CUDA_VISIBLE_DEVICES per worker (worker-0 → "0",
-        # worker-1 → "1").  Each worker sees exactly one GPU as cuda:0.
-        # FSDP initialises flat_param on cuda:0 and veRL calls
-        # torch.cuda.set_device(0) — no device mismatch assertion.
+        # Ray assigns fractional GPUs per colocated worker (1/max_colocate_count).
+        # With fractional allocation CUDA_VISIBLE_DEVICES cannot be set per-worker.
+        # RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 keeps all GPUs visible;
+        # _worker_setup_hook calls torch.cuda.set_device(RANK % local_world_size)
+        # so each NCCL rank sees a distinct busId before init_process_group.
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",

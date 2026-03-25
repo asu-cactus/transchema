@@ -339,18 +339,14 @@ export NCCL_SHM_DISABLE=1
 # Setting NCCL_HOSTID to a fixed string forces all ranks on this job to share
 # the same host identity → nNodes=1 → intra-node transport → correct operation.
 export NCCL_HOSTID=datamorphernode0
-# Do NOT set RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES.
-# Let Ray assign CUDA_VISIBLE_DEVICES per worker (worker-0 gets "0",
-# worker-1 gets "1").  Each worker then sees exactly one GPU as cuda:0.
-# FSDP initialises flat_param on cuda:0 in every worker, and veRL calls
-# torch.cuda.set_device(0) — no device mismatch.
-#
-# With NCCL_SHM_DISABLE=1 (Socket transport) + NCCL_HOSTID forcing the same
-# hostHash, NCCL correctly detects nNodes=1 even when each worker sees only
-# one GPU.  The previous "Duplicate GPU detected" error with this setting
-# was caused by NCCL P2P/SHM probing busId uniqueness; with both disabled
-# and NCCL_IGNORE_DISABLED_P2P=1, NCCL skips that check entirely.
-unset RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES 2>/dev/null || true
+# Set RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 so all Ray workers see
+# all physical GPUs.  veRL requests fractional GPUs per colocated worker
+# (num_gpus = 1/max_colocate_count); with fractional allocation Ray cannot
+# set CUDA_VISIBLE_DEVICES per-worker — it would assign both workers to GPU 0.
+# With NOSET=1 Ray does not restrict per-worker GPU visibility, and veRL's
+# _worker_setup_hook calls torch.cuda.set_device(local_rank) before NCCL
+# init so each rank gets a distinct busId.
+export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.
 #
