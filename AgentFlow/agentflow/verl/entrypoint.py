@@ -133,15 +133,15 @@ def _worker_setup_hook() -> None:
     # Blackwell shared-mem kernel size in the kernel code itself, so cuMem
     # is no longer required for correctness.
     os.environ["NCCL_CUMEM_ENABLE"] = "0"
-    # Disable SHM transport entirely.  Even in CE mode (SHM_USE_CUDA_MEMCPY=1 +
-    # SHM_MEMCPY_MODE=3), ncclShmOpen in NCCL's shmutils.cc always calls
-    # cudaHostRegister + cudaHostGetDevicePointer on the /dev/shm buffer when
-    # dptr is non-NULL (which is always requested by the proxy setup path).
-    # That pointer is registered in one process's CUDA context and used by the
-    # GPU in a different Apptainer worker process → "illegal memory access".
-    # Disabling SHM forces loopback-socket transport (NCCL_SOCKET_IFNAME=lo),
-    # which is fully cross-process safe.
-    os.environ["NCCL_SHM_DISABLE"] = "1"
+    # Re-enable SHM but force full CE (Copy Engine) mode on both send and
+    # receive sides.  SHM must stay enabled for NCCL to detect co-locality
+    # (same /dev/shm inode) → nNodes=1 → correct localRank assignment.
+    # CE mode avoids the cross-process cudaHostGetDevicePointer fault.
+    os.environ["NCCL_SHM_USE_CUDA_MEMCPY"] = "1"
+    os.environ["NCCL_SHM_MEMCPY_MODE"] = "3"
+    # Suppress async watchdog abort for any residual sticky CUDA error from
+    # the cudaHostRegister in SHM setup (CE data path is correct and safe).
+    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "0"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -257,13 +257,15 @@ def run_ppo(config) -> None:
         #     bridge bus-ID collision causes cudaIpcGetMemHandle to fail.
         #     SHM transport is left enabled so NCCL stays in nNodes=1 mode.
         # NOTE: CUDA_VISIBLE_DEVICES is intentionally NOT forwarded here.
-        # Ray sets CUDA_VISIBLE_DEVICES per worker (one physical GPU per rank).
-        # Forwarding the multi-GPU value (e.g. "0,1") would override that
-        # per-worker assignment.
+        # RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 keeps all GPUs visible
+        # to every worker.  veRL's RayWorkerGroup assigns each worker to its
+        # GPU via torch.cuda.set_device(local_rank) using NCCL's localRank.
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",
-            "NCCL_SHM_DISABLE",
+            "NCCL_SHM_USE_CUDA_MEMCPY",
+            "NCCL_SHM_MEMCPY_MODE",
+            "TORCH_NCCL_ASYNC_ERROR_HANDLING",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",

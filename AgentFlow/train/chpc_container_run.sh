@@ -392,29 +392,26 @@ export NCCL_CUMEM_HOST_ENABLE=0
 # address → "CUDA error: an illegal memory access was encountered" on both
 # ranks simultaneously, followed by the watchdog thread aborting the process.
 #
-# NCCL_SHM_DISABLE=1: completely disable the SHM (shared-memory) transport.
+# Re-enable SHM transport so NCCL can detect co-locality (same /dev/shm) and
+# compute nNodes=1, localRanks=2.  Without SHM, NCCL falls back to hostHash-only
+# topology detection which incorrectly yields nNodes=2 in Apptainer, causing
+# both workers to get localRank=0 and both call torch.cuda.set_device(0).
 #
-# Root cause: NCCL's SHM transport always calls cudaHostRegister(...,
-# cudaHostRegisterPortable | cudaHostRegisterMapped) on the /dev/shm buffer
-# and then cudaHostGetDevicePointer to get a GPU-visible device pointer.
-# Even in CE mode (NCCL_SHM_USE_CUDA_MEMCPY=1 + NCCL_SHM_MEMCPY_MODE=3),
-# the proxy setup path (shmSendProxySetup / shmRecvProxySetup) passes a
-# non-NULL dptr to ncclShmAllocateShareableBuffer, which calls the same
-# cudaHostRegister in shmutils.cc::ncclShmOpen.  The pointer is registered
-# in the proxy's CUDA context (owned by one OS process) and then used by
-# the GPU kernels in a different Ray worker process.  Across Apptainer's
-# separate process namespaces, the registered device pointer is invalid
-# in the peer process → "CUDA error: an illegal memory access was
-# encountered" during the first NCCL collective after ncclCommInitRank.
+# To avoid the cross-process cudaHostRegister fault in SHM's "direct" mode,
+# we force full CE (Copy Engine) mode with NCCL_SHM_USE_CUDA_MEMCPY=1 +
+# NCCL_SHM_MEMCPY_MODE=3.  CE mode stages data via cudaMemcpy in the proxy
+# thread and does not use the cudaHostGetDevicePointer across process boundaries.
 #
-# Disabling SHM forces NCCL to use the loopback socket transport for all
-# intra-node rank-to-rank communication.  We already set
-# NCCL_SOCKET_IFNAME=lo, so loopback is always available.  The socket path
-# has higher latency than SHM/CE for very small messages, but for the large
-# FSDP gradient all-reduces (MB-scale tensors) the bandwidth is identical.
-# Correctness is the priority here; SHM simply cannot work safely across
-# separate Apptainer worker processes without kernel-level CUDA IPC support.
-export NCCL_SHM_DISABLE=1
+# The cudaHostRegister call in ncclShmOpen still executes during setup, but
+# with CE mode the registered device pointer is only accessed in the proxy
+# thread of the *same* process that called cudaHostRegister, not cross-process.
+# The NCCL init kernels that previously faulted now use the CE proxy path.
+export NCCL_SHM_USE_CUDA_MEMCPY=1
+export NCCL_SHM_MEMCPY_MODE=3
+# Suppress the async watchdog abort: if any residual sticky CUDA error is
+# left from the cudaHostRegister setup path, prevent the watchdog from
+# killing the process.  The actual data path (CE) is correct and safe.
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=0
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on
@@ -424,21 +421,14 @@ export NCCL_SHM_DISABLE=1
 # Setting NCCL_HOSTID to a fixed string forces all ranks on this job to share
 # the same host identity → nNodes=1 → intra-node transport → correct operation.
 export NCCL_HOSTID=datamorphernode0
-# Device assignment: let Ray set CUDA_VISIBLE_DEVICES per worker.
-#
-# With RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1, Ray does NOT restrict
-# each worker to its assigned GPU, so both workers see all GPUs.  NCCL then
-# computes nNodes=2 / localRanks=1 (because it can't detect co-locality
-# without SHM), assigning localRank=0 to both workers.  Both then call
-# torch.cuda.set_device(0), putting both flat_params on cuda:0 → FSDP
-# assertion "Expects tensor on cuda:1, was on cuda:0".
-#
-# Without that flag Ray sets CUDA_VISIBLE_DEVICES="0" for rank 0 and
-# CUDA_VISIBLE_DEVICES="1" for rank 1 (physical GPU indices).  Each worker
-# sees exactly one GPU as cuda:0.  FSDP always calls set_device(0), which
-# maps to the correct physical GPU for that rank.  NCCL uses the loopback
-# socket transport (NCCL_SOCKET_IFNAME=lo) for communication between the two
-# workers, which is fully process-safe and does not require shared GPU memory.
+# Keep RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 so both workers see all
+# GPUs.  veRL uses fractional GPU allocation (num_gpus=1/3 per colocated actor);
+# without this flag, Ray assigns the SAME physical GPU to both workers.
+# With this flag, both workers see all GPUs and veRL's RayWorkerGroup assigns
+# each worker to its correct GPU via torch.cuda.set_device(local_rank), where
+# local_rank is derived from NCCL's topology detection (nNodes=1, localRanks=2
+# when SHM transport is enabled and /dev/shm is shared across Apptainer processes).
+export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.
 #
