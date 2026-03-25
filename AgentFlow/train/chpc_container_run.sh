@@ -218,8 +218,15 @@ fi
 _SHIM_SRC="${REPO_ROOT}/AgentFlow/train/nccl_shm_shim.c"
 _SHIM_SO="${_SIF_PKGS_DIR}/nccl_shm_shim.so"
 if [[ -f "${_SHIM_SRC}" ]] && [[ ! -f "${_SHIM_SO}" ]]; then
-  echo "Building NCCL SHM shim (strips cudaHostRegisterMapped) ..."
-  cc -O2 -shared -fPIC -o "${_SHIM_SO}" "${_SHIM_SRC}" -ldl \
+  echo "Building NCCL SHM shim inside container (strips cudaHostRegisterMapped) ..."
+  apptainer exec \
+    --bind "${REPO_ROOT}:/workspace/transschema" \
+    --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+    "${IMAGE}" \
+    cc -O2 -shared -fPIC \
+      -o "${_SHIM_SO}" \
+      "${_SHIM_SRC}" \
+      -ldl \
     && echo "  Built: ${_SHIM_SO}" \
     || echo "  WARNING: shim build failed — cross-process CUDA fault may occur"
 fi
