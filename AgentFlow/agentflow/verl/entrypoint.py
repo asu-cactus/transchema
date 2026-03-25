@@ -167,33 +167,60 @@ def _worker_setup_hook() -> None:
     # This is set in chpc_container_run.sh and forwarded to workers below.
     os.environ["NCCL_SHM_DISABLE"] = "1"
 
-    # Pre-set the CUDA device based on global RANK so NCCL sees distinct
-    # busIds for each rank before torch.distributed.init_process_group.
+    # Monkey-patch veRL's Worker._setup_env_cuda_visible_devices to call
+    # torch.cuda.set_device(local_rank) when RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1.
     #
-    # Problem: Ray assigns fractional GPUs (num_gpus = 1/max_colocate_count)
-    # to colocated workers.  With fractional allocation, Ray cannot assign
-    # CUDA_VISIBLE_DEVICES per-worker, so both workers start with CUDA
-    # default device 0.  When NCCL calls cudaGetDevice() during
-    # ncclCommInitRank it sees the same busId for both ranks → "Duplicate
-    # GPU detected" → ncclInvalidUsage.
+    # Why this is needed
+    # ------------------
+    # veRL requests fractional GPUs per colocated worker (num_gpus = 1/N).
+    # With fractional allocation Ray cannot set CUDA_VISIBLE_DEVICES per worker,
+    # so all workers start on CUDA device 0.  When NCCL calls cudaGetDevice()
+    # it sees the same busId for both ranks → "Duplicate GPU detected".
     #
-    # Fix: call torch.cuda.set_device(local_rank) in the worker_setup_hook
-    # (which runs before any user code or NCCL init).  veRL sets RANK and
-    # RAY_LOCAL_WORLD_SIZE env vars for every worker; local_rank = RANK %
-    # local_world_size gives the correct GPU index.
+    # veRL's _setup_env_cuda_visible_devices already handles this case when
+    # RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES is set: it reads the assigned
+    # GPU index from ray.get_runtime_context().get_accelerator_ids()["GPU"][0]
+    # and calls get_torch_device().set_device(int(local_rank)).  However that
+    # function is defined in the installed verl package and relies on the Ray
+    # runtime context being available at Worker.__init__ time.
+    #
+    # The worker_process_setup_hook (this function) runs BEFORE Ray injects
+    # runtime_env vars (RANK, WORLD_SIZE, etc.), so os.environ["RANK"] is not
+    # yet set here.  We therefore cannot compute local_rank from RANK here.
+    #
+    # Fix: monkey-patch _setup_env_cuda_visible_devices on the Worker class so
+    # that when it runs during Worker.__init__ (after env vars are injected), it
+    # additionally calls torch.cuda.set_device based on RANK % local_world_size.
+    # This fires for every Worker subclass (WorkerDict, FusedWorker, etc.) that
+    # veRL creates for FSDP training, ensuring FSDP flat_param lands on the
+    # correct device when NCCL init calls cudaGetDevice().
     try:
-        import torch as _torch
-        _rank = int(os.environ.get("RANK", "0"))
-        _local_world_size = int(os.environ.get("RAY_LOCAL_WORLD_SIZE",
-                                               os.environ.get("LOCAL_WORLD_SIZE", "1")))
-        _local_rank = _rank % _local_world_size
-        if _torch.cuda.is_available() and _torch.cuda.device_count() > _local_rank:
-            _torch.cuda.set_device(_local_rank)
-            os.environ["LOCAL_RANK"] = str(_local_rank)
+        from verl.single_controller.base.worker import Worker as _VerlWorker
+        _orig_setup = _VerlWorker._setup_env_cuda_visible_devices
+
+        def _patched_setup(self):
+            _orig_setup(self)
+            # After the original runs, RANK and RAY_LOCAL_WORLD_SIZE are in env.
+            # Compute local_rank and call set_device so NCCL sees distinct busIds.
+            try:
+                import torch as _torch
+                import os as _os
+                _rank = int(_os.environ.get("RANK", "0"))
+                _lws = int(_os.environ.get("RAY_LOCAL_WORLD_SIZE",
+                                           _os.environ.get("LOCAL_WORLD_SIZE", "1")))
+                _lr = _rank % _lws
+                if _torch.cuda.is_available() and _torch.cuda.device_count() > _lr:
+                    _torch.cuda.set_device(_lr)
+                    _os.environ["LOCAL_RANK"] = str(_lr)
+            except Exception:
+                pass
+
+        _VerlWorker._setup_env_cuda_visible_devices = _patched_setup
     except Exception:
         pass
 
-    # Diagnostic: log which GPU(s) this worker process sees at startup.
+    # Diagnostic: log GPU state at hook time (RANK not yet available here;
+    # the actual set_device happens in the patched _setup_env_cuda_visible_devices).
     try:
         import torch as _torch
         _cvd = os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>")
