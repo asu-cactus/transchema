@@ -90,10 +90,12 @@ python_args:
   actor_rollout_ref.model.path: '${BASE_MODEL}'
 
   # veRL sets vLLM max_model_len = max_prompt_length + max_response_length.
-  # Qwen2.5-7B supports 128K; with VLLM_USE_V1=1 and param_offload=True,
-  # the FSDP model is on CPU when vLLM initializes KV cache, so the full GPU
-  # is available.  12288 + 1024 = 13312 tokens; use_remove_padding=True keeps fast.
-  data.max_prompt_length: 12288
+  # Qwen2.5-7B supports 128K; vLLM v1 computes available_memory eagerly.
+  # With gpu_memory_utilization=0.4 and FSDP weights partially on GPU during
+  # vLLM init, the available KV cache budget is ~0.50 GiB on this node.
+  # vLLM reports max supported model length = 9424 tokens with that budget.
+  # 7168 + 1024 = 8192 < 9424 → fits comfortably.
+  data.max_prompt_length: 7168
   data.max_response_length: 1024
   data.truncation: 'truncate'
 
@@ -150,11 +152,13 @@ python_args:
   # With VLLM_USE_V1=1 (v1 engine, required by PatchedvLLMServer/AsyncLLM),
   # vLLM allocates KV cache with torch.zeros — physical GPU pages are reserved
   # immediately at init time.  With param_offload=True, the FSDP model is on
-  # CPU by the time vLLM calls initialize_kv_cache, so the full GPU is
-  # available.  However vLLM v1 computes available_memory = min(free, util×total)
-  # and uses that budget for both model weights + KV cache tensors.
-  # 0.4 × 94.97 GiB ≈ 38 GiB: enough for Qwen2.5-7B weights (~14.5 GiB) plus
-  # ~23 GiB of KV cache, which supports long DataMorpher prompts.
+  # vLLM v1 computes available_memory = min(free, util×total) at KV cache
+  # init time.  With FSDP param_offload=True the model weights should be on
+  # CPU by the time vLLM calls initialize_kv_cache; in practice some GPU
+  # memory remains occupied (activations, CUDA context, etc.), leaving ~0.50
+  # GiB for KV cache at util=0.4.  That supports max_model_len ≤ 9424 tokens
+  # (measured on this node).  max_prompt_length=7168 + max_response_length=1024
+  # = 8192 fits well within that bound.
   actor_rollout_ref.rollout.gpu_memory_utilization: 0.4
 
   # Ref-policy settings (only used when use_kl_loss=True above).
