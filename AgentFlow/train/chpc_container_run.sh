@@ -198,6 +198,36 @@ CUMEM_PATCH
   echo "  Patched ${_CUMEM_PY}: torch.cuda.empty_cache() added before cuMemCreate."
 fi
 
+# ---------------------------------------------------------------------------
+# Build the NCCL SHM shim (nccl_shm_shim.so) if not already built.
+#
+# Background: NCCL's ncclShmOpen() always calls cudaHostRegister with
+# cudaHostRegisterPortable|cudaHostRegisterMapped on /dev/shm buffers, even
+# when CE mode (NCCL_SHM_USE_CUDA_MEMCPY=1) is active.  The cudaHostRegister
+# creates a GPU device mapping for that host address in the calling process's
+# CUDA context.  Across separate Apptainer worker processes, the NCCL init
+# kernels attempt to access that cross-process device address → "CUDA error:
+# an illegal memory access" in ncclCommWatchdog.
+#
+# The shim intercepts cudaHostRegister via LD_PRELOAD and strips the
+# cudaHostRegisterMapped flag.  cudaHostGetDevicePointer then returns
+# cudaErrorInvalidValue, dptr stays NULL, and NCCL's CE data path works
+# correctly (it allocates its own per-process device FIFO via cudaMalloc in
+# the proxy thread — it never needs the cross-process host-registered dptr).
+# ---------------------------------------------------------------------------
+_SHIM_SRC="${REPO_ROOT}/AgentFlow/train/nccl_shm_shim.c"
+_SHIM_SO="${_SIF_PKGS_DIR}/nccl_shm_shim.so"
+if [[ -f "${_SHIM_SRC}" ]] && [[ ! -f "${_SHIM_SO}" ]]; then
+  echo "Building NCCL SHM shim (strips cudaHostRegisterMapped) ..."
+  cc -O2 -shared -fPIC -o "${_SHIM_SO}" "${_SHIM_SRC}" -ldl \
+    && echo "  Built: ${_SHIM_SO}" \
+    || echo "  WARNING: shim build failed — cross-process CUDA fault may occur"
+fi
+if [[ -f "${_SHIM_SO}" ]]; then
+  export LD_PRELOAD="${_SHIM_SO}${LD_PRELOAD:+:${LD_PRELOAD}}"
+  echo "LD_PRELOAD: NCCL SHM shim active (${_SHIM_SO})"
+fi
+
 unset ROCR_VISIBLE_DEVICES
 # Do NOT export CUDA_VISIBLE_DEVICES here.  Ray manages per-worker GPU
 # assignment via placement groups and sets CUDA_VISIBLE_DEVICES per actor.
@@ -408,10 +438,6 @@ export NCCL_CUMEM_HOST_ENABLE=0
 # The NCCL init kernels that previously faulted now use the CE proxy path.
 export NCCL_SHM_USE_CUDA_MEMCPY=1
 export NCCL_SHM_MEMCPY_MODE=3
-# Suppress the async watchdog abort: if any residual sticky CUDA error is
-# left from the cudaHostRegister setup path, prevent the watchdog from
-# killing the process.  The actual data path (CE) is correct and safe.
-export TORCH_NCCL_ASYNC_ERROR_HANDLING=0
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on

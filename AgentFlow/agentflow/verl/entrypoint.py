@@ -139,9 +139,6 @@ def _worker_setup_hook() -> None:
     # CE mode avoids the cross-process cudaHostGetDevicePointer fault.
     os.environ["NCCL_SHM_USE_CUDA_MEMCPY"] = "1"
     os.environ["NCCL_SHM_MEMCPY_MODE"] = "3"
-    # Suppress async watchdog abort for any residual sticky CUDA error from
-    # the cudaHostRegister in SHM setup (CE data path is correct and safe).
-    os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "0"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -265,7 +262,6 @@ def run_ppo(config) -> None:
             "NCCL_CUMEM_HOST_ENABLE",
             "NCCL_SHM_USE_CUDA_MEMCPY",
             "NCCL_SHM_MEMCPY_MODE",
-            "TORCH_NCCL_ASYNC_ERROR_HANDLING",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
@@ -275,6 +271,7 @@ def run_ppo(config) -> None:
             "NCCL_HOSTID",
             "UCX_TLS",
             "LD_LIBRARY_PATH",
+            "LD_PRELOAD",
             "RAY_task_events_report_interval_ms",
             "HF_HOME",
             "VLLM_USE_V1",
