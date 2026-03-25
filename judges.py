@@ -174,13 +174,32 @@ def _build_nl_score_interpretation(
     lines = []
 
     # --- Overall verdict ---
+    dist_info = debug_dict.get("distribution", {})
+    avg_sim = dist_info.get("avg_distribution_similarity")
+
     if true_combined_score >= 1.0 - EPS:
         lines.append("Overall: the generated table appears to be a near-perfect match.")
     elif true_combined_score >= 0.75:
         lines.append("Overall: the generated table is a partial match with notable discrepancies.")
     else:
         lines.append("Overall: the generated table has significant structural differences from ground truth.")
-    lines.append(f"Combined score (fd_f1 + col_ratio) / 2 = {true_combined_score:.3f} (1.0 is perfect).")
+
+    if avg_sim is not None:
+        lines.append(
+            f"Combined score = (fd_f1 + col_ratio + dist_sim) / 3 = "
+            f"({fd_f1:.3f} + {col_ratio:.3f} + {avg_sim:.3f}) / 3 = {true_combined_score:.3f} (1.0 is perfect)."
+        )
+        if avg_sim < fd_f1 - 0.1 and avg_sim < col_ratio - 0.1:
+            lines.append(
+                f"Note: FD structure (fd_f1={fd_f1:.3f}) and column mapping (col_ratio={col_ratio:.3f}) "
+                f"look correct, but the numerical distribution score (dist_sim={avg_sim:.3f}) is dragging "
+                "the combined score down — the primary issue is wrong aggregation function or incorrect numerical values."
+            )
+    else:
+        lines.append(
+            f"Combined score = (fd_f1 + col_ratio) / 2 = "
+            f"({fd_f1:.3f} + {col_ratio:.3f}) / 2 = {true_combined_score:.3f} (1.0 is perfect, no numerical columns to compare)."
+        )
 
     # --- Key structure comparison ---
     fd_info = debug_dict.get("fd", {})
@@ -288,9 +307,7 @@ def _build_nl_score_interpretation(
         )
 
     # --- Numerical column distribution analysis ---
-    dist_info = debug_dict.get("distribution", {})
-    per_col   = dist_info.get("per_column", {})
-    avg_sim   = dist_info.get("avg_distribution_similarity")
+    per_col = dist_info.get("per_column", {})
 
     if per_col:
         lines.append("")

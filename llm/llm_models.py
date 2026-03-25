@@ -87,8 +87,10 @@ class LLMClient:
     def calculate_token_length(self, text):
         return len(self.encoding.encode(text))
 
-    def chatgpt(self, messages, temperature=1.0, max_tokens=4096, n=1, stop=None):#Chnaged the temperature to 0.0 to make the model more deterministic
+    def chatgpt(self, messages, temperature=None, max_tokens=4096, n=1, stop=None):
         """Sends chat requests to the model and returns the responses."""
+        if temperature is None:
+            temperature = 0.0 if "4.1" in self.model else 1.0
         outputs = []
         while n > 0:
             cnt = min(n, 20)  # Ensure at most 20 requests per batch

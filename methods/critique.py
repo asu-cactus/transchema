@@ -327,7 +327,15 @@ def critique(
             query = replace_result_info(query, num_target_samples, result_path)
             try:
                 df_generated = pd.read_csv(result_path, low_memory=False)
-                dist_section = build_column_distribution_section(df_ground_truth, df_generated)
+                # Load source CSVs for dtype context
+                source_dfs = []
+                for src_name in source_data_name_list:
+                    try:
+                        src_path = f"{main_folder}/length{len_idx_target_idx}/{src_name}"
+                        source_dfs.append(pd.read_csv(src_path, index_col=0, low_memory=False))
+                    except Exception:
+                        pass
+                dist_section = build_column_distribution_section(df_ground_truth, df_generated, source_dfs=source_dfs)
                 query = query.replace("$COLUMN_DISTRIBUTIONS$", dist_section)
             except Exception:
                 query = query.replace("$COLUMN_DISTRIBUTIONS$", "")
@@ -566,7 +574,7 @@ def critique(
 
     try:
         with open(
-            main_folder + "/length" + len_idx_target_idx + "/python_recovered_successful.py",
+            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
             mode="r",
         ) as f:
             python_code = f.read()
@@ -712,14 +720,38 @@ def replace_history_info(query, operation_history):
     return query.replace("$OPERATIONS$", operation_history)
 
 
-def build_column_distribution_section(df_gt: pd.DataFrame, df_gen: pd.DataFrame) -> str:
+def build_column_distribution_section(
+    df_gt: pd.DataFrame,
+    df_gen: pd.DataFrame,
+    source_dfs: list = None,
+) -> str:
     """
     Per-column distribution comparison between the ground-truth and generated tables.
     Numeric columns: min, max, mean with range/mean ratio warnings.
     Categorical columns: unique count and top values.
+    Also reports source column dtypes when source_dfs is provided.
     Also reports missing/extra columns.
     """
     lines = ["Column-Level Distribution Comparison (Target vs Generated):"]
+
+    # Show source table schemas upfront so the LLM knows the original dtypes
+    # (target columns are often renamed/aggregated from source columns)
+    if source_dfs:
+        lines.append("\n  Source Table Column Schemas:")
+        for src_idx, src_df in enumerate(source_dfs):
+            col_dtypes = ", ".join(f"{c}({src_df[c].dtype})" for c in src_df.columns)
+            lines.append(f"    src_{src_idx}: {col_dtypes}")
+
+    # Build a flat lookup: col_name_lower -> list of (source_file_idx, dtype)
+    # Used for exact-name matches (non-renamed columns)
+    source_dtype_map: dict = {}
+    if source_dfs:
+        for src_idx, src_df in enumerate(source_dfs):
+            for col in src_df.columns:
+                key = col.lower()
+                if key not in source_dtype_map:
+                    source_dtype_map[key] = []
+                source_dtype_map[key].append((src_idx, str(src_df[col].dtype)))
 
     gt_cols_lower  = {c.lower(): c for c in df_gt.columns}
     gen_cols_lower = {c.lower(): c for c in df_gen.columns}
@@ -733,11 +765,19 @@ def build_column_distribution_section(df_gt: pd.DataFrame, df_gen: pd.DataFrame)
 
         gt_dtype  = str(df_gt[gt_col].dtype)
         gen_dtype = str(df_gen[gen_col].dtype)
-        dtype_note = (
-            f" [dtype mismatch: target={gt_dtype}, generated={gen_dtype}]"
-            if gt_dtype != gen_dtype
-            else f" [dtype: {gt_dtype}]"
-        )
+
+        # Build dtype summary line
+        if gt_dtype != gen_dtype:
+            dtype_note = f" [dtype mismatch: target={gt_dtype}, generated={gen_dtype}]"
+        else:
+            dtype_note = f" [dtype: {gt_dtype}]"
+
+        # Append source dtype info if available
+        src_entries = source_dtype_map.get(col_lower)
+        if src_entries:
+            src_dtype_str = ", ".join(f"src_{i}={dt}" for i, dt in src_entries)
+            dtype_note += f" [source: {src_dtype_str}]"
+
         lines.append(f"\n  Column '{gt_col}'{dtype_note}:")
 
         try:

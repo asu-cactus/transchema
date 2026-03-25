@@ -208,9 +208,13 @@ def relative_csv_score(df_a, df_b):
     col_ratio = col_count / max(self_col_count, 1)
 
     combined_score = (fd_ratio + col_ratio) / 2
-    true_combined_score = (fd_f1 + col_ratio) / 2  # new score using FD F1
 
     distribution_info = compute_distribution_scores(df_a, df_b, col_map)
+    dist_sim = distribution_info.get("avg_distribution_similarity")
+    if dist_sim is not None:
+        true_combined_score = (fd_f1 + col_ratio + dist_sim) / 3
+    else:
+        true_combined_score = (fd_f1 + col_ratio) / 2
 
     debug_dict = {
         "fd": {
