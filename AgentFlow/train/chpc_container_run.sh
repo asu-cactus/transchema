@@ -198,46 +198,6 @@ CUMEM_PATCH
   echo "  Patched ${_CUMEM_PY}: torch.cuda.empty_cache() added before cuMemCreate."
 fi
 
-# ---------------------------------------------------------------------------
-# Build the NCCL SHM shim (nccl_shm_shim.so) if not already built.
-#
-# Background: NCCL's ncclShmOpen() always calls cudaHostRegister with
-# cudaHostRegisterPortable|cudaHostRegisterMapped on /dev/shm buffers, even
-# when CE mode (NCCL_SHM_USE_CUDA_MEMCPY=1) is active.  The cudaHostRegister
-# creates a GPU device mapping for that host address in the calling process's
-# CUDA context.  Across separate Apptainer worker processes, the NCCL init
-# kernels attempt to access that cross-process device address → "CUDA error:
-# an illegal memory access" in ncclCommWatchdog.
-#
-# The shim intercepts cudaHostRegister via LD_PRELOAD and strips the
-# cudaHostRegisterMapped flag.  cudaHostGetDevicePointer then returns
-# cudaErrorInvalidValue, dptr stays NULL, and NCCL's CE data path works
-# correctly (it allocates its own per-process device FIFO via cudaMalloc in
-# the proxy thread — it never needs the cross-process host-registered dptr).
-# ---------------------------------------------------------------------------
-_SHIM_SRC="${REPO_ROOT}/AgentFlow/train/nccl_shm_shim.c"
-_SHIM_SO="${_SIF_PKGS_DIR}/nccl_shm_shim.so"
-if [[ -f "${_SHIM_SRC}" ]] && [[ ! -f "${_SHIM_SO}" ]]; then
-  echo "Building NCCL SHM shim on host (strips cudaHostRegisterMapped) ..."
-  # Build on the HOST.  Apptainer resolves LD_PRELOAD with the host dynamic
-  # linker, so the .so must match the host glibc, not the container's newer one.
-  #
-  # The .symver directive in nccl_shm_shim.c pins dlsym to GLIBC_2.2.5 —
-  # the oldest x86-64 ABI version, present on every Linux since 2001 — so
-  # even if the host compiler is newer, the produced .so has no GLIBC_2.17+
-  # (or GLIBC_2.34+) requirements and loads cleanly under any host glibc.
-  cc -O2 -shared -fPIC \
-    -o "${_SHIM_SO}" \
-    "${_SHIM_SRC}" \
-    -ldl \
-    && echo "  Built: ${_SHIM_SO}" \
-    && objdump -p "${_SHIM_SO}" 2>/dev/null | grep -E "GLIBC|NEEDED" || true \
-    || echo "  WARNING: shim build failed — cross-process CUDA fault may occur"
-fi
-if [[ -f "${_SHIM_SO}" ]]; then
-  export LD_PRELOAD="${_SHIM_SO}${LD_PRELOAD:+:${LD_PRELOAD}}"
-  echo "LD_PRELOAD: NCCL SHM shim active (${_SHIM_SO})"
-fi
 
 unset ROCR_VISIBLE_DEVICES
 # Do NOT export CUDA_VISIBLE_DEVICES here.  Ray manages per-worker GPU
@@ -327,128 +287,49 @@ export RAY_task_events_report_interval_ms=0
 #                               detected" and aborts.
 # NCCL_P2P_DISABLE=1         : disable direct GPU-to-GPU P2P/IPC memory copies.
 #                               The Blackwell PCIe bridge bus-ID collision means
-#                               cudaIpcGetMemHandle fails with "invalid argument"
-#                               on this node.  P2P is disabled so NCCL uses SHM.
-# NCCL_SHM_DISABLE is intentionally NOT set.  SHM (POSIX shared-memory staging)
-#                               keeps nNodes=1 and localRanks=2.  Setting
-#                               NCCL_SHM_DISABLE=1 forces nNodes=2 (NCCL classifies
-#                               the two processes as separate nodes), which leaves
-#                               no valid intra-node transport and causes
-#                               "No transport found" errors.
-# NCCL_P2P_DIRECT_DISABLE=1  : forbid NCCL from directly accessing user GPU
-#                               buffers across processes via CUDA IPC/peer access.
-#                               Without this, NCCL's SHM transport uses the
-#                               "direct" submode (logged as "SHM/direct/direct"),
-#                               which calls cudaMemcpyPeerAsync to copy data
-#                               directly between GPU contexts across processes.
-#                               Apptainer blocks cross-process CUDA peer access,
-#                               causing a silent CUDA context corruption during
-#                               ncclCommInitRank that surfaces as "illegal memory
-#                               access" at the next CUDA API call after Init COMPLETE.
-#                               With NCCL_P2P_DIRECT_DISABLE=1 NCCL falls back to
-#                               the host-copy SHM submode, staging data through
-#                               /dev/shm CPU-side buffers — fully supported in any
-#                               container environment.
-# NCCL_SOCKET_IFNAME=lo      : force all ranks to use the loopback interface
-#                               for bootstrap and data.  Without this, different
-#                               worker processes may resolve to different network
-#                               interfaces causing NCCL to count distinct IPs as
-#                               distinct nodes.
+#                               cudaIpcGetMemHandle fails with "invalid argument".
+# NCCL_P2P_DIRECT_DISABLE=1  : forbid direct cross-process CUDA peer access.
+# NCCL_SHM_DISABLE=1         : disable SHM transport (see export block below).
+# NCCL_SOCKET_IFNAME=lo      : force all ranks to use the loopback interface.
 # UCX_TLS=tcp,self            : restrict any residual UCX init to TCP loopback.
-#
-# NOTE: NCCL_CUMEM_HOST_ENABLE is intentionally NOT set.
-# With NCCL 2.25.1 we needed NCCL_CUMEM_HOST_ENABLE=0 to prevent
-# "Cuda failure 1 'invalid argument'" in the SHM transport (cuMemCreate
-# for SHM host buffers failed inside Apptainer).  NCCL 2.26.2 fixes the
-# Blackwell shared-memory kernel size bug that caused that crash.  Keeping
-# NCCL_CUMEM_HOST_ENABLE=0 with 2.26.2 instead causes
-# "CUDA error: an illegal memory access" in ncclCommWatchdog during
-# FSDP init_model, because the SHM direct path requires cuMem-backed
-# buffers to be addressable across processes.
-#
-# NCCL_CUMEM_ENABLE=1 is set explicitly below to override CHPC's host
-# environment which injects NCCL_CUMEM_ENABLE=0 via its RDMA/HPC plugin.
-# NCCL 2.26.2 on Blackwell requires VMM (cuMemCreate) for communicator
-# scratch buffers even on the intra-node SHM path; without it the CUDA
-# context on rank 1 becomes corrupted after Init COMPLETE.
+# NCCL_CUMEM_ENABLE=0         : disable cuMem VMM (busId collision on this node).
+# NCCL_CUMEM_HOST_ENABLE=0    : disable cuMem host-buffer allocation.
 export NCCL_IB_DISABLE=1
 export UCX_TLS=tcp,self
 export NCCL_IGNORE_DISABLED_P2P=1
 export NCCL_P2P_DISABLE=1
 export NCCL_P2P_DIRECT_DISABLE=1
 export NCCL_SOCKET_IFNAME=lo
-# NCCL_CUMEM_ENABLE=0: disable cuMem (CUDA Virtual Memory Management) for
-# NCCL's device-side communicator scratch buffers.
-#
-# Although the CHPC host injects NCCL_CUMEM_ENABLE=0 via its RDMA plugin and
-# our previous approach overrode it to 1, testing confirms that cuMem-backed
-# device allocations via cuMemCreate + cuMemSetAccess also fail on GPU 1 in
-# this Apptainer environment.  GPU 1 shares the same PCIe busId (0x61000) as
-# GPU 0 due to the Blackwell PCIe bridge topology; CUDA VMM resolves physical
-# device identity via busId, so cuMemCreate / cuMemSetAccess on GPU 1 may be
-# routed incorrectly, silently corrupting GPU 1's CUDA context.
-#
-# NCCL 2.26.2 fixed the shared-memory kernel size bug for Blackwell (sm_120)
-# that required cuMem in NCCL 2.25 -- the fix is in the kernel code itself,
-# not in the cuMem allocator.  With 2.26.2, fully disabling cuMem for NCCL's
-# internal scratch buffers is safe: NCCL falls back to legacy cudaMalloc-based
-# allocation, which correctly targets the current CUDA context's device.
+# NCCL_CUMEM_ENABLE=0 / NCCL_CUMEM_HOST_ENABLE=0: disable cuMem VMM.
+# GPU 1 shares the same PCIe busId as GPU 0 on this Blackwell node; cuMemCreate
+# / cuMemSetAccess may be routed incorrectly, silently corrupting GPU 1's context.
+# NCCL 2.26.2 fixed the Blackwell shared-memory kernel size bug in the kernel
+# code itself — cuMem is not required for correctness.  Legacy cudaMalloc and
+# POSIX mmap paths work correctly.
 export NCCL_CUMEM_ENABLE=0
-# NCCL_CUMEM_HOST_ENABLE=0: disable cuMem-based host-memory allocation for
-# NCCL's SHM transport buffers.
-#
-# Since NCCL 2.24, if CUDA driver >= 12.6 and runtime >= 12.2, NCCL defaults
-# NCCL_CUMEM_HOST_ENABLE to 1.  When enabled, NCCL allocates the SHM staging
-# buffers using cuMemCreate + cuMemExportToShareableHandle with handle type
-# CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR, and transfers those fd handles
-# between processes via Unix Domain Sockets (UDS).
-#
-# Apptainer enforces separate filesystem namespaces per worker process, so the
-# abstract UDS paths used for fd exchange are not visible across processes.
-# This causes cuMemImportFromShareableHandle to fail silently during
-# ncclCommInitRank, leaving the CUDA context on rank 1 corrupted.  Every
-# subsequent GPU API call (empty_cache, param.to(device), etc.) then fails
-# with "CUDA error: an illegal memory access was encountered" or
-# "peer access is not supported between these two devices"
-# (confirmed as a driver bug fixed in r580+ per NCCL issue #1838).
-#
-# Setting NCCL_CUMEM_HOST_ENABLE=0 forces NCCL to use the legacy POSIX SHM
-# path (mmap over /dev/shm/nccl-*) for all host-side staging buffers.  This
-# path requires no cross-process handle transfer and works correctly in any
-# container environment that shares /dev/shm (which Apptainer does by default).
 export NCCL_CUMEM_HOST_ENABLE=0
-# NCCL_SHM_USE_CUDA_MEMCPY=1: force the SHM transport to use the CUDA Copy
-# Engine (CE) path instead of the "direct" path (logged as SHM/CE/CE vs
-# SHM/direct/direct).
+# NCCL_SHM_DISABLE=1: disable NCCL's shared-memory transport entirely.
 #
-# In the default "direct" mode, NCCL calls cudaHostRegister(...,
-# cudaHostRegisterPortable | cudaHostRegisterMapped) on each /dev/shm buffer
-# and then cudaHostGetDevicePointer() to obtain a device-accessible address.
-# The Portable flag is supposed to make the device pointer visible across all
-# CUDA contexts *in the same process*.  However, across *separate processes*
-# in Apptainer (which runs each Ray worker as a separate process), the
-# device pointer obtained in one process is NOT accessible from GPU code in
-# another process.  During ncclCommInitRank, NCCL's initialization kernels
-# write to these cross-process device pointers → the GPU accesses an invalid
-# address → "CUDA error: an illegal memory access was encountered" on both
-# ranks simultaneously, followed by the watchdog thread aborting the process.
+# Root cause (confirmed from NCCL 2.26.2 source + PyTorch issue #178085 on
+# identical Blackwell hardware):
+# ncclShmOpen() calls cudaHostRegister(hptr, size, Portable|Mapped) even in
+# CE mode.  "Mapped" creates a device-visible address (dptr) in the calling
+# process's CUDA context and stores it as the NCCL comm's tail/head pointers
+# in the device-side channel descriptor.  NCCL init kernels then write to
+# those addresses on the GPU.  Apptainer creates a separate CUDA context per
+# worker process; a device pointer registered in one context is inaccessible
+# from a GPU kernel in another context → "CUDA error: an illegal memory access
+# was encountered" in ncclCommWatchdog (init succeeds asynchronously; the
+# fault is caught later when the watchdog polls finishedGPUExecutionInternal).
+# CE mode only moves the data copy; the init-kernel fault remains.
+# Disabling SHM forces NCCL to use Socket transport: no cross-process CUDA
+# mappings, fully safe in any container environment.
 #
-# Re-enable SHM transport so NCCL can detect co-locality (same /dev/shm) and
-# compute nNodes=1, localRanks=2.  Without SHM, NCCL falls back to hostHash-only
-# topology detection which incorrectly yields nNodes=2 in Apptainer, causing
-# both workers to get localRank=0 and both call torch.cuda.set_device(0).
-#
-# To avoid the cross-process cudaHostRegister fault in SHM's "direct" mode,
-# we force full CE (Copy Engine) mode with NCCL_SHM_USE_CUDA_MEMCPY=1 +
-# NCCL_SHM_MEMCPY_MODE=3.  CE mode stages data via cudaMemcpy in the proxy
-# thread and does not use the cudaHostGetDevicePointer across process boundaries.
-#
-# The cudaHostRegister call in ncclShmOpen still executes during setup, but
-# with CE mode the registered device pointer is only accessed in the proxy
-# thread of the *same* process that called cudaHostRegister, not cross-process.
-# The NCCL init kernels that previously faulted now use the CE proxy path.
-export NCCL_SHM_USE_CUDA_MEMCPY=1
-export NCCL_SHM_MEMCPY_MODE=3
+# Topology concern (nNodes=1): nNodes is derived from unique hostHash values,
+# not SHM co-locality.  NCCL_HOSTID=datamorphernode0 (below) forces both
+# workers to report the same hostHash → nNodes=1, localRanks=2, correct
+# localRank=0/1 assignment and torch.cuda.set_device() per worker.
+export NCCL_SHM_DISABLE=1
 # Force all NCCL ranks to report the same host identity.
 # Apptainer may give each worker process a different UTS namespace (hostname),
 # causing NCCL's getHostHash() to return different values per process even on
@@ -464,7 +345,7 @@ export NCCL_HOSTID=datamorphernode0
 # With this flag, both workers see all GPUs and veRL's RayWorkerGroup assigns
 # each worker to its correct GPU via torch.cuda.set_device(local_rank), where
 # local_rank is derived from NCCL's topology detection (nNodes=1, localRanks=2
-# when SHM transport is enabled and /dev/shm is shared across Apptainer processes).
+# when NCCL_HOSTID forces the same hostHash across Apptainer processes).
 export RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1
 
 # Disable torch.compile (TorchDynamo) for all FSDP training workers.

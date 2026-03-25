@@ -133,12 +133,39 @@ def _worker_setup_hook() -> None:
     # Blackwell shared-mem kernel size in the kernel code itself, so cuMem
     # is no longer required for correctness.
     os.environ["NCCL_CUMEM_ENABLE"] = "0"
-    # Re-enable SHM but force full CE (Copy Engine) mode on both send and
-    # receive sides.  SHM must stay enabled for NCCL to detect co-locality
-    # (same /dev/shm inode) → nNodes=1 → correct localRank assignment.
-    # CE mode avoids the cross-process cudaHostGetDevicePointer fault.
-    os.environ["NCCL_SHM_USE_CUDA_MEMCPY"] = "1"
-    os.environ["NCCL_SHM_MEMCPY_MODE"] = "3"
+    # Disable NCCL's SHM transport entirely.
+    #
+    # Root cause (confirmed against NCCL 2.26.2 source + upstream PyTorch
+    # issue #178085 on identical Blackwell hardware):
+    #
+    # ncclShmOpen() calls cudaHostRegister(ptr, size, Portable|Mapped) on the
+    # /dev/shm mmap buffer, even in CE mode (NCCL_SHM_USE_CUDA_MEMCPY=1).
+    # "Mapped" registers the host buffer as GPU-visible in the calling
+    # process's CUDA context.  The NCCL init kernels subsequently write a
+    # pointer to that GPU-side address into the comm's device-side channel
+    # descriptor.  When the NCCL watchdog (ProcessGroupNCCL::ncclCommWatchdog)
+    # later calls finishedGPUExecutionInternal(), the collective kernel tries
+    # to fence against that pointer — but the Blackwell CUDA driver does not
+    # allow one CUDA context to access a Mapped host pointer registered by a
+    # different context (Apptainer creates a separate CUDA context per worker
+    # process).  The resulting fault surfaces as:
+    #   "CUDA error: an illegal memory access was encountered"
+    # in ncclCommWatchdog, not during ncclCommInit itself (which succeeds).
+    #
+    # Stripping the Mapped flag via LD_PRELOAD makes dptr=NULL, causing a
+    # NULL-pointer GPU dereference instead — also illegal.  CE mode only
+    # moves the data copy; the SHM head/tail/connFifo pointers still go
+    # through the host-registered device-visible mapping.
+    #
+    # The correct fix: disable SHM completely.  NCCL falls back to Socket
+    # transport, which requires no cross-process CUDA mappings.
+    #
+    # Topology concern (nNodes=1 still required):
+    # nNodes is derived from unique hostHash values, not from SHM co-locality.
+    # NCCL_HOSTID=datamorphernode0 forces both rank-0 and rank-1 workers to
+    # report the same hostHash → nNodes=1, localRanks=2, localRank={0,1}.
+    # This is set in chpc_container_run.sh and forwarded to workers below.
+    os.environ["NCCL_SHM_DISABLE"] = "1"
 
     # Diagnostic: log which GPU(s) this worker process sees at startup.
     try:
@@ -230,15 +257,14 @@ def run_ppo(config) -> None:
         #     → "CUDA error: an illegal memory access" on every subsequent GPU
         #     API call.  The legacy mmap path works in any container that shares
         #     /dev/shm, which Apptainer does by default (NCCL issue #1838).
-        # NCCL_SHM_USE_CUDA_MEMCPY=1 : forces NCCL SHM to use Copy Engine
-        #     (CE) staging instead of the "direct" cross-process device pointer
-        #     path.  In direct mode (SHM/direct/direct), NCCL registers each
-        #     /dev/shm buffer with cudaHostRegisterPortable so all CUDA contexts
-        #     in the same process can DMA into it — but across separate Apptainer
-        #     worker processes, the registered address is invalid, causing both
-        #     GPUs to fault with "illegal memory access" simultaneously during
-        #     ncclCommInitRank.  CE mode (SHM/CE/CE) uses cudaMemcpy in the proxy
-        #     thread instead, which is fully cross-process safe.
+        # NCCL_SHM_DISABLE=1 : disable NCCL's SHM transport entirely.
+        #     ncclShmOpen always calls cudaHostRegister(Portable|Mapped), storing
+        #     the resulting device pointer in the comm's channel descriptor.  Across
+        #     separate Apptainer worker processes the device pointer registered in
+        #     one CUDA context is inaccessible to GPU kernels in another context →
+        #     "CUDA error: an illegal memory access" in ncclCommWatchdog.
+        #     Socket transport requires no cross-process CUDA mappings.
+        #     nNodes=1 topology is maintained via NCCL_HOSTID (same hostHash).
         # NCCL_CUMEM_ENABLE=0 : disables NCCL's CUDA VMM (cuMemCreate) for
         #     device-side communicator scratch buffers.  GPU 1 shares the same
         #     PCIe busId as GPU 0 (Blackwell PCIe bridge topology); cuMemCreate
@@ -260,8 +286,7 @@ def run_ppo(config) -> None:
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",
-            "NCCL_SHM_USE_CUDA_MEMCPY",
-            "NCCL_SHM_MEMCPY_MODE",
+            "NCCL_SHM_DISABLE",
             "NCCL_IB_DISABLE",
             "NCCL_IGNORE_DISABLED_P2P",
             "NCCL_P2P_DISABLE",
