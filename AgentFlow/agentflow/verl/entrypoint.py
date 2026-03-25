@@ -278,11 +278,11 @@ def run_ppo(config) -> None:
         #     Blackwell workstation node (both GPUs share the same PCI bus ID).
         # NCCL_P2P_DISABLE : disable GPU-to-GPU P2P/IPC transfers.  The PCIe
         #     bridge bus-ID collision causes cudaIpcGetMemHandle to fail.
-        #     SHM transport is left enabled so NCCL stays in nNodes=1 mode.
         # NOTE: CUDA_VISIBLE_DEVICES is intentionally NOT forwarded here.
-        # RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 keeps all GPUs visible
-        # to every worker.  veRL's RayWorkerGroup assigns each worker to its
-        # GPU via torch.cuda.set_device(local_rank) using NCCL's localRank.
+        # Ray assigns CUDA_VISIBLE_DEVICES per worker (worker-0 → "0",
+        # worker-1 → "1").  Each worker sees exactly one GPU as cuda:0.
+        # FSDP initialises flat_param on cuda:0 and veRL calls
+        # torch.cuda.set_device(0) — no device mismatch assertion.
         _infra_keys = [
             "TORCHDYNAMO_DISABLE",
             "NCCL_CUMEM_HOST_ENABLE",
