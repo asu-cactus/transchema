@@ -80,7 +80,7 @@ fi
 export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
 
 # ---------------------------------------------------------------------------
-# NCCL upgrade: inject libnccl.so.2 >= 2.26.2 to fix Blackwell shared-memory
+# NCCL upgrade: download libnccl.so.2 >= 2.26.2 to fix Blackwell shared-memory
 # kernel launch failure.
 #
 # The container ships NCCL 2.25.1, which has a confirmed bug on Blackwell GPUs
@@ -93,11 +93,10 @@ export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
 # on recent Blackwell GPUs").
 #
 # We download the nvidia-nccl-cu12==2.26.2 PyPI wheel (a zip file) to scratch
-# and unpack only the lib/ directory.  The 2.26.2 libnccl.so.2 is then
-# bind-mounted directly over /lib/x86_64-linux-gnu/libnccl.so.2 — the exact
-# path confirmed by `ldd libtorch_cuda.so` inside the NGC 25.02 container.
-# LD_LIBRARY_PATH injection is not used because --nv re-injects the container's
-# own library paths after environment setup, overriding LD_LIBRARY_PATH.
+# and unpack only the lib/ directory.  The 2.26.2 libnccl.so.2 is then copied
+# to /dev/shm (RAM-backed tmpfs) and injected via LD_PRELOAD so every process
+# that starts inside the container uses 2.26.2 regardless of NFS inode state.
+# (See the LD_PRELOAD block below for details on why bind-mount is not used.)
 #
 # The wheel is ~250 MB (NCCL library with debug symbols); extraction is ~4 s.
 # The result is cached under _SIF_PKGS_DIR/nccl_lib; re-extracted only if
@@ -126,38 +125,40 @@ if [[ ! -f "${_NCCL_MARKER}" ]]; then
   echo "  Done. NCCL 2.26.2 cached at ${_NCCL_LIB_DIR}"
 fi
 
-# The .so inside the wheel is named libnccl.so.2 (SONAME = filename; no extra
-# version suffix).  Use it directly as the bind-mount source.
+# ---------------------------------------------------------------------------
+# NCCL injection via LD_PRELOAD from /dev/shm (RAM-backed, never stale).
+#
+# Why not bind-mount: Apptainer bind-mounts capture the file's inode at
+# container-start time.  On VAST NFS scratch, if the inode is ever evicted
+# or replaced (e.g. after rm -rf + re-extraction), running workers that
+# already have the bind-mount open get ESTALE ("Stale file handle") the next
+# time they try to read the library.  This breaks torch import in Ray workers:
+#   ImportError: libnccl.so.2: cannot open shared object file: Stale file handle
+#
+# Why LD_PRELOAD works: LD_PRELOAD with a full path is resolved once at
+# process start (dlopen by the dynamic linker before any other library).
+# As long as the file exists at the moment the process starts it is mapped
+# into memory; subsequent NFS inode changes do not affect the already-mapped
+# pages.  /dev/shm is RAM-backed (tmpfs), so reads are entirely in-kernel
+# memory — ESTALE is impossible.
+#
+# Why LD_PRELOAD overrides the container's NCCL: LD_PRELOAD is processed
+# before LD_LIBRARY_PATH and before any RUNPATH/RPATH embedded in binaries.
+# The preloaded libnccl.so.2 satisfies the SONAME dependency before the
+# linker ever searches /lib/x86_64-linux-gnu/libnccl.so.2.25.1.
+# Apptainer's --nv flag only prepends CUDA driver/toolkit paths to
+# LD_LIBRARY_PATH; it does not reset or override LD_PRELOAD.
+# ---------------------------------------------------------------------------
 _NCCL_SO="${_NCCL_LIB_DIR}/nvidia/nccl/lib/libnccl.so.2"
+_NCCL_SHM="/dev/shm/libnccl_2262.so.2"   # fixed name; safe to overwrite each run
 if [[ ! -f "${_NCCL_SO}" ]]; then
   echo "WARNING: ${_NCCL_SO} not found after extraction — NCCL injection will not work." >&2
-  _NCCL_BIND_ARGS=""
 else
-  echo "NCCL bind-mount source: ${_NCCL_SO}"
-  # In the NGC 25.02 container libtorch_cuda.so's RUNPATH is:
-  #   $ORIGIN:/lib/intel64:...:/usr/local/cuda/lib64
-  # ldd resolves libnccl.so.2 to: /lib/x86_64-linux-gnu/libnccl.so.2
-  # That is the one and only path we must bind-mount over.
-  # The pip install paths (nvidia/nccl/lib, torch/lib) are NOT in the RUNPATH
-  # and were never consulted — which is why all previous bind attempts failed.
-  #
-  # We bind unconditionally over the confirmed path (no apptainer probe needed;
-  # Apptainer silently ignores bind-mounts over non-existent target paths).
-  # /lib/x86_64-linux-gnu/libnccl.so.2 is a symlink → libnccl.so.2.25.1.
-  # Apptainer cannot bind-mount over a symlink; the dynamic linker follows
-  # the symlink and loads the versioned file directly.  We must bind-mount
-  # over the symlink TARGET (the versioned filename) to intercept the load.
-  _NCCL_VERSIONED_TARGET=""
-  _nccl_link=$(apptainer exec "${IMAGE}" readlink /lib/x86_64-linux-gnu/libnccl.so.2 2>/dev/null || true)
-  if [[ -n "${_nccl_link}" ]]; then
-    # readlink returns just the filename (e.g. libnccl.so.2.25.1); prepend dir.
-    _NCCL_VERSIONED_TARGET="/lib/x86_64-linux-gnu/${_nccl_link}"
-  else
-    # Fallback: not a symlink, bind over the path directly.
-    _NCCL_VERSIONED_TARGET="/lib/x86_64-linux-gnu/libnccl.so.2"
-  fi
-  _NCCL_BIND_ARGS="--bind ${_NCCL_SO}:${_NCCL_VERSIONED_TARGET}"
-  echo "  Will bind-mount over: ${_NCCL_VERSIONED_TARGET}"
+  echo "Copying NCCL 2.26.2 to /dev/shm for stale-NFS-safe LD_PRELOAD injection ..."
+  cp -f "${_NCCL_SO}" "${_NCCL_SHM}"
+  chmod 755 "${_NCCL_SHM}"
+  echo "  NCCL LD_PRELOAD source: ${_NCCL_SHM}"
+  export LD_PRELOAD="${_NCCL_SHM}${LD_PRELOAD:+:${LD_PRELOAD}}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -378,11 +379,9 @@ export TORCHDYNAMO_DISABLE=1
 export VLLM_USE_V1=1
 
 echo "Running container sanity imports ..."
-# shellcheck disable=SC2086
 apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
-  ${_NCCL_BIND_ARGS} \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
   "${PYTHON_IN_CONTAINER}" - <<'PY'
@@ -437,38 +436,30 @@ else:
 print("  OK flash_attn.bert_padding import")
 
 import ctypes, os
-# ldd confirms libtorch_cuda.so resolves libnccl.so.2 via symlink to
-# /lib/x86_64-linux-gnu/libnccl.so.2.25.1 (versioned target).
-# We must load the versioned file directly to check the injected version.
-import glob as _glob
-_NCCL_VERSIONED = ""
-for _candidate in _glob.glob("/lib/x86_64-linux-gnu/libnccl.so.2.*"):
-    _NCCL_VERSIONED = _candidate
-    break
-if not _NCCL_VERSIONED:
-    _NCCL_VERSIONED = "/lib/x86_64-linux-gnu/libnccl.so.2"
+# LD_PRELOAD injects libnccl.so.2 (2.26.2) before the container's NCCL.
+# Load it directly from the preloaded path (already mapped by the linker).
+_nccl_preload = os.environ.get("LD_PRELOAD", "").split(":")[0]
+_NCCL_TO_CHECK = _nccl_preload if _nccl_preload else "/lib/x86_64-linux-gnu/libnccl.so.2"
 try:
-    _lib = ctypes.CDLL(_NCCL_VERSIONED)
+    _lib = ctypes.CDLL(_NCCL_TO_CHECK)
     _ver = ctypes.c_int(0)
     _lib.ncclGetVersion(ctypes.byref(_ver))
     _v = _ver.value
     _vs = f"{_v // 10000}.{(_v % 10000) // 100}.{_v % 100}"
-    print(f"  NCCL version at {_NCCL_VERSIONED}: {_vs}")
+    print(f"  NCCL version from {_NCCL_TO_CHECK}: {_vs}")
     if _v < 22602:
         print(f"  ERROR: NCCL {_vs} < 2.26.2 — Blackwell shared-memory bug not fixed!")
-        print( "         Check that the NCCL bind-mounts succeeded.")
+        print( "         Check that LD_PRELOAD injection succeeded.")
         import sys; sys.exit(4)
     else:
         print(f"  OK NCCL >= 2.26.2 confirmed")
 except Exception as e:
-    print(f"  WARNING: could not query NCCL version from {_NCCL_VERSIONED}: {e}")
+    print(f"  WARNING: could not query NCCL version: {e}")
 PY
 
-# shellcheck disable=SC2086
 exec apptainer exec --nv \
   --bind "${REPO_ROOT}:/workspace/transschema" \
   --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
-  ${_NCCL_BIND_ARGS} \
   --pwd /workspace/transschema/AgentFlow \
   "${IMAGE}" \
   "${PYTHON_IN_CONTAINER}" train/train_datamorpheragent.py --skip_dep_check "$@"
