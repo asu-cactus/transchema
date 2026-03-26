@@ -322,23 +322,25 @@ export NCCL_CUMEM_HOST_ENABLE=0
 # was encountered" in ncclCommWatchdog (init succeeds asynchronously; the
 # fault is caught later when the watchdog polls finishedGPUExecutionInternal).
 # CE mode only moves the data copy; the init-kernel fault remains.
-# Disabling SHM forces NCCL to use Socket transport: no cross-process CUDA
-# mappings, fully safe in any container environment.
-#
-# Topology concern (nNodes=1): nNodes is derived from unique hostHash values,
-# not SHM co-locality.  NCCL_HOSTID=datamorphernode0 (below) forces both
-# workers to report the same hostHash → nNodes=1, localRanks=2, correct
-# localRank=0/1 assignment and torch.cuda.set_device() per worker.
+# Disabling SHM forces NCCL to use NET/Socket (TCP) transport.
 export NCCL_SHM_DISABLE=1
-# Force all NCCL ranks to report the same host identity.
-# Apptainer may give each worker process a different UTS namespace (hostname),
-# causing NCCL's getHostHash() to return different values per process even on
-# the same physical node.  NCCL uses host hashes to determine nNodes: if two
-# ranks hash differently it concludes nNodes=2 (multi-node) and uses a network
-# proxy path that fails with "Cuda failure 1 'invalid argument'".
-# Setting NCCL_HOSTID to a fixed string forces all ranks on this job to share
-# the same host identity → nNodes=1 → intra-node transport → correct operation.
-export NCCL_HOSTID=datamorphernode0
+#
+# IMPORTANT: do NOT set NCCL_HOSTID to the same value for all ranks.
+#
+# When all ranks share the same hostHash (nNodes=1) and SHM+P2P are disabled,
+# NCCL routes collectives via NET/Socket/Shared — an AF_UNIX socket.  NCCL's
+# NET/Socket transport only handles AF_INET/AF_INET6 and rejects AF_UNIX:
+#   "NCCL WARN ncclSocketInit: connecting to address with family 1 is
+#    neither AF_INET(2) nor AF_INET6(10)"
+# This triggers an internal NCCL error that appears as an illegal memory
+# access caught by the watchdog (NCCL issue #2057, March 2026).
+#
+# The correct configuration: let each rank have a distinct hostHash (nNodes=2).
+# NCCL then uses inter-node NET/Socket over TCP (NCCL_SOCKET_IFNAME=lo →
+# loopback 127.0.0.1), which is valid AF_INET and has no cross-process CUDA
+# mappings.  The earlier "Cuda failure 1 'invalid argument'" that previously
+# required nNodes=1 was caused by NCCL_CUMEM_ENABLE being unset; with
+# NCCL_CUMEM_ENABLE=0 (set above), the inter-node TCP path works correctly.
 # Set RAY_EXPERIMENTAL_NOSET_CUDA_VISIBLE_DEVICES=1 so all Ray workers see
 # all physical GPUs.  veRL requests fractional GPUs per colocated worker
 # (num_gpus = 1/max_colocate_count); with fractional allocation Ray cannot

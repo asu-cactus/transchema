@@ -157,14 +157,15 @@ def _worker_setup_hook() -> None:
     # moves the data copy; the SHM head/tail/connFifo pointers still go
     # through the host-registered device-visible mapping.
     #
-    # The correct fix: disable SHM completely.  NCCL falls back to Socket
-    # transport, which requires no cross-process CUDA mappings.
+    # The correct fix: disable SHM completely.  NCCL falls back to NET/Socket
+    # (TCP) transport, which requires no cross-process CUDA mappings.
     #
-    # Topology concern (nNodes=1 still required):
-    # nNodes is derived from unique hostHash values, not from SHM co-locality.
-    # NCCL_HOSTID=datamorphernode0 forces both rank-0 and rank-1 workers to
-    # report the same hostHash → nNodes=1, localRanks=2, localRank={0,1}.
-    # This is set in chpc_container_run.sh and forwarded to workers below.
+    # Topology: do NOT force nNodes=1 via NCCL_HOSTID.  When nNodes=1 and
+    # SHM+P2P are disabled, NCCL routes via NET/Socket/Shared using an AF_UNIX
+    # address, which NET/Socket rejects → internal error → illegal memory access
+    # (NCCL issue #2057, March 2026).  Instead, let each rank have a distinct
+    # hostHash (nNodes=2); NCCL uses inter-node TCP over loopback (AF_INET),
+    # which works correctly with NCCL_CUMEM_ENABLE=0.
     os.environ["NCCL_SHM_DISABLE"] = "1"
 
     # Patch veRL's Worker._setup_env_cuda_visible_devices to assign CUDA
@@ -352,8 +353,10 @@ def run_ppo(config) -> None:
         #     separate Apptainer worker processes the device pointer registered in
         #     one CUDA context is inaccessible to GPU kernels in another context →
         #     "CUDA error: an illegal memory access" in ncclCommWatchdog.
-        #     Socket transport requires no cross-process CUDA mappings.
-        #     nNodes=1 topology is maintained via NCCL_HOSTID (same hostHash).
+        #     Falls back to NET/Socket (TCP) over loopback — NCCL_SOCKET_IFNAME=lo.
+        #     NOTE: do NOT set NCCL_HOSTID to the same value for all ranks.  With
+        #     nNodes=1 + SHM+P2P disabled, NCCL uses AF_UNIX internally, which
+        #     NET/Socket rejects → internal error (NCCL issue #2057, March 2026).
         # NCCL_CUMEM_ENABLE=0 : disables NCCL's CUDA VMM (cuMemCreate) for
         #     device-side communicator scratch buffers.  GPU 1 shares the same
         #     PCIe busId as GPU 0 (Blackwell PCIe bridge topology); cuMemCreate
@@ -383,7 +386,6 @@ def run_ppo(config) -> None:
             "NCCL_P2P_DIRECT_DISABLE",
             "NCCL_CUMEM_ENABLE",
             "NCCL_SOCKET_IFNAME",
-            "NCCL_HOSTID",
             "UCX_TLS",
             "LD_LIBRARY_PATH",
             "LD_PRELOAD",
