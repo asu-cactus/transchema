@@ -83,46 +83,91 @@ export PYTHONPATH="${_SIF_PKGS_DIR}:${PYTHONPATH:-}"
 # NCCL upgrade: download libnccl.so.2 >= 2.26.2 to fix Blackwell shared-memory
 # kernel launch failure.
 #
-# The container ships NCCL 2.25.1, which has a confirmed bug on Blackwell GPUs
-# (sm_120): NCCL's collective kernels request more shared memory than Blackwell
-# allows per CUDA function (82240 B requested vs 79856 B limit).  This causes
-# cuLaunchKernel to return CUDA_ERROR_INVALID_ARGUMENT (1), reported as:
-#   "NCCL INFO ncclMaxSharedMem 82240 exceeds device/fn maxSharedMem 79856"
-#   "enqueue.cc:NNNN NCCL WARN Cuda failure 1 'invalid argument'"
-# The bug was fixed in NCCL 2.26.2 (release notes: "Fixed shared memory usage
-# on recent Blackwell GPUs").
+# The container ships NCCL 2.25.1 at /lib/x86_64-linux-gnu/libnccl.so.2 (the
+# system apt-installed path that libtorch_cuda.so resolves via RUNPATH).
+# NCCL 2.25.1 has a confirmed Blackwell (sm_120) bug: collective kernels request
+# 82240 B of shared memory but Blackwell caps CUDA functions at 79856 B, causing:
+#   "NCCL WARN Cuda failure 1 'invalid argument'"
+# Fixed in NCCL 2.26.2.
 #
-# We download the nvidia-nccl-cu12==2.26.2 PyPI wheel (a zip file) to scratch
-# and unpack only the lib/ directory.  The 2.26.2 libnccl.so.2 is then copied
-# to /dev/shm (RAM-backed tmpfs) and injected via LD_PRELOAD so every process
-# that starts inside the container uses 2.26.2 regardless of NFS inode state.
-# (See the LD_PRELOAD block below for details on why bind-mount is not used.)
+# Strategy:
+#   1. Check the container's pip-installed NCCL at
+#      /usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2
+#      NGC 25.02 ships a newer NCCL there; if >= 2.26.2 use it directly.
+#   2. If not available or too old, try downloading the PyPI wheel.
+#   3. Inject via LD_PRELOAD from /dev/shm (RAM-backed, never NFS-stale).
 #
-# The wheel is ~250 MB (NCCL library with debug symbols); extraction is ~4 s.
-# The result is cached under _SIF_PKGS_DIR/nccl_lib; re-extracted only if
-# the marker file is absent (i.e. first run or after rm -rf _SIF_PKGS_DIR).
+# _NCCL_LIB_DIR is intentionally placed OUTSIDE _SIF_PKGS_DIR so that
+# rm -rf _SIF_PKGS_DIR (triggered on SIF image update) does not wipe the
+# downloaded NCCL library.
 # ---------------------------------------------------------------------------
-_NCCL_LIB_DIR="${_SIF_PKGS_DIR}/nccl_lib"
+_NCCL_LIB_DIR="/scratch/general/vast/u1592362/AgentFlow_nccl_lib"
 _NCCL_MARKER="${_NCCL_LIB_DIR}/.nccl_extracted"
 _NCCL_WHEEL_URL="https://files.pythonhosted.org/packages/67/ca/f42388aed0fddd64ade7493dbba36e1f534d4e6fdbdd355c6a90030ae028/nvidia_nccl_cu12-2.26.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
-_NCCL_WHEEL_CACHE="${_SIF_PKGS_DIR}/nvidia_nccl_cu12-2.26.2.whl"
+_NCCL_WHEEL_CACHE="${_NCCL_LIB_DIR}/nvidia_nccl_cu12-2.26.2.whl"
 
 if [[ ! -f "${_NCCL_MARKER}" ]]; then
-  echo "NCCL 2.25.1 (container) has a Blackwell shared-memory bug fixed in 2.26.2."
-  echo "Downloading nvidia-nccl-cu12==2.26.2 wheel (~250 MB) to scratch ..."
   mkdir -p "${_NCCL_LIB_DIR}"
-  if command -v curl &>/dev/null; then
-    curl -fsSL -o "${_NCCL_WHEEL_CACHE}" "${_NCCL_WHEEL_URL}"
+
+  # Strategy 1: check the container's pip-installed NCCL (often >= 2.26.2 in NGC 25.02).
+  _CONTAINER_NCCL="/usr/local/lib/python3.12/dist-packages/nvidia/nccl/lib/libnccl.so.2"
+
+  _container_nccl_ver=$(apptainer exec "${IMAGE}" /bin/sh -c \
+    "python3 -c \"
+import ctypes, sys
+try:
+    lib = ctypes.CDLL('${_CONTAINER_NCCL}')
+    v = ctypes.c_int(0)
+    lib.ncclGetVersion(ctypes.byref(v))
+    sys.stdout.write(str(v.value))
+except Exception:
+    sys.stdout.write('0')
+\"" 2>/dev/null || echo 0)
+
+  if [[ "${_container_nccl_ver}" -ge 22602 ]] 2>/dev/null; then
+    echo "Container pip NCCL version ${_container_nccl_ver} >= 2.26.2; extracting from container ..."
+    apptainer exec \
+      --bind "/scratch/general/vast/u1592362:/scratch/general/vast/u1592362" \
+      "${IMAGE}" \
+      /bin/sh -c "cp -L '${_CONTAINER_NCCL}' '${_NCCL_LIB_DIR}/libnccl.so.2'"
+    touch "${_NCCL_MARKER}"
+    echo "  Done. NCCL extracted from container at ${_NCCL_LIB_DIR}/libnccl.so.2"
   else
-    wget -q -O "${_NCCL_WHEEL_CACHE}" "${_NCCL_WHEEL_URL}"
+    # Strategy 2: download from PyPI.
+    echo "NCCL 2.25.1 (container) has a Blackwell shared-memory bug fixed in 2.26.2."
+    echo "Downloading nvidia-nccl-cu12==2.26.2 wheel (~250 MB) to scratch ..."
+    _download_ok=false
+    if command -v curl &>/dev/null; then
+      curl -fsSL --connect-timeout 30 -o "${_NCCL_WHEEL_CACHE}" "${_NCCL_WHEEL_URL}" \
+        && _download_ok=true || true
+    fi
+    if [[ "${_download_ok}" == "false" ]] && command -v wget &>/dev/null; then
+      wget -q --timeout=30 -O "${_NCCL_WHEEL_CACHE}" "${_NCCL_WHEEL_URL}" \
+        && _download_ok=true || true
+    fi
+    if [[ "${_download_ok}" == "true" ]] && [[ -s "${_NCCL_WHEEL_CACHE}" ]]; then
+      echo "Extracting libnccl.so from wheel ..."
+      mkdir -p "${_NCCL_LIB_DIR}/wheel_extract"
+      unzip -q -o "${_NCCL_WHEEL_CACHE}" "nvidia/nccl/lib/libnccl.so.2" \
+        -d "${_NCCL_LIB_DIR}/wheel_extract"
+      _wheel_so="${_NCCL_LIB_DIR}/wheel_extract/nvidia/nccl/lib/libnccl.so.2"
+      if [[ -f "${_wheel_so}" ]]; then
+        cp -f "${_wheel_so}" "${_NCCL_LIB_DIR}/libnccl.so.2"
+        rm -rf "${_NCCL_LIB_DIR}/wheel_extract"
+        rm -f "${_NCCL_WHEEL_CACHE}"
+        touch "${_NCCL_MARKER}"
+        echo "  Done. NCCL 2.26.2 downloaded and cached at ${_NCCL_LIB_DIR}/libnccl.so.2"
+      else
+        echo "WARNING: wheel extraction yielded no libnccl.so.2; NCCL injection will not work." >&2
+      fi
+    else
+      echo "WARNING: NCCL wheel download failed (no internet access?); NCCL injection will not work." >&2
+      echo "         To fix: on a machine with internet access, run:" >&2
+      echo "           mkdir -p ${_NCCL_LIB_DIR}" >&2
+      echo "           wget -O ${_NCCL_LIB_DIR}/libnccl.so.2 <url>" >&2
+      echo "           touch ${_NCCL_MARKER}" >&2
+    fi
   fi
-  echo "Extracting libnccl.so from wheel ..."
-  # The wheel (a zip archive) stores the library as nvidia/nccl/lib/libnccl.so.2
-  # (no version suffix in this PyPI wheel — the SONAME is the filename).
-  unzip -q -o "${_NCCL_WHEEL_CACHE}" "nvidia/nccl/lib/*" -d "${_NCCL_LIB_DIR}"
-  rm -f "${_NCCL_WHEEL_CACHE}"
-  touch "${_NCCL_MARKER}"
-  echo "  Done. NCCL 2.26.2 cached at ${_NCCL_LIB_DIR}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -149,7 +194,7 @@ fi
 # Apptainer's --nv flag only prepends CUDA driver/toolkit paths to
 # LD_LIBRARY_PATH; it does not reset or override LD_PRELOAD.
 # ---------------------------------------------------------------------------
-_NCCL_SO="${_NCCL_LIB_DIR}/nvidia/nccl/lib/libnccl.so.2"
+_NCCL_SO="${_NCCL_LIB_DIR}/libnccl.so.2"
 _NCCL_SHM="/dev/shm/libnccl_2262.so.2"   # fixed name; safe to overwrite each run
 if [[ ! -f "${_NCCL_SO}" ]]; then
   echo "WARNING: ${_NCCL_SO} not found after extraction — NCCL injection will not work." >&2
