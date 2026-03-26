@@ -167,75 +167,31 @@ def _worker_setup_hook() -> None:
     # This is set in chpc_container_run.sh and forwarded to workers below.
     os.environ["NCCL_SHM_DISABLE"] = "1"
 
-    # Patch: set the correct CUDA device for each rank AFTER torch.distributed.init_process_group.
+    # Patch veRL's Worker._setup_env_cuda_visible_devices to assign CUDA
+    # devices by RANK % RAY_LOCAL_WORLD_SIZE instead of Ray's accelerator IDs.
     #
     # Problem
     # -------
     # veRL uses colocated (fractional) GPU allocation: each Ray actor requests
     # num_gpus = 1/max_colocate_count.  With fractional allocation Ray packs
-    # both workers onto GPU 0 from its scheduler perspective, so
+    # both workers onto a single GPU slot from its scheduler perspective, so:
     #   ray.get_runtime_context().get_accelerator_ids()["GPU"][0]
     # returns "0" for BOTH rank-0 and rank-1 workers.  veRL's built-in
-    # _setup_env_cuda_visible_devices therefore calls set_device(0) for both.
+    # _setup_env_cuda_visible_devices therefore calls set_device(0) for both →
+    # "Duplicate GPU detected" in NCCL (both ranks report the same busId).
     #
-    # A monkey-patch on _setup_env_cuda_visible_devices (Worker.__init__ time)
-    # can correct this, but there is a second reset: NCCL_SHM_DISABLE=1 forces
-    # socket-only transport, which causes NCCL's topology graph to classify the
-    # two worker processes as separate nodes (nNodes=2, localRank=0 for both).
-    # PyTorch's ProcessGroupNCCL does NOT itself call cudaSetDevice, but the
-    # veRL init_fn (param_init_fn for FSDP) calls get_device_id() immediately
-    # after init_process_group to materialize meta-tensor weights.  If the
-    # current device reverted to 0 by then, flat_param is allocated on cuda:0
-    # for rank 1 → AssertionError at wake_up time.
+    # Fix
+    # ---
+    # Replace Ray's fractional accelerator ID with RANK % RAY_LOCAL_WORLD_SIZE.
+    # This assigns device 0 to rank 0 and device 1 to rank 1, matching the
+    # physical GPU layout.  The patch runs inside Worker.__init__ (called from
+    # fsdp_workers.py) AFTER Ray has injected RANK / RAY_LOCAL_WORLD_SIZE into
+    # the actor's environment but BEFORE torch.distributed.init_process_group.
     #
-    # The authoritative fix is to patch torch.distributed.init_process_group
-    # so that, immediately after NCCL initialisation succeeds, we re-assert
-    # cuda.set_device(RANK % local_world_size).  This runs:
-    #   • after NCCL init  (NCCL already saw the correct device via the earlier
-    #                        _setup_env_cuda_visible_devices monkey-patch)
-    #   • before FSDP init (so get_device_id() returns the right device for
-    #                        param_init_fn / init_fn / device_id= arg)
-    # No timing window exists between this set_device and FSDP init because
-    # fsdp_workers.py calls them back-to-back in the same Python function.
-    try:
-        import torch as _torch
-        import torch.distributed as _dist
-
-        _orig_init_pg = _dist.init_process_group
-
-        def _patched_init_pg(*_args, **_kwargs):
-            _result = _orig_init_pg(*_args, **_kwargs)
-            try:
-                import os as _os
-                _rank = int(_os.environ.get("RANK", "0"))
-                _lws = int(_os.environ.get("RAY_LOCAL_WORLD_SIZE",
-                                           _os.environ.get("LOCAL_WORLD_SIZE", "1")))
-                _lr = _rank % _lws
-                if _torch.cuda.is_available() and _torch.cuda.device_count() > _lr:
-                    _torch.cuda.set_device(_lr)
-                    _os.environ["LOCAL_RANK"] = str(_lr)
-                    print(
-                        f"[worker_hook] post-init_pg: RANK={_rank} LWS={_lws} "
-                        f"→ set_device({_lr}) OK",
-                        flush=True,
-                    )
-            except Exception as _e:
-                print(f"[worker_hook] post-init_pg set_device failed: {_e}", flush=True)
-            return _result
-
-        _dist.init_process_group = _patched_init_pg
-    except Exception as _e:
-        print(f"[worker_hook] init_pg patch failed: {_e}", flush=True)
-
-    # Also patch veRL's Worker._setup_env_cuda_visible_devices so that the
-    # initial device assignment (before init_process_group) already points to
-    # the correct GPU.  This ensures NCCL sees distinct busIds per rank during
-    # ncclCommInitRank (avoiding "Duplicate GPU detected"), AND that the veRL
-    # Worker.__init__ stores the correct LOCAL_RANK in its internal store.
-    #
-    # veRL's built-in handler reads get_accelerator_ids()["GPU"][0] which
-    # returns "0" for both fractional workers → both call set_device(0).
-    # Our override replaces that with RANK % RAY_LOCAL_WORLD_SIZE.
+    # IMPORTANT: do NOT call set_device after init_process_group.  NCCL binds
+    # its communicator streams to the CUDA device active at init time.  Changing
+    # the device afterwards causes stream/device mismatches during the first
+    # collective → ProcessGroupNCCL watchdog fires → SIGABRT.
     try:
         from verl.single_controller.base.worker import Worker as _VerlWorker
         _orig_setup = _VerlWorker._setup_env_cuda_visible_devices
@@ -254,7 +210,7 @@ def _worker_setup_hook() -> None:
                     _os2.environ["LOCAL_RANK"] = str(_lr2)
                     print(
                         f"[worker_hook] _setup_env_cuda: RANK={_rank2} LWS={_lws2} "
-                        f"→ set_device({_lr2}) OK",
+                        f"→ set_device({_lr2}) current_device={_torch2.cuda.current_device()}",
                         flush=True,
                     )
             except Exception as _e2:
@@ -402,8 +358,9 @@ def run_ppo(config) -> None:
 
         runtime_env_vars: dict = {
             "TOKENIZERS_PARALLELISM": "true",
-            "NCCL_DEBUG": "INFO",
-            "NCCL_DEBUG_SUBSYS": "INIT,TOPO,ENV",
+            "NCCL_DEBUG": "WARN",
+            "NCCL_DEBUG_SUBSYS": "ALL",
+            "NCCL_DEBUG_FILE": "/scratch/general/vast/u1592362/nccl-debug-%h-%p.log",
             "VLLM_LOGGING_LEVEL": "WARN",
             **infra_env_vars,
             **agentflow_env_vars,
