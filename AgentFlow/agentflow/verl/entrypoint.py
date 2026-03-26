@@ -220,6 +220,43 @@ def _worker_setup_hook() -> None:
     except Exception as _e:
         print(f"[worker_hook] _setup_env_cuda patch failed: {_e}", flush=True)
 
+    # Patch verl.utils.device.get_device_id to always return RANK % local_world_size.
+    #
+    # Root cause of "AssertionError: Expects tensor on cuda:1, was on cuda:0":
+    # -------------------------------------------------------------------------
+    # get_device_id() = torch.cuda.current_device() is used in init_fn and
+    # FSDP(device_id=...) to determine which GPU to put flat_param on.
+    # Even after _setup_env_cuda_visible_devices sets current_device=1 for rank 1,
+    # PyTorch's torch.distributed.device_mesh (called from create_device_mesh in
+    # fsdp_workers.py) can reset current_device back to 0 in edge cases.
+    #
+    # Patching get_device_id() to derive the device from RANK env var (which is
+    # stable and set by Ray before Worker.__init__) ensures every call to
+    # get_device_id() returns the correct GPU index regardless of what
+    # torch.cuda.current_device() reports at any given moment.
+    try:
+        import verl.utils.device as _verl_device
+        import torch as _torch3
+
+        def _patched_get_device_id() -> int:
+            import os as _os3
+            _rank3 = int(_os3.environ.get("RANK", "0"))
+            _lws3 = int(_os3.environ.get("RAY_LOCAL_WORLD_SIZE",
+                                         _os3.environ.get("LOCAL_WORLD_SIZE", "1")))
+            _lr3 = _rank3 % _lws3
+            _ngpu3 = _torch3.cuda.device_count() if _torch3.cuda.is_available() else 0
+            if _ngpu3 > _lr3:
+                return _lr3
+            return _torch3.cuda.current_device() if _torch3.cuda.is_available() else 0
+
+        _verl_device.get_device_id = _patched_get_device_id
+        # Also patch the name that fsdp_workers.py imported directly
+        import verl.workers.fsdp_workers as _fsdp_workers
+        _fsdp_workers.get_device_id = _patched_get_device_id
+        print("[worker_hook] get_device_id patched OK", flush=True)
+    except Exception as _e:
+        print(f"[worker_hook] get_device_id patch failed: {_e}", flush=True)
+
     # Diagnostic: log GPU state at hook time (RANK not yet available here).
     try:
         import torch as _torch_diag
