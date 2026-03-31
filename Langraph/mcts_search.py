@@ -317,6 +317,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "best_script": "",
             "best_score": 0.0,
             "best_operation_history": [],
+            "no_improvement_count": 0,
             # Critique
             "critique_attempted": False,
             # Logging

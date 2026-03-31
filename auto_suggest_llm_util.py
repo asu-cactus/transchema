@@ -293,6 +293,7 @@ def get_prompt(
             hints,
             fd_hints,
             static_hints,
+            past_context=past_context,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -316,6 +317,7 @@ def get_prompt(
             hints,
             fd_hints,
             static_hints,
+            past_context=past_context,
         )[0]
 
     elif prompt_type == "group_by_aggregate":
@@ -347,6 +349,7 @@ def get_prompt(
             hints,
             fd_hints,
             static_hints,
+            past_context=past_context,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -370,6 +373,7 @@ def get_prompt(
             hints,
             fd_hints,
             static_hints,
+            past_context=past_context,
         )[0]
 
     elif prompt_type == "union":
@@ -387,6 +391,7 @@ def get_prompt(
             file_count,
             source_information,
             static_hints,
+            past_context=past_context,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -408,6 +413,7 @@ def get_prompt(
             file_count,
             source_information,
             static_hints,
+            past_context=past_context,
         )[0]
 
     elif prompt_type == "get_case_info":
@@ -481,6 +487,7 @@ def get_prompt(
             error_string,
             all_intermediate_results,
             static_hints,
+            past_context=past_context,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -506,6 +513,7 @@ def get_prompt(
             error_string,
             all_intermediate_results,
             static_hints,
+            past_context=past_context,
         )[0]
     elif prompt_type == "mcts_expand":
         # Shared fd_hints logic (already computed above if fd_flag==1)

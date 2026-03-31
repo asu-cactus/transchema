@@ -494,15 +494,23 @@ def backpropagate(state: MCTSGraphState) -> dict:
         selection_path[-1].best_script = script
 
     new_iteration = state["iteration"] + 1
+    prev_best = state["best_score"]
+    new_best = state["best_score"] if reward <= prev_best else reward
+    if new_best > prev_best:
+        no_improvement_count = 0
+    else:
+        no_improvement_count = state.get("no_improvement_count", 0) + 1
+
     config.logger.info(
         f"[backpropagate] Iter {state['iteration']} done. "
         f"reward={reward:.4f}, path_len={len(selection_path)}, "
         f"root.visits={selection_path[0].visits if selection_path else 0}, "
-        f"next_iter={new_iteration}"
+        f"next_iter={new_iteration}, no_improvement_count={no_improvement_count}"
     )
 
     return {
         "iteration": new_iteration,
+        "no_improvement_count": no_improvement_count,
         "log_messages": state["log_messages"]
         + [f"Backprop iter {state['iteration']}: reward={reward:.4f}"],
     }
@@ -785,13 +793,29 @@ def is_selected_terminal(state: MCTSGraphState) -> str:
 
 def check_budget(state: MCTSGraphState) -> str:
     """
-    After backpropagate: stop when a NO_MORE_OPERATION terminal has been reached,
-    or when the hard iteration cap is exhausted. Continue otherwise.
+    After backpropagate: stop when any of the following conditions is met:
+      1. A NO_MORE_OPERATION terminal node has been reached.
+      2. best_score >= 0.95 (good enough — further search unlikely to help).
+      3. best_score has not improved for 5 consecutive iterations (plateau).
+      4. Hard iteration cap (max_iterations) is exhausted.
+    Continue otherwise.
     """
     config = state["config"]
     if state["terminal_found"]:
         config.logger.info(
             f"[check_budget] Terminal node reached at iter {state['iteration']} — stopping."
+        )
+        return "done"
+    if state["best_score"] >= 0.95:
+        config.logger.info(
+            f"[check_budget] Best score {state['best_score']:.4f} >= 0.95 — stopping early."
+        )
+        return "done"
+    no_improvement_count = state.get("no_improvement_count", 0)
+    if no_improvement_count >= 5:
+        config.logger.info(
+            f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
+            f"(best_score={state['best_score']:.4f}) — stopping early."
         )
         return "done"
     if state["iteration"] >= state["max_iterations"]:

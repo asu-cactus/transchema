@@ -12,7 +12,9 @@ def get_join_prompt(
     hints,
     fd_hints,
     static_hints=False,
+    past_context="",
 ):
+    past_context_section = f"\nPast Failed Attempts:\n{past_context}\n" if past_context else ""
     prompt = """
     query1
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be joined and at which columns?". Take this decision based on "Operation History", "Source" and "Target" (table schema as well as the examples) information.
@@ -24,7 +26,7 @@ Allowed Operations: {allowed_operation_list}.
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
 4. Multi Source Information: {source_information}
-5. Operation History: {operation_history}
+5. Operation History: {operation_history}{past_context_section}
 
 
 -You may use the hint in your decision making process.
@@ -42,6 +44,7 @@ Hint : {hints}
         source_information=source_information,
         hints=hints[0],
         fd_hints=fd_hints,
+        past_context_section=past_context_section,
     )
     if static_hints:
         prompt += get_hints_section(JOIN_HINT_IDS, fmt="bullet") + "\n"
@@ -69,7 +72,9 @@ def get_group_by_aggregate_prompt(
     hints,
     fd_hints,
     static_hints=False,
+    past_context="",
 ):
+    past_context_section = f"\nPast Failed Attempts:\n{past_context}\n" if past_context else ""
     prompt = """
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "1. Which columns should be used for Group By operation? 2. Which columns should be Aggregated? 3.Which Aggregation functions should be used?". Take this decision based on "Operation History", few-shot-examples, "Source" and "Target" (table schema as well as the examples) information.
 
@@ -80,7 +85,7 @@ Allowed Operations: {allowed_operation_list}.
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
 4. Multi Source Information: {source_information}
-5. Operation History: {operation_history}
+5. Operation History: {operation_history}{past_context_section}
 
 
 -You may use the hint in your decision making process.
@@ -97,6 +102,7 @@ Hint : {hints}
         source_information=source_information,
         hints=hints[0],
         fd_hints=fd_hints,
+        past_context_section=past_context_section,
     )
     if static_hints:
         prompt += get_hints_section(GROUPBY_AGG_HINT_IDS, fmt="bullet") + "\n"
@@ -118,7 +124,9 @@ def get_union_prompt(
     file_count,
     source_information,
     static_hints=False,
+    past_context="",
 ):
+    past_context_section = f"\nPast Failed Attempts:\n{past_context}\n" if past_context else ""
     prompt = """
     You are generating a data-pipeline to transform multiple source tables to target table and you need to answer "what tables should be Union-ed?". Take this decision based on "Operation History",few shot examples, "Source" and "Target" (table schema as well as the examples) information.
 
@@ -128,7 +136,7 @@ Allowed Operations: {allowed_operation_list}.
 2. Target Schema: {target_data_schema}
 3. Target Examples: {target_samples}
 4. Multi Source Information: {source_information}
-5. Operation History: {operation_history}
+5. Operation History: {operation_history}{past_context_section}
 
 
 - Please answer which tables should be unioned.
@@ -145,5 +153,6 @@ Allowed Operations: {allowed_operation_list}.
         target_data_schema=target_data_schema,
         target_samples=target_samples,
         source_information=source_information,
+        past_context_section=past_context_section,
     )
     return [prompt]

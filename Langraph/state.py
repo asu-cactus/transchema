@@ -74,6 +74,7 @@ class MCTSGraphState(TypedDict):
     best_script: str
     best_score: float
     best_operation_history: List[str]
+    no_improvement_count: int        # consecutive iterations without best_score improvement
 
     # ── Critique phase ────────────────────────────────────────────────────────
     critique_attempted: bool             # True once critique has run this MCTS iteration

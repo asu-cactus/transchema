@@ -486,6 +486,20 @@ def get_parser():
              "operation history, code, and score are injected into prompts.",
     )
 
+    parser.add_argument(
+        "--memory_granularity",
+        type=str,
+        default="summary",
+        choices=["summary", "response", "qa"],
+        help=(
+            "Controls how much context from each completed operator step is carried into "
+            "the next step's prompt. "
+            "'summary': compact extracted result only (default). "
+            "'response': full LLM response at each step including brief reasoning. "
+            "'qa': full prompt + response at each step including brief reasoning."
+        ),
+    )
+
     # parser.add_argument(
     #     "--combine_ask_and_configure",
     #     action="store_true",

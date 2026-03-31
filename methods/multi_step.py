@@ -76,7 +76,6 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
     script = ""
     response = ""
     for _ in range(max_trails):
-        combined_error = (past_context + "\n\n" + error_str).strip() if past_context else error_str
         prompt = get_prompt(
             prompt_type="python_script",
             max_tokens=config.token_limit,
@@ -95,10 +94,11 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
             target_perc=config.target_perc,
             is_perc=config.is_perc,
             target_length=config.target_length,
-            error_string=combined_error,
+            error_string=error_str,
             csv_save_path=csv_save_path,
             hint_source=config.hint_source,
             static_hints=config.static_hints,
+            past_context=past_context,
         )
 
         if prompt[0] == "-1":
@@ -145,6 +145,33 @@ def create_intermediate_space(main_folder, len_id, target_id):
         if file.is_file():  # Skip directories
             shutil.copy(file, source_space_path)
     return _source_space_dir
+
+
+_REASONING_INSTRUCTION = (
+    "\n- Please include a brief explanation of your reasoning for this choice."
+)
+
+
+def _build_op_history_entry(granularity, summary_str, ask_prompt, ask_response,
+                             config_prompt=None, config_response=None):
+    """Format an operation_history entry based on memory granularity.
+
+    summary  -> compact extracted string (current behaviour)
+    response -> full LLM responses only (no prompts)
+    qa       -> full prompt + response for each step
+    """
+    if granularity == "summary":
+        return summary_str
+    lines = ["[Ask For Operator]"]
+    if granularity == "qa":
+        lines.append(f"  Prompt: {ask_prompt}")
+    lines.append(f"  Response: {ask_response}")
+    if config_response is not None:
+        lines.append("[Configure]")
+        if granularity == "qa":
+            lines.append(f"  Prompt: {config_prompt}")
+        lines.append(f"  Response: {config_response}")
+    return "\n".join(lines)
 
 
 def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_str=""):
@@ -283,6 +310,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
         history_elements = []
         operation_history = []
         break_flag = 1
+        granularity = getattr(args, "memory_granularity", "summary")
 
         step = 0
         while break_flag:
@@ -316,6 +344,9 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                 logger.info("Token Limit Exceeded")
                 break_flag = 2
                 break
+            if granularity in ("response", "qa"):
+                prompt += _REASONING_INSTRUCTION
+            ask_prompt = prompt
             res = query_gpt(
                 llm_client,
                 model,
@@ -326,7 +357,8 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                 token_tracker,
                 type="Ask For Operator",
             )
-            operation = get_operation(res[0])
+            ask_response = res[0]
+            operation = get_operation(ask_response)
             print(operation)
 
             # operation = 'JOIN'
@@ -359,6 +391,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                         step if args.intermediate_materialization else 0
                     ),
                     static_hints=static_hints,
+                    past_context=past_context_str,
                 )
 
                 if prompt[0] == "-1":
@@ -366,6 +399,9 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     break_flag = 2
                     break
 
+                if granularity in ("response", "qa"):
+                    prompt += _REASONING_INSTRUCTION
+                config_prompt = prompt
                 res = query_gpt(
                     llm_client,
                     model,
@@ -376,9 +412,13 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     token_tracker,
                     type="Configure Join",
                 )
-                joined_columns = get_columns_join(res[0])
+                config_response = res[0]
+                joined_columns = get_columns_join(config_response)
                 history_elements.append(joined_columns)
-                operation_history.append(operation + " : " + str(joined_columns))
+                operation_history.append(_build_op_history_entry(
+                    granularity, operation + " : " + str(joined_columns),
+                    ask_prompt, ask_response, config_prompt, config_response,
+                ))
 
                 # run llm and get join columns
                 # add it to the history
@@ -411,12 +451,16 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                         step if args.intermediate_materialization else 0
                     ),
                     static_hints=static_hints,
+                    past_context=past_context_str,
                 )
                 if prompt[0] == "-1":
                     logger.info("Token Limit Exceeded")
                     break_flag = 2
                     break
 
+                if granularity in ("response", "qa"):
+                    prompt += _REASONING_INSTRUCTION
+                config_prompt = prompt
                 # run llm and get group by column
                 res = query_gpt(
                     llm_client,
@@ -428,10 +472,14 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     token_tracker,
                     type="Configure Group by/Aggergate",
                 )
+                config_response = res[0]
                 # add it to the history
-                group_by_column = re.sub(r"```json\n|\n|```", "", res[0])
+                group_by_column = re.sub(r"```json\n|\n|```", "", config_response)
                 history_elements.append(res)
-                operation_history.append(group_by_column)
+                operation_history.append(_build_op_history_entry(
+                    granularity, group_by_column,
+                    ask_prompt, ask_response, config_prompt, config_response,
+                ))
                 # operation_history.append(operation + ' : [ group_by : {group_by_column[0]}, aggregate : {group_by_column[1]}, aggregation_function : {group_by_column[2]} ]'.format(group_by_column = group_by_column))
                 pass
             elif operation == "UNION":
@@ -459,6 +507,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                         step if args.intermediate_materialization else 0
                     ),
                     static_hints=static_hints,
+                    past_context=past_context_str,
                 )
 
                 if prompt[0] == "-1":
@@ -466,6 +515,9 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     break_flag = 2
                     break
 
+                if granularity in ("response", "qa"):
+                    prompt += _REASONING_INSTRUCTION
+                config_prompt = prompt
                 res = query_gpt(
                     llm_client,
                     model,
@@ -476,15 +528,23 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     token_tracker,
                     type="Configure Union",
                 )
-                tables_ = get_columns(res[0])
+                config_response = res[0]
+                tables_ = get_columns(config_response)
                 history_elements.append(tables_)
-                operation_history.append(operation + " : " + str(tables_))
+                operation_history.append(_build_op_history_entry(
+                    granularity, operation + " : " + str(tables_),
+                    ask_prompt, ask_response, config_prompt, config_response,
+                ))
                 pass
             elif operation == "PIVOT":
-                operation_history.append(operation)
+                operation_history.append(_build_op_history_entry(
+                    granularity, operation, ask_prompt, ask_response,
+                ))
                 pass
             elif operation == "UNPIVOT":
-                operation_history.append(operation)
+                operation_history.append(_build_op_history_entry(
+                    granularity, operation, ask_prompt, ask_response,
+                ))
                 pass
             elif operation == "NO_MORE_OPERATION" or operation == "" or step > 15:
                 # generate python script
