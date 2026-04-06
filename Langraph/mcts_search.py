@@ -21,6 +21,7 @@ Usage
 Key args fields
 ---------------
     args.mcts_iterations    int     MCTS budget (default: 10)
+    args.validation         str     "hard_match" | "autopipeline"
     args.model              str     LLM model identifier
     args.token_limit        int     max tokens per prompt
     args.hint_source        str     "none" | "v1" | "v2"
@@ -286,6 +287,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "main_folder": main_folder,
             "ground_truth_location": ground_truth_location,
             "target_file_location": target_file_location,
+            "validation_mode": validation,
             "experiment_name": experiment_name,
             "case_id": len_idx_target_idx,
             # Prompt extras
@@ -300,6 +302,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "iteration": 0,
             "max_iterations": max_iterations,
             "terminal_found": False,
+            "validation_passed": False,
             # Selection phase (initialised to root)
             "selection_path": [root],
             "selected_node": root,
@@ -366,8 +369,14 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         logger.info(f"[MCTS] Tree viz     → {tree_path}")
 
         # ── Hard accuracy evaluation on best script ────────────────────────
-        # Execute best_script first so target_file_location reflects the best result.
-        if best_script:
+        # If MCTS already validated the best script during the search, trust that
+        # result and skip the re-validation entirely (avoids hanging on large outputs).
+        if final_state.get("validation_passed", False):
+            is_correct = True
+            logger.info("[MCTS] Skipping final re-validation: already validated during search.")
+        elif best_script:
+            # Re-execute best script so target_file_location reflects the best result,
+            # then validate. Only reached when MCTS never found a validated result.
             try:
                 from util.utils import execute_python
                 exec_result = execute_python(best_script)
@@ -551,7 +560,6 @@ if __name__ == "__main__":
         _proc = multiprocessing.Process(
             target=_case_worker,
             args=(args, length, case_id, log_dir_, args.experiment_name, _result_queue),
-            daemon=True,
         )
         _proc.start()
         _proc.join(timeout=_CASE_TIMEOUT)

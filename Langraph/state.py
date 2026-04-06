@@ -32,6 +32,7 @@ class MCTSGraphState(TypedDict):
     main_folder: str                 # e.g. "autopipeline-benchmarks/github-pipelines"
     ground_truth_location: str       # path to target.csv
     target_file_location: str        # path where generated CSV is written
+    validation_mode: str             # "hard_match" or "autopipeline"
     experiment_name: str             # label for saved scripts
     case_id: str                     # e.g. "2_5" for length2_5
 
@@ -51,6 +52,7 @@ class MCTSGraphState(TypedDict):
     iteration: int                   # current iteration index (0-based, incremented by backpropagate)
     max_iterations: int              # hard budget cap (safety limit)
     terminal_found: bool             # True once a NO_MORE_OPERATION node has been simulated
+    validation_passed: bool          # True once any iteration validates against ground truth
 
     # ── Selection phase ───────────────────────────────────────────────────────
     # Set by mcts_select; consumed by next_operator_step + backpropagate.

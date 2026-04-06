@@ -24,6 +24,7 @@ Conditional edge functions (return routing strings)
   check_budget         — after backpropagate
 """
 
+import multiprocessing
 import os
 import re
 import sys
@@ -53,11 +54,78 @@ from eval_score.score import relative_csv_score
 from mcts_node import MCTSNode, OPERATOR_TYPES
 from state import MCTSGraphState
 from util.utils import execute_python
+from validation.hard_match import compare_lists_matching, compare_tables_matching
 
 # Maximum tree selection depth (used in mcts_select only)
 _MAX_SELECT_DEPTH = 15
 # Maximum code-generation retries inside simulate
 _MAX_CODE_TRIALS = 5
+# Hard timeout (seconds) for the full scoring + validation call
+_SCORE_TIMEOUT = 60
+
+
+def _score_worker(target_file_location: str, ground_truth_location: str, result_queue):
+    """Subprocess worker: load CSVs and compute score, put result in queue.
+
+    Accepts file paths instead of DataFrames to avoid pickling overhead.
+    """
+    try:
+        df_output = pd.read_csv(target_file_location, low_memory=False)
+        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        _, col_ratio, _, fd_f1, _, _ = relative_csv_score(df_output, df_gt)
+        result_queue.put((fd_f1 + col_ratio) / 2)
+    except Exception:
+        result_queue.put(0.0)
+
+
+def _score_with_timeout(target_file_location: str, ground_truth_location: str) -> float:
+    """Run scoring in a child process with a hard timeout.
+
+    Passes file paths (not DataFrames) to avoid pickling overhead.
+    The child process is terminate()d on timeout, which actually stops
+    get_column_map / relative_csv_score — unlike threads, which cannot be
+    killed when stuck in C extensions.
+    Returns 0.0 on timeout or error.
+    """
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(
+        target=_score_worker,
+        args=(target_file_location, ground_truth_location, q),
+        daemon=True,
+    )
+    p.start()
+    p.join(timeout=_SCORE_TIMEOUT)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return 0.0
+    try:
+        return q.get_nowait()
+    except Exception:
+        return 0.0
+
+
+def _score_and_validate_output(
+    target_file_location: str,
+    ground_truth_location: str,
+    validation_mode: str,
+):
+    """
+    Load output + ground truth and compute:
+      - score used for MCTS reward (scoring runs in a subprocess with a hard timeout)
+      - hard validation boolean used for stopping criteria (no timeout)
+    """
+    df_output = pd.read_csv(target_file_location, low_memory=False)
+    df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+    df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+
+    score = _score_with_timeout(target_file_location, ground_truth_location)
+    validate_fn = (
+        compare_tables_matching if validation_mode == "autopipeline" else compare_lists_matching
+    )
+    _, is_correct, _, _ = validate_fn(df_output, df_gt)
+    return score, bool(is_correct)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -406,33 +474,41 @@ def simulate(state: MCTSGraphState) -> dict:
 def execute_and_score(state: MCTSGraphState) -> dict:
     """
     Load the CSV written by the generated script, compare with ground truth
-    using relative_csv_score, and use the result as the MCTS reward.
+    using relative_csv_score for reward, and compute hard validation for stop
+    criteria (`validation_passed`).
 
-    Updates: current_score, best_score, best_script, best_operation_history.
+    Updates: current_score, best_score, best_script, best_operation_history,
+             validation_passed.
     """
     config = state["config"]
     response = state["current_response"]
     target_file_location = state["target_file_location"]
     ground_truth_location = state["ground_truth_location"]
+    validation_mode = state.get("validation_mode", "hard_match")
     rollout_history = state["rollout_history"]
 
     score = 0.0
+    iteration_validation_passed = False
     if response == "Success":
         try:
-            df_output = pd.read_csv(target_file_location, low_memory=False)
-            df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-            # Drop the pandas auto-index column
-            df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-            _, _, _, _, score, _ = relative_csv_score(df_output, df_gt)
+            score, iteration_validation_passed = _score_and_validate_output(
+                target_file_location=target_file_location,
+                ground_truth_location=ground_truth_location,
+                validation_mode=validation_mode,
+            )
         except Exception:
             config.logger.warning(
-                f"[execute_and_score] Scoring failed: {traceback.format_exc()}"
+                f"[execute_and_score] Scoring/validation failed: {traceback.format_exc()}"
             )
             score = 0.0
+            iteration_validation_passed = False
+
+    validation_passed = state.get("validation_passed", False) or iteration_validation_passed
 
     config.logger.info(
         f"[execute_and_score] Iter {state['iteration']}: "
-        f"score={score:.4f}, history={rollout_history}"
+        f"score={score:.4f}, validation_passed={validation_passed}, "
+        f"history={rollout_history}"
     )
 
     # Update global best.
@@ -444,7 +520,17 @@ def execute_and_score(state: MCTSGraphState) -> dict:
     best_op_hist = state["best_operation_history"]
     full_history = state["current_full_history"] or list(rollout_history)
 
-    if score > best_score:
+    if iteration_validation_passed:
+        # Validation is the primary success signal: keep best_* aligned with the
+        # script that actually validated, even on score ties.
+        best_score = score
+        best_script = state["current_script"]
+        best_op_hist = full_history
+        config.logger.info(
+            f"[execute_and_score] Validation passed; promoting script as best "
+            f"(score={score:.4f}, complete_plan={full_history})"
+        )
+    elif score > best_score:
         best_score = score
         best_script = state["current_script"]
         best_op_hist = full_history
@@ -455,11 +541,15 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
     return {
         "current_score": score,
+        "validation_passed": validation_passed,
         "best_score": best_score,
         "best_script": best_script,
         "best_operation_history": best_op_hist,
         "log_messages": state["log_messages"]
-        + [f"Iter {state['iteration']}: score={score:.4f} history={rollout_history}"],
+        + [
+            f"Iter {state['iteration']}: "
+            f"score={score:.4f} validation_passed={validation_passed} history={rollout_history}"
+        ],
     }
 
 
@@ -553,7 +643,7 @@ def extract_best(state: MCTSGraphState) -> dict:
             f"[extract_best] Running 'best' mode critique on final script "
             f"(score={best_score:.4f})"
         )
-        crit_script, crit_score, _ = _run_critique_llm(state, best_script)
+        crit_script, crit_score, _, _ = _run_critique_llm(state, best_script)
         if crit_score > best_score:
             config.logger.info(
                 f"[extract_best] Critique improved score: {best_score:.4f} → {crit_score:.4f}"
@@ -663,16 +753,18 @@ def _build_critique_prompt(state: MCTSGraphState, script: str) -> str:
 
 def _run_critique_llm(state: MCTSGraphState, script: str):
     """
-    Build + send the critique prompt. Returns (new_script, new_score, new_response).
+    Build + send the critique prompt.
+    Returns (new_script, new_score, new_response, validation_passed).
     Loads ground truth internally for scoring.
     """
     config = state["config"]
     target_file_location = state["target_file_location"]
     ground_truth_location = state["ground_truth_location"]
+    validation_mode = state.get("validation_mode", "hard_match")
 
     prompt = _build_critique_prompt(state, script)
     if not prompt:
-        return script, state.get("current_score", 0.0), "Prompt build failed"
+        return script, state.get("current_score", 0.0), "Prompt build failed", False
 
     res = query_gpt(
         config.llm_client,
@@ -691,19 +783,22 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 
     new_score = state.get("current_score", 0.0)
     new_response = "No code extracted"
+    validation_passed = False
 
     if new_script:
         new_response = execute_python(new_script)
         if new_response == "Success":
             try:
-                df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-                df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-                df_output = pd.read_csv(target_file_location, low_memory=False)
-                _, _, _, _, new_score, _ = relative_csv_score(df_output, df_gt)
+                new_score, validation_passed = _score_and_validate_output(
+                    target_file_location=target_file_location,
+                    ground_truth_location=ground_truth_location,
+                    validation_mode=validation_mode,
+                )
             except Exception:
                 new_score = 0.0
+                validation_passed = False
 
-    return new_script, new_score, new_response
+    return new_script, new_score, new_response, validation_passed
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -724,7 +819,7 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"critiquing script (score={state['current_score']:.4f})"
     )
 
-    new_script, new_score, new_response = _run_critique_llm(
+    new_script, new_score, new_response, critique_validation_passed = _run_critique_llm(
         state, state["current_script"]
     )
 
@@ -736,23 +831,33 @@ def mcts_critique(state: MCTSGraphState) -> dict:
     best_score = state["best_score"]
     best_script = state["best_script"]
     best_op_hist = state["best_operation_history"]
-    if new_score > best_score:
+    full_history = state["current_full_history"] or list(state["rollout_history"])
+    validation_passed = state.get("validation_passed", False) or critique_validation_passed
+    selected_script = new_script if new_script else state["current_script"]
+    if critique_validation_passed:
+        # Same rule as execute_and_score: a validated script should be the final best.
         best_score = new_score
-        best_script = new_script
-        best_op_hist = state["best_operation_history"]
+        best_script = selected_script
+        best_op_hist = full_history
+    elif new_score > best_score:
+        best_score = new_score
+        best_script = selected_script
+        best_op_hist = full_history
 
     return {
-        "current_script": new_script if new_script else state["current_script"],
+        "current_script": selected_script,
         "current_score": new_score,
         "current_response": new_response,
         "critique_attempted": True,
+        "validation_passed": validation_passed,
         "best_score": best_score,
         "best_script": best_script,
         "best_operation_history": best_op_hist,
         "log_messages": state["log_messages"]
         + [
             f"[CRITIQUE] iter={state['iteration']} "
-            f"score_before={state['current_score']:.4f} score_after={new_score:.4f}"
+            f"score_before={state['current_score']:.4f} score_after={new_score:.4f} "
+            f"validation_passed={validation_passed}"
         ],
     }
 
@@ -765,9 +870,14 @@ def mcts_critique(state: MCTSGraphState) -> dict:
 def should_critique(state: MCTSGraphState) -> str:
     """
     After execute_and_score:
+    - if ground-truth validation already passed this iteration, skip critique
+      and proceed to backpropagate (search will stop in check_budget)
     - "simulate" mode → critique if score < 1.0 and not yet attempted this iteration
     - "none" / "best" mode → always skip to backpropagate
     """
+    if state.get("validation_passed", False):
+        return "backpropagate"
+
     mode = getattr(state["config"], "mcts_critique_mode", "none")
     if (
         mode == "simulate"
@@ -794,21 +904,15 @@ def is_selected_terminal(state: MCTSGraphState) -> str:
 def check_budget(state: MCTSGraphState) -> str:
     """
     After backpropagate: stop when any of the following conditions is met:
-      1. A NO_MORE_OPERATION terminal node has been reached.
-      2. best_score >= 0.95 (good enough — further search unlikely to help).
-      3. best_score has not improved for 5 consecutive iterations (plateau).
-      4. Hard iteration cap (max_iterations) is exhausted.
+      1. Ground-truth validation has passed.
+      2. best_score has not improved for 5 consecutive iterations (plateau).
+      3. Hard iteration cap (max_iterations) is exhausted.
     Continue otherwise.
     """
     config = state["config"]
-    if state["terminal_found"]:
+    if state.get("validation_passed", False):
         config.logger.info(
-            f"[check_budget] Terminal node reached at iter {state['iteration']} — stopping."
-        )
-        return "done"
-    if state["best_score"] >= 0.95:
-        config.logger.info(
-            f"[check_budget] Best score {state['best_score']:.4f} >= 0.95 — stopping early."
+            f"[check_budget] Validation passed at iter {state['iteration']} — stopping."
         )
         return "done"
     no_improvement_count = state.get("no_improvement_count", 0)
@@ -820,8 +924,7 @@ def check_budget(state: MCTSGraphState) -> str:
         return "done"
     if state["iteration"] >= state["max_iterations"]:
         config.logger.warning(
-            f"[check_budget] Hard cap ({state['max_iterations']} iterations) reached "
-            f"without finding a terminal node — stopping."
+            f"[check_budget] Hard cap ({state['max_iterations']} iterations) reached — stopping."
         )
         return "done"
     return "iterate"
