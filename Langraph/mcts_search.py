@@ -111,6 +111,7 @@ class Config:
     static_hints: bool        # True (default) = inject static hints; False = suppress (--no_static_hints)
     fd_hints: str             # pre-formatted FD hint string (empty if fd_flag=0)
     mcts_critique_mode: str   # "none" | "simulate" | "best"
+    reward_mode: str          # "score" | "validation" | "partial"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -146,7 +147,9 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     anon_flag = args.anon_flag
     fd_flag = args.fd_flag
     max_iterations = getattr(args, "mcts_iterations", 10)
+    early_stopping = getattr(args, "early_stopping", 5)
     validation = getattr(args, "validation", "hard_match")
+    reward_mode = getattr(args, "reward", "score")
     join_flag = getattr(args, "join_flag", 0)
     aggregate_flag = getattr(args, "aggregate_flag", 0)
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
@@ -276,6 +279,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             static_hints=not getattr(args, "no_static_hints", False),
             fd_hints=fd_hints_str,
             mcts_critique_mode=mcts_critique_mode,
+            reward_mode=reward_mode,
         )
 
         # ── Build initial MCTS state ──────────────────────────────────────
@@ -288,6 +292,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "ground_truth_location": ground_truth_location,
             "target_file_location": target_file_location,
             "validation_mode": validation,
+            "reward_mode": reward_mode,
             "experiment_name": experiment_name,
             "case_id": len_idx_target_idx,
             # Prompt extras
@@ -301,6 +306,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             # Iteration control
             "iteration": 0,
             "max_iterations": max_iterations,
+            "early_stopping": early_stopping,
             "terminal_found": False,
             "validation_passed": False,
             # Selection phase (initialised to root)
@@ -466,6 +472,8 @@ if __name__ == "__main__":
     parser.add_argument("--anon_flag", type=bool, default=False)
     parser.add_argument("--fd_flag", type=int, default=0)
     parser.add_argument("--mcts_iterations", type=int, default=5)
+    parser.add_argument("--early_stopping", type=int, default=5,
+                        help="Stop if best_score does not improve for this many consecutive iterations (default: 5)")
     parser.add_argument("--join_flag", type=int, default=0)
     parser.add_argument("--aggregate_flag", type=int, default=0)
     parser.add_argument("--few_shot", type=int, default=0)
@@ -488,6 +496,18 @@ if __name__ == "__main__":
         default="hard_match",
         choices=["hard_match", "autopipeline"],
         help="Validation method: 'hard_match' uses compare_lists_matching (partial credit), 'autopipeline' uses compare_tables_matching (binary match)",
+    )
+    parser.add_argument(
+        "--reward",
+        type=str,
+        default="score",
+        choices=["score", "validation", "partial"],
+        help=(
+            "MCTS reward signal used for backpropagation: "
+            "'score' = continuous relative_csv_score (FD + column map + distribution), "
+            "'validation' = binary 1.0 if hard-match validation passes else 0.0, "
+            "'partial' = fuzzy column-match ratio (matched target cols / total target cols)"
+        ),
     )
     parser.add_argument(
         "--benchmark",

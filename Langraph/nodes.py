@@ -55,6 +55,7 @@ from mcts_node import MCTSNode, OPERATOR_TYPES
 from state import MCTSGraphState
 from util.utils import execute_python
 from validation.hard_match import compare_lists_matching, compare_tables_matching
+from validation.fuzzy_match import compare_tables_fuzzy
 
 # Maximum tree selection depth (used in mcts_select only)
 _MAX_SELECT_DEPTH = 15
@@ -110,22 +111,34 @@ def _score_and_validate_output(
     target_file_location: str,
     ground_truth_location: str,
     validation_mode: str,
+    reward_mode: str,
 ):
     """
-    Load output + ground truth and compute:
-      - score used for MCTS reward (scoring runs in a subprocess with a hard timeout)
-      - hard validation boolean used for stopping criteria (no timeout)
+    Load output + ground truth and compute only the metric required by reward_mode:
+      - "score"      : relative_csv_score (FD + column map + distribution)
+      - "validation" : avg_similarity from compare_lists/tables_matching (per-col × per-row)
+      - "partial"    : fuzzy column-match ratio from compare_tables_fuzzy
+
+    Returns (reward, is_correct) where is_correct is derived from reward == 1.0.
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
     df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
 
-    score = _score_with_timeout(target_file_location, ground_truth_location)
-    validate_fn = (
-        compare_tables_matching if validation_mode == "autopipeline" else compare_lists_matching
-    )
-    _, is_correct, _, _ = validate_fn(df_output, df_gt)
-    return score, bool(is_correct)
+    if reward_mode == "validation":
+        validate_fn = (
+            compare_tables_matching if validation_mode == "autopipeline" else compare_lists_matching
+        )
+        avg_similarity, is_correct, _, _ = validate_fn(df_output, df_gt)
+        return float(avg_similarity), bool(is_correct)
+
+    elif reward_mode == "partial":
+        partial, _ = compare_tables_fuzzy(df_output, df_gt)
+        return float(partial), partial == 1.0
+
+    else:  # "score"
+        score = _score_with_timeout(target_file_location, ground_truth_location)
+        return score, score >= 1.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -487,27 +500,27 @@ def execute_and_score(state: MCTSGraphState) -> dict:
     validation_mode = state.get("validation_mode", "hard_match")
     rollout_history = state["rollout_history"]
 
-    score = 0.0
+    reward = 0.0
     iteration_validation_passed = False
+    reward_mode = state.get("reward_mode", "score")
     if response == "Success":
         try:
-            score, iteration_validation_passed = _score_and_validate_output(
+            reward, iteration_validation_passed = _score_and_validate_output(
                 target_file_location=target_file_location,
                 ground_truth_location=ground_truth_location,
                 validation_mode=validation_mode,
+                reward_mode=reward_mode,
             )
         except Exception:
             config.logger.warning(
                 f"[execute_and_score] Scoring/validation failed: {traceback.format_exc()}"
             )
-            score = 0.0
-            iteration_validation_passed = False
 
     validation_passed = state.get("validation_passed", False) or iteration_validation_passed
 
     config.logger.info(
         f"[execute_and_score] Iter {state['iteration']}: "
-        f"score={score:.4f}, validation_passed={validation_passed}, "
+        f"reward={reward:.4f} (mode={reward_mode}), validation_passed={validation_passed}, "
         f"history={rollout_history}"
     )
 
@@ -523,24 +536,24 @@ def execute_and_score(state: MCTSGraphState) -> dict:
     if iteration_validation_passed:
         # Validation is the primary success signal: keep best_* aligned with the
         # script that actually validated, even on score ties.
-        best_score = score
+        best_score = reward
         best_script = state["current_script"]
         best_op_hist = full_history
         config.logger.info(
             f"[execute_and_score] Validation passed; promoting script as best "
-            f"(score={score:.4f}, complete_plan={full_history})"
+            f"(reward={reward:.4f}, complete_plan={full_history})"
         )
-    elif score > best_score:
-        best_score = score
+    elif reward > best_score:
+        best_score = reward
         best_script = state["current_script"]
         best_op_hist = full_history
         config.logger.info(
-            f"[execute_and_score] New best: score={score:.4f}, "
+            f"[execute_and_score] New best: reward={reward:.4f}, "
             f"complete_plan={full_history}"
         )
 
     return {
-        "current_score": score,
+        "current_score": reward,
         "validation_passed": validation_passed,
         "best_score": best_score,
         "best_script": best_script,
@@ -548,7 +561,8 @@ def execute_and_score(state: MCTSGraphState) -> dict:
         "log_messages": state["log_messages"]
         + [
             f"Iter {state['iteration']}: "
-            f"score={score:.4f} validation_passed={validation_passed} history={rollout_history}"
+            f"reward={reward:.4f} (mode={reward_mode}) "
+            f"validation_passed={validation_passed} history={rollout_history}"
         ],
     }
 
@@ -789,10 +803,12 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
         new_response = execute_python(new_script)
         if new_response == "Success":
             try:
+                reward_mode = state.get("reward_mode", "score")
                 new_score, validation_passed = _score_and_validate_output(
                     target_file_location=target_file_location,
                     ground_truth_location=ground_truth_location,
                     validation_mode=validation_mode,
+                    reward_mode=reward_mode,
                 )
             except Exception:
                 new_score = 0.0
@@ -879,9 +895,11 @@ def should_critique(state: MCTSGraphState) -> str:
         return "backpropagate"
 
     mode = getattr(state["config"], "mcts_critique_mode", "none")
+    reward_mode = state.get("reward_mode", "score")
+    critique_threshold = 0.85 if reward_mode == "score" else 1.0
     if (
         mode == "simulate"
-        and state["current_score"] < 0.85
+        and state["current_score"] < critique_threshold
         and not state.get("critique_attempted", False)
     ):
         return "critique"
@@ -916,10 +934,11 @@ def check_budget(state: MCTSGraphState) -> str:
         )
         return "done"
     no_improvement_count = state.get("no_improvement_count", 0)
-    if no_improvement_count >= 5:
+    early_stopping = state.get("early_stopping", 5)
+    if no_improvement_count >= early_stopping:
         config.logger.info(
             f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
-            f"(best_score={state['best_score']:.4f}) — stopping early."
+            f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."
         )
         return "done"
     if state["iteration"] >= state["max_iterations"]:
