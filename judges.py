@@ -76,7 +76,7 @@ def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_cli
     {_df_to_prompt_str(df_generated)}
 
     Assess whether the generated table is a correct transformation of the ground truth.
-    Consider: schema match (column names, types), value correctness, row count, and structural integrity.
+    Consider: schema match (column names, types), value correctness, and structural integrity.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
@@ -89,13 +89,16 @@ def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_cli
     return _parse_llm_bool_response(response_str, logger=logger)
 
 
-def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None) -> bool:
+def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None, precomputed_score: float = None) -> bool:
     """
     LLM sees both tables + raw numeric score metrics.
     Returns True if LLM judges correct.
+    If precomputed_score is provided, skip re-running relative_csv_score.
     """
-    fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
-        _score_tuple(df_generated, df_ground_truth)
+    if precomputed_score is not None:
+        true_combined_score = precomputed_score
+    else:
+        _, _, _, _, true_combined_score, _ = _score_tuple(df_generated, df_ground_truth)
 
     score_summary = {
             "Match score based on functional dependencies and column mapping:": round(true_combined_score, 4),
@@ -113,6 +116,7 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
     {json.dumps(score_summary, indent=2)}
 
     Use the tables AND the score together to assess correctness.
+    Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
@@ -125,18 +129,21 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
     return _parse_llm_bool_response(response_str, logger=logger)
 
 
-def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None) -> bool:
+def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None, precomputed_nl_score: str = None) -> bool:
     """
     LLM sees both tables + natural language interpretation of the score.
     Softer signal than raw numbers — tells the LLM what the score *means*.
     Returns True if LLM judges correct.
+    If precomputed_nl_score is provided, skip re-running relative_csv_score.
     """
-    fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
-        _score_tuple(df_generated, df_ground_truth)
-
-    nl_interpretation = _build_nl_score_interpretation(
-        fd_f1, col_ratio, true_combined_score, debug_dict
-    )
+    if precomputed_nl_score is not None:
+        nl_interpretation = precomputed_nl_score
+    else:
+        fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
+            _score_tuple(df_generated, df_ground_truth)
+        nl_interpretation = build_nl_score_interpretation(
+            fd_f1, col_ratio, true_combined_score, debug_dict
+        )
 
     prompt = f"""You are evaluating whether a generated data table matches a ground truth table for a schema transformation task.
 
@@ -150,6 +157,7 @@ def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame
     {nl_interpretation}
 
     Use the tables AND the scoring analysis together to make a final correctness judgement.
+    Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
@@ -161,7 +169,7 @@ def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame
     response_str = llm_client.gpt(prompt)[0]
     return _parse_llm_bool_response(response_str, logger=logger)
 
-def _build_nl_score_interpretation(
+def build_nl_score_interpretation(
     fd_f1: float,
     col_ratio: float,
     true_combined_score: float,
@@ -184,22 +192,10 @@ def _build_nl_score_interpretation(
     else:
         lines.append("Overall: the generated table has significant structural differences from ground truth.")
 
-    if avg_sim is not None:
-        lines.append(
-            f"Combined score = (fd_f1 + col_ratio + dist_sim) / 3 = "
-            f"({fd_f1:.3f} + {col_ratio:.3f} + {avg_sim:.3f}) / 3 = {true_combined_score:.3f} (1.0 is perfect)."
-        )
-        if avg_sim < fd_f1 - 0.1 and avg_sim < col_ratio - 0.1:
-            lines.append(
-                f"Note: FD structure (fd_f1={fd_f1:.3f}) and column mapping (col_ratio={col_ratio:.3f}) "
-                f"look correct, but the numerical distribution score (dist_sim={avg_sim:.3f}) is dragging "
-                "the combined score down — the primary issue is wrong aggregation function or incorrect numerical values."
-            )
-    else:
-        lines.append(
-            f"Combined score = (fd_f1 + col_ratio) / 2 = "
-            f"({fd_f1:.3f} + {col_ratio:.3f}) / 2 = {true_combined_score:.3f} (1.0 is perfect, no numerical columns to compare)."
-        )
+    lines.append(
+        f"Combined score = (fd_f1 + col_ratio) / 2 = "
+        f"({fd_f1:.3f} + {col_ratio:.3f}) / 2 = {true_combined_score:.3f} (1.0 is perfect)."
+    )
 
     # --- Key structure comparison ---
     fd_info = debug_dict.get("fd", {})
@@ -306,58 +302,47 @@ def _build_nl_score_interpretation(
             f"Generated→GroundTruth column matches: {a_to_b.get('count', '?')} / {b_to_b.get('count', '?')}."
         )
 
-    # --- Numerical column distribution analysis ---
-    per_col = dist_info.get("per_column", {})
-
-    if per_col:
-        lines.append("")
-        lines.append("Numerical Column Distribution Analysis (Normalized Wasserstein Distance):")
-        if avg_sim is not None:
-            lines.append(f"  Average distribution similarity across numerical columns: {avg_sim:.3f} (1.0 = identical).")
-
-        for gt_col, info in per_col.items():
-            gen_col  = info["gen_col"]
-            sim      = info["distribution_similarity"]
-            gs       = info["gen_stats"]
-            ts       = info["gt_stats"]
-            col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
-            lines.append(
-                f"  Column '{col_label}': distribution similarity = {sim:.3f}"
-            )
-            lines.append(
-                f"    Generated  — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}"
-            )
-            lines.append(
-                f"    GroundTruth— min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}"
-            )
-            # Flag range mismatch
-            gen_range = gs["max"] - gs["min"]
-            gt_range  = ts["max"] - ts["min"]
-            if gt_range > 1e-6:
-                ratio = gen_range / gt_range
-                if ratio > 5 or ratio < 0.2:
-                    lines.append(
-                        f"    WARNING: value range is {ratio:.1f}x that of ground truth — "
-                        "likely wrong aggregation function (e.g. SUM used instead of AVG, or vice versa)."
-                    )
-            if sim < 0.5:
-                lines.append(
-                    f"    The generated values for this column differ substantially in both scale "
-                    "and distribution. Consider whether the aggregation function (SUM, AVG, COUNT, MIN, MAX) "
-                    "is correct, or whether a GROUP BY is missing/incorrect."
-                )
-
-        # Aggregation hint when FDs look fine but distributions are off
-        if avg_sim is not None and avg_sim < 0.7 and fd_f1 >= 0.8:
-            lines.append("")
-            lines.append(
-                "Note: Functional dependency structure looks correct (FD F1 ≥ 0.80) but numerical "
-                "distributions are misaligned (avg similarity < 0.70). This pattern strongly suggests "
-                "the GROUP BY columns are correct but the aggregation function is wrong. "
-                "Review each numerical column above and select the appropriate aggregation: "
-                "use AVG for ratios/rates, SUM for totals, COUNT for row counts, "
-                "MIN/MAX for extremes."
-            )
+    # --- Numerical column distribution analysis (commented out) ---
+    # per_col = dist_info.get("per_column", {})
+    # if per_col:
+    #     lines.append("")
+    #     lines.append("Numerical Column Distribution Analysis (Normalized Wasserstein Distance):")
+    #     if avg_sim is not None:
+    #         lines.append(f"  Average distribution similarity across numerical columns: {avg_sim:.3f} (1.0 = identical).")
+    #     for gt_col, info in per_col.items():
+    #         gen_col  = info["gen_col"]
+    #         sim      = info["distribution_similarity"]
+    #         gs       = info["gen_stats"]
+    #         ts       = info["gt_stats"]
+    #         col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
+    #         lines.append(f"  Column '{col_label}': distribution similarity = {sim:.3f}")
+    #         lines.append(f"    Generated  — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}")
+    #         lines.append(f"    GroundTruth— min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}")
+    #         gen_range = gs["max"] - gs["min"]
+    #         gt_range  = ts["max"] - ts["min"]
+    #         if gt_range > 1e-6:
+    #             ratio = gen_range / gt_range
+    #             if ratio > 5 or ratio < 0.2:
+    #                 lines.append(
+    #                     f"    WARNING: value range is {ratio:.1f}x that of ground truth — "
+    #                     "likely wrong aggregation function (e.g. SUM used instead of AVG, or vice versa)."
+    #                 )
+    #         if sim < 0.5:
+    #             lines.append(
+    #                 f"    The generated values for this column differ substantially in both scale "
+    #                 "and distribution. Consider whether the aggregation function (SUM, AVG, COUNT, MIN, MAX) "
+    #                 "is correct, or whether a GROUP BY is missing/incorrect."
+    #             )
+    #     if avg_sim is not None and avg_sim < 0.7 and fd_f1 >= 0.8:
+    #         lines.append("")
+    #         lines.append(
+    #             "Note: Functional dependency structure looks correct (FD F1 ≥ 0.80) but numerical "
+    #             "distributions are misaligned (avg similarity < 0.70). This pattern strongly suggests "
+    #             "the GROUP BY columns are correct but the aggregation function is wrong. "
+    #             "Review each numerical column above and select the appropriate aggregation: "
+    #             "use AVG for ratios/rates, SUM for totals, COUNT for row counts, "
+    #             "MIN/MAX for extremes."
+    #         )
 
     return "\n".join(lines)
 

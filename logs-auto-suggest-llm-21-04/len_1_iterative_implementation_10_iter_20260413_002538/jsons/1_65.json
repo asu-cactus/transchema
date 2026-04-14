@@ -1,0 +1,165 @@
+{
+  "case": "1_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0033352,
+        "latency": 9.162837982177734,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year          0\n 1996 2652530000\n 2014 6842100000\n 1989  397000000",
+        "code": "import pandas as pd\n\n# Load source table\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform the transformation according to operation_history:\n# group_by = [Source1_65_0.year], aggregations = [sum(Source1_65_0.budget)]\n# So we group by 'year' and sum the 'budget' column.\n\ndf_transformed = df_source0.groupby('year', as_index=False)['budget'].sum()\n\n# Rename columns to match target schema: ['year': integer, '0': integer]\n# 'year' stays the same, 'budget' sum becomes column '0'\ndf_transformed.rename(columns={'budget': '0'}, inplace=True)\n\n# Ensure the types match target schema: year and 0 as integers\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf_transformed.to_csv(target_path, index=False)",
+        "generated_csv_head": "year,0\n1940,2600000\n1960,806948\n1962,2000000\n1963,31115000\n1964,19000000\n1965,20000000\n1968,0\n1969,28000000\n1970,68485000\n1971,1800000\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0031944,
+          "latency": 8.628392457962036,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year  0\n 1985 11\n 2007 98\n 1995 44",
+          "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Group by 'year' and count number of movies (movie_id) per year\n# 'year' is integer and unique key in target, so group by 'year'\n# '0' column in target likely represents count of movies per year\nresult = df0.groupby('year').agg({'movie_id': 'count'}).reset_index()\n\n# Rename 'movie_id' count to '0' to match target schema\nresult.rename(columns={'movie_id': '0'}, inplace=True)\n\n# Ensure 'year' and '0' are integer type as in target\nresult['year'] = result['year'].astype(int)\nresult['0'] = result['0'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0026072,
+        "latency": 3.912992238998413,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year          0\n 2002 5362000000\n 2013 7693780000\n 2012 6787500000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - The target table schema is ['year', '0'] where '0' is the sum of budgets per year.\n# - Source table has 'year' and 'budget' columns among others.\n# - Group by 'year' and sum the 'budget' column.\n# - Rename the aggregated 'budget' column to '0' to match target schema.\n# - Convert both columns to integer type to match target schema.\n\ndf_transformed = df_source0.groupby('year', as_index=False)['budget'].sum()\ndf_transformed.rename(columns={'budget': '0'}, inplace=True)\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf_transformed.to_csv(target_path, index=False)",
+        "generated_csv_head": "year,0\n1940,2600000\n1960,806948\n1962,2000000\n1963,31115000\n1964,19000000\n1965,20000000\n1968,0\n1969,28000000\n1970,68485000\n1971,1800000\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.003946,
+          "latency": 13.93263053894043,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year   0\n 2012 104\n 1986   8\n 2010 114",
+          "code": "import pandas as pd\n\n# Load source table with index_col=0 to ignore the first numerical index column\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'year' and count the number of movies per year using 'movie_id' column\ndf_transformed = df_source0.groupby('year', as_index=False)['movie_id'].count()\n\n# Rename columns to match target schema: ['year', '0']\ndf_transformed.rename(columns={'movie_id': '0'}, inplace=True)\n\n# Ensure the types match target schema: year and 0 as integers\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\"\ndf_transformed.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0029696,
+        "latency": 5.432759046554565,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year         0\n 1989 397000000\n 1970  68485000\n 1971   1800000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['year', '0'] where '0' is the sum of budgets per year.\n# - Source table has 'year' and 'budget' columns among others.\n# - Group by 'year' and sum the 'budget' column.\n# - Rename the aggregated 'budget' column to '0' to match target schema.\n# - Convert both columns to integer type to match target schema.\n\ndf_transformed = df_source0.groupby('year', as_index=False)['budget'].sum()\ndf_transformed.rename(columns={'budget': '0'}, inplace=True)\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf_transformed.to_csv(target_path, index=False)",
+        "generated_csv_head": "year,0\n1940,2600000\n1960,806948\n1962,2000000\n1963,31115000\n1964,19000000\n1965,20000000\n1968,0\n1969,28000000\n1970,68485000\n1971,1800000\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0040016,
+          "latency": 9.157784461975098,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year  0\n 1969  2\n 1981  9\n 1980 10",
+          "code": "import pandas as pd\n\n# Load source table with index_col=0 to ignore the first numerical index column\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'year' and count the number of rows per year\ndf_transformed = df_source0.groupby('year', as_index=False).size()\n\n# 'size()' returns a Series with name 'size', convert to DataFrame with column '0'\ndf_transformed = df_transformed.reset_index(name='0')\n\n# Ensure types match target schema\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf_transformed.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.00336,
+        "latency": 4.819449424743652,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year          0\n 2011 7251200000\n 2006 5875100110\n 1988  178000000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['year', '0'] where '0' is the sum of budgets per year.\n# - Source table has 'year' and 'budget' columns among others.\n# - Group by 'year' and sum the 'budget' column.\n# - Rename the aggregated 'budget' column to '0' to match target schema.\n# - Convert both columns to integer type to match target schema.\n# - Since there is only one source table, no union or join is needed.\n\ndf_transformed = df_source0.groupby('year', as_index=False)['budget'].sum()\ndf_transformed.rename(columns={'budget': '0'}, inplace=True)\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf_transformed.to_csv(target_path, index=False)",
+        "generated_csv_head": "year,0\n1940,2600000\n1960,806948\n1962,2000000\n1963,31115000\n1964,19000000\n1965,20000000\n1968,0\n1969,28000000\n1970,68485000\n1971,1800000\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0042356,
+          "latency": 9.439307451248169,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year   0\n 2015  97\n 1998  71\n 2010 114",
+          "code": "import pandas as pd\n\n# Load source table with index_col=0 to ignore the first numerical index column\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'year' and count the number of movies per year\ndf_transformed = df_source0.groupby('year', as_index=False)['movie_id'].count()\n\n# Rename the count column to '0' to match target schema\ndf_transformed.rename(columns={'movie_id': '0'}, inplace=True)\n\n# Ensure types match target schema: 'year' and '0' as integers\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\"\ndf_transformed.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0037375999999999998,
+        "latency": 6.9370481967926025,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year          0\n 2002 5362000000\n 1991  632000000\n 1962    2000000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['year', '0'] where '0' is the sum of budgets per year.\n# - Source table has 'year' and 'budget' columns among others.\n# - Group by 'year' and sum the 'budget' column.\n# - Rename the aggregated 'budget' column to '0' to match target schema.\n# - Convert both columns to integer type to match target schema.\n# - Since there is only one source table, no union or join is needed.\n\ndf_transformed = df_source0.groupby('year', as_index=False)['budget'].sum()\ndf_transformed.rename(columns={'budget': '0'}, inplace=True)\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf_transformed.to_csv(target_path, index=False)",
+        "generated_csv_head": "year,0\n1940,2600000\n1960,806948\n1962,2000000\n1963,31115000\n1964,19000000\n1965,20000000\n1968,0\n1969,28000000\n1970,68485000\n1971,1800000\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0042116,
+          "latency": 10.566721439361572,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year          0\n 1991  632000000\n 1995 1977250000\n 1994 1285000000",
+          "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'year' and sum the 'budget' column\ndf_transformed = df_source0.groupby('year', as_index=False)['budget'].sum()\n\n# Rename the aggregated 'budget' column to '0' to match target schema\ndf_transformed.rename(columns={'budget': '0'}, inplace=True)\n\n# Cast columns to integer type to match target schema\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\"\ndf_transformed.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0044304,
+          "latency": 10.881425857543945,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year  0\n 1986  8\n 1990 18\n 1995 44",
+          "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'year' and count the number of movies (movie_id) per year\ndf_transformed = df_source0.groupby('year', as_index=False)['movie_id'].count()\n\n# Rename columns to match target schema: 'year' stays the same, count becomes '0'\ndf_transformed.rename(columns={'movie_id': '0'}, inplace=True)\n\n# Ensure the types match target schema: 'year' and '0' as integers\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\"\ndf_transformed.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0041152,
+        "latency": 4.005841970443726,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year          0\n 1964   19000000\n 1987  253700000\n 2013 7693780000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['year', '0'] where '0' is the sum of budgets per year.\n# - Source table has 'year' and 'budget' columns among others.\n# - Group by 'year' and sum the 'budget' column.\n# - Rename the aggregated 'budget' column to '0' to match target schema.\n# - Convert both columns to integer type to match target schema.\n# - Since there is only one source table, no union or join is needed.\n\ndf_transformed = df_source0.groupby('year', as_index=False)['budget'].sum()\ndf_transformed.rename(columns={'budget': '0'}, inplace=True)\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf_transformed.to_csv(target_path, index=False)",
+        "generated_csv_head": "year,0\n1940,2600000\n1960,806948\n1962,2000000\n1963,31115000\n1964,19000000\n1965,20000000\n1968,0\n1969,28000000\n1970,68485000\n1971,1800000\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0048076,
+          "latency": 11.068604469299316,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year  0\n 1980 10\n 1998 71\n 1994 35",
+          "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'year' and count the number of movies per year\ndf_transformed = df_source0.groupby('year', as_index=False).size()\n\n# 'size()' returns a Series with name 0, convert to DataFrame\ndf_transformed = df_transformed.reset_index(name='0')\n\n# Ensure types match target schema: 'year' and '0' as integers\ndf_transformed['year'] = df_transformed['year'].astype(int)\ndf_transformed['0'] = df_transformed['0'].astype(int)\n\n# Write the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\"\ndf_transformed.to_csv(target_path, index=False)"
+        }
+      ]
+    }
+  ]
+}

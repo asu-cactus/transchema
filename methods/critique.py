@@ -635,6 +635,11 @@ def critique(
     # sys.exit()
     logger.info(response)
 
+    df_critique = None
+    fd_f1_val = 0.0
+    col_ratio_val = 0.0
+    debug_dict_val = {}
+
     try:
         df_critique = pd.read_csv(target_location_critique, low_memory=False)
         (
@@ -697,9 +702,9 @@ def critique(
                 similarity_scores,
                 shared_columns,
             ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
-            _, _, _, _, score, _ = relative_csv_score(sorted_df_critique, sorted_df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(sorted_df_critique, sorted_df_ground_truth)
         else:
-            _, _, _, _, score, _ = relative_csv_score(df_critique, df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(df_critique, df_ground_truth)
         logger.info(is_correct)
 
     except Exception as e:
@@ -713,7 +718,7 @@ def critique(
         time_elapsed,
         score,
     )
-    return crit_info
+    return crit_info, (df_critique, fd_f1_val, col_ratio_val, score, debug_dict_val)
 
 
 def replace_history_info(query, operation_history):

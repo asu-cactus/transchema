@@ -1,0 +1,19 @@
+{
+  "case": "1_0",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022280000000000004,
+        "latency": 6.912195920944214,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n                 State  AverageTemperature\nDadra And Nagar Haveli           25.200531\n            Khabarovsk           -6.323525\n            Nei Mongol            3.633650",
+        "code": "import pandas as pd\n\n# Load source data\nsource1_0_0_path = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\nsource1_0_0 = pd.read_csv(source1_0_0_path, index_col=0)\n\n# Perform transformation according to operation history:\n# group_by = [Source1_0_0.State]\n# aggregations = [avg(Source1_0_0.AverageTemperature)]\n\n# Group by 'State' and calculate average of 'AverageTemperature'\nresult = source1_0_0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Rename columns to match target schema\nresult = result.rename(columns={'AverageTemperature': 'AverageTemperature'})\n\n# Ensure correct data types as per target schema\nresult['State'] = result['State'].astype(str)\nresult['AverageTemperature'] = result['AverageTemperature'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    }
+  ]
+}

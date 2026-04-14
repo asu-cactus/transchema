@@ -1,3 +1,4 @@
+import os
 import traceback
 import argparse
 import json
@@ -12,19 +13,59 @@ from methods.multi_step import multi_step
 from methods.single_step_cot import single_step_cot
 from methods.critique import critique
 from log_util.log_util import setup_logging, create_logger
-from judges import judge
+from judges import judge, build_nl_score_interpretation
+from eval_score.score import relative_csv_score
 from llm.llm_models import LLMClient, TokenUsageTracker
+
+
+def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=None):
+    """Return (nl_score, generated_samples) for a given attempt.
+
+    If precomputed=(df_gen, fd_f1, col_ratio, true_combined_score, debug_dict) is
+    provided, the CSV and relative_csv_score are not re-run — avoiding duplicate
+    get_column_map calls when the caller already has these values.
+    """
+    nl_score = ""
+    generated_samples = ""
+    try:
+        if precomputed is not None:
+            df_gen, fd_f1, col_ratio, true_combined_score, debug_dict = precomputed
+        else:
+            df_gen = pd.read_csv(generated_path, low_memory=False)
+            df_gt = pd.read_csv(gt_path, low_memory=False)
+            df_gt.drop(columns=df_gt.columns[0], axis=1, inplace=True)
+            _, col_ratio, _, fd_f1, true_combined_score, debug_dict = \
+                relative_csv_score(df_gen, df_gt)
+
+        nl_score = build_nl_score_interpretation(fd_f1, col_ratio, true_combined_score, debug_dict)
+
+        if df_gen is not None and len(df_gen) > 0:
+            sample = df_gen.sample(n=min(n_samples, len(df_gen)), replace=False)
+            generated_samples = (
+                f"Schema: {list(df_gen.columns)}\n"
+                f"Number of Tuples: {len(df_gen)}\n"
+                f"Examples:\n{sample.to_string(index=False)}"
+            )
+    except Exception:
+        pass
+    return nl_score, generated_samples
 
 
 def format_past_attempts(past_attempts):
     """Format a list of past failed attempt dicts into a context string for prompts."""
     if not past_attempts:
         return ""
-    lines = ["--- Past Failed Attempt(s) from Previous Iteration(s) ---"]
+    lines = ["--- Past Attempt(s) from Previous Iteration(s) ---"]
     for attempt in past_attempts:
-        lines.append(f"\n[Iteration {attempt['iteration']}] Score: {attempt['score']:.4f}, Succeeded: False")
+        lines.append(f"\n[Iteration {attempt['iteration']}] Score: {attempt['score']:.4f}")
         lines.append(f"Operations Tried: {attempt['operation_history']}")
-        lines.append("Generated Code:")
+        if attempt.get("generated_samples"):
+            lines.append("Generated Data (best scoring attempt):")
+            lines.append(attempt["generated_samples"])
+        if attempt.get("nl_score"):
+            lines.append("Score Analysis:")
+            lines.append(attempt["nl_score"])
+        lines.append("Generated Code (best scoring attempt):")
         lines.append("```python")
         lines.append(attempt["code"])
         lines.append("```")
@@ -73,11 +114,12 @@ def ms(args, length, id, log_dir, experiment_name, past_context_str=""):
     false_tup = []
     true_tup_ = []
     false_tup_ = []
+    ms_extras = None
     for i in range(0, args.no_of_runs):
         if args.single_step_cot:
             ms_info = single_step_cot(args, length, id, log_dir, experiment_name, i, past_context_str)
         else:
-            ms_info = multi_step(args, length, id, log_dir, experiment_name, i, past_context_str)
+            ms_info, ms_extras = multi_step(args, length, id, log_dir, experiment_name, i, past_context_str)
         results.append(ms_info)
 
     for tup in results:
@@ -118,11 +160,54 @@ def ms(args, length, id, log_dir, experiment_name, past_context_str=""):
         avged_tup = avg_tup(false_tup)
     # Return the operation_history of the last ms_info for now
 
-    return avged_tup + avged_tup_, ms_info[-1]
+    return avged_tup + avged_tup_, ms_info[-1], ms_extras
 
 
 def crit(args, length, id_, operation_history, past_context_str="", judge_reason=""):
     critique_path = f"{args.result_directory}/critique.csv"
+
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder = (
+        "autopipeline-benchmarks/monteprep-pipelines"
+        if benchmark == "monteprep"
+        else "autopipeline-benchmarks/github-pipelines"
+    )
+    code_path = f"{main_folder}/length{length}_{id_}/python_recovered.py"
+
+    attempts = []  # list of {"code": ..., "score": ..., "type": ...}
+
+    generated_path = f"{main_folder}/length{length}_{id_}/target_multisource.csv"
+    gt_path = f"{main_folder}/length{length}_{id_}/target.csv"
+
+    def _snapshot(crit_type, crit_result, extras):
+        code = ""
+        try:
+            with open(code_path) as f:
+                code = f.read()
+        except Exception:
+            pass
+        nl_score, generated_samples = _compute_attempt_context(
+            generated_path, gt_path, args.target_length, precomputed=extras
+        )
+        generated_csv_head = ""
+        if extras is not None:
+            try:
+                df_gen = extras[0]
+                if df_gen is not None and len(df_gen) > 0:
+                    generated_csv_head = df_gen.head(10).to_csv(index=False)
+            except Exception:
+                pass
+        attempts.append({
+            "type": crit_type,
+            "is_correct": crit_result[0],
+            "score": crit_result[3],
+            "cost": crit_result[1],
+            "latency": crit_result[2],
+            "nl_score": nl_score,
+            "generated_samples": generated_samples,
+            "code": code,
+            "generated_csv_head": generated_csv_head,
+        })
 
     print("CRITIQUE FINAL RESULTS:")
     if "fd" in args.critique_setting:
@@ -134,7 +219,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         else:
             fd_flags = [1, 0, 0, 0]
 
-        abl_a = critique(
+        abl_a, a_extras = critique(
             args, length, id_, args.log_directory, fd_flags, 0, operation_history,
             past_context_str=past_context_str, judge_reason=judge_reason
         )
@@ -143,10 +228,11 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id_}", "fd") + abl_a)
 
+        _snapshot("fd", abl_a, a_extras)
         if abl_a[0] == True:
             print("Success!")
             print(abl_a)
-            return abl_a
+            return abl_a, attempts
         else:
             result = abl_a
 
@@ -159,7 +245,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         else:
             metadata_flags = [1, 1, 0, 0]
 
-        abl_ab = critique(
+        abl_ab, ab_extras = critique(
             args, length, id_, args.log_directory, metadata_flags, 0, operation_history,
             past_context_str=past_context_str, judge_reason=judge_reason
         )
@@ -167,10 +253,11 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         with open(critique_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id_}", "metadata") + abl_ab)
+        _snapshot("metadata", abl_ab, ab_extras)
         if abl_ab[0] == True:
             print("Success!")
             print(abl_ab)
-            return abl_ab
+            return abl_ab, attempts
         else:
             result = abl_ab
 
@@ -182,7 +269,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
             anonymization_flags = [1, 1, 1, 1]
         else:
             anonymization_flags = [1, 1, 1, 0]
-        abl_abc = critique(
+        abl_abc, abc_extras = critique(
             args,
             length,
             id_,
@@ -197,16 +284,17 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         with open(critique_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id_}", "annonymization") + abl_abc)
+        _snapshot("anonymization", abl_abc, abc_extras)
         if abl_abc[0] == True:
             print("Success!")
         else:
             print("Failed!")
         print(abl_abc)
-        return abl_abc
+        return abl_abc, attempts
 
     print("Failed!")
     print(result)
-    return result
+    return result, attempts
 
 
 def get_parser():
@@ -518,6 +606,17 @@ def get_parser():
 _CASE_TIMEOUT = 600  # 10 minutes per case
 
 
+def _flush_json(case_record, json_path):
+    """Atomically overwrite the per-case JSON with current case_record."""
+    try:
+        tmp_path = json_path + ".tmp"
+        with open(tmp_path, "w") as f:
+            json.dump(case_record, f, indent=2, default=str)
+        os.replace(tmp_path, json_path)
+    except Exception as e:
+        print(f"Warning: failed to flush JSON to {json_path}: {e}")
+
+
 def _critique_case_worker(args, length, case, result_queue):
     """Runs one SSCoT/multistep+critique case fully in a child process."""
     try:
@@ -531,6 +630,11 @@ def _critique_case_worker(args, length, case, result_queue):
         num_iterations = getattr(args, "iterative", 1)
         past_attempts = []
         succeeded = False
+        case_record = {"case": case_path, "iterations": []}
+        json_path = f"{args.json_directory}/{case_path}.json"
+        best_score_so_far = -1.0
+        no_improve_count = 0
+        NO_IMPROVE_LIMIT = 5
 
         # Create llm_client here (subprocess cannot share the parent's client)
         _token_tracker = TokenUsageTracker()
@@ -540,10 +644,20 @@ def _critique_case_worker(args, length, case, result_queue):
         for iter_num in range(1, num_iterations + 1):
             past_context_str = format_past_attempts(past_attempts)
 
-            ms_info, operation_history = ms(
+            ms_info, operation_history, ms_extras = ms(
                 args, length, case, args.log_directory, args.experiment_name, past_context_str
             )
             result = (case_path,) + ms_info
+
+            # Precompute CSV head for ms attempt (used in both early-success and critique paths)
+            ms_csv_head = ""
+            if ms_extras is not None:
+                try:
+                    df_ms = ms_extras[0]
+                    if df_ms is not None and len(df_ms) > 0:
+                        ms_csv_head = df_ms.head(10).to_csv(index=False)
+                except Exception:
+                    pass
 
             average_multistep_path = f"{args.result_directory}/average_multi_step.csv"
             with open(average_multistep_path, "a", newline="") as f:
@@ -579,13 +693,54 @@ def _critique_case_worker(args, length, case, result_queue):
                 shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_successful.py")
                 print("Success!")
                 succeeded = True
-                break
+                # Record MS-only iteration (no critiques ran)
+                ms_score = ms_info[6] if len(ms_info) > 6 else 0.0
+                ms_nl_score, ms_generated_samples = _compute_attempt_context(
+                    f"{main_folder_base}/length{case_path}/target_multisource.csv",
+                    f"{main_folder_base}/length{case_path}/target.csv",
+                    args.target_length,
+                    precomputed=ms_extras,
+                )
+                case_record["iterations"].append({
+                    "iteration": iter_num,
+                    "ms": {
+                        "is_correct": True,
+                        "score": ms_score,
+                        "cost": ms_info[4] if len(ms_info) > 4 else 0.0,
+                        "latency": ms_info[5] if len(ms_info) > 5 else 0.0,
+                        "nl_score": ms_nl_score,
+                        "generated_samples": ms_generated_samples,
+                        "code": code,
+                        "generated_csv_head": ms_csv_head,
+                    },
+                    "critiques": [],
+                })
+                _flush_json(case_record, json_path)
+                if ms_score > best_score_so_far:
+                    best_score_so_far = ms_score
+                    no_improve_count = 0
+                else:
+                    no_improve_count += 1
+                    if no_improve_count >= NO_IMPROVE_LIMIT:
+                        print(f"Early stopping: score did not improve for {NO_IMPROVE_LIMIT} iterations.")
+                        break
+                if iter_num < num_iterations:
+                    past_attempts.append({
+                        "iteration": iter_num,
+                        "operation_history": str(operation_history),
+                        "code": code,
+                        "score": ms_score,
+                        "best_attempt_type": "ms",
+                        "nl_score": ms_nl_score,
+                        "generated_samples": ms_generated_samples,
+                    })
+                continue
 
             # No critique for single-step CoT
             if args.single_step_cot:
                 break
 
-            crit_info = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason)
+            crit_info, crit_attempts = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason)
 
             average_crit_path = f"{args.result_directory}/final_critique.csv"
             with open(average_crit_path, "a", newline="") as f:
@@ -595,22 +750,86 @@ def _critique_case_worker(args, length, case, result_queue):
                 shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_successful.py")
                 print("Success!")
                 succeeded = True
-                break
+
+            # Compute MS context once — reused for both JSON and past_attempts
+
+            ms_score = ms_info[6] if len(ms_info) > 6 else 0.0
+            ms_nl_score, ms_generated_samples = _compute_attempt_context(
+                f"{main_folder_base}/length{case_path}/target_multisource.csv",
+                f"{main_folder_base}/length{case_path}/target.csv",
+                args.target_length,
+                precomputed=ms_extras,
+            )
+
+            # Record this iteration in the case JSON
+            case_record["iterations"].append({
+                "iteration": iter_num,
+                "ms": {
+                    "is_correct": bool(ms_info[0]),
+                    "score": ms_score,
+                    "cost": ms_info[4] if len(ms_info) > 4 else 0.0,
+                    "latency": ms_info[5] if len(ms_info) > 5 else 0.0,
+                    "nl_score": ms_nl_score,
+                    "generated_samples": ms_generated_samples,
+                    "code": code,
+                    "generated_csv_head": ms_csv_head,
+                },
+                "critiques": [
+                    {
+                        "type": a["type"],
+                        "is_correct": bool(a["is_correct"]),
+                        "score": a["score"],
+                        "cost": a["cost"],
+                        "latency": a["latency"],
+                        "nl_score": a.get("nl_score", ""),
+                        "generated_samples": a.get("generated_samples", ""),
+                        "code": a["code"],
+                    }
+                    for a in crit_attempts
+                ],
+            })
+
+            _flush_json(case_record, json_path)
 
             # Accumulate past attempt context for the next iteration (if any remain)
             if iter_num < num_iterations:
-                # ms_info tuple: (is_correct, avg_cost, avg_lat, …, avg_score)
-                # avg_score sits at index 6 (avged_tup_[3])
-                score = ms_info[6] if len(ms_info) > 6 else 0.0
+                ms_attempt = {
+                    "code": code,
+                    "score": ms_score,
+                    "type": "ms",
+                    "nl_score": ms_nl_score,
+                    "generated_samples": ms_generated_samples,
+                }
+
+                # Pick the best-scoring code across MS and all critique attempts
+                all_attempts = [ms_attempt] + crit_attempts
+                best = max(all_attempts, key=lambda a: a["score"])
+
                 past_attempts.append({
                     "iteration": iter_num,
                     "operation_history": str(operation_history),
-                    "code": code,
-                    "score": score,
+                    "code": best["code"],
+                    "score": best["score"],
+                    "best_attempt_type": best["type"],
+                    "nl_score": best.get("nl_score", ""),
+                    "generated_samples": best.get("generated_samples", ""),
                 })
+
+            iter_best_score = max([ms_score] + [a["score"] for a in crit_attempts])
+            if iter_best_score > best_score_so_far:
+                best_score_so_far = iter_best_score
+                no_improve_count = 0
+            else:
+                no_improve_count += 1
+                if no_improve_count >= NO_IMPROVE_LIMIT:
+                    print(f"Early stopping: score did not improve for {NO_IMPROVE_LIMIT} iterations.")
+                    break
 
         if not succeeded:
             print("Failed!")
+
+        # Final JSON flush (ensures complete record is on disk)
+        _flush_json(case_record, json_path)
 
         result_queue.put(("ok", None))
     except Exception:
@@ -625,11 +844,12 @@ if __name__ == "__main__":
 
     # set up logging
     print(args)
-    experiment_log_directory, log_directory, results_directory = setup_logging(
+    experiment_log_directory, log_directory, results_directory, jsons_directory = setup_logging(
         args, args.log_dir, args.experiment_name
     )
     args.log_directory = log_directory
     args.result_directory = results_directory
+    args.json_directory = jsons_directory
 
     # Build case list: --cases overrides --len_id / --target_id / --max_target_id
     if args.cases:

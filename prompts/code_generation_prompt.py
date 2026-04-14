@@ -62,7 +62,7 @@ def get_python_script_simple(
     static_hints=False,
     past_context="",
 ):
-    past_context_section = f"\nPast Failed Attempts:\n{past_context}\n" if past_context else ""
+    past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = f"""
     You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table and STRICTLY follow the sequence of the operations mentioned in 'operation_history' list . The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way.
 
@@ -103,7 +103,7 @@ def get_python_script_for_single_step_cot(
     static_hints=False,
     past_context="",
 ):
-    past_context_section = f"\nPast Failed Attempts:\n{past_context}\n" if past_context else ""
+    past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. Before generating the code, please think step by step about the transformation plan to convert the source tables to the target table.
 {past_context_section}
     1. Target Table Name: {target_data_name}
@@ -145,7 +145,7 @@ def get_python_script_with_intermediate_materialization(
     # ), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
     past_operations = operation_history[:-1] if len(operation_history) > 1 else []
     next_operation = operation_history[-1]
-    past_context_section = f"\nPast Failed Attempts:\n{past_context}\n" if past_context else ""
+    past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
 
     prompt_start = f"""
 You are writing executable Python code at runtime. The overall goal is to convert multiple source tables to the format of the target table. Some operations have already been performed, and you need to write the code for the next operation.

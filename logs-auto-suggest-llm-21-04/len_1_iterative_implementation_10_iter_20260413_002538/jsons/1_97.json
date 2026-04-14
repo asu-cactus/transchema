@@ -1,0 +1,175 @@
+{
+  "case": "1_97",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0022104000000000004,
+        "latency": 6.424457550048828,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       5\n     US      30",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Perform transformation according to operation history:\n# group_by = [Source1_97_0.crit_cn]\n# aggregations = [count(Source1_97_0.critic)]\n\n# Group by 'crit_cn' and count the number of 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', 'count'))\n\n# Ensure the target schema: ['crit_cn': string, 'critic': integer]\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "crit_cn,critic\nMexico,5\nUS,30\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.8333333333333333,
+          "cost": 0.002964,
+          "latency": 11.83984637260437,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.667 + 1.000) / 2 = 0.833 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}.\nKeys present in ground truth but absent in generated: {critic}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['critic'] \u2192 crit_cn.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       1\n     US       1",
+          "code": "import pandas as pd\n\n# Load source data\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\", index_col=0)\n\n# Group by 'crit_cn' and aggregate the minimum 'crit_rank' as 'critic'\ndf_grouped = source0.groupby('crit_cn', as_index=False).agg({'crit_rank': 'min'})\n\n# Rename columns to match target schema\ndf_grouped.rename(columns={'crit_rank': 'critic'}, inplace=True)\n\n# Ensure the target schema types: 'crit_cn' as string, 'critic' as integer\ndf_grouped['crit_cn'] = df_grouped['crit_cn'].astype(str)\ndf_grouped['critic'] = df_grouped['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource_critique_history.csv\"\ndf_grouped.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.004448,
+          "latency": 23.236513137817383,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US      10\n Mexico       5",
+          "code": "import pandas as pd\n\n# Read source CSV with index_col=0 as per hint 21\ndf = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\", index_col=0)\n\n# Group by 'crit_cn' and aggregate max of 'crit_rank'\nresult = df.groupby('crit_cn', as_index=False)['crit_rank'].max()\n\n# Rename 'crit_rank' to 'critic' to match target schema\nresult = result.rename(columns={'crit_rank': 'critic'})\n\n# Ensure the target schema types: 'crit_cn' as string, 'critic' as integer\nresult['crit_cn'] = result['crit_cn'].astype(str)\nresult['critic'] = result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0019496000000000001,
+        "latency": 4.709823846817017,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US      30\n Mexico       5",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# According to the plan, group by 'crit_cn' and count the number of 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', 'count'))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "crit_cn,critic\nMexico,5\nUS,30\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0040884,
+          "latency": 17.715446710586548,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       5\n     US      10",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Group by 'crit_cn' and aggregate max of 'crit_rank' as 'critic'\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('crit_rank', 'max'))\n\n# Ensure the target schema types\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0041816,
+          "latency": 16.269038438796997,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       1\n     US       3",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Group by 'crit_cn' and count distinct 'critic' per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', pd.Series.nunique))\n\n# Ensure the target schema types\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0022696,
+        "latency": 3.642763614654541,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US      30\n Mexico       5",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Group by 'crit_cn' and count the number of 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', 'count'))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "crit_cn,critic\nMexico,5\nUS,30\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0039104000000000005,
+          "latency": 12.929982900619507,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US       3\n Mexico       1",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Group by 'crit_cn' and count distinct 'critic' per country\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', pd.Series.nunique))\n\n# Ensure the target schema types\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0025936,
+        "latency": 3.2321207523345947,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       5\n     US      30",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Group by 'crit_cn' and count the number of 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', 'count'))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "crit_cn,critic\nMexico,5\nUS,30\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0037624000000000004,
+          "latency": 11.725381851196289,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US       3\n Mexico       1",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Group by 'crit_cn' and count distinct 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', pd.Series.nunique))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0029176000000000002,
+        "latency": 4.336735010147095,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US      30\n Mexico       5",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Group by 'crit_cn' and count the number of 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', 'count'))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "crit_cn,critic\nMexico,5\nUS,30\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0042372,
+          "latency": 14.18694019317627,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       1\n     US       3",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Group by 'crit_cn' and count distinct 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', pd.Series.nunique))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0032416000000000003,
+        "latency": 4.390230655670166,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       5\n     US      30",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Group by 'crit_cn' and count the number of 'critic' entries per group\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('critic', 'count'))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "crit_cn,critic\nMexico,5\nUS,30\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0042836,
+          "latency": 12.889852046966553,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US       3\n Mexico       1",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Group by 'crit_cn' and take the minimum of 'crit_rank' as 'critic'\ndf_result = df_source0.groupby('crit_cn', as_index=False).agg(critic=('crit_rank', 'min'))\n\n# Ensure the target schema types:\ndf_result['crit_cn'] = df_result['crit_cn'].astype(str)\ndf_result['critic'] = df_result['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    }
+  ]
+}

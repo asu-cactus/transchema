@@ -1,0 +1,100 @@
+{
+  "case": "1_23",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.0016508000000000002,
+        "latency": 9.04638147354126,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id, amount}.\nKeys present in ground truth but absent in generated: {customer_id}.\nSpurious keys in generated not present in ground truth: {amount, customer_id}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['customer_id'] \u2192 amount.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 25621\nExamples:\n customer_id  amount\n       66390    30.0\n       62150    30.0\n      156670    30.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_23/test_0.csv\"\n]\n\n# List to hold dataframes from each source\ndfs = []\n\n# Load each source file with index_col=0 to ignore the numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, and it has columns ['customer_id', 'amount', 'date']\n# but the target schema is ['customer_id': int, 'amount': float]\n# We need to select only the columns customer_id and amount, and ensure correct types.\n\n# Concatenate all source dataframes (only one here, but code is generic)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Select only the target columns\nresult_df = combined_df[['customer_id', 'amount']].copy()\n\n# Convert types to match target schema\nresult_df['customer_id'] = result_df['customer_id'].astype(int)\nresult_df['amount'] = result_df['amount'].astype(float)\n\n# Write the result to the target path\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource.csv\", index=False)",
+        "generated_csv_head": "customer_id,amount\n760,25.0\n860,50.0\n1200,100.0\n1420,50.0\n1940,70.0\n1960,40.0\n2620,30.0\n3050,50.0\n3120,150.0\n3260,45.0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0033520000000000004,
+          "latency": 13.630825519561768,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 12849\nExamples:\n customer_id     amount\n      225220  30.000000\n      148190  36.666667\n      174960 150.000000",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 as per Hint 21\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_23/test_0.csv\"\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Since only one source table is given, but the failed script output has double the rows,\n# and the target has fewer rows, it suggests duplicates in source need to be aggregated.\n\n# According to Functional Dependencies and Keys:\n# - customer_id is the key\n# - amount depends on customer_id\n\n# The target schema is ['customer_id': int, 'amount': float]\n# The target examples show unique customer_id values (key) and amount as float.\n\n# The failed script output has 25621 rows, target has 12849 rows,\n# so we need to group by customer_id and aggregate amount.\n\n# Aggregation choice:\n# - amount is float in target, integer in source\n# - mean in target is slightly less than in source, so average aggregation is appropriate.\n\n# Apply GroupBy on customer_id (leftmost, integer, unique in target)\n# Aggregate amount by average\n\ndf_result = df0.groupby('customer_id', as_index=False).agg({'amount': 'mean'})\n\n# Ensure amount is float type\ndf_result['amount'] = df_result['amount'].astype(float)\n\n# Write the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_critique_history.csv\", index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0020568,
+        "latency": 4.740773916244507,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 12849\nExamples:\n customer_id  amount\n      158280    70.0\n      200330    15.0\n       55750    57.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_23/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The source schema: ['customer_id', 'amount', 'date']\n# The target schema: ['customer_id' (int), 'amount' (float)]\n# Target has unique customer_id keys, source has duplicates.\n# Transformation plan:\n# - Group by 'customer_id' (key column)\n# - Aggregate 'amount' by mean (average), since target amounts are float averages of source amounts\n# - Ignore 'date' column as it does not appear in target schema\n\ndf_result = df0.groupby('customer_id', as_index=False).agg({'amount': 'mean'})\n\n# Ensure correct data types\ndf_result['customer_id'] = df_result['customer_id'].astype(int)\ndf_result['amount'] = df_result['amount'].astype(float)\n\n# Write the transformed data to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource.csv\", index=False)",
+        "generated_csv_head": "customer_id,amount\n80,75.0\n90,121.33333333333331\n130,60.0\n190,65.0\n220,30.0\n240,10.0\n290,58.333333333333336\n320,15.0\n330,36.66666666666666\n400,25.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024212,
+        "latency": 4.11639142036438,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 12849\nExamples:\n customer_id  amount\n       13000   33.75\n       80180   48.50\n      164120   30.00",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_23/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The source schema: ['customer_id', 'amount', 'date']\n# The target schema: ['customer_id' (int), 'amount' (float)]\n# Target has unique customer_id keys, source has duplicates.\n# Transformation plan:\n# - Group by 'customer_id' (key column)\n# - Aggregate 'amount' by mean (average), since target amounts are float averages of source amounts\n# - Ignore 'date' column as it does not appear in target schema\n\ndf_result = df0.groupby('customer_id', as_index=False).agg({'amount': 'mean'})\n\n# Ensure correct data types\ndf_result['customer_id'] = df_result['customer_id'].astype(int)\ndf_result['amount'] = df_result['amount'].astype(float)\n\n# Write the transformed data to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource.csv\", index=False)",
+        "generated_csv_head": "customer_id,amount\n80,75.0\n90,121.33333333333331\n130,60.0\n190,65.0\n220,30.0\n240,10.0\n290,58.333333333333336\n320,15.0\n330,36.66666666666666\n400,25.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027812,
+        "latency": 4.33756685256958,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 12849\nExamples:\n customer_id  amount\n      200290    30.0\n       90980   232.0\n      206080    15.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_23/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Source schema: ['customer_id', 'amount', 'date']\n# Target schema: ['customer_id' (int), 'amount' (float)]\n# Target has unique customer_id keys, source has duplicates.\n# Transformation plan:\n# - Group by 'customer_id' (key column)\n# - Aggregate 'amount' by mean (average), since target amounts are float averages of source amounts\n# - Ignore 'date' column as it does not appear in target schema\n\ndf_result = df0.groupby('customer_id', as_index=False).agg({'amount': 'mean'})\n\n# Ensure correct data types\ndf_result['customer_id'] = df_result['customer_id'].astype(int)\ndf_result['amount'] = df_result['amount'].astype(float)\n\n# Write the transformed data to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource.csv\", index=False)",
+        "generated_csv_head": "customer_id,amount\n80,75.0\n90,121.33333333333331\n130,60.0\n190,65.0\n220,30.0\n240,10.0\n290,58.333333333333336\n320,15.0\n330,36.66666666666666\n400,25.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003144,
+        "latency": 5.261186838150024,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 12849\nExamples:\n customer_id  amount\n      152190    35.0\n      190930   100.0\n       78170    10.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_23/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Source schema: ['customer_id', 'amount', 'date']\n# Target schema: ['customer_id' (int), 'amount' (float)]\n# Target has unique customer_id keys, source has duplicates.\n# Transformation plan:\n# - Group by 'customer_id' (key column)\n# - Aggregate 'amount' by mean (average), since target amounts are float averages of source amounts\n# - Ignore 'date' column as it does not appear in target schema\n\ndf_result = df0.groupby('customer_id', as_index=False).agg({'amount': 'mean'})\n\n# Ensure correct data types\ndf_result['customer_id'] = df_result['customer_id'].astype(int)\ndf_result['amount'] = df_result['amount'].astype(float)\n\n# Write the transformed data to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource.csv\", index=False)",
+        "generated_csv_head": "customer_id,amount\n80,75.0\n90,121.33333333333331\n130,60.0\n190,65.0\n220,30.0\n240,10.0\n290,58.333333333333336\n320,15.0\n330,36.66666666666666\n400,25.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035052,
+        "latency": 4.671239376068115,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 12849\nExamples:\n customer_id  amount\n       83160    17.5\n      196870    30.0\n      165530    38.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_23/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Source schema: ['customer_id', 'amount', 'date']\n# Target schema: ['customer_id' (int), 'amount' (float)]\n# Target has unique customer_id keys, source has duplicates.\n# Transformation plan:\n# - Group by 'customer_id' (key column)\n# - Aggregate 'amount' by mean (average), since target amounts are float averages of source amounts\n# - Ignore 'date' column as it does not appear in target schema\n\ndf_result = df0.groupby('customer_id', as_index=False).agg({'amount': 'mean'})\n\n# Ensure correct data types\ndf_result['customer_id'] = df_result['customer_id'].astype(int)\ndf_result['amount'] = df_result['amount'].astype(float)\n\n# Write the transformed data to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource.csv\", index=False)",
+        "generated_csv_head": "customer_id,amount\n80,75.0\n90,121.33333333333331\n130,60.0\n190,65.0\n220,30.0\n240,10.0\n290,58.333333333333336\n320,15.0\n330,36.66666666666666\n400,25.0\n"
+      },
+      "critiques": []
+    }
+  ]
+}

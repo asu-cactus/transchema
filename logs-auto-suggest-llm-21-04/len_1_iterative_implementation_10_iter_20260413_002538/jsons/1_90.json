@@ -1,0 +1,215 @@
+{
+  "case": "1_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0053328,
+        "latency": 20.815845489501953,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 8\nExamples:\n dog_type\n       12\n        1\n        7",
+        "code": "import pandas as pd\n\n# Load the source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# According to operation_history:\n# group_by = [doggo, floofer, pupper, puppo]\n# aggregations = count(tweet_id)\n# We need to group by these four columns and count tweet_id occurrences.\n\n# Since doggo, floofer, pupper, puppo columns contain mostly NaN or string values,\n# we treat NaN as a category as well (pandas groupby handles NaN by default by excluding them,\n# so we fill NaN with a string to keep them as a group key).\n\ndf_source0_grouped = (\n    df_source0\n    .fillna({'doggo': 'None', 'floofer': 'None', 'pupper': 'None', 'puppo': 'None'})\n    .groupby(['doggo', 'floofer', 'pupper', 'puppo'], dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# The target schema is ['dog_type': integer]\n# But the target examples show dog_type values like 30, 8, 96 with no other columns.\n# So we need to convert the group keys into a single integer column named dog_type.\n\n# The prompt does not specify how to convert the 4 dog stage columns into a single integer.\n# However, since the target examples only have one column dog_type (integer),\n# and the operation_history only specifies group_by on those 4 columns and count(tweet_id),\n# the count(tweet_id) is the dog_type column.\n\n# So the final output is just the count of tweet_id per group of doggo/floofer/pupper/puppo,\n# but the target table only has one column dog_type, so we output the counts only.\n\n# Therefore, the final target table is just the counts of tweet_id per group,\n# ignoring the group keys (doggo, floofer, pupper, puppo).\n\n# According to the target examples, the dog_type column is integer counts.\n\ndf_target = df_source0_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "dog_type\n951\n29\n95\n7\n82\n1\n12\n1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0040248,
+          "latency": 15.664096117019653,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 4\nExamples:\n dog_type\n       30\n        8\n       96",
+          "code": "import pandas as pd\n\n# Load the source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['dog_type': integer] with 5 tuples.\n# The source columns doggo, floofer, pupper, puppo are categorical indicators of dog types.\n# They are mostly NaN or string labels like 'doggo', 'pupper', etc.\n# We want to count how many tweets belong to each dog type category.\n\n# Step 1: Melt the dog type columns into one column\ndog_type_cols = ['doggo', 'floofer', 'pupper', 'puppo']\ndf_melted = df0.melt(id_vars=['tweet_id'], value_vars=dog_type_cols, var_name='dog_type', value_name='dog_type_value')\n\n# Step 2: Filter rows where dog_type_value is not NaN (i.e., the dog type is present)\ndf_filtered = df_melted[df_melted['dog_type_value'].notna()]\n\n# Step 3: Group by dog_type_value and count tweet_id occurrences\nresult = df_filtered.groupby('dog_type_value').agg(dog_type=('tweet_id', 'count')).reset_index()\n\n# Step 4: Sort by dog_type descending to roughly match target distribution\nresult_sorted = result.sort_values(by='dog_type', ascending=False)\n\n# Step 5: Extract only the counts as the final output dataframe with column 'dog_type'\nfinal_df = result_sorted[['dog_type']].reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\nfinal_df.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0040688,
+          "latency": 15.206462383270264,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n        7\n       96\n       95",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 as per Hint 21\nsource0 = pd.read_csv('autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv', index_col=0)\n\n# The target schema is a single integer column 'dog_type' with values like 4471, 30, 8.\n# The source has columns doggo, floofer, pupper, puppo which are categorical indicators (strings or NaN).\n# We want to count how many tweets belong to each dog type category, including those with no dog type.\n\n# Step 1: Create a single categorical column 'dog_type' that encodes the dog stage per row.\n# According to the source data, doggo, floofer, pupper, puppo columns contain strings or NaN.\n# We assign dog_type as the dog stage name if present, else 'None'.\n\ndef get_dog_type(row):\n    for col in ['doggo', 'floofer', 'pupper', 'puppo']:\n        if pd.notna(row[col]) and str(row[col]).strip() != '':\n            return col\n    return 'None'\n\nsource0['dog_type'] = source0.apply(get_dog_type, axis=1)\n\n# Step 2: Count the number of tweets per dog_type\ndog_type_counts = source0['dog_type'].value_counts().reset_index()\ndog_type_counts.columns = ['dog_type', 'count']\n\n# Step 3: The target schema is ['dog_type': integer], so we output only the counts as integers.\n# The target examples show only the counts, no dog_type names.\n# So we output the counts sorted descending, as a single column named 'dog_type'.\n\nresult = dog_type_counts['count'].sort_values(ascending=False).reset_index(drop=True).to_frame()\nresult.columns = ['dog_type']\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0027156000000000003,
+        "latency": 6.662549018859863,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 8\nExamples:\n dog_type\n      951\n       29\n       12",
+        "code": "import pandas as pd\n\n# Paths of all source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\n\n# Load all source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# According to the operation history and target schema:\n# - Target schema: ['dog_type': integer]\n# - Source columns relevant: doggo, floofer, pupper, puppo, tweet_id\n# - Operation: group by doggo, floofer, pupper, puppo and count tweet_id occurrences\n# - Then output only the counts as dog_type column (integer)\n\n# Fill NaN in dog stage columns with 'None' to keep them as group keys\ndf_source0_filled = df_source0.fillna({'doggo': 'None', 'floofer': 'None', 'pupper': 'None', 'puppo': 'None'})\n\n# Group by the four dog stage columns and count tweet_id occurrences\ndf_grouped = (\n    df_source0_filled\n    .groupby(['doggo', 'floofer', 'pupper', 'puppo'], dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# The target table only has one column 'dog_type' which is the count of tweet_id per group\ndf_target = df_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "dog_type\n951\n29\n95\n7\n82\n1\n12\n1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.007419200000000001,
+          "latency": 44.78674507141113,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n        7\n       95\n       29",
+          "code": "import pandas as pd\n\n# Load the source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf = pd.read_csv(source0_path, index_col=0)\n\ndog_stage_cols = ['doggo', 'floofer', 'pupper', 'puppo']\n\n# Fill NaN with False to indicate absence of that dog stage\ndf[dog_stage_cols] = df[dog_stage_cols].fillna(False)\n\n# Melt dog stage columns into a single column\ndf_melted = df.melt(id_vars=['tweet_id'], value_vars=dog_stage_cols,\n                    var_name='dog_stage', value_name='is_stage')\n\n# Filter rows where is_stage is True (non-empty string)\ndf_melted = df_melted[df_melted['is_stage'].astype(bool)]\n\n# Map dog_stage to integers\ndog_stage_map = {'doggo': 1, 'floofer': 2, 'pupper': 3, 'puppo': 4}\ndf_melted['dog_type'] = df_melted['dog_stage'].map(dog_stage_map)\n\n# Group by dog_type and count tweet_id\ndf_result = df_melted.groupby('dog_type').agg(count=('tweet_id', 'count')).reset_index()\n\n# Count tweets with no dog stage (all dog stage columns False)\nno_stage_count = df[dog_stage_cols].apply(lambda x: x.astype(bool).sum(), axis=1)\nno_stage_count = (no_stage_count == 0).sum()\n\n# Add no dog stage count as dog_type=0 if exists\nif no_stage_count > 0:\n    df_result = pd.concat([df_result, pd.DataFrame({'dog_type': [0], 'count': [no_stage_count]})], ignore_index=True)\n\n# Rename count to dog_type to match target schema\ndf_result = df_result.rename(columns={'count': 'dog_type'})\n\n# Sort by dog_type for consistent output\ndf_result = df_result.sort_values('dog_type').reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0051827999999999996,
+          "latency": 21.913400411605835,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n        7\n       95\n      951",
+          "code": "import pandas as pd\n\n# Load the source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf = pd.read_csv(source0_path, index_col=0)\n\n# Combine doggo, floofer, pupper, puppo into a single dog_type category per row\n# If all are NaN or empty, assign 'None'\ndef combine_dog_stage(row):\n    for col in ['doggo', 'floofer', 'pupper', 'puppo']:\n        if pd.notna(row[col]) and row[col] != '':\n            return row[col]\n    return 'None'\n\ndf['dog_type'] = df.apply(combine_dog_stage, axis=1)\n\n# Group by dog_type and count tweet_id occurrences\ndf_grouped = df.groupby('dog_type', dropna=False).agg(dog_type_count=('tweet_id', 'count')).reset_index()\n\n# The target schema is a single column named 'dog_type' with integer counts\n# So output only the counts as dog_type column\ndf_result = df_grouped[['dog_type_count']].rename(columns={'dog_type_count': 'dog_type'})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0030036000000000004,
+        "latency": 3.627190351486206,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 8\nExamples:\n dog_type\n        1\n       12\n       95",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Fill NaN in dog stage columns with 'None' to keep them as group keys\ndf_source0_filled = df_source0.fillna({'doggo': 'None', 'floofer': 'None', 'pupper': 'None', 'puppo': 'None'})\n\n# Group by the four dog stage columns and count tweet_id occurrences\ndf_grouped = (\n    df_source0_filled\n    .groupby(['doggo', 'floofer', 'pupper', 'puppo'], dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# The target table only has one column 'dog_type' which is the count of tweet_id per group\ndf_target = df_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "dog_type\n951\n29\n95\n7\n82\n1\n12\n1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0059024,
+          "latency": 25.6812105178833,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n      951\n       95\n        7",
+          "code": "import pandas as pd\n\n# Load the source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Define a function to determine dog stage category per row\ndef get_dog_stage(row):\n    if pd.notna(row['doggo']):\n        return 'doggo'\n    elif pd.notna(row['floofer']):\n        return 'floofer'\n    elif pd.notna(row['pupper']):\n        return 'pupper'\n    elif pd.notna(row['puppo']):\n        return 'puppo'\n    else:\n        return 'None'\n\n# Apply the function to create a new column 'dog_stage'\ndf_source0['dog_stage'] = df_source0.apply(get_dog_stage, axis=1)\n\n# Group by 'dog_stage' and count tweet_id occurrences\ndf_grouped = (\n    df_source0\n    .groupby('dog_stage', dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# Map dog_stage categories to integers to get consistent order\ndog_stage_order = {'doggo': 0, 'floofer': 1, 'pupper': 2, 'puppo': 3, 'None': 4}\ndf_grouped['dog_stage_int'] = df_grouped['dog_stage'].map(dog_stage_order)\n\n# Sort by dog_stage_int\ndf_grouped = df_grouped.sort_values('dog_stage_int')\n\n# Select only the 'dog_type' column as target schema requires\ndf_target = df_grouped[['dog_type']].reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0057792,
+          "latency": 31.30948805809021,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n       30\n        8\n      107",
+          "code": "import pandas as pd\n\n# Load the source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Dog stage columns\ndog_stage_cols = ['doggo', 'floofer', 'pupper', 'puppo']\n\n# Fill NaN with 'None' in dog stage columns\ndf_source0_filled = df_source0.copy()\ndf_source0_filled[dog_stage_cols] = df_source0_filled[dog_stage_cols].fillna('None')\n\n# List to hold counts per dog stage column\ncounts_list = []\n\nfor col in dog_stage_cols:\n    counts = (\n        df_source0_filled\n        .groupby(col)\n        .agg(count=('tweet_id', 'count'))\n        .reset_index()\n        .rename(columns={col: 'dog_stage', 'count': 'count'})\n    )\n    counts_list.append(counts)\n\n# Concatenate counts from all dog stage columns\nall_counts = pd.concat(counts_list, ignore_index=True)\n\n# Sum counts by dog_stage category (to combine 'None' counts)\ntotal_counts = (\n    all_counts\n    .groupby('dog_stage', as_index=False)\n    .agg(dog_type=('count', 'sum'))\n)\n\n# The target table only has one column 'dog_type' (integer counts)\n# So output only the counts as a single column dataframe\ndf_target = total_counts[['dog_type']]\n\n# Sort descending to roughly match target examples order (optional)\ndf_target = df_target.sort_values(by='dog_type', ascending=False).reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_target.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0033572000000000003,
+        "latency": 6.061854124069214,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 8\nExamples:\n dog_type\n        1\n       29\n       82",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Fill NaN in dog stage columns with 'None' to keep them as group keys\ndf_source0_filled = df_source0.fillna({'doggo': 'None', 'floofer': 'None', 'pupper': 'None', 'puppo': 'None'})\n\n# Group by the four dog stage columns and count tweet_id occurrences\ndf_grouped = (\n    df_source0_filled\n    .groupby(['doggo', 'floofer', 'pupper', 'puppo'], dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# The target table only has one column 'dog_type' which is the count of tweet_id per group\ndf_target = df_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "dog_type\n951\n29\n95\n7\n82\n1\n12\n1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.005216,
+          "latency": 18.220502614974976,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n       30\n      107\n        8",
+          "code": "import pandas as pd\n\n# Load source table with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf = pd.read_csv(source0_path, index_col=0)\n\n# Count tweets per dog stage (where the column is not NaN)\ndoggo_count = df['doggo'].notna().sum()\nfloofer_count = df['floofer'].notna().sum()\npupper_count = df['pupper'].notna().sum()\npuppo_count = df['puppo'].notna().sum()\n\n# Count tweets with no dog stage (all four dog stage columns are NaN)\nno_dog_stage_count = df[['doggo', 'floofer', 'pupper', 'puppo']].isna().all(axis=1).sum()\n\n# Combine counts into a single dataframe with one column 'dog_type' and 5 rows\ndf_target = pd.DataFrame({\n    'dog_type': [doggo_count, floofer_count, pupper_count, puppo_count, no_dog_stage_count]\n})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_target.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0052524,
+          "latency": 17.588154554367065,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 4\nExamples:\n dog_type\n        8\n      107\n       30",
+          "code": "import pandas as pd\n\n# Load the source table with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Unpivot the dog stage columns into a single column 'dog_stage'\ndog_stage_cols = ['doggo', 'floofer', 'pupper', 'puppo']\ndf_melted = df_source0.melt(id_vars=['tweet_id'], value_vars=dog_stage_cols,\n                            var_name='dog_stage_type', value_name='dog_stage')\n\n# Filter out rows where dog_stage is NaN or 'None' (no dog stage)\ndf_filtered = df_melted[df_melted['dog_stage'].notna() & (df_melted['dog_stage'] != 'None')]\n\n# Group by dog_stage and count tweet_id occurrences\ndf_grouped = df_filtered.groupby('dog_stage', dropna=False).agg(dog_type=('tweet_id', 'count')).reset_index()\n\n# The target schema only has one column 'dog_type' (integer counts)\ndf_target = df_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_target.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0037107999999999998,
+        "latency": 6.665991306304932,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 8\nExamples:\n dog_type\n      951\n       12\n        1",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Fill NaN in dog stage columns with 'None' to keep them as group keys\ndf_source0_filled = df_source0.fillna({'doggo': 'None', 'floofer': 'None', 'pupper': 'None', 'puppo': 'None'})\n\n# Group by the four dog stage columns and count tweet_id occurrences\ndf_grouped = (\n    df_source0_filled\n    .groupby(['doggo', 'floofer', 'pupper', 'puppo'], dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# The target table only has one column 'dog_type' which is the count of tweet_id per group\ndf_target = df_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "dog_type\n951\n29\n95\n7\n82\n1\n12\n1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0059007999999999994,
+          "latency": 18.196964979171753,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 4\nExamples:\n dog_type\n      107\n       96\n       30",
+          "code": "import pandas as pd\n\n# Load source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf = pd.read_csv(source0_path, index_col=0)\n\n# Fill NaN in dog stage columns with 'None'\ndog_stage_cols = ['doggo', 'floofer', 'pupper', 'puppo']\ndf[dog_stage_cols] = df[dog_stage_cols].fillna('None')\n\n# Create a new column 'dog_stage' that picks the first dog stage that is not 'None'\ndef get_dog_stage(row):\n    for col in dog_stage_cols:\n        if row[col] != 'None':\n            return col\n    return 'None'  # no dog stage\n\ndf['dog_stage'] = df.apply(get_dog_stage, axis=1)\n\n# Group by dog_stage and count tweet_id\ndf_grouped = df.groupby('dog_stage', dropna=False).agg(dog_type=('tweet_id', 'count')).reset_index()\n\n# The target only has dog_type column, so output only that\ndf_target = df_grouped[['dog_type']]\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_target.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0057412,
+          "latency": 17.482402086257935,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n      951\n       96\n       30",
+          "code": "import pandas as pd\n\n# Load source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf = pd.read_csv(source0_path, index_col=0)\n\n# Fill NaN in dog stage columns with 'None'\ndog_stage_cols = ['doggo', 'floofer', 'pupper', 'puppo']\ndf[dog_stage_cols] = df[dog_stage_cols].fillna('None')\n\n# Count tweets per dog stage category\ncount_doggo = df[df['doggo'] != 'None'].shape[0]\ncount_floofer = df[df['floofer'] != 'None'].shape[0]\ncount_pupper = df[df['pupper'] != 'None'].shape[0]\ncount_puppo = df[df['puppo'] != 'None'].shape[0]\n\n# Count tweets with no dog stage (all 'None')\ncount_none = df[\n    (df['doggo'] == 'None') &\n    (df['floofer'] == 'None') &\n    (df['pupper'] == 'None') &\n    (df['puppo'] == 'None')\n].shape[0]\n\n# Create final DataFrame with counts as rows\ndf_target = pd.DataFrame({\n    'dog_type': [count_doggo, count_none, count_pupper, count_floofer, count_puppo]\n})\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_target.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0040644,
+        "latency": 5.603026628494263,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 8\nExamples:\n dog_type\n        1\n       12\n       95",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Fill NaN in dog stage columns with 'None' to keep them as group keys\ndf_source0_filled = df_source0.fillna({'doggo': 'None', 'floofer': 'None', 'pupper': 'None', 'puppo': 'None'})\n\n# Group by the four dog stage columns and count tweet_id occurrences\ndf_grouped = (\n    df_source0_filled\n    .groupby(['doggo', 'floofer', 'pupper', 'puppo'], dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# The target table only has one column 'dog_type' which is the count of tweet_id per group\ndf_target = df_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "dog_type\n951\n29\n95\n7\n82\n1\n12\n1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0057128000000000005,
+          "latency": 18.479191780090332,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n      951\n       96\n        8",
+          "code": "import pandas as pd\n\n# Load source table with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Combine the 4 dog stage columns into a single 'dog_stage' column by priority order\ndef get_dog_stage(row):\n    if pd.notna(row['doggo']):\n        return 'doggo'\n    elif pd.notna(row['floofer']):\n        return 'floofer'\n    elif pd.notna(row['pupper']):\n        return 'pupper'\n    elif pd.notna(row['puppo']):\n        return 'puppo'\n    else:\n        return 'None'\n\ndf_source0['dog_stage'] = df_source0.apply(get_dog_stage, axis=1)\n\n# Group by dog_stage and count tweet_id occurrences\ndf_grouped = (\n    df_source0\n    .groupby('dog_stage', dropna=False)\n    .agg(dog_type=('tweet_id', 'count'))\n    .reset_index()\n)\n\n# The target table only has one column 'dog_type' (integer counts)\ndf_target = df_grouped[['dog_type']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0067352,
+          "latency": 27.486291885375977,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 5\nExamples:\n dog_type\n      107\n       30\n      951",
+          "code": "import pandas as pd\n\n# Load source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Dog stage columns\ndog_stages = ['doggo', 'floofer', 'pupper', 'puppo']\n\n# Count non-null values per dog stage column\ncounts = [df_source0[col].notna().sum() for col in dog_stages]\n\n# Count rows where all dog stage columns are NaN (None category)\nnone_count = df_source0[dog_stages].isna().all(axis=1).sum()\ncounts.append(none_count)\n\n# Create DataFrame with counts as 'dog_type' column\ndf_target = pd.DataFrame({'dog_type': counts})\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\"\ndf_target.to_csv(target_path, index=False)"
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 
 import numpy as np
 from scipy.stats import wasserstein_distance
+from scipy.spatial.distance import jensenshannon
 
 # Ensure this directory is on sys.path so fdtool and column_map_utils are importable
 _SCORE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -129,9 +130,24 @@ def compute_distribution_scores(df_a, df_b, col_map=None):
         w_norm = w / r
         similarity = max(0.0, 1.0 - min(w_norm, 1.0))
 
+        # JS distance (log base 2) → similarity = 1 - js_distance, naturally in [0, 1]
+        n_bins = max(2, int(np.ceil(np.log2(min(len(gen_vals), len(gt_vals))) + 1)))
+        lo = min(gen_vals.min(), gt_vals.min())
+        hi = max(gen_vals.max(), gt_vals.max())
+        if lo == hi:
+            js_similarity = 1.0
+        else:
+            pa, _ = np.histogram(gen_vals.astype(float), bins=n_bins, range=(lo, hi))
+            pb, _ = np.histogram(gt_vals.astype(float),  bins=n_bins, range=(lo, hi))
+            pa = pa.astype(float) + 1e-10
+            pb = pb.astype(float) + 1e-10
+            js_dist = float(jensenshannon(pa / pa.sum(), pb / pb.sum(), base=2))
+            js_similarity = round(1.0 - js_dist, 4)
+
         per_column[gt_col] = {
             "gen_col":  gen_col,
             "distribution_similarity": round(similarity, 4),
+            "js_similarity":           js_similarity,
             "wasserstein_normalized":  round(w_norm, 4),
             "gen_stats": {
                 "min":  round(float(gen_vals.min()),  4),
@@ -149,10 +165,18 @@ def compute_distribution_scores(df_a, df_b, col_map=None):
         avg_sim = round(
             sum(v["distribution_similarity"] for v in per_column.values()) / len(per_column), 4
         )
+        avg_js_sim = round(
+            sum(v["js_similarity"] for v in per_column.values()) / len(per_column), 4
+        )
     else:
-        avg_sim = None  # no numerical columns to compare
+        avg_sim    = None
+        avg_js_sim = None
 
-    return {"per_column": per_column, "avg_distribution_similarity": avg_sim}
+    return {
+        "per_column": per_column,
+        "avg_distribution_similarity": avg_sim,
+        "avg_js_similarity": avg_js_sim,
+    }
 
 
 def relative_csv_score(df_a, df_b):
@@ -210,11 +234,11 @@ def relative_csv_score(df_a, df_b):
     combined_score = (fd_ratio + col_ratio) / 2
 
     distribution_info = compute_distribution_scores(df_a, df_b, col_map)
-    dist_sim = distribution_info.get("avg_distribution_similarity")
-    if dist_sim is not None:
-        true_combined_score = (fd_f1 + col_ratio + dist_sim) / 3
+    js_sim = distribution_info.get("avg_js_similarity")
+    if js_sim is not None:
+        true_combined_score = round((fd_f1 + col_ratio + js_sim) / 3, 4)
     else:
-        true_combined_score = (fd_f1 + col_ratio) / 2
+        true_combined_score = round((fd_f1 + col_ratio) / 2, 4)
 
     debug_dict = {
         "fd": {

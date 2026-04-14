@@ -1,0 +1,89 @@
+{
+  "case": "1_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0018512,
+        "latency": 5.710259437561035,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n         Major_category       Median\n            Engineering 77857.142857\nComputers & Mathematics 61571.428571\n    Law & Public Policy 49000.000000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The target schema is ['Major_category': string, 'Median': float]\n# We need to extract these two columns from the source table.\n\n# Extract relevant columns from the single source table\ndf_source = source_dfs[0][['Major_category', 'Median']]\n\n# According to the target examples, the target table contains one row per Major_category,\n# with Median being the average Median salary for that category.\n# So we group by Major_category and take the mean of Median.\n\ndf_target = df_source.groupby('Major_category', as_index=False).agg({'Median': 'mean'})\n\n# Ensure the data types match the target schema\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022912,
+        "latency": 5.551445484161377,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category   Median\n    Agriculture & Natural Resources 55000.00\nIndustrial Arts & Consumer Services 40250.00\n                          Education 43831.25",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The target schema is ['Major_category': string, 'Median': float]\n# We need to extract these two columns from the source table.\n\n# Extract relevant columns from the single source table\ndf_source = source_dfs[0][['Major_category', 'Median']]\n\n# According to the target examples, the target table contains one row per Major_category,\n# with Median being the average Median salary for that category.\n# So we group by Major_category and take the mean of Median.\n\ndf_target = df_source.groupby('Major_category', as_index=False).agg({'Median': 'mean'})\n\n# Ensure the data types match the target schema\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027136,
+        "latency": 5.381203889846802,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category  Median\nIndustrial Arts & Consumer Services 40250.0\n        Communications & Journalism 49500.0\n    Agriculture & Natural Resources 55000.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The target schema is ['Major_category': string, 'Median': float]\n# We need to extract these two columns from the source table.\n\n# Extract relevant columns from the single source table\ndf_source = source_dfs[0][['Major_category', 'Median']]\n\n# According to the target examples, the target table contains one row per Major_category,\n# with Median being the average Median salary for that category.\n# So we group by Major_category and take the mean of Median.\n\ndf_target = df_source.groupby('Major_category', as_index=False).agg({'Median': 'mean'})\n\n# Ensure the data types match the target schema\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003142,
+        "latency": 5.184438467025757,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n             Major_category       Median\nCommunications & Journalism 49500.000000\n                  Education 43831.250000\n    Computers & Mathematics 61571.428571",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The target schema is ['Major_category': string, 'Median': float]\n# We need to extract these two columns from the source table.\n\n# Extract relevant columns from the single source table\ndf_source = source_dfs[0][['Major_category', 'Median']]\n\n# According to the target examples, the target table contains one row per Major_category,\n# with Median being the average Median salary for that category.\n# So we group by Major_category and take the mean of Median.\n\ndf_target = df_source.groupby('Major_category', as_index=False).agg({'Median': 'mean'})\n\n# Ensure the data types match the target schema\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035688,
+        "latency": 5.390282869338989,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                 Major_category  Median\n            Law & Public Policy 49000.0\nAgriculture & Natural Resources 55000.0\n    Communications & Journalism 49500.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The target schema is ['Major_category': string, 'Median': float]\n# We need to extract these two columns from the source table.\n\n# Extract relevant columns from the single source table\ndf_source = source_dfs[0][['Major_category', 'Median']]\n\n# According to the target examples, the target table contains one row per Major_category,\n# with Median being the average Median salary for that category.\n# So we group by Major_category and take the mean of Median.\n\ndf_target = df_source.groupby('Major_category', as_index=False).agg({'Median': 'mean'})\n\n# Ensure the data types match the target schema\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003994,
+        "latency": 4.58501124382019,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                 Major_category       Median\n      Humanities & Liberal Arts 46712.500000\n        Computers & Mathematics 61571.428571\nAgriculture & Natural Resources 55000.000000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The target schema is ['Major_category': string, 'Median': float]\n# We need to extract these two columns from the source table.\n\n# Extract relevant columns from the single source table\ndf_source = source_dfs[0][['Major_category', 'Median']]\n\n# According to the target examples, the target table contains one row per Major_category,\n# with Median being the average Median salary for that category.\n# So we group by Major_category and take the mean of Median.\n\ndf_target = df_source.groupby('Major_category', as_index=False).agg({'Median': 'mean'})\n\n# Ensure the data types match the target schema\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    }
+  ]
+}

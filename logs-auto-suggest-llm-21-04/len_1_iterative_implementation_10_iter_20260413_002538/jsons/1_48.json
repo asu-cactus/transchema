@@ -1,0 +1,100 @@
+{
+  "case": "1_48",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.0019324,
+        "latency": 6.537715911865234,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {Date}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Date, Water Use, Power Use}.\nKeys present in ground truth but absent in generated: {Water Use}; {Power Use}; {Date}.\nSpurious keys in generated not present in ground truth: {Water Use, Power Use, Date}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Date'] \u2192 Power Use; ['Water Use'] \u2192 Power Use; ['Date'] \u2192 Water Use; ['Power Use'] \u2192 Date; ['Power Use'] \u2192 Water Use (and 1 more).\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 6960\nExamples:\n    Date  Water Use  Power Use\nApr_2012       0.00          0\nJun_2007     137.36        228\nMar_2012      31.13        249",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv\"\n\n# Load Source 0\n# Note: index_col=0 to ignore the numerical index column as per Hint 24\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Inspect Source 0 columns:\n# ['Text Date', 'Value Date', 'Zip Code', 'Water Use', 'Power Use']\n\n# Target schema: ['Date': string, 'Water Use': float, 'Power Use': integer]\n# Target examples show Date format like \"Aug_2009\", which matches 'Text Date' in Source 0.\n# So we will use 'Text Date' as 'Date'.\n\n# Transformation plan:\n# - Select columns: 'Text Date' -> 'Date', 'Water Use', 'Power Use'\n# - Convert 'Water Use' to float (should already be float)\n# - Convert 'Power Use' to integer\n# - 'Date' as string (keep as is)\n# - No aggregation or join needed since only one source table is given.\n# - Write the transformed dataframe to the target CSV path.\n\n# Rename columns to target schema\ndf_target = df0[['Text Date', 'Water Use', 'Power Use']].copy()\ndf_target.rename(columns={'Text Date': 'Date'}, inplace=True)\n\n# Ensure correct dtypes\ndf_target['Date'] = df_target['Date'].astype(str)\ndf_target['Water Use'] = df_target['Water Use'].astype(float)\ndf_target['Power Use'] = df_target['Power Use'].astype(int)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_48/target_multisource.csv\"\n\n# Save to CSV without the index\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Date,Water Use,Power Use\nMar_2008,16.7,396\nJul_2011,35.73,1013\nApr_2010,23.53,916\nFeb_2006,24.33,456\nAug_2011,54.06,385\nOct_2006,30.39,309\nAug_2005,48.05,637\nMar_2011,23.57,512\nMay_2008,2694.8,0\nSep_2006,37.03,660\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0033464000000000002,
+          "latency": 12.671784400939941,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Date}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Date}; {Water Use}; {Power Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n    Date  Water Use  Power Use\nDec_2006    4007.30      30821\nNov_2009    6499.58      32486\nJun_2010    3656.82      29835",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Step 1: Rename 'Text Date' to 'Date' to match target schema\ndf0 = df0.rename(columns={\"Text Date\": \"Date\"})\n\n# Step 2: Group by 'Date' (the primary key in target) and aggregate Water Use and Power Use by sum\n# Reasoning:\n# - 'Date' is the key and unique in target examples (Hint 6, 10)\n# - Water Use and Power Use in target are much larger sums than source rows, so sum aggregation is needed (Hint 13)\ndf_agg = df0.groupby(\"Date\", as_index=False).agg({\n    \"Water Use\": \"sum\",\n    \"Power Use\": \"sum\"\n})\n\n# Step 3: Ensure data types match target schema\ndf_agg[\"Water Use\"] = df_agg[\"Water Use\"].astype(float)\ndf_agg[\"Power Use\"] = df_agg[\"Power Use\"].astype(int)\n\n# Step 4: Sort by Date to have consistent ordering (optional)\ndf_agg = df_agg.sort_values(\"Date\").reset_index(drop=True)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_48/target_multisource_critique_history.csv\"\n\n# Save to CSV without the index\ndf_agg.to_csv(output_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.00237,
+        "latency": 5.4215216636657715,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Date}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Date}; {Water Use}; {Power Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n    Date  Water Use  Power Use\nDec_2008    3412.31      31053\nDec_2006    4007.30      30821\nSep_2010    4804.36      38230",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv\"\n]\n\n# List to hold processed DataFrames\ndfs = []\n\nfor path in source_paths:\n    # Load source data with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(path, index_col=0)\n    \n    # Rename 'Text Date' to 'Date' to match target schema\n    df = df.rename(columns={\"Text Date\": \"Date\"})\n    \n    # Select only the columns needed for the target schema\n    df = df[[\"Date\", \"Water Use\", \"Power Use\"]]\n    \n    dfs.append(df)\n\n# Since all source tables have the same schema as target, union (concat) them\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Aggregate by 'Date' (primary key) summing Water Use and Power Use\ndf_agg = df_all.groupby(\"Date\", as_index=False).agg({\n    \"Water Use\": \"sum\",\n    \"Power Use\": \"sum\"\n})\n\n# Cast data types to match target schema\ndf_agg[\"Water Use\"] = df_agg[\"Water Use\"].astype(float)\ndf_agg[\"Power Use\"] = df_agg[\"Power Use\"].astype(int)\n\n# Sort by Date for consistent ordering (optional)\ndf_agg = df_agg.sort_values(\"Date\").reset_index(drop=True)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_48/target_multisource.csv\"\n\n# Save to CSV without the index\ndf_agg.to_csv(output_path, index=False)",
+        "generated_csv_head": "Date,Water Use,Power Use\nApr_2006,4351.1,25274\nApr_2007,6148.88,34389\nApr_2008,4618.79,31594\nApr_2009,3742.91,32715\nApr_2010,4811.05,26682\nApr_2011,3771.72,30445\nApr_2012,2666.36,25277\nApr_2013,749.73,22071\nAug_2005,7045.65,43065\nAug_2006,6740.96,42392\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028768,
+        "latency": 5.901371479034424,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Date}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Date}; {Water Use}; {Power Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n    Date  Water Use  Power Use\nSep_2007    3836.11      36095\nAug_2008    5873.54      37212\nMay_2011    4511.85      30276",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv\"\n]\n\n# List to hold processed DataFrames\ndfs = []\n\nfor path in source_paths:\n    # Load source data with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(path, index_col=0)\n    \n    # Rename 'Text Date' to 'Date' to match target schema\n    df = df.rename(columns={\"Text Date\": \"Date\"})\n    \n    # Select only the columns needed for the target schema\n    df = df[[\"Date\", \"Water Use\", \"Power Use\"]]\n    \n    dfs.append(df)\n\n# Concatenate all source tables (union) since they share the same schema as the target\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Aggregate by 'Date' (primary key) summing Water Use and Power Use\ndf_agg = df_all.groupby(\"Date\", as_index=False).agg({\n    \"Water Use\": \"sum\",\n    \"Power Use\": \"sum\"\n})\n\n# Cast data types to match target schema\ndf_agg[\"Water Use\"] = df_agg[\"Water Use\"].astype(float)\ndf_agg[\"Power Use\"] = df_agg[\"Power Use\"].astype(int)\n\n# Sort by Date for consistent ordering (optional)\ndf_agg = df_agg.sort_values(\"Date\").reset_index(drop=True)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_48/target_multisource.csv\"\n\n# Save to CSV without the index\ndf_agg.to_csv(output_path, index=False)",
+        "generated_csv_head": "Date,Water Use,Power Use\nApr_2006,4351.1,25274\nApr_2007,6148.88,34389\nApr_2008,4618.79,31594\nApr_2009,3742.91,32715\nApr_2010,4811.05,26682\nApr_2011,3771.72,30445\nApr_2012,2666.36,25277\nApr_2013,749.73,22071\nAug_2005,7045.65,43065\nAug_2006,6740.96,42392\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033824000000000003,
+        "latency": 5.852521896362305,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Date}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Date}; {Water Use}; {Power Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n    Date  Water Use  Power Use\nMar_2008    6871.26      30829\nApr_2006    4351.10      25274\nDec_2009    3059.28      36262",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv\"\n]\n\n# List to hold processed DataFrames\ndfs = []\n\nfor path in source_paths:\n    # Load source data with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(path, index_col=0)\n    \n    # Rename 'Text Date' to 'Date' to match target schema\n    df = df.rename(columns={\"Text Date\": \"Date\"})\n    \n    # Select only the columns needed for the target schema\n    df = df[[\"Date\", \"Water Use\", \"Power Use\"]]\n    \n    dfs.append(df)\n\n# Concatenate all source tables (union) since they share the same schema as the target\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Aggregate by 'Date' (primary key) summing Water Use and Power Use\ndf_agg = df_all.groupby(\"Date\", as_index=False).agg({\n    \"Water Use\": \"sum\",\n    \"Power Use\": \"sum\"\n})\n\n# Cast data types to match target schema\ndf_agg[\"Water Use\"] = df_agg[\"Water Use\"].astype(float)\ndf_agg[\"Power Use\"] = df_agg[\"Power Use\"].astype(int)\n\n# Sort by Date for consistent ordering (optional)\ndf_agg = df_agg.sort_values(\"Date\").reset_index(drop=True)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_48/target_multisource.csv\"\n\n# Save to CSV without the index\ndf_agg.to_csv(output_path, index=False)",
+        "generated_csv_head": "Date,Water Use,Power Use\nApr_2006,4351.1,25274\nApr_2007,6148.88,34389\nApr_2008,4618.79,31594\nApr_2009,3742.91,32715\nApr_2010,4811.05,26682\nApr_2011,3771.72,30445\nApr_2012,2666.36,25277\nApr_2013,749.73,22071\nAug_2005,7045.65,43065\nAug_2006,6740.96,42392\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003888,
+        "latency": 7.83914852142334,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Date}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Date}; {Water Use}; {Power Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n    Date  Water Use  Power Use\nNov_2011    2941.06      24693\nAug_2006    6740.96      42392\nDec_2005    4335.50      34879",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv\"\n]\n\n# List to hold processed DataFrames\ndfs = []\n\nfor path in source_paths:\n    # Load source data with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(path, index_col=0)\n    \n    # Rename 'Text Date' to 'Date' to match target schema\n    df = df.rename(columns={\"Text Date\": \"Date\"})\n    \n    # Select only the columns needed for the target schema\n    df = df[[\"Date\", \"Water Use\", \"Power Use\"]]\n    \n    dfs.append(df)\n\n# Concatenate all source tables (union) since they share the same schema as the target\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Aggregate by 'Date' (primary key) summing Water Use and Power Use\ndf_agg = df_all.groupby(\"Date\", as_index=False).agg({\n    \"Water Use\": \"sum\",\n    \"Power Use\": \"sum\"\n})\n\n# Cast data types to match target schema\ndf_agg[\"Water Use\"] = df_agg[\"Water Use\"].astype(float)\ndf_agg[\"Power Use\"] = df_agg[\"Power Use\"].astype(int)\n\n# Sort by Date for consistent ordering (optional)\ndf_agg = df_agg.sort_values(\"Date\").reset_index(drop=True)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_48/target_multisource.csv\"\n\n# Save to CSV without the index\ndf_agg.to_csv(output_path, index=False)",
+        "generated_csv_head": "Date,Water Use,Power Use\nApr_2006,4351.1,25274\nApr_2007,6148.88,34389\nApr_2008,4618.79,31594\nApr_2009,3742.91,32715\nApr_2010,4811.05,26682\nApr_2011,3771.72,30445\nApr_2012,2666.36,25277\nApr_2013,749.73,22071\nAug_2005,7045.65,43065\nAug_2006,6740.96,42392\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0043932,
+        "latency": 7.9494850635528564,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Date}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Date}; {Water Use}; {Power Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n    Date  Water Use  Power Use\nDec_2005    4335.50      34879\nMay_2010    3063.87      33749\nSep_2006    6948.67      31943",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_48/test_0.csv\"\n]\n\n# List to hold processed DataFrames\ndfs = []\n\nfor path in source_paths:\n    # Load source data with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(path, index_col=0)\n    \n    # Rename 'Text Date' to 'Date' to match target schema\n    df = df.rename(columns={\"Text Date\": \"Date\"})\n    \n    # Select only the columns needed for the target schema\n    df = df[[\"Date\", \"Water Use\", \"Power Use\"]]\n    \n    dfs.append(df)\n\n# Concatenate all source tables (union) since they share the same schema as the target\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Aggregate by 'Date' (primary key) summing Water Use and Power Use\ndf_agg = df_all.groupby(\"Date\", as_index=False).agg({\n    \"Water Use\": \"sum\",\n    \"Power Use\": \"sum\"\n})\n\n# Cast data types to match target schema\ndf_agg[\"Water Use\"] = df_agg[\"Water Use\"].astype(float)\ndf_agg[\"Power Use\"] = df_agg[\"Power Use\"].astype(int)\n\n# Sort by Date for consistent ordering (optional)\ndf_agg = df_agg.sort_values(\"Date\").reset_index(drop=True)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_48/target_multisource.csv\"\n\n# Save to CSV without the index\ndf_agg.to_csv(output_path, index=False)",
+        "generated_csv_head": "Date,Water Use,Power Use\nApr_2006,4351.1,25274\nApr_2007,6148.88,34389\nApr_2008,4618.79,31594\nApr_2009,3742.91,32715\nApr_2010,4811.05,26682\nApr_2011,3771.72,30445\nApr_2012,2666.36,25277\nApr_2013,749.73,22071\nAug_2005,7045.65,43065\nAug_2006,6740.96,42392\n"
+      },
+      "critiques": []
+    }
+  ]
+}

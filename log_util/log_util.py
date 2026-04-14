@@ -83,5 +83,9 @@ def setup_logging(args, log_dir, experiment_name):
     with open(average_critique_path, 'w') as f:
         f.write("Length,Critique Type,Hard Match,Cost,Latency,Soft Match,Soft Acc,Cost_,Latency_,max\n")
 
+    # create a jsons directory inside the experiment_date_time directory
+    jsons_dir = os.path.join(experiment_date_time, "jsons")
+    os.makedirs(jsons_dir)
+
     # return path of experiment_date_time directory and subdirectories
-    return experiment_date_time, log_dir, results_dir
+    return experiment_date_time, log_dir, results_dir, jsons_dir

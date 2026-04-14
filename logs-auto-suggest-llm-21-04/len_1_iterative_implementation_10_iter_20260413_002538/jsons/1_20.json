@@ -1,0 +1,100 @@
+{
+  "case": "1_20",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.0018292,
+        "latency": 6.945080995559692,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nGenerated table candidate keys: {sex, smoker, total_bill, tip, size}.\nKeys present in ground truth but absent in generated: {smoker, sex}; {tip}; {total_bill}; {size}.\nSpurious keys in generated not present in ground truth: {tip, sex, smoker, size, total_bill}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['sex', 'smoker'] \u2192 total_bill; ['tip'] \u2192 smoker; ['sex', 'smoker'] \u2192 tip; ['tip'] \u2192 sex; ['total_bill'] \u2192 tip (and 10 more).\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 122\nExamples:\n   sex smoker  total_bill  tip  size\nFemale    Yes       14.31 4.00   2.0\nFemale    Yes        5.75 1.00   2.0\nFemale     No       16.99 1.01   2.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_20/test_0.csv\"\n]\n\n# List to hold loaded source DataFrames\nsource_dfs = []\n\n# Load each source CSV with index_col=0 to ignore the first numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, and its schema contains all target columns plus extra columns,\n# we just need to select and convert the target columns with correct types.\n\n# Target schema: ['sex': string, 'smoker': string, 'total_bill': float, 'tip': float, 'size': float]\n\n# Extract the single source DataFrame\ndf_source = source_dfs[0]\n\n# Select only the target columns\ndf_target = df_source[['sex', 'smoker', 'total_bill', 'tip', 'size']].copy()\n\n# Convert columns to target types explicitly\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['smoker'] = df_target['smoker'].astype(str)\ndf_target['total_bill'] = df_target['total_bill'].astype(float)\ndf_target['tip'] = df_target['tip'].astype(float)\ndf_target['size'] = df_target['size'].astype(float)\n\n# Write the transformed DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,total_bill,tip,size\nFemale,No,16.99,1.01,2.0\nMale,No,10.34,1.66,3.0\nMale,No,21.01,3.5,3.0\nMale,No,23.68,3.31,2.0\nFemale,No,24.59,3.61,4.0\nMale,No,25.29,4.71,4.0\nMale,No,8.77,2.0,2.0\nMale,No,26.88,3.12,4.0\nMale,No,15.04,1.96,2.0\nMale,No,14.78,3.23,2.0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0032068,
+          "latency": 9.371346712112427,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nGenerated table candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 4\nExamples:\n   sex smoker  total_bill      tip     size\n  Male     No   19.666615 3.161692 2.569231\n  Male    Yes   21.568333 3.061111 2.333333\nFemale    Yes   18.504000 2.992000 2.000000",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_20/test_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Target schema: ['sex': string, 'smoker': string, 'total_bill': float, 'tip': float, 'size': float]\n# GroupBy columns: 'sex', 'smoker' (leftmost non-float columns, suitable as keys)\ngroupby_cols = ['sex', 'smoker']\n\n# Aggregate columns: average (mean) for float columns\nagg_dict = {\n    'total_bill': 'mean',\n    'tip': 'mean',\n    'size': 'mean'\n}\n\n# Perform groupby and aggregation\nresult = df.groupby(groupby_cols, as_index=False).agg(agg_dict)\n\n# Reorder columns to match target schema exactly\nresult = result[['sex', 'smoker', 'total_bill', 'tip', 'size']]\n\n# Write the transformed DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource_critique_history.csv\"\nresult.to_csv(output_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022592000000000003,
+        "latency": 6.912854433059692,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nGenerated table candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 4\nExamples:\n   sex smoker  total_bill      tip     size\nFemale     No   18.846207 2.827931 2.517241\n  Male    Yes   21.568333 3.061111 2.333333\n  Male     No   19.666615 3.161692 2.569231",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_20/test_0.csv\"\n]\n\n# List to hold loaded DataFrames\ndfs = []\n\n# Load each source CSV with index_col=0 to ignore the index column\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# Target schema: ['sex': string, 'smoker': string, 'total_bill': float, 'tip': float, 'size': float]\n\n# GroupBy columns are the non-float columns in target schema: 'sex', 'smoker'\ngroupby_cols = ['sex', 'smoker']\n\n# Aggregation: mean for float columns\nagg_dict = {\n    'total_bill': 'mean',\n    'tip': 'mean',\n    'size': 'mean'\n}\n\n# Perform groupby and aggregation on the single source DataFrame\nresult = dfs[0].groupby(groupby_cols, as_index=False).agg(agg_dict)\n\n# Reorder columns to match target schema exactly\nresult = result[['sex', 'smoker', 'total_bill', 'tip', 'size']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource.csv\"\n\n# Write the transformed DataFrame to CSV without the index\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,total_bill,tip,size\nFemale,No,18.846206896551724,2.827931034482759,2.5172413793103448\nFemale,Yes,18.504,2.992,2.0\nMale,No,19.666615384615383,3.161692307692308,2.569230769230769\nMale,Yes,21.56833333333333,3.061111111111112,2.333333333333333\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.002752,
+        "latency": 5.969229698181152,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nGenerated table candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 4\nExamples:\n   sex smoker  total_bill      tip     size\nFemale    Yes   18.504000 2.992000 2.000000\n  Male     No   19.666615 3.161692 2.569231\nFemale     No   18.846207 2.827931 2.517241",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_20/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n\n# Target schema columns and types:\n# ['sex': string, 'smoker': string, 'total_bill': float, 'tip': float, 'size': float]\n\n# GroupBy columns are the non-float columns in target schema: 'sex', 'smoker'\ngroupby_cols = ['sex', 'smoker']\n\n# Aggregation dictionary: mean for float columns\nagg_dict = {\n    'total_bill': 'mean',\n    'tip': 'mean',\n    'size': 'mean'\n}\n\n# Perform groupby and aggregation on the single source DataFrame\nresult = dfs[0].groupby(groupby_cols, as_index=False).agg(agg_dict)\n\n# Reorder columns to match target schema exactly\nresult = result[['sex', 'smoker', 'total_bill', 'tip', 'size']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource.csv\"\n\n# Write the transformed DataFrame to CSV without the index\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,total_bill,tip,size\nFemale,No,18.846206896551724,2.827931034482759,2.5172413793103448\nFemale,Yes,18.504,2.992,2.0\nMale,No,19.666615384615383,3.161692307692308,2.569230769230769\nMale,Yes,21.56833333333333,3.061111111111112,2.333333333333333\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032736,
+        "latency": 6.4097840785980225,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nGenerated table candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 4\nExamples:\n   sex smoker  total_bill      tip     size\nFemale     No   18.846207 2.827931 2.517241\n  Male     No   19.666615 3.161692 2.569231\n  Male    Yes   21.568333 3.061111 2.333333",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_20/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    # index_col=0 to ignore the numerical index column in CSV\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n\n# Target schema columns and types:\n# ['sex': string, 'smoker': string, 'total_bill': float, 'tip': float, 'size': float]\n\n# GroupBy columns are the non-float columns in target schema: 'sex', 'smoker'\ngroupby_cols = ['sex', 'smoker']\n\n# Aggregation dictionary: mean for float columns\nagg_dict = {\n    'total_bill': 'mean',\n    'tip': 'mean',\n    'size': 'mean'\n}\n\n# Perform groupby and aggregation on the single source DataFrame\nresult = dfs[0].groupby(groupby_cols, as_index=False).agg(agg_dict)\n\n# Reorder columns to match target schema exactly\nresult = result[['sex', 'smoker', 'total_bill', 'tip', 'size']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource.csv\"\n\n# Write the transformed DataFrame to CSV without the index\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,total_bill,tip,size\nFemale,No,18.846206896551724,2.827931034482759,2.5172413793103448\nFemale,Yes,18.504,2.992,2.0\nMale,No,19.666615384615383,3.161692307692308,2.569230769230769\nMale,Yes,21.56833333333333,3.061111111111112,2.333333333333333\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003784,
+        "latency": 6.020834445953369,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nGenerated table candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 4\nExamples:\n   sex smoker  total_bill      tip     size\nFemale    Yes   18.504000 2.992000 2.000000\nFemale     No   18.846207 2.827931 2.517241\n  Male    Yes   21.568333 3.061111 2.333333",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_20/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    # index_col=0 to ignore the numerical index column in CSV\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n\n# Target schema columns and types:\n# ['sex': string, 'smoker': string, 'total_bill': float, 'tip': float, 'size': float]\n\n# GroupBy columns are the non-float columns in target schema: 'sex', 'smoker'\ngroupby_cols = ['sex', 'smoker']\n\n# Aggregation dictionary: mean for float columns\nagg_dict = {\n    'total_bill': 'mean',\n    'tip': 'mean',\n    'size': 'mean'\n}\n\n# Perform groupby and aggregation on the single source DataFrame\nresult = dfs[0].groupby(groupby_cols, as_index=False).agg(agg_dict)\n\n# Reorder columns to match target schema exactly\nresult = result[['sex', 'smoker', 'total_bill', 'tip', 'size']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource.csv\"\n\n# Write the transformed DataFrame to CSV without the index\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,total_bill,tip,size\nFemale,No,18.846206896551724,2.827931034482759,2.5172413793103448\nFemale,Yes,18.504,2.992,2.0\nMale,No,19.666615384615383,3.161692307692308,2.569230769230769\nMale,Yes,21.56833333333333,3.061111111111112,2.333333333333333\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0042936,
+        "latency": 5.477602481842041,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nGenerated table candidate keys: {sex, smoker}; {tip}; {total_bill}; {size}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 4\nExamples:\n   sex smoker  total_bill      tip     size\n  Male     No   19.666615 3.161692 2.569231\nFemale    Yes   18.504000 2.992000 2.000000\n  Male    Yes   21.568333 3.061111 2.333333",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_20/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    # index_col=0 to ignore the numerical index column in CSV\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n\n# Target schema columns and types:\n# ['sex': string, 'smoker': string, 'total_bill': float, 'tip': float, 'size': float]\n\n# GroupBy columns are the non-float columns in target schema: 'sex', 'smoker'\ngroupby_cols = ['sex', 'smoker']\n\n# Aggregation dictionary: mean for float columns\nagg_dict = {\n    'total_bill': 'mean',\n    'tip': 'mean',\n    'size': 'mean'\n}\n\n# Perform groupby and aggregation on the single source DataFrame\nresult = dfs[0].groupby(groupby_cols, as_index=False).agg(agg_dict)\n\n# Reorder columns to match target schema exactly\nresult = result[['sex', 'smoker', 'total_bill', 'tip', 'size']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource.csv\"\n\n# Write the transformed DataFrame to CSV without the index\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,total_bill,tip,size\nFemale,No,18.846206896551724,2.827931034482759,2.5172413793103448\nFemale,Yes,18.504,2.992,2.0\nMale,No,19.666615384615383,3.161692307692308,2.569230769230769\nMale,Yes,21.56833333333333,3.061111111111112,2.333333333333333\n"
+      },
+      "critiques": []
+    }
+  ]
+}

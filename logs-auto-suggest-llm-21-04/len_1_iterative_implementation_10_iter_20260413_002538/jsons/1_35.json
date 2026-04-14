@@ -1,0 +1,89 @@
+{
+  "case": "1_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0020792000000000002,
+        "latency": 5.591905832290649,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          91789       1\n          91112       1\n          94086       1",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Perform transformation according to operation history:\n# group_by = [Source1_35_0.Source Zipcode]\n# aggregations = [sum(Source1_35_0.Counts)]\n\n# Group by 'Source Zipcode' and sum 'Counts'\ndf_target = df_source0.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Ensure target schema and types\ndf_target = df_target.astype({\"Source Zipcode\": \"int64\", \"Counts\": \"int64\"})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019284000000000003,
+        "latency": 5.474256992340088,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          91789       1\n          94086       1\n          94044       2",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - The target table schema is ['Source Zipcode', 'Counts'] with integer types.\n# - The source table has columns ['Source Zipcode', 'NAICS Code Description', 'Counts'].\n# - The target aggregates counts by 'Source Zipcode'.\n# - Since there is only one source table, we group by 'Source Zipcode' and sum 'Counts'.\n\n# Group by 'Source Zipcode' and sum 'Counts'\ndf_target = df_source0.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Ensure target schema and types\ndf_target = df_target.astype({\"Source Zipcode\": \"int64\", \"Counts\": \"int64\"})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023108,
+        "latency": 5.857329845428467,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94101      19\n          94109    5813\n          93940       1",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Source Zipcode' (int), 'Counts' (int)]\n# - Source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n# - We need to aggregate counts by 'Source Zipcode' (sum)\n# - There is only one source table, so no union or join needed\n# - Group by 'Source Zipcode' and sum 'Counts'\n\ndf_target = df_source0.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Ensure correct data types as per target schema\ndf_target = df_target.astype({\"Source Zipcode\": \"int64\", \"Counts\": \"int64\"})\n\n# Output path for the transformed target table\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026740000000000006,
+        "latency": 4.294097185134888,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94117    4262\n          91104       1\n          91112       1",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Source Zipcode' (int), 'Counts' (int)]\n# - Source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n# - The target table aggregates counts by 'Source Zipcode' (sum)\n# - Only one source table is present, so no union or join needed\n# - Group by 'Source Zipcode' and sum 'Counts'\n\ndf_target = df_source0.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Ensure correct data types as per target schema\ndf_target = df_target.astype({\"Source Zipcode\": \"int64\", \"Counts\": \"int64\"})\n\n# Output path for the transformed target table\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0030376000000000005,
+        "latency": 6.083288192749023,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          90715       1\n          92626       1\n          94013      10",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Source Zipcode' (int), 'Counts' (int)]\n# - Source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n# - The target table aggregates counts by 'Source Zipcode' (sum)\n# - Only one source table is present, so no union or join needed\n# - Group by 'Source Zipcode' and sum 'Counts'\n\ndf_target = df_source0.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Ensure correct data types as per target schema\ndf_target = df_target.astype({\"Source Zipcode\": \"int64\", \"Counts\": \"int64\"})\n\n# Output path for the transformed target table\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033996,
+        "latency": 4.213525772094727,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94104    3675\n          94118    4594\n          94103    7177",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Source Zipcode' (int), 'Counts' (int)]\n# - Source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n# - The target table aggregates counts by 'Source Zipcode' (sum)\n# - Only one source table is present, so no union or join needed\n# - Group by 'Source Zipcode' and sum 'Counts'\n\ndf_target = df_source0.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Ensure correct data types as per target schema\ndf_target = df_target.astype({\"Source Zipcode\": \"int64\", \"Counts\": \"int64\"})\n\n# Output path for the transformed target table\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    }
+  ]
+}

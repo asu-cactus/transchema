@@ -1,0 +1,89 @@
+{
+  "case": "1_11",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0020072,
+        "latency": 4.857426643371582,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 2\nExamples:\nsex  births\n  F   90993\n  M   80202",
+        "code": "import pandas as pd\n\n# Load source table\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_11/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform the transformation as per operation history:\n# group_by = [Source1_11_0.sex], aggregations = [sum(Source1_11_0.births)]\ndf_target = df_source0.groupby('sex', as_index=False)['births'].sum()\n\n# Ensure target schema types\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['births'] = df_target['births'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nF,90993\nM,80202\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0018504,
+        "latency": 3.3048810958862305,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 2\nExamples:\nsex  births\n  F   90993\n  M   80202",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_11/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, no union or join needed.\n# Transformation: group by 'sex' and sum 'births'\ndf_target = dfs[0].groupby('sex', as_index=False)['births'].sum()\n\n# Ensure target schema types\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['births'] = df_target['births'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nF,90993\nM,80202\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.00218,
+        "latency": 3.9131531715393066,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 2\nExamples:\nsex  births\n  M   80202\n  F   90993",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_11/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, no union or join needed.\n# Transformation: group by 'sex' and sum 'births'\ndf_target = dfs[0].groupby('sex', as_index=False)['births'].sum()\n\n# Ensure target schema types\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['births'] = df_target['births'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nF,90993\nM,80202\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0025096,
+        "latency": 3.36991024017334,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 2\nExamples:\nsex  births\n  M   80202\n  F   90993",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_11/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, no union or join needed.\n# Transformation: group by 'sex' and sum 'births'\ndf_target = dfs[0].groupby('sex', as_index=False)['births'].sum()\n\n# Ensure target schema types\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['births'] = df_target['births'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nF,90993\nM,80202\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028392,
+        "latency": 4.993499279022217,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 2\nExamples:\nsex  births\n  F   90993\n  M   80202",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_11/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, no union or join needed.\n# Transformation: group by 'sex' and sum 'births'\ndf_target = dfs[0].groupby('sex', as_index=False)['births'].sum()\n\n# Ensure target schema types\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['births'] = df_target['births'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nF,90993\nM,80202\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0031688,
+        "latency": 4.980334043502808,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 2\nExamples:\nsex  births\n  M   80202\n  F   90993",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_11/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, no union or join needed.\n# Transformation: group by 'sex' and sum 'births'\ndf_target = dfs[0].groupby('sex', as_index=False)['births'].sum()\n\n# Ensure target schema types\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['births'] = df_target['births'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nF,90993\nM,80202\n"
+      },
+      "critiques": []
+    }
+  ]
+}

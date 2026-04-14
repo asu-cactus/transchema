@@ -1,0 +1,89 @@
+{
+  "case": "1_57",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.002102,
+        "latency": 9.91381025314331,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n   98243 3.333333\n     452 4.500000\n    3840 3.000000",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Perform transformation according to operation history:\n# group_by = [Source1_57_0.movieId], aggregations = [avg(Source1_57_0.rating)]\n# So group by movieId and average rating\n\nresult_df = source0_df.groupby('movieId', as_index=False)['rating'].mean()\n\n# Ensure target schema and types\nresult_df = result_df.astype({'movieId': 'int64', 'rating': 'float64'})\n\n# Write to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.001892,
+        "latency": 2.806553840637207,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n   26729 4.000000\n     942 3.590909\n  117533 3.250000",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['movieId': int, 'rating': float]\n# - Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# - The target table aggregates ratings by movieId (average rating per movieId)\n# - So group by movieId and compute average rating\n\nresult_df = source0_df.groupby('movieId', as_index=False)['rating'].mean()\n\n# Ensure correct dtypes\nresult_df = result_df.astype({'movieId': 'int64', 'rating': 'float64'})\n\n# Write to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022484000000000002,
+        "latency": 3.014735460281372,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n    5910     1.0\n    3006     4.1\n   80844     1.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['movieId': int, 'rating': float]\n# - Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# - The target table aggregates ratings by movieId (average rating per movieId)\n# - So group by movieId and compute average rating\n\nresult_df = source0_df.groupby('movieId', as_index=False)['rating'].mean()\n\n# Ensure correct dtypes as per target schema\nresult_df = result_df.astype({'movieId': 'int64', 'rating': 'float64'})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0025872,
+        "latency": 4.106403350830078,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n   44555 3.638889\n    5125 2.000000\n   40339 1.833333",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['movieId': int, 'rating': float]\n# - Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# - The target table aggregates ratings by movieId (average rating per movieId)\n# - So group by movieId and compute average rating\n\nresult_df = source0_df.groupby('movieId', as_index=False)['rating'].mean()\n\n# Ensure correct dtypes as per target schema\nresult_df = result_df.astype({'movieId': 'int64', 'rating': 'float64'})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0029248000000000004,
+        "latency": 3.6774728298187256,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n    5819     3.5\n    4676     3.0\n   44974     3.5",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['movieId': int, 'rating': float]\n# - Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# - The target table aggregates ratings by movieId (average rating per movieId)\n# - So group by movieId and compute average rating\n\nresult_df = source0_df.groupby('movieId', as_index=False)['rating'].mean()\n\n# Ensure correct dtypes as per target schema\nresult_df = result_df.astype({'movieId': 'int64', 'rating': 'float64'})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032648000000000004,
+        "latency": 2.9599568843841553,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n    8014 3.750000\n     691 3.166667\n    4992 3.083333",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['movieId': int, 'rating': float]\n# - Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# - The target table aggregates ratings by movieId (average rating per movieId)\n# - So group by movieId and compute average rating\n\nresult_df = source0_df.groupby('movieId', as_index=False)['rating'].mean()\n\n# Ensure correct dtypes as per target schema\nresult_df = result_df.astype({'movieId': 'int64', 'rating': 'float64'})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    }
+  ]
+}

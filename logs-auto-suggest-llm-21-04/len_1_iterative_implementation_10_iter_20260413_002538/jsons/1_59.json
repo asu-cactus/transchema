@@ -1,0 +1,89 @@
+{
+  "case": "1_59",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028988000000000004,
+        "latency": 6.061043739318848,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\nPRODUCTLINE     SALES\nMotorcycles 364712.20\n      Ships  39491.10\n     Planes 116886.11",
+        "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_59/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform transformation according to operation history:\n# '\"group_by\" = [Source1_59_0.PRODUCTLINE], \"aggregations\" = [sum(Source1_59_0.SALES)]'\ndf_target = df_source0.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Ensure target schema types\ndf_target['PRODUCTLINE'] = df_target['PRODUCTLINE'].astype(str)\ndf_target['SALES'] = df_target['SALES'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,1489382.8\nMotorcycles,364712.2\nPlanes,116886.11\nShips,39491.1\nTrains,48023.66\nTrucks and Buses,335704.83\nVintage Cars,767976.96\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023512,
+        "latency": 2.7927322387695312,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n     PRODUCTLINE      SALES\n    Classic Cars 1489382.80\n          Trains   48023.66\nTrucks and Buses  335704.83",
+        "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_59/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['PRODUCTLINE': string, 'SALES': float]\n# - Source schema contains these columns.\n# - Operation: group by PRODUCTLINE and sum SALES.\n# - This matches the target table exactly.\n# - No other source tables to consider.\n# - Ensure types match target schema.\n\n# Perform the aggregation\ndf_target = df_source0.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Ensure target schema types\ndf_target['PRODUCTLINE'] = df_target['PRODUCTLINE'].astype(str)\ndf_target['SALES'] = df_target['SALES'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,1489382.8\nMotorcycles,364712.2\nPlanes,116886.11\nShips,39491.1\nTrains,48023.66\nTrucks and Buses,335704.83\nVintage Cars,767976.96\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027328,
+        "latency": 2.7401328086853027,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n     PRODUCTLINE      SALES\n    Classic Cars 1489382.80\nTrucks and Buses  335704.83\n          Planes  116886.11",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_59/test_0.csv\"\n\n# Load source data\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['PRODUCTLINE': string, 'SALES': float]\n# - Source schema contains these columns among others.\n# - Operation: group by PRODUCTLINE and sum SALES.\n# - This matches the target table exactly.\n# - Only one source table to consider.\n# - Ensure types match target schema.\n\n# Perform the aggregation\ndf_target = df_source0.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Ensure target schema types\ndf_target['PRODUCTLINE'] = df_target['PRODUCTLINE'].astype(str)\ndf_target['SALES'] = df_target['SALES'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,1489382.8\nMotorcycles,364712.2\nPlanes,116886.11\nShips,39491.1\nTrains,48023.66\nTrucks and Buses,335704.83\nVintage Cars,767976.96\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0030935999999999997,
+        "latency": 2.935352087020874,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n PRODUCTLINE     SALES\n      Trains  48023.66\n      Planes 116886.11\nVintage Cars 767976.96",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_59/test_0.csv\"\n\n# Load source data\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['PRODUCTLINE': string, 'SALES': float]\n# - Source schema contains these columns among others.\n# - Operation: group by PRODUCTLINE and sum SALES.\n# - Only one source table to consider.\n# - Ensure types match target schema.\n\n# Perform the aggregation\ndf_target = df_source0.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Ensure target schema types\ndf_target['PRODUCTLINE'] = df_target['PRODUCTLINE'].astype(str)\ndf_target['SALES'] = df_target['SALES'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,1489382.8\nMotorcycles,364712.2\nPlanes,116886.11\nShips,39491.1\nTrains,48023.66\nTrucks and Buses,335704.83\nVintage Cars,767976.96\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0034568,
+        "latency": 2.826714515686035,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n PRODUCTLINE     SALES\nClassic Cars 1489382.8\n Motorcycles  364712.2\n       Ships   39491.1",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_59/test_0.csv\"\n\n# Load source data\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['PRODUCTLINE': string, 'SALES': float]\n# - Source schema contains these columns among others.\n# - Operation: group by PRODUCTLINE and sum SALES.\n# - Only one source table to consider.\n# - Ensure types match target schema.\n\n# Perform the aggregation\ndf_target = df_source0.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Ensure target schema types\ndf_target['PRODUCTLINE'] = df_target['PRODUCTLINE'].astype(str)\ndf_target['SALES'] = df_target['SALES'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,1489382.8\nMotorcycles,364712.2\nPlanes,116886.11\nShips,39491.1\nTrains,48023.66\nTrucks and Buses,335704.83\nVintage Cars,767976.96\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0038207999999999996,
+        "latency": 2.8102269172668457,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n PRODUCTLINE     SALES\nVintage Cars 767976.96\n       Ships  39491.10\n      Trains  48023.66",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_59/test_0.csv\"\n\n# Load source data\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['PRODUCTLINE': string, 'SALES': float]\n# - Source schema contains these columns among others.\n# - Operation: group by PRODUCTLINE and sum SALES.\n# - Only one source table to consider.\n# - Ensure types match target schema.\n\n# Perform the aggregation\ndf_target = df_source0.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Ensure target schema types\ndf_target['PRODUCTLINE'] = df_target['PRODUCTLINE'].astype(str)\ndf_target['SALES'] = df_target['SALES'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,1489382.8\nMotorcycles,364712.2\nPlanes,116886.11\nShips,39491.1\nTrains,48023.66\nTrucks and Buses,335704.83\nVintage Cars,767976.96\n"
+      },
+      "critiques": []
+    }
+  ]
+}

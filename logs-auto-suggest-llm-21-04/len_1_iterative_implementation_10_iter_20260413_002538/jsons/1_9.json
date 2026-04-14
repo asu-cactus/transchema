@@ -1,0 +1,215 @@
+{
+  "case": "1_9",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0030492,
+        "latency": 9.596713781356812,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   80611         6  280   17820\n   19934         6 6140  371472\n   72084         6  420   15118",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['zipcode': int, 'AGI_STUB': int, 'N1': int, 'A00100': int]\n    # Source0 contains all these columns with correct names and types (integers).\n    # So we just select these columns from source0.\n\n    # Select relevant columns\n    df_target = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure the data types match the target schema (integers)\n    df_target['zipcode'] = df_target['zipcode'].astype(int)\n    df_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\n    df_target['N1'] = df_target['N1'].astype(int)\n    df_target['A00100'] = df_target['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "zipcode,AGI_STUB,N1,A00100\n0,6,75619290,4857739566\n1001,6,8780,458716\n1002,6,9460,732849\n1005,6,2230,122744\n1007,6,7320,467891\n1008,6,640,38487\n1010,6,1830,121083\n1011,6,600,30165\n1012,6,330,18634\n1013,6,10090,383618\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.004244400000000001,
+          "latency": 127.12587666511536,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   40328         6   490   16444\n   85351         6 13120  550604\n   33955         6  4030  292074",
+          "code": "import pandas as pd\n\ndef main():\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_critique_history.csv\"\n\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(source0_path, index_col=0)\n\n    # Group by 'zipcode' and 'AGI_STUB' (leftmost columns, likely keys)\n    # Aggregate 'N1' and 'A00100' by sum to match target distribution and row count\n    grouped = df.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({'N1': 'sum', 'A00100': 'sum'})\n\n    # Ensure data types match target schema (all int)\n    grouped = grouped.astype({'zipcode': int, 'AGI_STUB': int, 'N1': int, 'A00100': int})\n\n    # Write the transformed data to the target CSV file without the index\n    grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0042896,
+          "latency": 19.086164474487305,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   30176         6  2580   99596\n    6382         6  5310  262544\n   30331         6 25390 1022892",
+          "code": "import pandas as pd\n\ndef main():\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_critique_history.csv\"\n\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(source0_path, index_col=0)\n\n    # Group by 'zipcode' and 'AGI_STUB' (leftmost columns, likely keys)\n    # Aggregate 'N1' and 'A00100' by sum to match target distribution and row count\n    grouped = df.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({'N1': 'sum', 'A00100': 'sum'})\n\n    # Ensure columns are in the correct order as target schema\n    grouped = grouped[['zipcode', 'AGI_STUB', 'N1', 'A00100']]\n\n    # Ensure data types match target schema (all int)\n    grouped = grouped.astype({'zipcode': int, 'AGI_STUB': int, 'N1': int, 'A00100': int})\n\n    # Write the transformed data to the target CSV file without the index\n    grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0035080000000000003,
+        "latency": 7.39056658744812,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   66042         6   370   16235\n   70341         6  1480   72631\n    1902         6 19910  697439",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['zipcode': int, 'AGI_STUB': int, 'N1': int, 'A00100': int]\n    # Source0 contains all these columns with correct names and types (integers).\n    # So we just select these columns from source0.\n\n    # Select relevant columns\n    df_target = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure the data types match the target schema (integers)\n    df_target['zipcode'] = df_target['zipcode'].astype(int)\n    df_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\n    df_target['N1'] = df_target['N1'].astype(int)\n    df_target['A00100'] = df_target['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "zipcode,AGI_STUB,N1,A00100\n0,6,75619290,4857739566\n1001,6,8780,458716\n1002,6,9460,732849\n1005,6,2230,122744\n1007,6,7320,467891\n1008,6,640,38487\n1010,6,1830,121083\n1011,6,600,30165\n1012,6,330,18634\n1013,6,10090,383618\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0047092,
+          "latency": 17.466583013534546,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   46012         6 8900  375632\n   40328         6  490   16444\n   36311         6 1020   43806",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_critique_history.csv\"\n\n    # Read source CSV, ignoring the first index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Group by zipcode and AGI_STUB, sum N1 and A00100\n    df_grouped = df.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({'N1': 'sum', 'A00100': 'sum'})\n\n    # Ensure data types are integers as per target schema\n    df_grouped['zipcode'] = df_grouped['zipcode'].astype(int)\n    df_grouped['AGI_STUB'] = df_grouped['AGI_STUB'].astype(int)\n    df_grouped['N1'] = df_grouped['N1'].astype(int)\n    df_grouped['A00100'] = df_grouped['A00100'].astype(int)\n\n    # Write to target CSV without index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0047216,
+          "latency": 14.431153297424316,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   49659         6 2770   95470\n   95938         6 1830  127806\n   72150         6 4980  250312",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_critique_history.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns according to target schema\n    df_target = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure the data types match the target schema (integers)\n    df_target['zipcode'] = df_target['zipcode'].astype(int)\n    df_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\n    df_target['N1'] = df_target['N1'].astype(int)\n    df_target['A00100'] = df_target['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.003932799999999999,
+        "latency": 7.648821592330933,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   72722         6 1150   43658\n    6855         6 4070  371575\n   71037         6 8910  503702",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['zipcode', 'AGI_STUB', 'N1', 'A00100'] all integers.\n    # Source0 contains all these columns with correct names and types (integers).\n    # So we just select these columns from source0.\n\n    # Select relevant columns\n    df_target = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure the data types match the target schema (integers)\n    df_target['zipcode'] = df_target['zipcode'].astype(int)\n    df_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\n    df_target['N1'] = df_target['N1'].astype(int)\n    df_target['A00100'] = df_target['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "zipcode,AGI_STUB,N1,A00100\n0,6,75619290,4857739566\n1001,6,8780,458716\n1002,6,9460,732849\n1005,6,2230,122744\n1007,6,7320,467891\n1008,6,640,38487\n1010,6,1830,121083\n1011,6,600,30165\n1012,6,330,18634\n1013,6,10090,383618\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0058352000000000005,
+          "latency": 22.521037101745605,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB  N1  A00100\n   49710         6 210    8913\n   70658         6 350   16792\n   62523         6 170    5026",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Group by zipcode, aggregate AGI_STUB by max, N1 and A00100 by sum\n    df_grouped = df.groupby('zipcode').agg({\n        'AGI_STUB': 'max',\n        'N1': 'sum',\n        'A00100': 'sum'\n    }).reset_index()\n\n    # Ensure data types match target schema (integers)\n    df_grouped['zipcode'] = df_grouped['zipcode'].astype(int)\n    df_grouped['AGI_STUB'] = df_grouped['AGI_STUB'].astype(int)\n    df_grouped['N1'] = df_grouped['N1'].astype(int)\n    df_grouped['A00100'] = df_grouped['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0055364,
+          "latency": 22.142554998397827,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   63936         6   310   14924\n   30329         6 14260  904020\n   71663         6   290   24811",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Group by 'zipcode' and 'AGI_STUB' and sum 'N1' and 'A00100'\n    df_grouped = df0.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({\n        'N1': 'sum',\n        'A00100': 'sum'\n    })\n\n    # Ensure data types match target schema (integers)\n    df_grouped['zipcode'] = df_grouped['zipcode'].astype(int)\n    df_grouped['AGI_STUB'] = df_grouped['AGI_STUB'].astype(int)\n    df_grouped['N1'] = df_grouped['N1'].astype(int)\n    df_grouped['A00100'] = df_grouped['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0043656,
+        "latency": 6.518920421600342,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   35044         6 3130  122287\n   72437         6 1320   55053\n   61442         6  290   10796",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['zipcode', 'AGI_STUB', 'N1', 'A00100'] all integers.\n    # Source0 contains all these columns with correct names and types (integers).\n    # So we just select these columns from source0.\n\n    # Select relevant columns\n    df_target = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure the data types match the target schema (integers)\n    df_target['zipcode'] = df_target['zipcode'].astype(int)\n    df_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\n    df_target['N1'] = df_target['N1'].astype(int)\n    df_target['A00100'] = df_target['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "zipcode,AGI_STUB,N1,A00100\n0,6,75619290,4857739566\n1001,6,8780,458716\n1002,6,9460,732849\n1005,6,2230,122744\n1007,6,7320,467891\n1008,6,640,38487\n1010,6,1830,121083\n1011,6,600,30165\n1012,6,330,18634\n1013,6,10090,383618\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0063232,
+          "latency": 27.91898226737976,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   95365         6  1790   50425\n   63368         6 19840 1462669\n   80723         6  2830  129364",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_critique_history.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Group by 'zipcode' (primary key)\n    # Aggregate AGI_STUB by taking first (assuming unique per zipcode)\n    # Aggregate N1 and A00100 by sum\n    df_grouped = df.groupby('zipcode').agg({\n        'AGI_STUB': 'first',\n        'N1': 'sum',\n        'A00100': 'sum'\n    }).reset_index()\n\n    # Ensure data types match target schema (all integers)\n    df_grouped['zipcode'] = df_grouped['zipcode'].astype(int)\n    df_grouped['AGI_STUB'] = df_grouped['AGI_STUB'].astype(int)\n    df_grouped['N1'] = df_grouped['N1'].astype(int)\n    df_grouped['A00100'] = df_grouped['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.005996000000000001,
+          "latency": 21.732442378997803,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   67107         6  1420  117588\n   64455         6   200   10783\n   85024         6 11470  677412",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_critique_history.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df_selected = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure correct data types\n    df_selected['zipcode'] = df_selected['zipcode'].astype(int)\n    df_selected['AGI_STUB'] = df_selected['AGI_STUB'].astype(int)\n    df_selected['N1'] = df_selected['N1'].astype(int)\n    df_selected['A00100'] = df_selected['A00100'].astype(int)\n\n    # Group by zipcode and AGI_STUB and sum N1 and A00100\n    df_grouped = df_selected.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({\n        'N1': 'sum',\n        'A00100': 'sum'\n    })\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.004802799999999999,
+        "latency": 7.072623252868652,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   93203         6 8230  217296\n    4694         6 1040   43277\n   48635         6  710   24804",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['zipcode', 'AGI_STUB', 'N1', 'A00100'] all integers.\n    # Source0 contains all these columns with correct names and types (integers).\n    # So we just select these columns from source0.\n\n    # Select relevant columns\n    df_target = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure the data types match the target schema (integers)\n    df_target['zipcode'] = df_target['zipcode'].astype(int)\n    df_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\n    df_target['N1'] = df_target['N1'].astype(int)\n    df_target['A00100'] = df_target['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "zipcode,AGI_STUB,N1,A00100\n0,6,75619290,4857739566\n1001,6,8780,458716\n1002,6,9460,732849\n1005,6,2230,122744\n1007,6,7320,467891\n1008,6,640,38487\n1010,6,1830,121083\n1011,6,600,30165\n1012,6,330,18634\n1013,6,10090,383618\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0055592,
+          "latency": 16.594197034835815,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   21047         6 5940  561290\n   63089         6 2750  130852\n   94946         6  280   87868",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df_selected = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure correct data types\n    df_selected['zipcode'] = df_selected['zipcode'].astype(int)\n    df_selected['AGI_STUB'] = df_selected['AGI_STUB'].astype(int)\n    df_selected['N1'] = df_selected['N1'].astype(int)\n    df_selected['A00100'] = df_selected['A00100'].astype(int)\n\n    # Group by 'zipcode' and 'AGI_STUB' and sum the numeric columns\n    df_grouped = df_selected.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({\n        'N1': 'sum',\n        'A00100': 'sum'\n    })\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0058204,
+          "latency": 19.160379886627197,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   35010         6  8660  384835\n   93313         6 18020  924972\n   36526         6 13690  886078",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df_selected = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure correct data types\n    df_selected['zipcode'] = df_selected['zipcode'].astype(int)\n    df_selected['AGI_STUB'] = df_selected['AGI_STUB'].astype(int)\n    df_selected['N1'] = df_selected['N1'].astype(int)\n    df_selected['A00100'] = df_selected['A00100'].astype(int)\n\n    # Group by 'zipcode' and 'AGI_STUB' and sum the other columns\n    df_grouped = df_selected.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({\n        'N1': 'sum',\n        'A00100': 'sum'\n    })\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": false,
+        "score": 1.0,
+        "cost": 0.0052363999999999996,
+        "latency": 7.668176889419556,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   80743         6   460   23208\n   33763         6  8840  369114\n   48314         6 10650  619764",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['zipcode', 'AGI_STUB', 'N1', 'A00100'] all integers.\n    # Source0 contains all these columns with correct names and types (integers).\n    # So we just select these columns from source0.\n\n    # Select relevant columns\n    df_target = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure the data types match the target schema (integers)\n    df_target['zipcode'] = df_target['zipcode'].astype(int)\n    df_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\n    df_target['N1'] = df_target['N1'].astype(int)\n    df_target['A00100'] = df_target['A00100'].astype(int)\n\n    # Write the transformed data to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "zipcode,AGI_STUB,N1,A00100\n0,6,75619290,4857739566\n1001,6,8780,458716\n1002,6,9460,732849\n1005,6,2230,122744\n1007,6,7320,467891\n1008,6,640,38487\n1010,6,1830,121083\n1011,6,600,30165\n1012,6,330,18634\n1013,6,10090,383618\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0059667999999999995,
+          "latency": 19.905559301376343,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB   N1  A00100\n   60081         6 4690  361357\n    4426         6 1950   88860\n   52157         6  820   34927",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure correct types\n    df['zipcode'] = df['zipcode'].astype(int)\n    df['AGI_STUB'] = df['AGI_STUB'].astype(int)\n    df['N1'] = df['N1'].astype(int)\n    df['A00100'] = df['A00100'].astype(int)\n\n    # Group by zipcode and AGI_STUB and sum N1 and A00100\n    df_grouped = df.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({\n        'N1': 'sum',\n        'A00100': 'sum'\n    })\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0057756,
+          "latency": 15.41086220741272,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 13861\nExamples:\n zipcode  AGI_STUB    N1  A00100\n   93244         6   200   11224\n   46350         6 20320 1045894\n   83452         6   540   25948",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_9/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource.csv\"\n\n    # Read Source0 CSV with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Select relevant columns\n    df_selected = df0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n    # Ensure correct data types\n    df_selected['zipcode'] = df_selected['zipcode'].astype(int)\n    df_selected['AGI_STUB'] = df_selected['AGI_STUB'].astype(int)\n    df_selected['N1'] = df_selected['N1'].astype(int)\n    df_selected['A00100'] = df_selected['A00100'].astype(int)\n\n    # Group by zipcode and AGI_STUB and sum N1 and A00100\n    df_grouped = df_selected.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({\n        'N1': 'sum',\n        'A00100': 'sum'\n    })\n\n    # Write the transformed data to the target CSV file without the index\n    df_grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    }
+  ]
+}
