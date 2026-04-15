@@ -328,6 +328,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "best_operation_history": [],
             "no_improvement_count": 0,
             # Critique
+            "simulation_mode": getattr(args, "simulation_mode", "pipeline"),
             "critique_attempted": False,
             # Logging
             "log_messages": [],
@@ -507,6 +508,18 @@ if __name__ == "__main__":
             "'score' = continuous relative_csv_score (FD + column map + distribution), "
             "'validation' = binary 1.0 if hard-match validation passes else 0.0, "
             "'partial' = fuzzy column-match ratio (matched target cols / total target cols)"
+        ),
+    )
+    parser.add_argument(
+        "--simulation",
+        type=str,
+        default="pipeline",
+        choices=["pipeline", "operator"],
+        dest="simulation_mode",
+        help=(
+            "Simulation strategy: 'pipeline' = one LLM call completes the full script "
+            "(default); 'operator' = multistep operator-by-operator simulation using "
+            "get_next_operator + configure prompts, then python_script."
         ),
     )
     parser.add_argument(

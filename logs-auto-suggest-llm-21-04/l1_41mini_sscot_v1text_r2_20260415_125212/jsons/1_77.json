@@ -1,0 +1,19 @@
+{
+  "case": "1_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0015860000000000002,
+        "latency": 9.88022780418396,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    ]\n\n    # List to hold transformed DataFrames\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Select relevant columns: fac_type and capacity\n        # Capacity might have missing or non-integer values, so clean it\n        df_sub = df[['fac_type', 'capacity']].copy()\n\n        # Convert capacity to numeric, coercing errors to NaN\n        df_sub['capacity'] = pd.to_numeric(df_sub['capacity'], errors='coerce')\n\n        # Drop rows where capacity is NaN or fac_type is missing\n        df_sub = df_sub.dropna(subset=['capacity', 'fac_type'])\n\n        # Convert capacity to integer (safe now because NaNs removed)\n        df_sub['capacity'] = df_sub['capacity'].astype(int)\n\n        # Append to list\n        transformed_dfs.append(df_sub)\n\n    # Concatenate all transformed dataframes (if multiple sources)\n    combined_df = pd.concat(transformed_dfs, ignore_index=True)\n\n    # Group by fac_type and sum capacity to aggregate duplicates if any\n    result_df = combined_df.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Write to target CSV\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n    result_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_29",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.000794,
+        "latency": 5.969968318939209,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0}; {Gender}.\nGenerated table candidate keys: {0}; {Gender}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\n                 Male 325\n               Female  56\nOther / Non-Disclosed   9",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\n    ]\n\n    # Initialize an empty list to hold dataframes\n    dfs = []\n\n    # Load each source file into a dataframe\n    for file_path in source_files:\n        df = pd.read_csv(file_path)\n        dfs.append(df)\n\n    # Concatenate all source dataframes (if multiple)\n    all_data = pd.concat(dfs, ignore_index=True)\n\n    # Transformation:\n    # Group by 'Gender' and count the number of 'Purchase ID' per gender\n    # According to target schema: ['Gender': string, '0': integer]\n    # The column '0' corresponds to the count of Purchase ID per Gender\n\n    grouped = all_data.groupby('Gender', dropna=False)['Purchase ID'].count().reset_index()\n\n    # Rename columns to match target schema\n    grouped.rename(columns={'Purchase ID': '0'}, inplace=True)\n\n    # Sort by Gender to have consistent order (optional)\n    # But target example shows Female, Other / Non-Disclosed, Male in that order\n    # We can sort by count descending or keep as is. Here we keep as is.\n\n    # Save the result to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource_cot.csv\"\n    grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

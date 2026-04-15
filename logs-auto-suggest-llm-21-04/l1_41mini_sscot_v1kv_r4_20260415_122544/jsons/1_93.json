@@ -1,0 +1,19 @@
+{
+  "case": "1_93",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0009716,
+        "latency": 5.535847187042236,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {time}.\nGenerated table candidate keys: {time}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'time', 'bet', 'win']\nNumber of Tuples: 500\nExamples:\n user_id                time   bet  win\nuser_961 [2019-01-23 2:43:22 100.0  NaN\nuser_964 [2019-01-09 3:05:33 100.0  NaN\nuser_937 [2019-02-18 5:24:30 100.0  NaN",
+        "code": "import pandas as pd\n\ndef load_and_transform_source0(path: str) -> pd.DataFrame:\n    \"\"\"\n    Load Source1_93_0 CSV, clean and transform it to match the target schema.\n    \"\"\"\n    # Load the CSV\n    df = pd.read_csv(path)\n    \n    # Inspect columns: expected ['user_id', 'time', 'bet', 'win']\n    # From example, user_id values have a prefix \"\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - \" that should be removed.\n    # Clean user_id by removing the prefix \"\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - \" and stripping spaces\n    df['user_id'] = df['user_id'].astype(str).str.replace(r'^\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - ', '', regex=True).str.strip()\n    \n    # Ensure 'time' is string (it looks like it is already string with brackets)\n    df['time'] = df['time'].astype(str)\n    \n    # Convert 'bet' and 'win' to float, coercing errors to NaN\n    df['bet'] = pd.to_numeric(df['bet'], errors='coerce')\n    df['win'] = pd.to_numeric(df['win'], errors='coerce')\n    \n    # Reorder columns to match target schema\n    df = df[['user_id', 'time', 'bet', 'win']]\n    \n    return df\n\ndef main():\n    # Source file paths\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_93/test_0.csv\"\n    \n    # Load and transform each source\n    df0 = load_and_transform_source0(source0_path)\n    \n    # Since only one source is given, the target is just this source transformed.\n    # If there were multiple sources, we would load and transform each, then concatenate.\n    \n    # Save the combined dataframe to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_93/target_multisource_cot.csv\"\n    df0.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

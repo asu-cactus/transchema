@@ -81,6 +81,9 @@ class MCTSGraphState(TypedDict):
     best_operation_history: List[str]
     no_improvement_count: int        # consecutive iterations without best_score improvement
 
+    # ── Simulation mode ───────────────────────────────────────────────────────
+    simulation_mode: str                 # "pipeline" (default) | "operator"
+
     # ── Critique phase ────────────────────────────────────────────────────────
     critique_attempted: bool             # True once critique has run this MCTS iteration
 

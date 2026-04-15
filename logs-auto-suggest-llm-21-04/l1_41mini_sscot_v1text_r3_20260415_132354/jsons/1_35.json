@@ -1,0 +1,19 @@
+{
+  "case": "1_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010104,
+        "latency": 18.353792190551758,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94104    3675\n          94101      19\n          94021       2",
+        "code": "import pandas as pd\n\ndef main():\n    # Define source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n    ]\n\n    # Initialize an empty list to hold dataframes\n    dfs = []\n\n    # Load each source file, select relevant columns, and append to list\n    for file_path in source_files:\n        df = pd.read_csv(file_path)\n        # Select only the columns needed for the target schema\n        # According to target schema: ['Source Zipcode': integer, 'Counts': integer]\n        # Source has 'Source Zipcode', 'NAICS Code Description', 'Counts'\n        # We only need 'Source Zipcode' and 'Counts'\n        df_selected = df[['Source Zipcode', 'Counts']].copy()\n\n        # Ensure correct dtypes\n        df_selected['Source Zipcode'] = pd.to_numeric(df_selected['Source Zipcode'], errors='coerce').astype('Int64')\n        df_selected['Counts'] = pd.to_numeric(df_selected['Counts'], errors='coerce').fillna(0).astype(int)\n\n        dfs.append(df_selected)\n\n    # Concatenate all source dataframes\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Group by 'Source Zipcode' and sum the 'Counts'\n    result_df = combined_df.groupby('Source Zipcode', dropna=True, as_index=False)['Counts'].sum()\n\n    # Convert 'Source Zipcode' to int (from Int64) and 'Counts' to int\n    result_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\n    result_df['Counts'] = result_df['Counts'].astype(int)\n\n    # Sort by 'Counts' descending and then by 'Source Zipcode' ascending (optional, for readability)\n    result_df = result_df.sort_values(by=['Counts', 'Source Zipcode'], ascending=[False, True])\n\n    # Write the result to the target CSV file\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource_cot.csv\"\n    result_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

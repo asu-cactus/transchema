@@ -1,0 +1,19 @@
+{
+  "case": "1_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0009144,
+        "latency": 8.074752807617188,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94080       4\n          94108    3858\n          94012       6",
+        "code": "import pandas as pd\n\ndef main():\n    # Define source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n    ]\n\n    # Initialize an empty list to hold dataframes\n    dfs = []\n\n    # Load each source file, select relevant columns, and append to dfs list\n    for file_path in source_files:\n        df = pd.read_csv(file_path, dtype={'Source Zipcode': str, 'NAICS Code Description': str, 'Counts': float})\n        # Convert 'Source Zipcode' to integer, coercing errors to NaN and then drop those rows\n        df['Source Zipcode'] = pd.to_numeric(df['Source Zipcode'], errors='coerce')\n        df = df.dropna(subset=['Source Zipcode'])\n        df['Source Zipcode'] = df['Source Zipcode'].astype(int)\n\n        # Convert 'Counts' to numeric, coercing errors to NaN, then fill NaN with 0\n        df['Counts'] = pd.to_numeric(df['Counts'], errors='coerce').fillna(0).astype(int)\n\n        # Append cleaned dataframe\n        dfs.append(df[['Source Zipcode', 'Counts']])\n\n    # Concatenate all source dataframes\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Group by 'Source Zipcode' and sum the 'Counts'\n    target_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n    # Sort by 'Source Zipcode' ascending (optional, for neatness)\n    target_df = target_df.sort_values(by='Source Zipcode').reset_index(drop=True)\n\n    # Write the result to the target CSV file\n    target_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

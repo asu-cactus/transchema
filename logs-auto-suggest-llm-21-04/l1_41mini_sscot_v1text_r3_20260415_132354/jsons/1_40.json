@@ -1,0 +1,19 @@
+{
+  "case": "1_40",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0011732000000000001,
+        "latency": 9.486313581466675,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME, QUANTITYORDERED}; {ORDERNUMBER}.\nGenerated table candidate keys: {CUSTOMERNAME, QUANTITYORDERED}; {ORDERNUMBER}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER', 'QUANTITYORDERED']\nNumber of Tuples: 153\nExamples:\n                CUSTOMERNAME  ORDERNUMBER  QUANTITYORDERED\nQuebec Home Shopping Network        10261               47\n    Corporate Gift Ideas Co.        10159              352\n        Technics Stores Inc.        10362               67",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_40/test_0.csv\"\n    ]\n\n    # List to hold transformed DataFrames from each source\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Select and rename columns to match target schema\n        # Target schema: ['CUSTOMERNAME': string, 'ORDERNUMBER': integer, 'QUANTITYORDERED': integer]\n        # Source columns: 'CUSTOMERNAME', 'ORDERNUMBER', 'QUANTITYORDERED'\n        # Convert ORDERNUMBER and QUANTITYORDERED to integer (round if float)\n        df_target = df[['CUSTOMERNAME', 'ORDERNUMBER', 'QUANTITYORDERED']].copy()\n\n        # Convert ORDERNUMBER to integer\n        # Some ORDERNUMBER might be float due to CSV import, convert safely\n        df_target['ORDERNUMBER'] = pd.to_numeric(df_target['ORDERNUMBER'], errors='coerce').fillna(0).astype(int)\n\n        # Convert QUANTITYORDERED to integer\n        df_target['QUANTITYORDERED'] = pd.to_numeric(df_target['QUANTITYORDERED'], errors='coerce').fillna(0).astype(int)\n\n        # Append to list\n        transformed_dfs.append(df_target)\n\n    # Concatenate all transformed dataframes (if multiple sources)\n    result_df = pd.concat(transformed_dfs, ignore_index=True)\n\n    # Optional: If there are duplicates or multiple rows per ORDERNUMBER and CUSTOMERNAME,\n    # and we want to aggregate QUANTITYORDERED by summing:\n    # Group by CUSTOMERNAME and ORDERNUMBER, sum QUANTITYORDERED\n    result_df = result_df.groupby(['CUSTOMERNAME', 'ORDERNUMBER'], as_index=False)['QUANTITYORDERED'].sum()\n\n    # Write the result to the target CSV file\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_40/target_multisource_cot.csv\"\n    result_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

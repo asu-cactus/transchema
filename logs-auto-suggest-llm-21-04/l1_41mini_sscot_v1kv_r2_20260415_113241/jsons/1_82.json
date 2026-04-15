@@ -1,0 +1,19 @@
+{
+  "case": "1_82",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0008624000000000001,
+        "latency": 5.51290225982666,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {scientific_name}; {conservation_status}.\nGenerated table candidate keys: {scientific_name}; {conservation_status}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 4\nExamples:\nconservation_status  scientific_name\n        In Recovery                1\n         Threatened                5\n         Endangered               11",
+        "code": "import pandas as pd\n\n# Step 1: Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_82/test_0.csv\"\n]\n\n# Step 2: Load source data\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file)\n    dfs.append(df)\n\n# Step 3: Concatenate all source dataframes (if multiple)\nsource_df = pd.concat(dfs, ignore_index=True)\n\n# Step 4: Transform source data to target schema\n# Target schema: ['conservation_status': string, 'scientific_name': integer]\n\n# From source schema:\n# ['category', 'scientific_name', 'common_names', 'conservation_status']\n# We need to:\n# - Use 'conservation_status' as is (string)\n# - Convert 'scientific_name' to integer by counting unique scientific names per conservation_status\n#   or by some aggregation that matches the target examples.\n\n# The target examples show scientific_name as integer counts per conservation_status.\n# So we will group by conservation_status and count unique scientific names.\n\n# First, drop rows where conservation_status is NaN or empty, because target examples have no NaN\nsource_df = source_df.dropna(subset=['conservation_status'])\n\n# Group by conservation_status and count unique scientific_name entries\nagg_df = (\n    source_df.groupby('conservation_status')['scientific_name']\n    .nunique()\n    .reset_index()\n    .rename(columns={'scientific_name': 'scientific_name'})\n)\n\n# Ensure conservation_status is string type\nagg_df['conservation_status'] = agg_df['conservation_status'].astype(str)\n\n# Step 5: Save the transformed dataframe to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource_cot.csv\"\nagg_df.to_csv(target_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

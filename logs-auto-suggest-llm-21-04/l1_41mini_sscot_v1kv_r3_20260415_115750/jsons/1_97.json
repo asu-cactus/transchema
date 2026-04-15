@@ -1,0 +1,19 @@
+{
+  "case": "1_97",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010464,
+        "latency": 6.3844499588012695,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {critic}; {crit_cn}.\nGenerated table candidate keys: {critic}; {crit_cn}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       1\n     US       3",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n    ]\n\n    # List to hold transformed DataFrames\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Transformation:\n        # Target schema: ['crit_cn': string, 'critic': integer]\n        # Source schema: ['movie', 'director', 'm_year', 'crit_rank', 'critic', 'crit_org', 'crit_cn']\n        # From the example, 'critic' in source is a string (critic name),\n        # but in target it is integer (e.g. 3, 1).\n        # The example target rows:\n        # crit_cn  critic\n        # US       3\n        # Mexico   1\n        #\n        # This suggests we need to count the number of critics per crit_cn.\n        #\n        # So the transformation is:\n        # Group by 'crit_cn' and count distinct 'critic' or count rows per 'crit_cn'?\n        # The example shows counts like 3 and 1, which likely means count of critics per country.\n        #\n        # We will count distinct critics per crit_cn.\n\n        # Count distinct critics per crit_cn\n        grouped = df.groupby('crit_cn')['critic'].nunique().reset_index()\n\n        # Rename columns to match target schema\n        grouped = grouped.rename(columns={'crit_cn': 'crit_cn', 'critic': 'critic'})\n\n        # Ensure critic column is integer type\n        grouped['critic'] = grouped['critic'].astype(int)\n\n        transformed_dfs.append(grouped)\n\n    # Combine all transformed dataframes (if multiple sources)\n    result_df = pd.concat(transformed_dfs, ignore_index=True)\n\n    # If multiple sources have overlapping crit_cn, sum their counts\n    result_df = result_df.groupby('crit_cn', as_index=False)['critic'].sum()\n\n    # Write to target CSV\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource_cot.csv\"\n    result_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

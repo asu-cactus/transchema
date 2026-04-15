@@ -1,0 +1,19 @@
+{
+  "case": "1_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010088,
+        "latency": 6.795379161834717,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94101      19\n          94117    4262\n          91104       1",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n    ]\n\n    # Initialize an empty DataFrame to accumulate results\n    accumulated_df = pd.DataFrame(columns=['Source Zipcode', 'Counts'])\n\n    # Process each source file\n    for file_path in source_files:\n        # Load the source CSV\n        df = pd.read_csv(file_path)\n\n        # Select relevant columns and ensure correct types\n        # According to source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n        # Target schema: ['Source Zipcode': int, 'Counts': int]\n        # We only need 'Source Zipcode' and 'Counts'\n        df_subset = df[['Source Zipcode', 'Counts']].copy()\n\n        # Convert 'Source Zipcode' and 'Counts' to integer type (if possible)\n        # Handle missing or malformed data by coercing errors and dropping NaNs\n        df_subset['Source Zipcode'] = pd.to_numeric(df_subset['Source Zipcode'], errors='coerce').dropna().astype(int)\n        df_subset['Counts'] = pd.to_numeric(df_subset['Counts'], errors='coerce').fillna(0).astype(int)\n\n        # Group by 'Source Zipcode' and sum 'Counts' to aggregate multiple NAICS descriptions\n        grouped = df_subset.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n        # Append to accumulated dataframe\n        accumulated_df = pd.concat([accumulated_df, grouped], ignore_index=True)\n\n    # After processing all sources, group again to combine counts from all sources\n    final_df = accumulated_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n    # Sort by 'Source Zipcode' ascending for neatness\n    final_df = final_df.sort_values(by='Source Zipcode').reset_index(drop=True)\n\n    # Write the final DataFrame to the target CSV path\n    output_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource_cot.csv\"\n    final_df.to_csv(output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

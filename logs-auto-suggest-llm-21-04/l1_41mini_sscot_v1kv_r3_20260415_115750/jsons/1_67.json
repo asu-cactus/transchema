@@ -1,0 +1,19 @@
+{
+  "case": "1_67",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010676000000000001,
+        "latency": 5.8950135707855225,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'sad', 'stressed']\nNumber of Tuples: 35\nExamples:\n user_id      sad  stressed\n      42 0.000000  0.000000\n      21 0.102941  0.058824\n      38 0.307692  0.153846",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_67/test_0.csv\"\n    ]\n\n    # List to hold transformed DataFrames from each source\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Group by user_id and aggregate the relevant columns by mean\n        # This converts multiple time entries per user_id into one row per user_id\n        agg_df = df.groupby('user_id', as_index=False).agg({\n            'sad.depressed': 'mean',\n            'open.stressed': 'mean'\n        })\n\n        # Rename columns to match target schema\n        agg_df.rename(columns={\n            'sad.depressed': 'sad',\n            'open.stressed': 'stressed'\n        }, inplace=True)\n\n        # Ensure correct dtypes\n        agg_df['user_id'] = agg_df['user_id'].astype(int)\n        agg_df['sad'] = agg_df['sad'].astype(float)\n        agg_df['stressed'] = agg_df['stressed'].astype(float)\n\n        transformed_dfs.append(agg_df)\n\n    # Since we have only one source, just take that DataFrame\n    # If multiple sources existed, we would concatenate them here\n    target_df = pd.concat(transformed_dfs, ignore_index=True)\n\n    # If multiple sources had overlapping user_ids, you might want to aggregate again here.\n    # For safety, aggregate again by user_id taking mean of sad and stressed\n    target_df = target_df.groupby('user_id', as_index=False).agg({\n        'sad': 'mean',\n        'stressed': 'mean'\n    })\n\n    # Write the final target DataFrame to CSV\n    target_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_67/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

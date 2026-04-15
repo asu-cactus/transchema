@@ -1,0 +1,19 @@
+{
+  "case": "1_82",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010576000000000001,
+        "latency": 7.132243633270264,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {scientific_name}; {conservation_status}.\nGenerated table candidate keys: {scientific_name}; {conservation_status}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 4\nExamples:\nconservation_status  scientific_name\n        In Recovery                1\n Species of Concern               84\n         Threatened                5",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_82/test_0.csv\"\n        # If there were more sources, list them here\n    ]\n\n    # List to collect transformed DataFrames\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # According to the target schema:\n        # Target schema: ['conservation_status': string, 'scientific_name': integer]\n        # Source schema: ['category', 'scientific_name', 'common_names', 'conservation_status']\n        # The target scientific_name is integer, but source scientific_name is string (species name).\n        # From the target examples, scientific_name column contains integers like 84, 11, 5.\n        # This suggests that the target scientific_name is a count of species per conservation_status.\n\n        # So the transformation plan:\n        # 1. Use 'conservation_status' from source as is.\n        # 2. Count the number of rows (species) per conservation_status.\n        # 3. The count becomes the 'scientific_name' integer in the target.\n\n        # First, drop rows where conservation_status is NaN because they can't be grouped meaningfully\n        df_filtered = df.dropna(subset=['conservation_status'])\n\n        # Group by conservation_status and count the number of species (rows) per group\n        grouped = df_filtered.groupby('conservation_status').size().reset_index(name='scientific_name')\n\n        # Append to list\n        transformed_dfs.append(grouped)\n\n    # If multiple sources, concatenate their grouped results\n    if len(transformed_dfs) > 1:\n        combined = pd.concat(transformed_dfs)\n        # After concatenation, group again by conservation_status to sum counts across sources\n        final_df = combined.groupby('conservation_status', as_index=False)['scientific_name'].sum()\n    else:\n        final_df = transformed_dfs[0]\n\n    # Sort by scientific_name descending to resemble the example output order (optional)\n    final_df = final_df.sort_values(by='scientific_name', ascending=False).reset_index(drop=True)\n\n    # Write to target CSV\n    final_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0013576,
+        "latency": 6.319205284118652,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year   0\n 2004 123\n 1994  35\n 1981   9",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path(s)\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n    ]\n\n    # List to hold transformed DataFrames from each source\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Ensure 'year' column exists and is integer type\n        # Drop rows where 'year' is missing or invalid\n        df = df[pd.to_numeric(df['year'], errors='coerce').notnull()]\n        df['year'] = df['year'].astype(int)\n\n        # Group by 'year' and count the number of rows per year\n        # This count corresponds to the target column '0'\n        grouped = df.groupby('year').size().reset_index(name='0')\n\n        # Append to list\n        transformed_dfs.append(grouped)\n\n    # Concatenate all transformed dataframes (if multiple sources)\n    if len(transformed_dfs) > 1:\n        result_df = pd.concat(transformed_dfs, ignore_index=True)\n        # After concatenation, group again by 'year' to aggregate counts from all sources\n        result_df = result_df.groupby('year', as_index=False)['0'].sum()\n    else:\n        result_df = transformed_dfs[0]\n\n    # Sort by year ascending (optional, for neatness)\n    result_df = result_df.sort_values(by='year').reset_index(drop=True)\n\n    # Write the result to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_cot.csv\"\n    result_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

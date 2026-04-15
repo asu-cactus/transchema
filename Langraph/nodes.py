@@ -47,6 +47,9 @@ if _EVAL_SCORE not in sys.path:
 
 from auto_suggest_llm_util import (
     get_mcts_candidates,
+    get_operation,
+    get_columns,
+    get_columns_join,
     get_prompt,
     query_gpt,
 )
@@ -61,6 +64,8 @@ from validation.fuzzy_match import compare_tables_fuzzy
 _MAX_SELECT_DEPTH = 15
 # Maximum code-generation retries inside simulate
 _MAX_CODE_TRIALS = 5
+# Maximum operator steps in one operator-level simulation rollout
+_MAX_SIMULATE_STEPS = 15
 # Hard timeout (seconds) for the full scoring + validation call
 _SCORE_TIMEOUT = 60
 
@@ -139,6 +144,445 @@ def _score_and_validate_output(
     else:  # "score"
         score = _score_with_timeout(target_file_location, ground_truth_location)
         return score, score >= 1.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Simulation helpers (shared by pipeline-level and operator-level simulate)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _simulate_get_python(
+    operation_history: List[str],
+    target_file_location: str,
+    state: "MCTSGraphState",
+) -> tuple:
+    """
+    Generate a Python script from a finalized operation_history using the
+    'python_script' prompt type.  Retries up to _MAX_CODE_TRIALS times,
+    feeding execution errors back into each successive prompt.
+
+    Returns (script: str, response: str) where response is "Success" or the
+    last error string.
+    """
+    config = state["config"]
+    error_str = ""
+    script = ""
+    response = ""
+
+    for trial in range(_MAX_CODE_TRIALS):
+        try:
+            prompt = get_prompt(
+                prompt_type="python_script",
+                max_tokens=config.token_limit,
+                model=config.model,
+                allowed_operation_list=OPERATOR_TYPES,
+                operation_history=operation_history,
+                target_data_name=config.target_data_name,
+                target_data_schema=config.target_data_schema,
+                target_data_schema_with_types=config.target_data_schema_with_types,
+                target_samples=config.target_samples,
+                file_count=config.file_count,
+                source_data_name_list=config.source_data_name_list,
+                source_data_schema_list=config.source_data_schema_list,
+                directory=config.directory,
+                len_idx_target_idx=config.len_idx_target_idx,
+                target_perc=config.target_perc,
+                is_perc=config.is_perc,
+                target_length=config.target_length,
+                source_length=config.source_length,
+                error_string=error_str,
+                csv_save_path=target_file_location,
+                hint_source=config.hint_source,
+                static_hints=getattr(config, "static_hints", True),
+                fd_flag=int(config.fd_flag),
+            )
+        except Exception:
+            config.logger.warning(
+                f"[simulate/python] get_prompt failed (trial {trial}): "
+                f"{traceback.format_exc()}"
+            )
+            break
+
+        res = query_gpt(
+            config.llm_client,
+            config.model,
+            [prompt],
+            config.q_count,
+            config.logger,
+            config.cost_summary,
+            config.token_tracker,
+            type="MCTS Simulate Python",
+        )
+
+        pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res[0])
+        if not match:
+            error_str += "No valid Python code block found in LLM response.\n"
+            config.logger.warning(f"[simulate/python] No code block (trial {trial})")
+            continue
+
+        script = match.group(1).strip()
+        response = execute_python(script)
+        error_str += response + "\n"
+        config.logger.info(f"[simulate/python] trial {trial}: {response}")
+
+        if response == "Success":
+            break
+    else:
+        config.logger.warning(
+            f"[simulate/python] Exceeded {_MAX_CODE_TRIALS} trials. "
+            f"Last response: '{response}'"
+        )
+
+    return script, response
+
+
+def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
+    """
+    Operator-level simulation: mirrors the multistep process in multi_step.py.
+
+    Starting from rollout_history (partial plan from expansion), iteratively
+    asks the LLM for each next operator and configures it, building sim_history
+    one step at a time until NO_MORE_OPERATION, then generates Python code.
+
+    Returns (script: str, response: str, sim_history: List[str]).
+    """
+    config = state["config"]
+    rollout_history: List[str] = state["rollout_history"]
+    target_file_location: str = state["target_file_location"]
+
+    join_flag: int = state.get("join_flag", 0)
+    join_hints_truncate: List[float] = state.get("join_hints_truncate", [])
+    aggregate_flag: int = state.get("aggregate_flag", 0)
+    aggregate_hints_truncate: List[float] = state.get("aggregate_hints_truncate", [])
+    few_shot: int = state.get("few_shot", 0)
+
+    # Terminal re-simulation: rollout_history already ends with NO_MORE_OPERATION;
+    # skip the operator loop and go straight to code generation.
+    is_already_terminal = (
+        bool(rollout_history) and rollout_history[-1] == "NO_MORE_OPERATION"
+    )
+
+    if is_already_terminal:
+        sim_history = list(rollout_history)
+        config.logger.info(
+            f"[simulate/op] Iter {state['iteration']}: "
+            f"terminal re-simulation — skipping operator loop"
+        )
+    else:
+        sim_history = list(rollout_history)
+        step = 0
+
+        while step < _MAX_SIMULATE_STEPS:
+            # ── Ask: what is the next operator? ──────────────────────────
+            try:
+                next_op_prompt = get_prompt(
+                    prompt_type="get_next_operator",
+                    max_tokens=config.token_limit,
+                    model=config.model,
+                    allowed_operation_list=OPERATOR_TYPES,
+                    operation_history=sim_history,
+                    target_data_name=config.target_data_name,
+                    target_data_schema=config.target_data_schema,
+                    target_data_schema_with_types=config.target_data_schema_with_types,
+                    target_samples=config.target_samples,
+                    file_count=config.file_count,
+                    source_data_name_list=config.source_data_name_list,
+                    source_data_schema_list=config.source_data_schema_list,
+                    directory=config.directory,
+                    len_idx_target_idx=config.len_idx_target_idx,
+                    target_perc=config.target_perc,
+                    is_perc=config.is_perc,
+                    target_length=config.target_length,
+                    source_length=config.source_length,
+                    hint_source=config.hint_source,
+                    few_shot=few_shot,
+                    fd_flag=int(config.fd_flag),
+                    static_hints=getattr(config, "static_hints", True),
+                )
+            except Exception:
+                config.logger.warning(
+                    f"[simulate/op] get_next_operator prompt failed (step {step}): "
+                    f"{traceback.format_exc()}"
+                )
+                break
+
+            op_res = query_gpt(
+                config.llm_client,
+                config.model,
+                [next_op_prompt],
+                config.q_count,
+                config.logger,
+                config.cost_summary,
+                config.token_tracker,
+                type="MCTS Sim Get Next Op",
+            )
+            operation = get_operation(op_res[0])
+            config.logger.info(
+                f"[simulate/op] step {step}: get_next_operator → '{operation}'"
+            )
+
+            # Stop operator loop on terminal / unrecognised response
+            if not operation or operation in ("NO_MORE_OPERATION", "No match found"):
+                sim_history.append("NO_MORE_OPERATION")
+                break
+
+            # ── Configure the chosen operator ─────────────────────────────
+            configured_step: str = ""
+
+            if operation == "JOIN":
+                try:
+                    cfg_prompt = get_prompt(
+                        prompt_type="join",
+                        max_tokens=config.token_limit,
+                        model=config.model,
+                        allowed_operation_list=OPERATOR_TYPES,
+                        operation_history=sim_history,
+                        target_data_name=config.target_data_name,
+                        target_data_schema=config.target_data_schema,
+                        target_data_schema_with_types=config.target_data_schema_with_types,
+                        target_samples=config.target_samples,
+                        file_count=config.file_count,
+                        source_data_name_list=config.source_data_name_list,
+                        source_data_schema_list=config.source_data_schema_list,
+                        directory=config.directory,
+                        len_idx_target_idx=config.len_idx_target_idx,
+                        target_perc=config.target_perc,
+                        is_perc=config.is_perc,
+                        target_length=config.target_length,
+                        source_length=config.source_length,
+                        join_flag=join_flag,
+                        join_hints_truncate=join_hints_truncate,
+                        hint_source=config.hint_source,
+                        few_shot=few_shot,
+                        fd_flag=int(config.fd_flag),
+                        static_hints=getattr(config, "static_hints", True),
+                    )
+                except Exception:
+                    config.logger.warning(
+                        f"[simulate/op] join prompt failed (step {step}): "
+                        f"{traceback.format_exc()}"
+                    )
+                    step += 1
+                    continue
+                cfg_res = query_gpt(
+                    config.llm_client, config.model, [cfg_prompt],
+                    config.q_count, config.logger, config.cost_summary,
+                    config.token_tracker, type="MCTS Sim Configure Join",
+                )
+                joined_columns = get_columns_join(cfg_res[0])
+                configured_step = f"JOIN : {joined_columns}"
+
+            elif operation == "GROUP_BY/AGGREGATE":
+                try:
+                    cfg_prompt = get_prompt(
+                        prompt_type="group_by_aggregate",
+                        max_tokens=config.token_limit,
+                        model=config.model,
+                        allowed_operation_list=OPERATOR_TYPES,
+                        operation_history=sim_history,
+                        target_data_name=config.target_data_name,
+                        target_data_schema=config.target_data_schema,
+                        target_data_schema_with_types=config.target_data_schema_with_types,
+                        target_samples=config.target_samples,
+                        file_count=config.file_count,
+                        source_data_name_list=config.source_data_name_list,
+                        source_data_schema_list=config.source_data_schema_list,
+                        directory=config.directory,
+                        len_idx_target_idx=config.len_idx_target_idx,
+                        target_perc=config.target_perc,
+                        is_perc=config.is_perc,
+                        target_length=config.target_length,
+                        source_length=config.source_length,
+                        aggregate_flag=aggregate_flag,
+                        aggregate_hints_truncate=aggregate_hints_truncate,
+                        hint_source=config.hint_source,
+                        few_shot=few_shot,
+                        fd_flag=int(config.fd_flag),
+                        static_hints=getattr(config, "static_hints", True),
+                    )
+                except Exception:
+                    config.logger.warning(
+                        f"[simulate/op] group_by_aggregate prompt failed (step {step}): "
+                        f"{traceback.format_exc()}"
+                    )
+                    step += 1
+                    continue
+                cfg_res = query_gpt(
+                    config.llm_client, config.model, [cfg_prompt],
+                    config.q_count, config.logger, config.cost_summary,
+                    config.token_tracker, type="MCTS Sim Configure GroupBy",
+                )
+                # mirrors multi_step.py line 481: raw cleaned JSON, no prefix
+                configured_step = re.sub(r"```json\n|\n|```", "", cfg_res[0])
+
+            elif operation == "UNION":
+                try:
+                    cfg_prompt = get_prompt(
+                        prompt_type="union",
+                        max_tokens=config.token_limit,
+                        model=config.model,
+                        allowed_operation_list=OPERATOR_TYPES,
+                        operation_history=sim_history,
+                        target_data_name=config.target_data_name,
+                        target_data_schema=config.target_data_schema,
+                        target_data_schema_with_types=config.target_data_schema_with_types,
+                        target_samples=config.target_samples,
+                        file_count=config.file_count,
+                        source_data_name_list=config.source_data_name_list,
+                        source_data_schema_list=config.source_data_schema_list,
+                        directory=config.directory,
+                        len_idx_target_idx=config.len_idx_target_idx,
+                        target_perc=config.target_perc,
+                        is_perc=config.is_perc,
+                        target_length=config.target_length,
+                        source_length=config.source_length,
+                        hint_source=config.hint_source,
+                        few_shot=few_shot,
+                        fd_flag=int(config.fd_flag),
+                        static_hints=getattr(config, "static_hints", True),
+                    )
+                except Exception:
+                    config.logger.warning(
+                        f"[simulate/op] union prompt failed (step {step}): "
+                        f"{traceback.format_exc()}"
+                    )
+                    step += 1
+                    continue
+                cfg_res = query_gpt(
+                    config.llm_client, config.model, [cfg_prompt],
+                    config.q_count, config.logger, config.cost_summary,
+                    config.token_tracker, type="MCTS Sim Configure Union",
+                )
+                tables_ = get_columns(cfg_res[0])
+                configured_step = f"UNION : {tables_}"
+
+            elif operation == "PIVOT":
+                configured_step = "PIVOT"
+
+            elif operation == "UNPIVOT":
+                configured_step = "UNPIVOT"
+
+            else:
+                config.logger.warning(
+                    f"[simulate/op] Unknown operator '{operation}' at step {step} — skipping"
+                )
+                step += 1
+                continue
+
+            sim_history.append(configured_step)
+            config.logger.info(
+                f"[simulate/op] step {step}: appended '{configured_step[:80]}'"
+            )
+            step += 1
+
+        else:
+            config.logger.warning(
+                f"[simulate/op] Iter {state['iteration']}: "
+                f"hit step limit ({_MAX_SIMULATE_STEPS}) without NO_MORE_OPERATION"
+            )
+
+    script, response = _simulate_get_python(sim_history, target_file_location, state)
+    return script, response, sim_history
+
+
+def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
+    """
+    Pipeline-level simulation (original behaviour): given the expanded node's
+    operation history, ask the LLM to generate a COMPLETE Python script in one
+    shot via the 'mcts_simulate' prompt, then execute it.
+
+    Returns (script: str, response: str, full_history: List[str]).
+    """
+    config = state["config"]
+    rollout_history: List[str] = state["rollout_history"]
+    target_file_location: str = state["target_file_location"]
+
+    error_str = ""
+    script = ""
+    response = ""
+    res: List[str] = []
+
+    for trial in range(_MAX_CODE_TRIALS):
+        try:
+            prompt = get_prompt(
+                prompt_type="mcts_simulate",
+                max_tokens=config.token_limit,
+                model=config.model,
+                allowed_operation_list=OPERATOR_TYPES,
+                operation_history=rollout_history,
+                target_data_name=config.target_data_name,
+                target_data_schema=config.target_data_schema,
+                target_data_schema_with_types=config.target_data_schema_with_types,
+                target_samples=config.target_samples,
+                file_count=config.file_count,
+                source_data_name_list=config.source_data_name_list,
+                source_data_schema_list=config.source_data_schema_list,
+                directory=config.directory,
+                len_idx_target_idx=config.len_idx_target_idx,
+                target_perc=config.target_perc,
+                is_perc=config.is_perc,
+                target_length=config.target_length,
+                source_length=config.source_length,
+                error_string=error_str,
+                csv_save_path=target_file_location,
+                hint_source=config.hint_source,
+            )
+        except Exception:
+            config.logger.warning(
+                f"[simulate/pipeline] get_prompt failed (trial {trial}): {traceback.format_exc()}"
+            )
+            break
+
+        res = query_gpt(
+            config.llm_client,
+            config.model,
+            [prompt],
+            config.q_count,
+            config.logger,
+            config.cost_summary,
+            config.token_tracker,
+            type="MCTS Simulate",
+        )
+
+        pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res[0])
+        if not match:
+            error_str += "No valid Python code block found in LLM response.\n"
+            config.logger.warning(f"[simulate/pipeline] No code block (trial {trial})")
+            continue
+
+        script = match.group(1).strip()
+        response = execute_python(script)
+        error_str += response + "\n"
+
+        config.logger.info(f"[simulate/pipeline] Trial {trial}: execute_python='{response}'")
+
+        if response == "Success":
+            break
+    else:
+        config.logger.warning(
+            f"[simulate/pipeline] Exceeded {_MAX_CODE_TRIALS} trials. "
+            f"Last response: '{response}'"
+        )
+
+    # Parse the $PLAN$...$END_PLAN$ block from the last LLM response.
+    full_history: List[str] = []
+    if res:
+        plan_match = re.search(r"\$PLAN\$(.*?)\$END_PLAN\$", res[0], re.DOTALL)
+        if plan_match:
+            full_history = [
+                line.strip()
+                for line in plan_match.group(1).strip().splitlines()
+                if line.strip()
+            ]
+            config.logger.info(f"[simulate/pipeline] Parsed complete plan: {full_history}")
+        else:
+            config.logger.warning(
+                f"[simulate/pipeline] No $PLAN$ block found in LLM response (iter {state['iteration']})"
+            )
+
+    return script, response, full_history
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -352,120 +796,30 @@ def next_operator_step(state: MCTSGraphState) -> dict:
 
 def simulate(state: MCTSGraphState) -> dict:
     """
-    SIMULATION: given the expanded node's operation history, ask the LLM to
-    generate a COMPLETE Python script that implements the full transformation
-    pipeline, then execute it.
+    SIMULATION: dispatch to operator-level or pipeline-level simulation based
+    on state["simulation_mode"] ("operator" | "pipeline", default "pipeline").
 
-    Why this is correct
-    -------------------
-    After expansion, rollout_history contains the one newly-added operator
-    (e.g. ["JOIN : [order_id = order_id]"]).  The python_script prompt hands
-    this partial plan to the LLM and asks it to produce working Python code
-    that achieves the target schema — the LLM decides what additional steps
-    are needed inside the code.  This is the pipeline-completion step.
+    Operator-level  — iterates get_next_operator + configure prompts one step
+                      at a time (mirrors multi_step.py), then generates code.
+    Pipeline-level  — original behaviour: one mcts_simulate LLM call completes
+                      the whole pipeline + code in a single prompt.
 
-    Retries up to _MAX_CODE_TRIALS times, feeding execution errors back into
-    the prompt so the LLM can self-correct.
-
-    Updates: current_script, current_response.
+    Updates: current_script, current_response, current_full_history.
     """
     config = state["config"]
-    rollout_history: List[str] = state["rollout_history"]  # expanded node's history
-    target_file_location: str = state["target_file_location"]
+    sim_mode = state.get("simulation_mode", "pipeline")
 
     config.logger.info(
         f"[simulate] Iter {state['iteration']}: "
-        f"completing pipeline from history={rollout_history}"
+        f"mode={sim_mode}, history={state['rollout_history']}"
     )
 
-    error_str = ""
-    script = ""
-    response = ""
-
-    for trial in range(_MAX_CODE_TRIALS):
-        try:
-            prompt = get_prompt(
-                prompt_type="mcts_simulate",
-                max_tokens=config.token_limit,
-                model=config.model,
-                allowed_operation_list=OPERATOR_TYPES,
-                operation_history=rollout_history,
-                target_data_name=config.target_data_name,
-                target_data_schema=config.target_data_schema,
-                target_data_schema_with_types=config.target_data_schema_with_types,
-                target_samples=config.target_samples,
-                file_count=config.file_count,
-                source_data_name_list=config.source_data_name_list,
-                source_data_schema_list=config.source_data_schema_list,
-                directory=config.directory,
-                len_idx_target_idx=config.len_idx_target_idx,
-                target_perc=config.target_perc,
-                is_perc=config.is_perc,
-                target_length=config.target_length,
-                source_length=config.source_length,
-                error_string=error_str,
-                csv_save_path=target_file_location,
-                hint_source=config.hint_source,
-            )
-        except Exception:
-            config.logger.warning(
-                f"[simulate] get_prompt failed (trial {trial}): {traceback.format_exc()}"
-            )
-            break
-
-        res = query_gpt(
-            config.llm_client,
-            config.model,
-            [prompt],
-            config.q_count,
-            config.logger,
-            config.cost_summary,
-            config.token_tracker,
-            type="MCTS Simulate",
-        )
-
-        # Extract Python code block
-        pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
-        match = pattern.search(res[0])
-        if not match:
-            error_str += "No valid Python code block found in LLM response.\n"
-            config.logger.warning(f"[simulate] No code block (trial {trial})")
-            continue
-
-        script = match.group(1).strip()
-        response = execute_python(script)
-        error_str += response + "\n"
-
-        config.logger.info(f"[simulate] Trial {trial}: execute_python='{response}'")
-
-        if response == "Success":
-            break
+    if sim_mode == "operator":
+        script, response, full_history = _simulate_operator_level(state)
     else:
-        config.logger.warning(
-            f"[simulate] Exceeded {_MAX_CODE_TRIALS} trials. "
-            f"Last response: '{response}'"
-        )
+        script, response, full_history = _simulate_pipeline_level(state)
 
-    _trials = trial + 1  # trial retains last loop value; range(5) guarantees it is set
     _result = "Success" if response == "Success" else "FAILED"
-
-    # Parse the $PLAN$...$END_PLAN$ block from the last LLM response.
-    # This is the LLM's complete operation sequence (partial history + any extra steps
-    # it reasoned about + NO_MORE_OPERATION). Fall back to [] if absent or unparseable.
-    full_history: List[str] = []
-    if res:
-        plan_match = re.search(r"\$PLAN\$(.*?)\$END_PLAN\$", res[0], re.DOTALL)
-        if plan_match:
-            full_history = [
-                line.strip()
-                for line in plan_match.group(1).strip().splitlines()
-                if line.strip()
-            ]
-            config.logger.info(f"[simulate] Parsed complete plan: {full_history}")
-        else:
-            config.logger.warning(
-                f"[simulate] No $PLAN$ block found in LLM response (iter {state['iteration']})"
-            )
 
     return {
         "current_script": script,
@@ -473,7 +827,7 @@ def simulate(state: MCTSGraphState) -> dict:
         "current_full_history": full_history,
         "log_messages": state["log_messages"]
         + [
-            f"[SIMULATE] iter={state['iteration']} trials={_trials} result={_result} "
+            f"[SIMULATE] iter={state['iteration']} mode={sim_mode} result={_result} "
             f"plan_steps={len(full_history)}"
         ],
     }
