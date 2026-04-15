@@ -1,0 +1,100 @@
+{
+  "case": "1_78",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6615000000000001,
+        "cost": 0.0016636,
+        "latency": 4.536011457443237,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product, Price}.\nKeys present in ground truth but absent in generated: {Product}.\nSpurious keys in generated not present in ground truth: {Product, Price}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Product'] \u2192 Price.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 27386\nExamples:\n    Product  Price\nP0005920143  990.0\nP0003594673  499.0\nP0006231492 1630.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_78/test_0.csv\"\n]\n\n# Target schema: ['Product': string, 'Price': float]\n\n# Load all source tables\n# According to the prompt, there is only one source table (Source1_78_0)\n# with schema: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n# Target schema only needs 'Product' and 'Price' columns.\n\n# Read source data\ndf_source0 = pd.read_csv(source_files[0], index_col=0)\n\n# Extract only the columns needed for the target table\ndf_target = df_source0[['Product', 'Price']].copy()\n\n# Ensure correct data types as per target schema\ndf_target['Product'] = df_target['Product'].astype(str)\ndf_target['Price'] = df_target['Price'].astype(float)\n\n# Write the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Product,Price\nP0006944501,1069.0\nP0006018073,1680.0\nP0002267974,285.0\nP0016144236,550.0\nP0014516980122,249.0\nP0004134266,1780.0\nP0012662252,488.0\nP0004401294,276.0\nP0000319874,2199.0\nP0006944501,1069.0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0027320000000000005,
+          "latency": 8.618027925491333,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 10980\nExamples:\n       Product  Price\nP0002778070002  249.0\n   P0000768040 1680.0\n   P0009913363 1691.0",
+          "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_78/test_0.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Product': string, 'Price': float]\n# The source table has these columns: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n\n# According to the FD, Product is the key and determines Price.\n# The failed script output all rows without aggregation, resulting in duplicates for Product.\n# The target has fewer rows (10980) than source (27386), so aggregation is needed.\n\n# We group by 'Product' (the key) and aggregate 'Price' by average (mean).\n# Price is float in target, and source Price is float as well.\n# Quantity is not in target, so ignore it.\n# We do not have multiple source tables, so no join or union needed.\n\nresult = df0.groupby('Product', as_index=False).agg({'Price': 'mean'})\n\n# Ensure correct data types as per target schema\nresult['Product'] = result['Product'].astype(str)\nresult['Price'] = result['Price'].astype(float)\n\n# Write the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource_critique_history.csv\"\nresult.to_csv(output_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0021040000000000004,
+        "latency": 4.574295282363892,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 10980\nExamples:\n       Product  Price\n   P0000440915  200.0\n   P0011803470  699.0\nP0009906650014 1699.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_78/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Product': string, 'Price': float]\n# Source schema: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n\n# According to the target and source data:\n# - 'Product' is the key column.\n# - 'Price' is the value column.\n# The source has multiple rows per Product, so aggregate Price by mean.\n\n# Group by 'Product' and aggregate 'Price' by mean\nresult = df0.groupby('Product', as_index=False).agg({'Price': 'mean'})\n\n# Ensure correct data types as per target schema\nresult['Product'] = result['Product'].astype(str)\nresult['Price'] = result['Price'].astype(float)\n\n# Write the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "Product,Price\nP0000005913,1590.0\nP0000006591,999.0\nP0000011163,790.0\nP0000011421,349.0\nP0000011524,3049.0\nP0000013764,624.0\nP0000017021,392.0\nP0000017345,4990.0\nP0000019250,6300.0\nP0000023122,8990.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024660000000000003,
+        "latency": 4.279293537139893,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 10980\nExamples:\n       Product  Price\nP0014553430021 1170.0\n   P0014171242  369.0\n   P0018365093 1604.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_78/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Product': string, 'Price': float]\n# Source schema: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n\n# According to the target and source data:\n# - 'Product' is the key column.\n# - 'Price' is the value column.\n# The source has multiple rows per Product, so aggregate Price by mean.\n\n# Group by 'Product' and aggregate 'Price' by mean\nresult = df0.groupby('Product', as_index=False).agg({'Price': 'mean'})\n\n# Ensure correct data types as per target schema\nresult['Product'] = result['Product'].astype(str)\nresult['Price'] = result['Price'].astype(float)\n\n# Write the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "Product,Price\nP0000005913,1590.0\nP0000006591,999.0\nP0000011163,790.0\nP0000011421,349.0\nP0000011524,3049.0\nP0000013764,624.0\nP0000017021,392.0\nP0000017345,4990.0\nP0000019250,6300.0\nP0000023122,8990.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028284,
+        "latency": 5.432906866073608,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 10980\nExamples:\n       Product  Price\nP0023537920000  638.0\n   P0000760476  599.0\n   P0018928103  599.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_78/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Product': string, 'Price': float]\n# Source schema: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n\n# According to the target and source data:\n# - 'Product' is the key column.\n# - 'Price' is the value column.\n# The source has multiple rows per Product, so aggregate Price by mean.\n\n# Group by 'Product' and aggregate 'Price' by mean\nresult = df0.groupby('Product', as_index=False).agg({'Price': 'mean'})\n\n# Ensure correct data types as per target schema\nresult['Product'] = result['Product'].astype(str)\nresult['Price'] = result['Price'].astype(float)\n\n# Write the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "Product,Price\nP0000005913,1590.0\nP0000006591,999.0\nP0000011163,790.0\nP0000011421,349.0\nP0000011524,3049.0\nP0000013764,624.0\nP0000017021,392.0\nP0000017345,4990.0\nP0000019250,6300.0\nP0000023122,8990.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032332000000000003,
+        "latency": 5.6159327030181885,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 10980\nExamples:\n    Product  Price\nP0004050465  399.0\nP0022820103  222.0\nP0022672893  299.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_78/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Product': string, 'Price': float]\n# Source schema: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n\n# Transformation plan:\n# - The target key is 'Product'.\n# - The target value is 'Price' (float).\n# - Source has multiple rows per Product, so aggregate Price by mean.\n# - Ignore other columns not in target.\n# - Ensure data types match target schema.\n# - Write the result to the specified output path.\n\n# Group by 'Product' and aggregate 'Price' by mean\nresult = df0.groupby('Product', as_index=False).agg({'Price': 'mean'})\n\n# Ensure correct data types as per target schema\nresult['Product'] = result['Product'].astype(str)\nresult['Price'] = result['Price'].astype(float)\n\n# Write the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "Product,Price\nP0000005913,1590.0\nP0000006591,999.0\nP0000011163,790.0\nP0000011421,349.0\nP0000011524,3049.0\nP0000013764,624.0\nP0000017021,392.0\nP0000017345,4990.0\nP0000019250,6300.0\nP0000023122,8990.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0036124000000000004,
+        "latency": 4.297417163848877,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 10980\nExamples:\n       Product  Price\nP0014623050024 1580.0\n   P0012118433 1385.0\n   P0005648101 2451.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_78/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Product': string, 'Price': float]\n# Source schema: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n\n# Transformation plan:\n# - The target key is 'Product'.\n# - The target value is 'Price' (float).\n# - Source has multiple rows per Product, so aggregate Price by mean.\n# - Ignore other columns not in target.\n# - Ensure data types match target schema.\n# - Write the result to the specified output path.\n\n# Group by 'Product' and aggregate 'Price' by mean\nresult = df0.groupby('Product', as_index=False).agg({'Price': 'mean'})\n\n# Ensure correct data types as per target schema\nresult['Product'] = result['Product'].astype(str)\nresult['Price'] = result['Price'].astype(float)\n\n# Write the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "Product,Price\nP0000005913,1590.0\nP0000006591,999.0\nP0000011163,790.0\nP0000011421,349.0\nP0000011524,3049.0\nP0000013764,624.0\nP0000017021,392.0\nP0000017345,4990.0\nP0000019250,6300.0\nP0000023122,8990.0\n"
+      },
+      "critiques": []
+    }
+  ]
+}

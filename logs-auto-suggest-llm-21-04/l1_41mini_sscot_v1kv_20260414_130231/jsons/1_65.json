@@ -1,0 +1,19 @@
+{
+  "case": "1_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.0012928000000000002,
+        "latency": 5.217703342437744,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 0.915 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year          0\n 1969   28000000\n 1998 3586500000\n 2015 6340500003",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n    \n    # Load source data\n    df_source0 = pd.read_csv(source0_path)\n    \n    # Inspect loaded data (optional, can be commented out)\n    # print(df_source0.head())\n    \n    # Transformation plan:\n    # Target schema: ['year': integer, '0': integer]\n    # From source, we have 'year' column directly.\n    # The target column '0' seems to be an aggregated integer value.\n    # Based on the example target rows, the '0' column likely represents a count of movies per year.\n    # So we will group by 'year' and count the number of rows (movies) per year.\n    \n    # Group by 'year' and count the number of movies (rows) per year\n    df_target = df_source0.groupby('year').size().reset_index(name='0')\n    \n    # Ensure 'year' and '0' columns are integer type\n    df_target['year'] = df_target['year'].astype(int)\n    df_target['0'] = df_target['0'].astype(int)\n    \n    # Sort by year ascending (optional, for neatness)\n    df_target = df_target.sort_values('year').reset_index(drop=True)\n    \n    # Output file path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_cot.csv\"\n    \n    # Save the transformed target table to CSV\n    df_target.to_csv(target_path, index=False)\n    \nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

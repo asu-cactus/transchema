@@ -1,0 +1,89 @@
+{
+  "case": "1_68",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.001728,
+        "latency": 6.552670001983643,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV3\n IGHV3\n IGHV3",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_68/test_0.csv\"\n\n# Load source tables\n# Note: index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['V_CALL']\n# - The target examples show values like \"IGHV3\", \"IGHV4\", etc.\n# - Source values are like \"IGHV1-8*01\", \"IGHV3-21*01\", \"IGHV3-23*01\"\n# - We need to extract the V_GENE part from V_CALL.\n#   The V_GENE corresponds to the substring before the first '-' in V_CALL.\n# - Since there is only one source table, no union or join is needed.\n# - After extraction, rename the column to 'V_GENE' to match target schema.\n# - Write the result to the specified output path.\n\n# Extract V_GENE from V_CALL by splitting on '-' and taking the first part\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('-', n=1).str[0]\n\n# Select only the V_GENE column as per target schema\ndf_target = df_source0[['V_GENE']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1\nIGHV3\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV4\nIGHV1\nIGHV1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0020959999999999998,
+        "latency": 4.6056740283966064,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV3\n IGHV3\n IGHV3",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_68/test_0.csv\"\n\n# Load source tables\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['V_CALL']\n# - Source values example: \"IGHV1-8*01\", \"IGHV3-21*01\", \"IGHV3-23*01\"\n# - Extract the V_GENE part from V_CALL by taking substring before the first '-'\n# - Rename the extracted column to 'V_GENE' to match target schema\n# - No union or join needed since only one source table\n# - Write the transformed data to the specified output path\n\n# Extract V_GENE from V_CALL by splitting on '-' and taking the first part\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('-', n=1).str[0]\n\n# Select only the V_GENE column as per target schema\ndf_target = df_source0[['V_GENE']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1\nIGHV3\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV4\nIGHV1\nIGHV1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.002484,
+        "latency": 3.7731895446777344,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV1\n IGHV3\n IGHV3",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_68/test_0.csv\"\n\n# Load source table\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['V_CALL']\n# - Source values example: \"IGHV1-8*01\", \"IGHV3-21*01\", \"IGHV3-23*01\"\n# - Extract the V_GENE part from V_CALL by taking substring before the first '-'\n# - Rename the extracted column to 'V_GENE' to match target schema\n# - Only one source table, so no union or join needed\n# - Write the transformed data to the specified output path\n\n# Extract V_GENE from V_CALL by splitting on '-' and taking the first part\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('-', n=1).str[0]\n\n# Select only the V_GENE column as per target schema\ndf_target = df_source0[['V_GENE']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1\nIGHV3\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV4\nIGHV1\nIGHV1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0028704000000000004,
+        "latency": 3.746520519256592,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV3\n IGHV3\n IGHV3",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_68/test_0.csv\"\n\n# Load source table\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['V_CALL']\n# - Source values example: \"IGHV1-8*01\", \"IGHV3-21*01\", \"IGHV3-23*01\"\n# - Extract the V_GENE part from V_CALL by taking substring before the first '-'\n# - Rename the extracted column to 'V_GENE' to match target schema\n# - Only one source table, so no union or join needed\n# - Write the transformed data to the specified output path\n\n# Extract V_GENE from V_CALL by splitting on '-' and taking the first part\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('-', n=1).str[0]\n\n# Select only the V_GENE column as per target schema\ndf_target = df_source0[['V_GENE']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1\nIGHV3\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV4\nIGHV1\nIGHV1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0032584,
+        "latency": 4.001899480819702,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV3\n IGHV1\n IGHV3",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_68/test_0.csv\"\n\n# Load source table\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['V_CALL']\n# - Source values example: \"IGHV1-8*01\", \"IGHV3-21*01\", \"IGHV3-23*01\"\n# - Extract the V_GENE part from V_CALL by taking substring before the first '-'\n# - Rename the extracted column to 'V_GENE' to match target schema\n# - Only one source table, so no union or join needed\n# - Write the transformed data to the specified output path\n\n# Extract V_GENE from V_CALL by splitting on '-' and taking the first part\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('-', n=1).str[0]\n\n# Select only the V_GENE column as per target schema\ndf_target = df_source0[['V_GENE']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1\nIGHV3\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV4\nIGHV1\nIGHV1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0036456000000000006,
+        "latency": 4.173694133758545,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV4\n IGHV4\n IGHV1",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_68/test_0.csv\"\n\n# Load source table\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['V_CALL']\n# - Source values example: \"IGHV1-8*01\", \"IGHV3-21*01\", \"IGHV3-23*01\"\n# - Extract the V_GENE part from V_CALL by taking substring before the first '-'\n# - Rename the extracted column to 'V_GENE' to match target schema\n# - Only one source table, so no union or join needed\n# - Write the transformed data to the specified output path\n\n# Extract V_GENE from V_CALL by splitting on '-' and taking the first part\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('-', n=1).str[0]\n\n# Select only the V_GENE column as per target schema\ndf_target = df_source0[['V_GENE']]\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1\nIGHV3\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV4\nIGHV1\nIGHV1\n"
+      },
+      "critiques": []
+    }
+  ]
+}

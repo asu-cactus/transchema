@@ -1,0 +1,155 @@
+{
+  "case": "1_16",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.00415,
+        "latency": 15.005036115646362,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}.\nKeys present in ground truth but absent in generated: {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nMissing FDs from ground truth: ['CUSTOMERNAME'] \u2192 ORDERNUMBER.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 1411\nExamples:\n              CUSTOMERNAME  ORDERNUMBER\nCollectables For Less Inc.        10274\n  Corporate Gift Ideas Co.        10159\n                       NaN            0",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\"\n    ]\n\n    # Columns needed for the target table\n    target_columns = ['CUSTOMERNAME', 'ORDERNUMBER']\n\n    # List to hold dataframes from each source\n    dfs = []\n\n    for file_path in source_files:\n        # Read CSV with index_col=0 to ignore the first numerical index column\n        df = pd.read_csv(file_path, index_col=0)\n\n        # Select only the columns needed for the target\n        # Defensive: check if columns exist in source\n        missing_cols = [col for col in target_columns if col not in df.columns]\n        if missing_cols:\n            raise ValueError(f\"Missing columns {missing_cols} in source file {file_path}\")\n\n        # Extract relevant columns\n        df_sub = df[target_columns].copy()\n\n        # Convert ORDERNUMBER to integer (some may be float or string)\n        # First, handle possible float or string with commas or spaces\n        # Strip spaces and commas if any, then convert\n        def safe_int_convert(x):\n            if pd.isna(x):\n                return None\n            if isinstance(x, int):\n                return x\n            if isinstance(x, float):\n                return int(x)\n            if isinstance(x, str):\n                # Remove commas and spaces\n                x_clean = x.replace(',', '').strip()\n                return int(float(x_clean))\n            return int(x)\n\n        df_sub['ORDERNUMBER'] = df_sub['ORDERNUMBER'].apply(safe_int_convert)\n\n        # Ensure CUSTOMERNAME is string and strip spaces\n        df_sub['CUSTOMERNAME'] = df_sub['CUSTOMERNAME'].astype(str).str.strip()\n\n        dfs.append(df_sub)\n\n    # Since only one source table, no union needed, just use it directly\n    # If multiple sources existed with same schema, we would concat here\n\n    # Concatenate all dataframes (union) if multiple sources\n    result_df = pd.concat(dfs, ignore_index=True)\n\n    # Optional: Remove duplicates if any (not specified, but safe)\n    result_df = result_df.drop_duplicates()\n\n    # Reorder columns to match target schema exactly\n    result_df = result_df[target_columns]\n\n    # Write to target CSV file without index\n    result_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nLand of Toys Inc.,10107\nReims Collectables,10121\nLyon Souveniers,10134\nToys4GrownUps.com,10145\nCorporate Gift Ideas Co.,10159\nTechnics Stores Inc.,10168\n,0\n,0\nMini Wheels Co.,10201\n,0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 0.8446000000000001,
+          "cost": 0.0035168000000000005,
+          "latency": 11.85173487663269,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n            CUSTOMERNAME  ORDERNUMBER\n    Technics Stores Inc.           15\nCorporate Gift Ideas Co.           28\n Tekni Collectables Inc.            6",
+          "code": "import pandas as pd\n\ndef main():\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\", index_col=0)\n\n    # The target schema is ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # According to the FD, CUSTOMERNAME is the key, and ORDERNUMBER depends on it.\n    # The target has 51 unique CUSTOMERNAMEs, so we need to group by CUSTOMERNAME and aggregate ORDERNUMBER.\n\n    # Group by CUSTOMERNAME and count distinct ORDERNUMBER per customer\n    result = source1.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': 'nunique'})\n\n    # Sort by CUSTOMERNAME to have consistent order (optional)\n    result = result.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8446000000000001,
+        "cost": 0.0023788,
+        "latency": 3.4693167209625244,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}.\nKeys present in ground truth but absent in generated: {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nMissing FDs from ground truth: ['CUSTOMERNAME'] \u2192 ORDERNUMBER.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 1411\nExamples:\n         CUSTOMERNAME  ORDERNUMBER\n                  NaN            0\n        Rovelli Gifts        10106\nSalzburg Collectables        10419",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path as given\n    source_path = \"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\"\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\"\n\n    # Load the source table, ignoring the first numerical index column\n    source = pd.read_csv(source_path, index_col=0)\n\n    # Target schema: ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # From the source, CUSTOMERNAME is the key, ORDERNUMBER is the value to aggregate.\n    # The target has 51 unique CUSTOMERNAMEs, so we count distinct ORDERNUMBER per CUSTOMERNAME.\n\n    # Group by CUSTOMERNAME and count distinct ORDERNUMBER\n    result = source.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': 'nunique'})\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    result = result.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write the result to the target CSV without index\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nLand of Toys Inc.,10107\nReims Collectables,10121\nLyon Souveniers,10134\nToys4GrownUps.com,10145\nCorporate Gift Ideas Co.,10159\nTechnics Stores Inc.,10168\n,0\n,0\nMini Wheels Co.,10201\n,0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 0.8446000000000001,
+          "cost": 0.0049088000000000005,
+          "latency": 18.847723722457886,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n              CUSTOMERNAME  ORDERNUMBER\n          Handji Gifts& Co           17\n     Diecast Classics Inc.           19\nCambridge Collectables Co.            6",
+          "code": "import pandas as pd\n\ndef main():\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\", index_col=0)\n\n    # Group by CUSTOMERNAME and count distinct ORDERNUMBER per customer\n    result = source1.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': pd.Series.nunique})\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    result = result.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8446000000000001,
+        "cost": 0.0027359999999999997,
+        "latency": 4.067731857299805,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}.\nKeys present in ground truth but absent in generated: {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nMissing FDs from ground truth: ['CUSTOMERNAME'] \u2192 ORDERNUMBER.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 1411\nExamples:\n   CUSTOMERNAME  ORDERNUMBER\nCruz & Sons Co.        10108\n            NaN            0\n            NaN            0",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\"\n\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source0 = pd.read_csv(source0_path, index_col=0)\n\n    # Target schema: ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # From the source, CUSTOMERNAME is the key, and ORDERNUMBER is the order identifier.\n    # The target has 51 unique CUSTOMERNAMEs, so we need to count distinct ORDERNUMBER per CUSTOMERNAME.\n\n    # Group by CUSTOMERNAME and count distinct ORDERNUMBER per customer\n    result = source0.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': pd.Series.nunique})\n\n    # Rename ORDERNUMBER column to integer type explicitly (nunique returns int64 by default)\n    result['ORDERNUMBER'] = result['ORDERNUMBER'].astype(int)\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    result = result.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nLand of Toys Inc.,10107\nReims Collectables,10121\nLyon Souveniers,10134\nToys4GrownUps.com,10145\nCorporate Gift Ideas Co.,10159\nTechnics Stores Inc.,10168\n,0\n,0\nMini Wheels Co.,10201\n,0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 0.7171,
+          "cost": 0.0053588,
+          "latency": 21.964975118637085,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n         CUSTOMERNAME  ORDERNUMBER\nDiecast Classics Inc.           19\n      Vitachrome Inc.           13\n    Toys4GrownUps.com           14",
+          "code": "import pandas as pd\n\ndef main():\n    # Load source table, ignoring the first numerical index column\n    source1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\", index_col=0)\n\n    # Extract unique CUSTOMERNAMEs\n    unique_customers = source1[['CUSTOMERNAME']].drop_duplicates().reset_index(drop=True)\n\n    # Assign ORDERNUMBER as sequential integer starting from 1\n    unique_customers['ORDERNUMBER'] = unique_customers.index + 1\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    unique_customers = unique_customers.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    unique_customers.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8446000000000001,
+        "cost": 0.0030904,
+        "latency": 6.879128932952881,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}.\nKeys present in ground truth but absent in generated: {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nMissing FDs from ground truth: ['CUSTOMERNAME'] \u2192 ORDERNUMBER.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 1411\nExamples:\n                CUSTOMERNAME  ORDERNUMBER\n                         NaN            0\n     Tekni Collectables Inc.        10251\nMini Gifts Distributors Ltd.        10271",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\"\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\"\n\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # From the source, CUSTOMERNAME is the key, and ORDERNUMBER is an integer.\n    # The target has 51 unique CUSTOMERNAMEs.\n    # We need to produce one row per CUSTOMERNAME with ORDERNUMBER as the count of distinct ORDERNUMBERs per customer.\n\n    # Group by CUSTOMERNAME and count distinct ORDERNUMBER per customer\n    result = source0.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': pd.Series.nunique})\n\n    # Rename columns to match exactly target schema (already matched)\n    # Ensure ORDERNUMBER is integer type\n    result['ORDERNUMBER'] = result['ORDERNUMBER'].astype(int)\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    result = result.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nLand of Toys Inc.,10107\nReims Collectables,10121\nLyon Souveniers,10134\nToys4GrownUps.com,10145\nCorporate Gift Ideas Co.,10159\nTechnics Stores Inc.,10168\n,0\n,0\nMini Wheels Co.,10201\n,0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 0.7171,
+          "cost": 0.0043548,
+          "latency": 19.802260637283325,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n               CUSTOMERNAME  ORDERNUMBER\n            Mini Wheels Co.           16\n            Lyon Souveniers           13\nWest Coast Collectables Co.            9",
+          "code": "import pandas as pd\n\ndef main():\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\", index_col=0)\n\n    # Extract unique CUSTOMERNAMEs\n    unique_customers = source1[['CUSTOMERNAME']].drop_duplicates().reset_index(drop=True)\n\n    # Assign ORDERNUMBER as sequential integer starting from 1\n    unique_customers['ORDERNUMBER'] = unique_customers.index + 1\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    unique_customers = unique_customers.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    unique_customers.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7171,
+        "cost": 0.0034988000000000003,
+        "latency": 10.783581018447876,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}.\nKeys present in ground truth but absent in generated: {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nMissing FDs from ground truth: ['CUSTOMERNAME'] \u2192 ORDERNUMBER.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 1411\nExamples:\n            CUSTOMERNAME  ORDERNUMBER\n                     NaN            0\nDanish Wholesale Imports        10238\n                     NaN            0",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\"\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\"\n\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # From the source, CUSTOMERNAME is the key, and ORDERNUMBER is an integer column.\n    # The target has 51 unique CUSTOMERNAMEs.\n    # We need to produce one row per CUSTOMERNAME with an ORDERNUMBER assigned.\n    # Since ORDERNUMBER in source is not unique per CUSTOMERNAME (multiple orders per customer),\n    # and target examples show ORDERNUMBER as an integer that looks like a count or rank,\n    # the best approach is to assign ORDERNUMBER as a sequential integer per unique CUSTOMERNAME,\n    # sorted by CUSTOMERNAME to have consistent ordering.\n\n    # Extract unique CUSTOMERNAMEs\n    unique_customers = source0[['CUSTOMERNAME']].drop_duplicates().reset_index(drop=True)\n\n    # Assign ORDERNUMBER as sequential integer starting from 1\n    unique_customers['ORDERNUMBER'] = unique_customers.index + 1\n\n    # Sort by CUSTOMERNAME for consistent output (optional but recommended)\n    unique_customers = unique_customers.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    unique_customers.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nLand of Toys Inc.,10107\nReims Collectables,10121\nLyon Souveniers,10134\nToys4GrownUps.com,10145\nCorporate Gift Ideas Co.,10159\nTechnics Stores Inc.,10168\n,0\n,0\nMini Wheels Co.,10201\n,0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 0.7171,
+          "cost": 0.0043812,
+          "latency": 15.017834901809692,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n        CUSTOMERNAME  ORDERNUMBER\n     Microscale Inc.            4\nTechnics Stores Inc.           15\n    FunGiftIdeas.com           14",
+          "code": "import pandas as pd\n\ndef main():\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\", index_col=0)\n\n    # Extract unique CUSTOMERNAMEs\n    unique_customers = source1[['CUSTOMERNAME']].drop_duplicates().reset_index(drop=True)\n\n    # Assign ORDERNUMBER as sequential integer starting from 1\n    unique_customers['ORDERNUMBER'] = unique_customers.index + 1\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    unique_customers = unique_customers.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    unique_customers.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7171,
+        "cost": 0.0037560000000000002,
+        "latency": 5.109994649887085,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}.\nKeys present in ground truth but absent in generated: {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nMissing FDs from ground truth: ['CUSTOMERNAME'] \u2192 ORDERNUMBER.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 1411\nExamples:\n           CUSTOMERNAME  ORDERNUMBER\nScandinavian Gift Ideas        10291\n     Signal Gift Stores        10278\n                    NaN            0",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\"\n\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # From the source, CUSTOMERNAME is present and ORDERNUMBER is present.\n    # The target has 51 unique CUSTOMERNAMEs, so we need to assign ORDERNUMBER as a unique integer per CUSTOMERNAME.\n    # The target examples show ORDERNUMBER as a unique integer per CUSTOMERNAME, not the original ORDERNUMBER from source.\n    # So we extract unique CUSTOMERNAMEs and assign ORDERNUMBER as a sequential integer starting from 1.\n\n    # Extract unique CUSTOMERNAMEs\n    unique_customers = source0[['CUSTOMERNAME']].drop_duplicates().reset_index(drop=True)\n\n    # Assign ORDERNUMBER as sequential integer starting from 1\n    unique_customers['ORDERNUMBER'] = unique_customers.index + 1\n\n    # Sort by CUSTOMERNAME for consistent output (optional)\n    unique_customers = unique_customers.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Write to target CSV file without index\n    unique_customers.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nLand of Toys Inc.,10107\nReims Collectables,10121\nLyon Souveniers,10134\nToys4GrownUps.com,10145\nCorporate Gift Ideas Co.,10159\nTechnics Stores Inc.,10168\n,0\n,0\nMini Wheels Co.,10201\n,0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 0.7171,
+          "cost": 0.0045488,
+          "latency": 10.581301927566528,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n      CUSTOMERNAME  ORDERNUMBER\nMuscle Machine Inc           25\n     Mini Classics            8\n   Gift Depot Inc.           13",
+          "code": "import pandas as pd\n\ndef main():\n    # Load source table with index_col=0 to ignore the first numerical index column\n    source1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/test_0.csv\", index_col=0)\n\n    # Extract unique CUSTOMERNAMEs\n    unique_customers = source1[['CUSTOMERNAME']].drop_duplicates().reset_index(drop=True)\n\n    # Sort by CUSTOMERNAME for consistent output\n    unique_customers = unique_customers.sort_values('CUSTOMERNAME').reset_index(drop=True)\n\n    # Assign ORDERNUMBER as sequential integer starting from 1\n    unique_customers['ORDERNUMBER'] = unique_customers.index + 1\n\n    # Write to target CSV file without index\n    unique_customers.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    }
+  ]
+}

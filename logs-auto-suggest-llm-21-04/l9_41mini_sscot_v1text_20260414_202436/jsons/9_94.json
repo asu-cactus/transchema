@@ -1,0 +1,19 @@
+{
+  "case": "9_94",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.002076,
+        "latency": 7.6884925365448,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {admit, gre, gpa}.\nGenerated table candidate keys: {admit, gre, gpa}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['admit', 'gre', 'gpa', 'prestige']\nNumber of Tuples: 579\nExamples:\n admit  gre  gpa  prestige\n     0  340 2.90         1\n     0  540 3.20         1\n     1  600 3.89         1",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_1.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_2.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_3.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_4.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_5.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_6.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_7.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_8.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_94/test_9.csv\"\n    ]\n\n    # Target schema columns and types\n    target_columns = ['admit', 'gre', 'gpa', 'prestige']\n    target_dtypes = {\n        'admit': int,\n        'gre': int,\n        'gpa': float,\n        'prestige': int\n    }\n\n    # Read all source files into a list of DataFrames\n    dfs = []\n    for file_path in source_files:\n        df = pd.read_csv(file_path)\n        # Ensure columns are exactly as target schema and types\n        df = df[target_columns].copy()\n        df = df.astype(target_dtypes)\n        dfs.append(df)\n\n    # Concatenate all source DataFrames vertically (union)\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Since all sources have the same schema and represent similar data,\n    # the transformation is a union of all source tables.\n    # No additional join or aggregation is required based on the problem statement.\n\n    # Write the combined DataFrame to the target CSV file\n    output_path = \"autopipeline-benchmarks/github-pipelines/length9_94/target_multisource_cot.csv\"\n    combined_df.to_csv(output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

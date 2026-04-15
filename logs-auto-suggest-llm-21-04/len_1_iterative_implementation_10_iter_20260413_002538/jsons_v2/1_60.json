@@ -1,0 +1,89 @@
+{
+  "case": "1_60",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0020184,
+        "latency": 5.16327166557312,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 1\nExamples:\n type  driver_count\nUrban          2149",
+        "code": "import pandas as pd\n\n# Load source table\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_60/test_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform the transformation as per operation history:\n# group_by = [Source1_60_0.type]\n# aggregations = [sum(Source1_60_0.driver_count)]\n\n# Group by 'type' and sum 'driver_count'\ndf_target = df_source0.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure target schema types\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['driver_count'] = df_target['driver_count'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nUrban,2149\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019048000000000001,
+        "latency": 5.064718961715698,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 1\nExamples:\n type  driver_count\nUrban          2149",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_60/test_0.csv\"\n\n# Load source tables\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - The target table schema is ['type': string, 'driver_count': integer].\n# - The source table has columns ['city', 'driver_count', 'type'].\n# - The target example shows aggregation by 'type' summing 'driver_count'.\n# - So, group by 'type' and sum 'driver_count' from the source table.\n\ndf_target = df_source0.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure target schema types\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['driver_count'] = df_target['driver_count'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nUrban,2149\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022496,
+        "latency": 2.8945863246917725,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 1\nExamples:\n type  driver_count\nUrban          2149",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_60/test_0.csv\"\n\n# Load source tables\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['type': string, 'driver_count': integer]\n# - Source schema: ['city', 'driver_count', 'type']\n# - The target example shows aggregation by 'type' summing 'driver_count'.\n# - Since there is only one source table, group by 'type' and sum 'driver_count'.\n\ndf_target = df_source0.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure target schema types\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['driver_count'] = df_target['driver_count'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nUrban,2149\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0025976000000000003,
+        "latency": 2.8570172786712646,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 1\nExamples:\n type  driver_count\nUrban          2149",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_60/test_0.csv\"\n\n# Load source tables\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['type': string, 'driver_count': integer]\n# - Source schema: ['city', 'driver_count', 'type']\n# - The target example shows aggregation by 'type' summing 'driver_count'.\n# - Since there is only one source table, group by 'type' and sum 'driver_count'.\n\ndf_target = df_source0.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure target schema types\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['driver_count'] = df_target['driver_count'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nUrban,2149\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0029456,
+        "latency": 3.178715705871582,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 1\nExamples:\n type  driver_count\nUrban          2149",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_60/test_0.csv\"\n\n# Load source tables\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['type': string, 'driver_count': integer]\n# - Source schema: ['city', 'driver_count', 'type']\n# - The target example shows aggregation by 'type' summing 'driver_count'.\n# - Since there is only one source table, group by 'type' and sum 'driver_count'.\n\ndf_target = df_source0.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure target schema types\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['driver_count'] = df_target['driver_count'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nUrban,2149\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032936000000000003,
+        "latency": 4.549577474594116,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 1\nExamples:\n type  driver_count\nUrban          2149",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_60/test_0.csv\"\n\n# Load source tables\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['type': string, 'driver_count': integer]\n# - Source schema: ['city', 'driver_count', 'type']\n# - The target example shows aggregation by 'type' summing 'driver_count'.\n# - Since there is only one source table, group by 'type' and sum 'driver_count'.\n\ndf_target = df_source0.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure target schema types\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['driver_count'] = df_target['driver_count'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nUrban,2149\n"
+      },
+      "critiques": []
+    }
+  ]
+}

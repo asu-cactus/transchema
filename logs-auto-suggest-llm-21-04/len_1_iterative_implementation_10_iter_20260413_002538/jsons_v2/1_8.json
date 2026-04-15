@@ -1,0 +1,89 @@
+{
+  "case": "1_8",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023976,
+        "latency": 5.5038909912109375,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 16014\nExamples:\n index_track  track_id  dummy\n       26787     73142      1\n       37097   1410035      1\n       38846   2987845      1",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv\"\n\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation: JOIN : [[\"Source1_8_1\", \"Source1_8_0\"], [\"track_id\", \"track_id\"]]\n# Join df_source1 and df_source0 on 'track_id'\ndf_joined = pd.merge(df_source1, df_source0, on=\"track_id\", how=\"inner\")\n\n# Target schema: ['index_track': integer, 'track_id': integer, 'dummy': integer]\n# Ensure columns are in the correct order and types\ndf_target = df_joined[['index_track', 'track_id', 'dummy']].copy()\ndf_target = df_target.astype({'index_track': 'int64', 'track_id': 'int64', 'dummy': 'int64'})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "index_track,track_id,dummy\n1,2359314,1\n11,2621486,1\n12,2621488,1\n14,2621490,1\n18,1835066,1\n19,262205,1\n21,2621503,1\n22,2621504,1\n23,2883647,1\n26,1310789,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0021716,
+        "latency": 3.8188462257385254,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 16014\nExamples:\n index_track  track_id  dummy\n        4037    798895      1\n        4563   3159698      1\n       24488   2950092      1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Join df_source1 and df_source0 on 'track_id'\ndf_joined = pd.merge(df_source1, df_source0, on=\"track_id\", how=\"inner\")\n\n# Select and reorder columns to match target schema: ['index_track', 'track_id', 'dummy']\ndf_target = df_joined[['index_track', 'track_id', 'dummy']].copy()\n\n# Ensure correct data types\ndf_target = df_target.astype({'index_track': 'int64', 'track_id': 'int64', 'dummy': 'int64'})\n\n# Write the result to the target path without the index column\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "index_track,track_id,dummy\n1,2359314,1\n11,2621486,1\n12,2621488,1\n14,2621490,1\n18,1835066,1\n19,262205,1\n21,2621503,1\n22,2621504,1\n23,2883647,1\n26,1310789,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0025592,
+        "latency": 9.83963131904602,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 16014\nExamples:\n index_track  track_id  dummy\n       21127   2154573      1\n       27874   2696913      1\n       28603    601354      1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Join df_source1 and df_source0 on 'track_id'\ndf_joined = pd.merge(df_source1, df_source0, on=\"track_id\", how=\"inner\")\n\n# Select and reorder columns to match target schema: ['index_track', 'track_id', 'dummy']\ndf_target = df_joined[['index_track', 'track_id', 'dummy']].copy()\n\n# Ensure correct data types\ndf_target = df_target.astype({'index_track': 'int64', 'track_id': 'int64', 'dummy': 'int64'})\n\n# Write the result to the target path without the index column\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "index_track,track_id,dummy\n1,2359314,1\n11,2621486,1\n12,2621488,1\n14,2621490,1\n18,1835066,1\n19,262205,1\n21,2621503,1\n22,2621504,1\n23,2883647,1\n26,1310789,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0029856,
+        "latency": 4.410221815109253,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 16014\nExamples:\n index_track  track_id  dummy\n        3575   2108460      1\n        3757   2895281      1\n       38323   3248392      1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)  # columns: ['track_id', 'dummy']\ndf_source1 = pd.read_csv(source1_path, index_col=0)  # columns: ['index_track', 'track_id']\n\n# Join df_source1 and df_source0 on 'track_id'\ndf_joined = pd.merge(df_source1, df_source0, on=\"track_id\", how=\"inner\")\n\n# Select and reorder columns to match target schema: ['index_track', 'track_id', 'dummy']\ndf_target = df_joined[['index_track', 'track_id', 'dummy']].copy()\n\n# Ensure correct data types\ndf_target = df_target.astype({'index_track': 'int64', 'track_id': 'int64', 'dummy': 'int64'})\n\n# Write the result to the target path without the index column\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "index_track,track_id,dummy\n1,2359314,1\n11,2621486,1\n12,2621488,1\n14,2621490,1\n18,1835066,1\n19,262205,1\n21,2621503,1\n22,2621504,1\n23,2883647,1\n26,1310789,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033924,
+        "latency": 7.221444845199585,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 16014\nExamples:\n index_track  track_id  dummy\n        1645    267609      1\n       16044   1616010      1\n        1211   1315029      1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)  # columns: ['track_id', 'dummy']\ndf_source1 = pd.read_csv(source1_path, index_col=0)  # columns: ['index_track', 'track_id']\n\n# Join df_source1 and df_source0 on 'track_id'\ndf_joined = pd.merge(df_source1, df_source0, on=\"track_id\", how=\"inner\")\n\n# Select and reorder columns to match target schema: ['index_track', 'track_id', 'dummy']\ndf_target = df_joined[['index_track', 'track_id', 'dummy']].copy()\n\n# Ensure correct data types\ndf_target = df_target.astype({'index_track': 'int64', 'track_id': 'int64', 'dummy': 'int64'})\n\n# Write the result to the target path without the index column\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "index_track,track_id,dummy\n1,2359314,1\n11,2621486,1\n12,2621488,1\n14,2621490,1\n18,1835066,1\n19,262205,1\n21,2621503,1\n22,2621504,1\n23,2883647,1\n26,1310789,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0038,
+        "latency": 7.10417103767395,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 16014\nExamples:\n index_track  track_id  dummy\n       26789     73150      1\n       32766   2709398      1\n       46156   2218955      1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)  # columns: ['track_id', 'dummy']\ndf_source1 = pd.read_csv(source1_path, index_col=0)  # columns: ['index_track', 'track_id']\n\n# Join df_source1 and df_source0 on 'track_id'\ndf_joined = pd.merge(df_source1, df_source0, on=\"track_id\", how=\"inner\")\n\n# Select and reorder columns to match target schema: ['index_track', 'track_id', 'dummy']\ndf_target = df_joined[['index_track', 'track_id', 'dummy']].copy()\n\n# Ensure correct data types\ndf_target = df_target.astype({'index_track': 'int64', 'track_id': 'int64', 'dummy': 'int64'})\n\n# Write the result to the target path without the index column\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "index_track,track_id,dummy\n1,2359314,1\n11,2621486,1\n12,2621488,1\n14,2621490,1\n18,1835066,1\n19,262205,1\n21,2621503,1\n22,2621504,1\n23,2883647,1\n26,1310789,1\n"
+      },
+      "critiques": []
+    }
+  ]
+}

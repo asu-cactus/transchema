@@ -1,0 +1,100 @@
+{
+  "case": "1_13",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5027,
+        "cost": 0.0017660000000000002,
+        "latency": 7.419132471084595,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.800 + 1.000) / 2 = 0.900 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {tip_pct}.\nKeys present in ground truth but absent in generated: {smoker, sex}.\nFunctional dependency F1: 0.800 (precision=1.000, recall=0.667).\nMissing FDs from ground truth: ['sex', 'smoker'] \u2192 tip_pct.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 122\nExamples:\n   sex smoker  tip_pct\nFemale    Yes 0.279525\nFemale    Yes 0.173913\nFemale     No 0.059447",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_13/test_0.csv\"\n]\n\n# List to hold transformed DataFrames\ndfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Extract only the columns needed for the target schema\n    # Target schema: ['sex': string, 'smoker': string, 'tip_pct': float]\n    # Source schema includes these columns directly, so just select them\n    df_selected = df[['sex', 'smoker', 'tip_pct']].copy()\n    \n    # Ensure correct dtypes as per target schema\n    df_selected['sex'] = df_selected['sex'].astype(str)\n    df_selected['smoker'] = df_selected['smoker'].astype(str)\n    df_selected['tip_pct'] = df_selected['tip_pct'].astype(float)\n    \n    dfs.append(df_selected)\n\n# Since there is only one source table, no union needed beyond this\n# If there were multiple source tables with the same schema, we would concat here\n\n# Concatenate all source DataFrames (union)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target CSV path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource.csv\", index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nFemale,No,0.0594467333725721\nMale,No,0.1605415860735009\nMale,No,0.1665873393622084\nMale,No,0.1397804054054054\nFemale,No,0.1468076453843025\nMale,No,0.1862396204033214\nMale,No,0.2280501710376282\nMale,No,0.1160714285714285\nMale,No,0.1303191489361702\nMale,No,0.2185385656292287\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.002842,
+          "latency": 7.710639238357544,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {sex, smoker}; {tip_pct}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 4\nExamples:\n   sex smoker  tip_pct\n  Male     No 0.162438\n  Male    Yes 0.147373\nFemale    Yes 0.198431",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_13/test_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by the leftmost columns of the target schema that are string and unique in target examples: 'sex' and 'smoker'\n# Aggregate tip_pct by average since tip_pct is float and target values are averages of tip_pct per group\nresult = df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Sort result by sex and smoker to have consistent ordering (optional)\nresult = result.sort_values(by=['sex', 'smoker']).reset_index(drop=True)\n\n# Write the result to the target CSV path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource_critique_history.csv\", index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0020488,
+        "latency": 5.521613597869873,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {sex, smoker}; {tip_pct}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 4\nExamples:\n   sex smoker  tip_pct\nFemale     No 0.154419\n  Male    Yes 0.147373\n  Male     No 0.162438",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_13/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since all source tables have the same schema as the target (at least the relevant columns),\n# we can concatenate (union) them first.\n# Then group by 'sex' and 'smoker' and aggregate tip_pct by mean.\n\n# Concatenate all source dataframes\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'sex' and 'smoker' and aggregate tip_pct by mean\nresult = combined_df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Sort by 'sex' and 'smoker' for consistent ordering (optional)\nresult = result.sort_values(by=['sex', 'smoker']).reset_index(drop=True)\n\n# Write the result to the target CSV path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource.csv\", index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nFemale,No,0.1544187861916472\nFemale,Yes,0.1984313207972099\nMale,No,0.1624379309998999\nMale,Yes,0.1473733910902022\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023936000000000005,
+        "latency": 3.687441349029541,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {sex, smoker}; {tip_pct}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 4\nExamples:\n   sex smoker  tip_pct\nFemale    Yes 0.198431\n  Male     No 0.162438\nFemale     No 0.154419",
+        "code": "import pandas as pd\n\n# List all source file paths as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_13/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one source here, but code supports multiple)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'sex' and 'smoker' and aggregate 'tip_pct' by mean as target expects average tip_pct per group\nresult = combined_df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Sort by 'sex' and 'smoker' for consistent ordering (optional)\nresult = result.sort_values(by=['sex', 'smoker']).reset_index(drop=True)\n\n# Write the result to the target CSV path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource.csv\", index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nFemale,No,0.1544187861916472\nFemale,Yes,0.1984313207972099\nMale,No,0.1624379309998999\nMale,Yes,0.1473733910902022\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027584000000000003,
+        "latency": 3.9412989616394043,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {sex, smoker}; {tip_pct}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 4\nExamples:\n   sex smoker  tip_pct\nFemale     No 0.154419\n  Male     No 0.162438\n  Male    Yes 0.147373",
+        "code": "import pandas as pd\n\n# List all source file paths as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_13/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one source here, but code supports multiple)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'sex' and 'smoker' and aggregate 'tip_pct' by mean as target expects average tip_pct per group\nresult = combined_df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Sort by 'sex' and 'smoker' for consistent ordering (optional)\nresult = result.sort_values(by=['sex', 'smoker']).reset_index(drop=True)\n\n# Write the result to the target CSV path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource.csv\", index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nFemale,No,0.1544187861916472\nFemale,Yes,0.1984313207972099\nMale,No,0.1624379309998999\nMale,Yes,0.1473733910902022\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003124,
+        "latency": 4.3810741901397705,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {sex, smoker}; {tip_pct}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 4\nExamples:\n   sex smoker  tip_pct\nFemale    Yes 0.198431\nFemale     No 0.154419\n  Male    Yes 0.147373",
+        "code": "import pandas as pd\n\n# List all source file paths as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_13/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one source here, but code supports multiple)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'sex' and 'smoker' and aggregate 'tip_pct' by mean as target expects average tip_pct per group\nresult = combined_df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Sort by 'sex' and 'smoker' for consistent ordering (optional)\nresult = result.sort_values(by=['sex', 'smoker']).reset_index(drop=True)\n\n# Write the result to the target CSV path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource.csv\", index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nFemale,No,0.1544187861916472\nFemale,Yes,0.1984313207972099\nMale,No,0.1624379309998999\nMale,Yes,0.1473733910902022\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0034888000000000002,
+        "latency": 4.15938401222229,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {sex, smoker}; {tip_pct}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 4\nExamples:\n   sex smoker  tip_pct\n  Male     No 0.162438\nFemale    Yes 0.198431\n  Male    Yes 0.147373",
+        "code": "import pandas as pd\n\n# List all source file paths as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_13/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one source here, but code supports multiple)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'sex' and 'smoker' and aggregate 'tip_pct' by mean as target expects average tip_pct per group\nresult = combined_df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Sort by 'sex' and 'smoker' for consistent ordering (optional)\nresult = result.sort_values(by=['sex', 'smoker']).reset_index(drop=True)\n\n# Write the result to the target CSV path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource.csv\", index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nFemale,No,0.1544187861916472\nFemale,Yes,0.1984313207972099\nMale,No,0.1624379309998999\nMale,Yes,0.1473733910902022\n"
+      },
+      "critiques": []
+    }
+  ]
+}

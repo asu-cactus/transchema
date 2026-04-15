@@ -1,0 +1,19 @@
+{
+  "case": "4_41",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.00141,
+        "latency": 7.471659183502197,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.857 + 1.000) / 2 = 0.830 (1.0 is perfect).\nGround truth candidate keys: {y}.\nGenerated table candidate keys: {y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.857 (precision=1.000, recall=0.750).\nMissing FDs from ground truth: ['label'] \u2192 x.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['y', 'x', 'label']\nNumber of Tuples: 70\nExamples:\n       y  x  label\n1.929437  3      1\n3.846829  3      1\n1.908535  3      1",
+        "code": "import pandas as pd\n\ndef main():\n    # Define source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length4_41/test_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length4_41/test_1.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length4_41/test_2.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length4_41/test_3.csv\"\n    ]\n\n    # Mapping of original label strings to target integer labels\n    # From the examples, target label is integer 1 for all shown examples.\n    # We have source labels: 'g', 'r', 'purple', 'b'\n    # We will map all these to 1 as the target examples show label=1 only.\n    label_mapping = {\n        'g': 1,\n        'r': 1,\n        'purple': 1,\n        'b': 1\n    }\n\n    # List to hold transformed DataFrames\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Ensure columns are as expected\n        # Source schema: ['x', 'y', 'label']\n        # Target schema: ['y': float, 'x': int, 'label': int]\n\n        # Convert 'x' to integer by rounding or flooring\n        # Since source 'x' is float, but target expects integer\n        # We will round to nearest integer\n        df['x'] = df['x'].round().astype(int)\n\n        # Convert 'y' to float (should already be float)\n        df['y'] = df['y'].astype(float)\n\n        # Map label strings to integers\n        df['label'] = df['label'].map(label_mapping)\n\n        # Drop any rows where label mapping failed (NaN)\n        df = df.dropna(subset=['label'])\n\n        # Convert label to int\n        df['label'] = df['label'].astype(int)\n\n        # Reorder columns to target schema order: ['y', 'x', 'label']\n        df = df[['y', 'x', 'label']]\n\n        transformed_dfs.append(df)\n\n    # Concatenate all transformed dataframes\n    target_df = pd.concat(transformed_dfs, ignore_index=True)\n\n    # Write the result to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length4_41/target_multisource_cot.csv\"\n    target_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

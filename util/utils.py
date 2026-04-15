@@ -129,7 +129,7 @@ def execute_sql(conn, query):
 
 def execute_python(gpt_response):
     try:
-        exec(gpt_response)
+        exec(gpt_response, {"__name__": "__main__"})
         return "Success"
     except Exception as e:
         print("Exception: "+str(e))

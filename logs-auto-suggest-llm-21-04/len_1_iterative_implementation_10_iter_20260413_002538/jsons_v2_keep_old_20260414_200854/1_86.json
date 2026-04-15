@@ -1,0 +1,215 @@
+{
+  "case": "1_86",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7836333333333334,
+        "cost": 0.0026992,
+        "latency": 6.750267028808594,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.667 + 1.000) / 2 = 0.833 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}; {price_24}.\nSpurious keys in generated not present in ground truth: {price_24}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['price_24'] \u2192 neighbourhood.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                  neighbourhood  price_24\nl'Antiga Esquerra de l'Eixample     60944\n                 la Prosperitat       412\n             la Sagrada Fam\u00edlia     48588",
+        "code": "import pandas as pd\n\n# Load source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Perform the transformation as per operation_history:\n# group_by = [Source1_86_0.neighbourhood]\n# aggregations = [sum(Source1_86_0.price)]\n\n# Group by 'neighbourhood' and sum 'price'\ndf_grouped = df_source0.groupby('neighbourhood', as_index=False)['price'].sum()\n\n# Rename the aggregated column to match target schema\ndf_grouped.rename(columns={'price': 'price_24'}, inplace=True)\n\n# Ensure the target schema types: 'neighbourhood' as string, 'price_24' as integer\ndf_grouped['neighbourhood'] = df_grouped['neighbourhood'].astype(str)\ndf_grouped['price_24'] = df_grouped['price_24'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\ndf_grouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nCan Bar\u00f3,1230\nCanyelles,106\nCiutat Meridiana,238\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,20146\nHorta,1377\nHostafrancs,8901\nMontbau,117\nNavas,1496\nPedralbes,2397\nPorta,492\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0030636000000000005,
+          "latency": 13.88883090019226,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                 neighbourhood  price_24\n                     el Carmel        41\nla Nova Esquerra de l'Eixample        88\n                  la Guineueta        30",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by average, then convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Convert price_24 to integer (rounding)\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood to have consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0034528000000000002,
+          "latency": 12.29910945892334,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                               neighbourhood  price_24\n          el Camp d'en Grassot i Gr\u00e0cia Nova       107\n                  Sant Gervasi - la Bonanova        81\nDiagonal Mar i el Front Mar\u00edtim del Poblenou       280",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 as per Hint 21\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# The target schema is ['neighbourhood': string, 'price_24': integer]\n# GroupBy on 'neighbourhood' (primary key in target)\n# Aggregate 'price' by mean, then round and convert to int to match target schema\n\ndf_grouped = df.groupby('neighbourhood', as_index=False).agg({'price': 'mean'})\n\n# Convert aggregated price to integer as price_24 in target is integer type\ndf_grouped['price_24'] = df_grouped['price'].round().astype(int)\n\n# Select only required columns in target schema order\nresult = df_grouped[['neighbourhood', 'price_24']]\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": false,
+        "score": 0.9151666666666666,
+        "cost": 0.0021980000000000003,
+        "latency": 3.736909866333008,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                        neighbourhood  price_24\nSant Pere, Santa Caterina i la Ribera        74\n             Sant Gen\u00eds dels Agudells        57\n           la Marina del Prat Vermell       260",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, we process it directly:\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    dfs[0]\n    .groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nCan Bar\u00f3,53\nCanyelles,53\nCiutat Meridiana,30\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,280\nHorta,47\nHostafrancs,82\nMontbau,29\nNavas,44\nPedralbes,133\nPorta,31\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.9240666666666666,
+          "cost": 0.0037396,
+          "latency": 12.86972975730896,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                    neighbourhood  price_24\n                    el Bon Pastor        30\n            el Bes\u00f2s i el Maresme      1000\nel Parc i la Llacuna del Poblenou       240",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by max, then convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'max'))\n)\n\n# Sort by neighbourhood to have consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.7836333333333334,
+          "cost": 0.0035984000000000003,
+          "latency": 12.145555257797241,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.667 + 1.000) / 2 = 0.833 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}; {price_24}.\nSpurious keys in generated not present in ground truth: {price_24}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['price_24'] \u2192 neighbourhood.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                        neighbourhood  price_24\nVallvidrera, el Tibidabo i les Planes      1497\n                         la Guineueta       152\n                             Vallbona        58",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by sum\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'sum'))\n)\n\n# Convert price_24 to integer (should already be int, but ensure)\nresult['price_24'] = result['price_24'].astype(int)\n\n# Sort by neighbourhood for consistent ordering\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": false,
+        "score": 0.9151666666666666,
+        "cost": 0.0025524000000000002,
+        "latency": 5.131745338439941,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                neighbourhood  price_24\n                 les Roquetes        35\n                     el Raval        76\nla Vila Ol\u00edmpica del Poblenou       203",
+        "code": "import pandas as pd\n\n# Define all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, process it directly:\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    dfs[0]\n    .groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nCan Bar\u00f3,53\nCanyelles,53\nCiutat Meridiana,30\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,280\nHorta,47\nHostafrancs,82\nMontbau,29\nNavas,44\nPedralbes,133\nPorta,31\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.7836333333333334,
+          "cost": 0.004002800000000001,
+          "latency": 16.83804154396057,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.667 + 1.000) / 2 = 0.833 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}; {price_24}.\nSpurious keys in generated not present in ground truth: {price_24}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['price_24'] \u2192 neighbourhood.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n             neighbourhood  price_24\nSant Gervasi - la Bonanova      1782\n                    Sarri\u00e0      1268\n                Torre Bar\u00f3       161",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by sum, then convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'sum'))\n)\n\n# Convert price_24 to integer (ensure type)\nresult['price_24'] = result['price_24'].astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\nresult.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0038816000000000002,
+          "latency": 13.048237800598145,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.667 + 1.000) / 2 = 0.833 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}; {price_24}.\nSpurious keys in generated not present in ground truth: {price_24}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['price_24'] \u2192 neighbourhood.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n             neighbourhood  price_24\nSant Gervasi - la Bonanova      1782\n      la Font d'en Fargues      1689\nla Marina del Prat Vermell       780",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": false,
+        "score": 0.9151666666666666,
+        "cost": 0.0028940000000000003,
+        "latency": 4.8173933029174805,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n             neighbourhood  price_24\nla Marina del Prat Vermell       260\n              la Teixonera        38\nel Camp de l'Arpa del Clot        70",
+        "code": "import pandas as pd\n\n# Define all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, process it directly:\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    dfs[0]\n    .groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nCan Bar\u00f3,53\nCanyelles,53\nCiutat Meridiana,30\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,280\nHorta,47\nHostafrancs,82\nMontbau,29\nNavas,44\nPedralbes,133\nPorta,31\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0040184,
+          "latency": 12.465984582901001,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n       neighbourhood  price_24\n        la Teixonera        38\n     les Tres Torres       130\nel Putxet i el Farr\u00f3        76",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.004334,
+          "latency": 17.805005073547363,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                               neighbourhood  price_24\n                                la Teixonera        38\n                         el Tur\u00f3 de la Peira        38\nDiagonal Mar i el Front Mar\u00edtim del Poblenou       280",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round price_24 to nearest integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": false,
+        "score": 0.9151666666666666,
+        "cost": 0.0032384,
+        "latency": 5.3199708461761475,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                 neighbourhood  price_24\n          la Font d'en Fargues       169\n                      Can Bar\u00f3        53\nla Nova Esquerra de l'Eixample        88",
+        "code": "import pandas as pd\n\n# Define all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, process it directly:\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    dfs[0]\n    .groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nCan Bar\u00f3,53\nCanyelles,53\nCiutat Meridiana,30\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,280\nHorta,47\nHostafrancs,82\nMontbau,29\nNavas,44\nPedralbes,133\nPorta,31\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0040804000000000005,
+          "latency": 11.518849849700928,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\nneighbourhood  price_24\n     el Raval        76\n        Sants        74\n el Poble Sec       100",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0040196,
+          "latency": 16.002948999404907,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n             neighbourhood  price_24\n                     Navas        44\n              la Guineueta        30\nla Maternitat i Sant Ramon        47",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": false,
+        "score": 0.9151666666666666,
+        "cost": 0.0035892,
+        "latency": 4.242582321166992,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n             neighbourhood  price_24\nla Marina del Prat Vermell       260\nel Camp de l'Arpa del Clot        70\n Vallcarca i els Penitents        69",
+        "code": "import pandas as pd\n\n# Define all source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since there is only one source table, process it directly:\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    dfs[0]\n    .groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nCan Bar\u00f3,53\nCanyelles,53\nCiutat Meridiana,30\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,280\nHorta,47\nHostafrancs,82\nMontbau,29\nNavas,44\nPedralbes,133\nPorta,31\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0044276,
+          "latency": 17.393062114715576,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n          neighbourhood  price_24\n            Sant Antoni        96\nProven\u00e7als del Poblenou        66\n             la Sagrera        63",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.9151666666666666,
+          "cost": 0.0040248,
+          "latency": 12.595276594161987,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 70\nExamples:\n                  neighbourhood  price_24\n                  el Bon Pastor        22\nl'Antiga Esquerra de l'Eixample       118\n                      el Carmel        41",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by 'neighbourhood' and aggregate 'price' by mean, then round and convert to int\nresult = (\n    df0.groupby('neighbourhood', as_index=False)\n    .agg(price_24=('price', 'mean'))\n)\n\n# Round and convert price_24 to integer\nresult['price_24'] = result['price_24'].round().astype(int)\n\n# Sort by neighbourhood for consistent ordering (optional)\nresult = result.sort_values('neighbourhood').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    }
+  ]
+}

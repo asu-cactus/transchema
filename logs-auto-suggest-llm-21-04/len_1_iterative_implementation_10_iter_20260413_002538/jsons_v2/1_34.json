@@ -1,0 +1,89 @@
+{
+  "case": "1_34",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0015536,
+        "latency": 5.1074793338775635,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHJ4*02\nIGHJ6*02\nIGHJ6*03",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_34/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table with schema ['J_CALL']\n# and the target schema is ['V_GENE'], we need to rename 'J_CALL' to 'V_GENE'\n# No union or join needed because only one source table exists.\n\n# Transform each source DataFrame by renaming the column\ntransformed_dfs = [df.rename(columns={\"J_CALL\": \"V_GENE\"}) for df in source_dfs]\n\n# Concatenate all transformed DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ5*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ6*02\nIGHJ3*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ5*02\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0018552000000000002,
+        "latency": 4.912912130355835,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHJ6*03\nIGHJ5*02\nIGHJ6*02",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_34/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Each source table has schema ['J_CALL']\n# Target schema is ['V_GENE']\n# Transformation: rename 'J_CALL' column to 'V_GENE'\ntransformed_dfs = [df.rename(columns={\"J_CALL\": \"V_GENE\"}) for df in source_dfs]\n\n# Concatenate all transformed DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ5*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ6*02\nIGHJ3*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ5*02\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0021968,
+        "latency": 5.463148593902588,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHJ6*02\nIGHJ6*03\nIGHJ6*02",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_34/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per Hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Each source table has schema ['J_CALL']\n# Target schema is ['V_GENE']\n# Transformation: rename 'J_CALL' column to 'V_GENE'\ntransformed_dfs = [df.rename(columns={\"J_CALL\": \"V_GENE\"}) for df in source_dfs]\n\n# Concatenate all transformed DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ5*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ6*02\nIGHJ3*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ5*02\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0025232,
+        "latency": 3.659201145172119,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n           V_GENE\n         IGHJ4*02\nIGHJ4*02,IGHJ5*02\n         IGHJ4*02",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_34/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per Hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Each source table has schema ['J_CALL']\n# Target schema is ['V_GENE']\n# Transformation: rename 'J_CALL' column to 'V_GENE'\ntransformed_dfs = [df.rename(columns={\"J_CALL\": \"V_GENE\"}) for df in source_dfs]\n\n# Concatenate all transformed DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ5*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ6*02\nIGHJ3*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ5*02\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0028576,
+        "latency": 3.149750232696533,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHJ3*02\nIGHJ4*02\nIGHJ6*03",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_34/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per Hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Each source table has schema ['J_CALL']\n# Target schema is ['V_GENE']\n# Transformation: rename 'J_CALL' column to 'V_GENE'\ntransformed_dfs = [df.rename(columns={\"J_CALL\": \"V_GENE\"}) for df in source_dfs]\n\n# Concatenate all transformed DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ5*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ6*02\nIGHJ3*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ5*02\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0031848000000000002,
+        "latency": 5.675984621047974,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHJ6*02\nIGHJ6*02\nIGHJ4*02",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_34/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per Hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Each source table has schema ['J_CALL']\n# Target schema is ['V_GENE']\n# Transformation: rename 'J_CALL' column to 'V_GENE'\ntransformed_dfs = [df.rename(columns={\"J_CALL\": \"V_GENE\"}) for df in source_dfs]\n\n# Concatenate all transformed DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ5*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ6*02\nIGHJ3*02\nIGHJ4*02\nIGHJ4*02\nIGHJ6*02\nIGHJ5*02\n"
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -3,8 +3,6 @@ from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 from util.utils import get_test_info
 from test_scope import get_test_cases_ids
-from auto_suggest_llm_util import    calculate_score
-   
 from methods.multi_step import Config, get_python_response
 
 from log_util.log_util import create_logger
@@ -167,76 +165,8 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
                         case_accuracy,
                         is_correct,
                         similarity_scores,
-                        shared_columns,
+                        _,
                     ) = validate_fn(df_our_response, df_ground_truth)
-                    if (
-                        is_correct == False
-                        and len(shared_columns) > 0
-                        and len(df_our_response) == len(df_ground_truth)
-                    ):
-                        print(
-                            "TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:"
-                        )
-                        sorted_df_our_response = df_our_response.sort_values(
-                            by=shared_columns
-                        )
-                        sorted_df_ground_truth = df_ground_truth.sort_values(
-                            by=shared_columns
-                        )
-                        new_header_our_response = []
-                        for col in sorted_df_our_response.columns:
-                            if "float" in str(sorted_df_our_response[col].dtype):
-                                print("is float")
-                                first_three_values = (
-                                    sorted_df_our_response[col].head(3).astype(int)
-                                )
-                            else:
-                                print("is not float")
-                                first_three_values = sorted_df_our_response[col].head(3)
-                            concatenated_header = (
-                                str(first_three_values.iloc[0])
-                                + "-"
-                                + str(first_three_values.iloc[1])
-                                + "-"
-                                + str(first_three_values.iloc[2])
-                            )
-                            print(concatenated_header)
-                            new_header_our_response.append(concatenated_header)
-                        sorted_df_our_response.columns = new_header_our_response
-                        new_header_ground_truth = []
-                        for col in sorted_df_ground_truth.columns:
-                            if "float" in str(sorted_df_ground_truth[col].dtype):
-                                print("is float")
-                                first_three_values = (
-                                    sorted_df_ground_truth[col].head(3).astype(int)
-                                )
-                            else:
-                                print("is not float")
-                                first_three_values = sorted_df_ground_truth[col].head(3)
-                            concatenated_header = (
-                                str(first_three_values.iloc[0])
-                                + "-"
-                                + str(first_three_values.iloc[1])
-                                + "-"
-                                + str(first_three_values.iloc[2])
-                            )
-                            print(concatenated_header)
-                            new_header_ground_truth.append(concatenated_header)
-                        sorted_df_ground_truth.columns = new_header_ground_truth
-                        print("OUR RESPONSE:")
-                        print(sorted_df_our_response)
-                        print("GROUND TRUTH:")
-                        print(sorted_df_ground_truth)
-                        (
-                            case_accuracy,
-                            is_correct,
-                            similarity_scores,
-                            shared_columns,
-                        ) = validate_fn(
-                            sorted_df_our_response, sorted_df_ground_truth
-                        )
-                    else:
-                        score = calculate_score(df_ground_truth, df_our_response)
                 except Exception as e:
                     print("".join(traceback.format_exc()))
                     is_correct = False

@@ -1,0 +1,19 @@
+{
+  "case": "1_30",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0011968,
+        "latency": 7.489094018936157,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title, tag, timestamp}; {movieId, tag, timestamp}; {title, userId, tag}; {movieId, userId, tag}.\nGenerated table candidate keys: {title, tag, timestamp}; {movieId, tag, timestamp}; {title, userId, tag}; {movieId, userId, tag}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'title', 'genres', 'userId', 'tag', 'timestamp']\nNumber of Tuples: 567\nExamples:\n movieId                            title                      genres  userId                   tag  timestamp\n     296              Pulp Fiction (1994) Comedy|Crime|Drama|Thriller     501           dark comedy 1292956439\n    2600                  eXistenZ (1999)      Action|Sci-Fi|Thriller     313             Ei muista 1168879003\n    4369 Fast and the Furious, The (2001)       Action|Crime|Thriller     431 no desire to see this 1140454634",
+        "code": "import pandas as pd\n\ndef main():\n    # Define source file paths\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_30/test_0.csv\"\n    source1_path = \"autopipeline-benchmarks/github-pipelines/length1_30/test_1.csv\"\n    \n    # Load Source 0: userId, movieId, tag, timestamp\n    df_source0 = pd.read_csv(source0_path)\n    # Ensure correct dtypes for Source 0\n    df_source0 = df_source0.astype({\n        'userId': 'int64',\n        'movieId': 'int64',\n        'tag': 'string',\n        'timestamp': 'int64'\n    })\n    \n    # Load Source 1: movieId, title, genres\n    df_source1 = pd.read_csv(source1_path)\n    # Ensure correct dtypes for Source 1\n    df_source1 = df_source1.astype({\n        'movieId': 'int64',\n        'title': 'string',\n        'genres': 'string'\n    })\n    \n    # Join Source 0 and Source 1 on movieId to get all target columns\n    # Target schema: ['movieId': int, 'title': str, 'genres': str, 'userId': int, 'tag': str, 'timestamp': int]\n    df_merged = pd.merge(df_source0, df_source1, on='movieId', how='inner')\n    \n    # Reorder columns to match target schema\n    df_target = df_merged[['movieId', 'title', 'genres', 'userId', 'tag', 'timestamp']]\n    \n    # Cast columns explicitly to target schema types (if needed)\n    df_target = df_target.astype({\n        'movieId': 'int64',\n        'title': 'string',\n        'genres': 'string',\n        'userId': 'int64',\n        'tag': 'string',\n        'timestamp': 'int64'\n    })\n    \n    # Write the result to the target CSV file\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_30/target_multisource_cot.csv\"\n    df_target.to_csv(target_path, index=False)\n    \nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

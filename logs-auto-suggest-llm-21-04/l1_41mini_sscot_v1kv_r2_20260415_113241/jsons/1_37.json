@@ -1,0 +1,19 @@
+{
+  "case": "1_37",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0013344000000000001,
+        "latency": 8.79689621925354,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {business_id, date, type, ViolationTypeID}.\nGenerated table candidate keys: {business_id, date, type, ViolationTypeID}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['business_id', 'Score', 'date', 'type', 'ViolationTypeID', 'risk_category', 'description']\nNumber of Tuples: 21475\nExamples:\n business_id  Score     date                  type  ViolationTypeID risk_category                                                description\n        4145   90.0 20150116 Routine - Unscheduled           103157      Low Risk Food safety certificate or food handler card not available\n       27167   72.0 20140401 Routine - Unscheduled           103142      Low Risk                           Unclean nonfood contact surfaces\n         551   85.0 20160321 Routine - Unscheduled           103103     High Risk                        High risk food holding temperature ",
+        "code": "import pandas as pd\n\ndef main():\n    # File paths for source data\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_37/test_0.csv\"\n    source1_path = \"autopipeline-benchmarks/github-pipelines/length1_37/test_1.csv\"\n    target_output_path = \"autopipeline-benchmarks/github-pipelines/length1_37/target_multisource_cot.csv\"\n\n    # Load source tables\n    # Source 0 schema: ['business_id', 'Score', 'date', 'type']\n    df0 = pd.read_csv(source0_path, dtype={'business_id': int, 'Score': float, 'date': int, 'type': str})\n    # Source 1 schema: ['business_id', 'date', 'ViolationTypeID', 'risk_category', 'description']\n    df1 = pd.read_csv(source1_path, dtype={'business_id': int, 'date': int, 'ViolationTypeID': int, 'risk_category': str, 'description': str})\n\n    # Inspect for missing values in Score in df0 and fill or keep as is\n    # Since Score is float and NaNs exist, keep NaNs as is.\n\n    # Join plan:\n    # Join df0 and df1 on ['business_id', 'date'] to combine Score and type from df0 with ViolationTypeID, risk_category, description from df1.\n    # This is a many-to-many join potentially, but likely one-to-many from df0 to df1 or vice versa.\n    # We do an inner join to keep only matching records.\n\n    # Perform inner join on business_id and date\n    df_merged = pd.merge(df0, df1, on=['business_id', 'date'], how='inner')\n\n    # Select and reorder columns to match target schema:\n    # ['business_id': integer, 'Score': float, 'date': integer, 'type': string, 'ViolationTypeID': integer, 'risk_category': string, 'description': string]\n    df_target = df_merged[['business_id', 'Score', 'date', 'type', 'ViolationTypeID', 'risk_category', 'description']]\n\n    # Optional: sort by business_id and date for neatness\n    df_target = df_target.sort_values(by=['business_id', 'date']).reset_index(drop=True)\n\n    # Export to CSV without index\n    df_target.to_csv(target_output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

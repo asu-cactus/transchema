@@ -1,4 +1,5 @@
-from hints.hints_static import get_hints_section, PIPELINE_HINT_IDS, PYTHON_SCRIPT_HINT_IDS
+from hints.hints_static import get_hints_section, PIPELINE_HINT_IDS, PYTHON_SCRIPT_HINT_IDS, CRITIQUE_HINT_IDS
+from hints.hint import get_hints
 
 
 def get_python_script(
@@ -14,6 +15,12 @@ def get_python_script(
     all_intermediate_results,
     static_hints=False,
     past_context="",
+    hint_source="",
+    source_data_name_list=None,
+    source_data_schema_list=None,
+    directory="",
+    len_idx_target_idx="",
+    raw_target_schema="",
 ):
     if all_intermediate_results:
         return get_python_script_with_intermediate_materialization(
@@ -35,7 +42,15 @@ def get_python_script(
             source_information_with_location,
             csv_save_path,
             error_string,
+            static_hints=static_hints,
             past_context=past_context,
+            hint_source=hint_source,
+            file_count=file_count,
+            source_data_name_list=source_data_name_list,
+            source_data_schema_list=source_data_schema_list,
+            directory=directory,
+            len_idx_target_idx=len_idx_target_idx,
+            raw_target_schema=raw_target_schema,
         )
     else:
         return get_python_script_simple(
@@ -102,6 +117,13 @@ def get_python_script_for_single_step_cot(
     error_string,
     static_hints=False,
     past_context="",
+    hint_source="",
+    file_count=0,
+    source_data_name_list=None,
+    source_data_schema_list=None,
+    directory="",
+    len_idx_target_idx="",
+    raw_target_schema="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. Before generating the code, please think step by step about the transformation plan to convert the source tables to the target table.
@@ -116,12 +138,48 @@ def get_python_script_for_single_step_cot(
 
     Please quote the Python script between one single "```Python" and "```".
     """
-    prompt += f"""
+    if static_hints:
+        prompt += f"""
 Hints to be considered for Python code generation:
 {get_hints_section(PIPELINE_HINT_IDS, fmt="numbered")}
 
 Please quote the Python script between one single "```Python" and "```".
 """
+
+    # Collect data-specific hints (join, group-by, union, table matching) from hint_source
+    if hint_source and hint_source not in ("none", "v2") and source_data_name_list is not None:
+        hint_parts = []
+        schema_for_hints = raw_target_schema if raw_target_schema else target_data_schema
+        # flag=1 required for join/group_by_aggregate to produce v1_kv/v1_text formatted hints
+        hint_configs = {
+            "get_next_operator": (0, []),
+            "join":              (1, [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]),
+            "group_by_aggregate":(1, [0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2]),
+            "union":             (0, []),
+        }
+        for pt, (hint_flag, hints_truncate) in hint_configs.items():
+            h = get_hints(
+                pt,
+                hint_source,
+                schema_for_hints,
+                file_count,
+                source_data_name_list,
+                source_data_schema_list,
+                directory,
+                len_idx_target_idx,
+                hint_flag,
+                hints_truncate,
+            )
+            if h and h[0]:
+                hint_parts.extend(h)
+        dynamic_hints = "\n".join(p for p in hint_parts if p)
+        if dynamic_hints:
+            prompt += f"""
+Data-specific hints (join conditions, group-by columns, union candidates):
+{dynamic_hints}
+
+"""
+
     prompt += f"""
 Errors in previous Attempts : {error_string}
     """

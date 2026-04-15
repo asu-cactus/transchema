@@ -144,19 +144,27 @@ def compute_distribution_scores(df_a, df_b, col_map=None):
             js_dist = float(jensenshannon(pa / pa.sum(), pb / pb.sum(), base=2))
             js_similarity = round(1.0 - js_dist, 4)
 
+        # Value range overlap (Jaccard of [min, max] intervals) — numerical only
+        gen_min, gen_max = float(gen_vals.min()), float(gen_vals.max())
+        gt_min,  gt_max  = float(gt_vals.min()),  float(gt_vals.max())
+        overlap = max(0.0, min(gen_max, gt_max) - max(gen_min, gt_min))
+        union   = max(gen_max, gt_max) - min(gen_min, gt_min)
+        range_overlap = round(overlap / union, 4) if union > 0 else 1.0
+
         per_column[gt_col] = {
             "gen_col":  gen_col,
             "distribution_similarity": round(similarity, 4),
             "js_similarity":           js_similarity,
+            "range_overlap":           range_overlap,
             "wasserstein_normalized":  round(w_norm, 4),
             "gen_stats": {
-                "min":  round(float(gen_vals.min()),  4),
-                "max":  round(float(gen_vals.max()),  4),
+                "min":  round(gen_min,  4),
+                "max":  round(gen_max,  4),
                 "mean": round(float(gen_vals.mean()), 4),
             },
             "gt_stats": {
-                "min":  round(float(gt_vals.min()),  4),
-                "max":  round(float(gt_vals.max()),  4),
+                "min":  round(gt_min,  4),
+                "max":  round(gt_max,  4),
                 "mean": round(float(gt_vals.mean()), 4),
             },
         }
@@ -168,14 +176,19 @@ def compute_distribution_scores(df_a, df_b, col_map=None):
         avg_js_sim = round(
             sum(v["js_similarity"] for v in per_column.values()) / len(per_column), 4
         )
+        avg_range_overlap = round(
+            sum(v["range_overlap"] for v in per_column.values()) / len(per_column), 4
+        )
     else:
-        avg_sim    = None
-        avg_js_sim = None
+        avg_sim           = None
+        avg_js_sim        = None
+        avg_range_overlap = None
 
     return {
         "per_column": per_column,
         "avg_distribution_similarity": avg_sim,
-        "avg_js_similarity": avg_js_sim,
+        "avg_js_similarity":           avg_js_sim,
+        "avg_range_overlap":           avg_range_overlap,
     }
 
 
@@ -234,8 +247,11 @@ def relative_csv_score(df_a, df_b):
     combined_score = (fd_ratio + col_ratio) / 2
 
     distribution_info = compute_distribution_scores(df_a, df_b, col_map)
-    js_sim = distribution_info.get("avg_js_similarity")
-    if js_sim is not None:
+    js_sim        = distribution_info.get("avg_js_similarity")
+    range_overlap = distribution_info.get("avg_range_overlap")
+    if js_sim is not None and range_overlap is not None:
+        true_combined_score = round((fd_f1 + col_ratio + js_sim + range_overlap) / 4, 4)
+    elif js_sim is not None:
         true_combined_score = round((fd_f1 + col_ratio + js_sim) / 3, 4)
     else:
         true_combined_score = round((fd_f1 + col_ratio) / 2, 4)

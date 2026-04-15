@@ -1,0 +1,89 @@
+{
+  "case": "1_84",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6666666666666666,
+        "cost": 0.0016196000000000001,
+        "latency": 4.89437460899353,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\n IGHV1-2\nIGHV3-48\nIGHV3-23",
+        "code": "import pandas as pd\n\n# Load source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# UNPIVOT operation:\n# The source schema is ['V_CALL'], target schema is ['V_GENE']\n# The transformation is to extract the gene part from V_CALL by removing the allele suffix (e.g. '*01')\n# So we create a new column V_GENE by splitting V_CALL at '*' and taking the first part.\n\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('*').str[0]\n\n# Select only the target column\ndf_target = df_source0[['V_GENE']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1-8\nIGHV3-21\nIGHV3-23\nIGHV3-7\nIGHV4-30-4\nIGHV3-53\nIGHV1-69\nIGHV4-61\nIGHV1-2\nIGHV1-8\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6666666666666666,
+        "cost": 0.0018116000000000002,
+        "latency": 4.054145336151123,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHV4-31\nIGHV3-23\nIGHV3-11",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Source schema: ['V_CALL']\n# Target schema: ['V_GENE']\n# Extract the gene part from V_CALL by removing the allele suffix (e.g. '*01')\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('*').str[0]\n\n# Select only the target column\ndf_target = df_source0[['V_GENE']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1-8\nIGHV3-21\nIGHV3-23\nIGHV3-7\nIGHV4-30-4\nIGHV3-53\nIGHV1-69\nIGHV4-61\nIGHV1-2\nIGHV1-8\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6666666666666666,
+        "cost": 0.0021104,
+        "latency": 3.632589101791382,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHV4-39\n IGHV3-7\nIGHV3-30",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Source schema: ['V_CALL']\n# Target schema: ['V_GENE']\n# Extract the gene part from V_CALL by removing the allele suffix (e.g. '*01')\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('*').str[0]\n\n# Select only the target column\ndf_target = df_source0[['V_GENE']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1-8\nIGHV3-21\nIGHV3-23\nIGHV3-7\nIGHV4-30-4\nIGHV3-53\nIGHV1-69\nIGHV4-61\nIGHV1-2\nIGHV1-8\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6666666666666666,
+        "cost": 0.0024088000000000004,
+        "latency": 3.5497496128082275,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHV4-34\nIGHV3-30\nIGHV3-21",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Source schema: ['V_CALL']\n# Target schema: ['V_GENE']\n# Extract the gene part from V_CALL by removing the allele suffix (e.g. '*01')\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('*').str[0]\n\n# Select only the target column\ndf_target = df_source0[['V_GENE']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1-8\nIGHV3-21\nIGHV3-23\nIGHV3-7\nIGHV4-30-4\nIGHV3-53\nIGHV1-69\nIGHV4-61\nIGHV1-2\nIGHV1-8\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6666666666666666,
+        "cost": 0.0027076,
+        "latency": 3.5246026515960693,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHV1-69\nIGHV3-66\nIGHV1-46",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Source schema: ['V_CALL']\n# Target schema: ['V_GENE']\n# Extract the gene part from V_CALL by removing the allele suffix (e.g. '*01')\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('*').str[0]\n\n# Select only the target column\ndf_target = df_source0[['V_GENE']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1-8\nIGHV3-21\nIGHV3-23\nIGHV3-7\nIGHV4-30-4\nIGHV3-53\nIGHV1-69\nIGHV4-61\nIGHV1-2\nIGHV1-8\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6666666666666666,
+        "cost": 0.0030068,
+        "latency": 4.429937124252319,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\n IGHV3-7\nIGHV4-39\n IGHV6-1",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Source schema: ['V_CALL']\n# Target schema: ['V_GENE']\n# Extract the gene part from V_CALL by removing the allele suffix (e.g. '*01')\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('*').str[0]\n\n# Select only the target column\ndf_target = df_source0[['V_GENE']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV1-8\nIGHV3-21\nIGHV3-23\nIGHV3-7\nIGHV4-30-4\nIGHV3-53\nIGHV1-69\nIGHV4-61\nIGHV1-2\nIGHV1-8\n"
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "case": "1_55",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0015888,
+        "latency": 5.902626276016235,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {Unnamed: 0}.\nKeys present in ground truth but absent in generated: {V_GENE}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'V_GENE']\nNumber of Tuples: 6583\nExamples:\n Unnamed: 0 V_GENE\n       4491  IGHJ4\n       4340  IGHJ6\n       1548  IGHJ6",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_55/test_0.csv\"\n\n# Load source tables\n# Note: index_col=0 to ignore the numerical index column as per Hint 24\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source0 schema: ['J_CALL']\n# - The target column V_GENE corresponds to the J_CALL column in source0, but without the allele suffix (e.g., '*02').\n# - So we need to extract the part before '*' from J_CALL to get V_GENE.\n# - There is only one source table, so no union or join needed.\n# - Output the transformed data to the target path.\n\n# Extract V_GENE from J_CALL by splitting on '*'\nsource0_df['V_GENE'] = source0_df['J_CALL'].str.split('*').str[0]\n\n# Select only the target column\ntarget_df = source0_df[['V_GENE']]\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_55/target_multisource.csv\")",
+        "generated_csv_head": "Unnamed: 0,V_GENE\n0,IGHJ5\n1,IGHJ4\n2,IGHJ4\n3,IGHJ6\n4,IGHJ6\n5,IGHJ3\n6,IGHJ4\n7,IGHJ4\n8,IGHJ6\n9,IGHJ5\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0019344000000000002,
+        "latency": 3.4301669597625732,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {Unnamed: 0}.\nKeys present in ground truth but absent in generated: {V_GENE}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'V_GENE']\nNumber of Tuples: 6583\nExamples:\n Unnamed: 0 V_GENE\n       1922  IGHJ6\n       5784  IGHJ5\n        260  IGHJ6",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_55/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['J_CALL']\n# - Extract the part before '*' from the 'J_CALL' column to get 'V_GENE'.\n# - No union or join needed since there is only one source table.\n# - Output the transformed data to the target path.\n\n# Extract V_GENE from J_CALL by splitting on '*'\nsource0_df['V_GENE'] = source0_df['J_CALL'].str.split('*').str[0]\n\n# Select only the target column\ntarget_df = source0_df[['V_GENE']]\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_55/target_multisource.csv\")",
+        "generated_csv_head": "Unnamed: 0,V_GENE\n0,IGHJ5\n1,IGHJ4\n2,IGHJ4\n3,IGHJ6\n4,IGHJ6\n5,IGHJ3\n6,IGHJ4\n7,IGHJ4\n8,IGHJ6\n9,IGHJ5\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0022960000000000003,
+        "latency": 6.006191253662109,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {Unnamed: 0}.\nKeys present in ground truth but absent in generated: {V_GENE}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'V_GENE']\nNumber of Tuples: 6583\nExamples:\n Unnamed: 0 V_GENE\n       4131  IGHJ6\n       2560  IGHJ6\n       1763  IGHJ6",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_55/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['J_CALL']\n# - Extract the part before '*' from the 'J_CALL' column to get 'V_GENE'.\n# - No union or join needed since there is only one source table.\n# - Output the transformed data to the target path.\n\n# Extract V_GENE from J_CALL by splitting on '*'\nsource0_df['V_GENE'] = source0_df['J_CALL'].str.split('*').str[0]\n\n# Select only the target column\ntarget_df = source0_df[['V_GENE']]\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_55/target_multisource.csv\")",
+        "generated_csv_head": "Unnamed: 0,V_GENE\n0,IGHJ5\n1,IGHJ4\n2,IGHJ4\n3,IGHJ6\n4,IGHJ6\n5,IGHJ3\n6,IGHJ4\n7,IGHJ4\n8,IGHJ6\n9,IGHJ5\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0026576000000000004,
+        "latency": 4.691091060638428,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {Unnamed: 0}.\nKeys present in ground truth but absent in generated: {V_GENE}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'V_GENE']\nNumber of Tuples: 6583\nExamples:\n Unnamed: 0 V_GENE\n       2371  IGHJ4\n       5867  IGHJ4\n       3618  IGHJ4",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_55/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['J_CALL']\n# - Extract the part before '*' from the 'J_CALL' column to get 'V_GENE'.\n# - No union or join needed since there is only one source table.\n# - Output the transformed data to the target path.\n\n# Extract V_GENE from J_CALL by splitting on '*'\nsource0_df['V_GENE'] = source0_df['J_CALL'].str.split('*').str[0]\n\n# Select only the target column\ntarget_df = source0_df[['V_GENE']]\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_55/target_multisource.csv\")",
+        "generated_csv_head": "Unnamed: 0,V_GENE\n0,IGHJ5\n1,IGHJ4\n2,IGHJ4\n3,IGHJ6\n4,IGHJ6\n5,IGHJ3\n6,IGHJ4\n7,IGHJ4\n8,IGHJ6\n9,IGHJ5\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0030208,
+        "latency": 7.277184724807739,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {Unnamed: 0}.\nKeys present in ground truth but absent in generated: {V_GENE}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'V_GENE']\nNumber of Tuples: 6583\nExamples:\n Unnamed: 0 V_GENE\n       5177  IGHJ3\n       1423  IGHJ4\n        478  IGHJ6",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_55/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['J_CALL']\n# - Extract the part before '*' from the 'J_CALL' column to get 'V_GENE'.\n# - No union or join needed since there is only one source table.\n# - Output the transformed data to the target path.\n\n# Extract V_GENE from J_CALL by splitting on '*'\nsource0_df['V_GENE'] = source0_df['J_CALL'].str.split('*').str[0]\n\n# Select only the target column\ntarget_df = source0_df[['V_GENE']]\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_55/target_multisource.csv\")",
+        "generated_csv_head": "Unnamed: 0,V_GENE\n0,IGHJ5\n1,IGHJ4\n2,IGHJ4\n3,IGHJ6\n4,IGHJ6\n5,IGHJ3\n6,IGHJ4\n7,IGHJ4\n8,IGHJ6\n9,IGHJ5\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 0.3333333333333333,
+        "cost": 0.0033824000000000003,
+        "latency": 4.086402893066406,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {Unnamed: 0}.\nKeys present in ground truth but absent in generated: {V_GENE}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'V_GENE']\nNumber of Tuples: 6583\nExamples:\n Unnamed: 0 V_GENE\n        215  IGHJ6\n       2288  IGHJ6\n       2685  IGHJ4",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_55/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['V_GENE']\n# - Source schema: ['J_CALL']\n# - Extract the part before '*' from the 'J_CALL' column to get 'V_GENE'.\n# - No union or join needed since there is only one source table.\n# - Output the transformed data to the target path.\n\n# Extract V_GENE from J_CALL by splitting on '*'\nsource0_df['V_GENE'] = source0_df['J_CALL'].str.split('*').str[0]\n\n# Select only the target column\ntarget_df = source0_df[['V_GENE']]\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_55/target_multisource.csv\")",
+        "generated_csv_head": "Unnamed: 0,V_GENE\n0,IGHJ5\n1,IGHJ4\n2,IGHJ4\n3,IGHJ6\n4,IGHJ6\n5,IGHJ3\n6,IGHJ4\n7,IGHJ4\n8,IGHJ6\n9,IGHJ5\n"
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_92",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.0008312000000000001,
+        "latency": 9.400797843933105,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {user_id}; {email}.\nGenerated table candidate keys: {user_id}; {email}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'email', 'geo']\nNumber of Tuples: 50\nExamples:\n  user_id               email             geo\nuser_1000 Cincomphite@mail.ru          \u0422\u044e\u043c\u0435\u043d\u044c\n user_928  FraserBlue@mail.ru       \u0425\u0430\u0431\u0430\u0440\u043e\u0432\u0441\u043a\n user_992    BloggerJan@yahoo \u0421\u0430\u043d\u043a\u0442-\u041f\u0435\u0442\u0435\u0440\u0431\u0443\u0440\u0433",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_92/test_0.csv\"\n        # If there were more sources, they would be added here\n    ]\n\n    # List to hold dataframes from all sources\n    dfs = []\n\n    # Load each source file, ensure schema matches target schema, and append to list\n    for file_path in source_files:\n        df = pd.read_csv(file_path)\n\n        # Normalize column names to lowercase to avoid case issues\n        df.columns = [col.lower() for col in df.columns]\n\n        # Rename columns if needed to match target schema exactly\n        # Target schema: ['user_id', 'email', 'geo'] all lowercase\n        # Source schema is already ['user_id', 'email', 'geo'] but user_id might have different casing in values\n\n        # Convert user_id to lowercase to match target style (target examples show lowercase user_id)\n        df['user_id'] = df['user_id'].str.lower()\n\n        # Strip whitespace from email and geo columns just in case\n        df['email'] = df['email'].str.strip()\n        df['geo'] = df['geo'].str.strip()\n\n        # Append to list\n        dfs.append(df[['user_id', 'email', 'geo']])\n\n    # Concatenate all source dataframes vertically (union)\n    target_df = pd.concat(dfs, ignore_index=True)\n\n    # Optional: Remove duplicates if any (not specified but often useful)\n    target_df = target_df.drop_duplicates()\n\n    # Write the combined dataframe to the target CSV file\n    target_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_92/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

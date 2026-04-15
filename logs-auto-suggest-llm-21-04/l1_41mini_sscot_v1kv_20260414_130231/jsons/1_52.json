@@ -1,0 +1,19 @@
+{
+  "case": "1_52",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.0008268000000000001,
+        "latency": 6.202547550201416,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 0.833 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n]\n\n# Initialize an empty list to hold transformed DataFrames\ntransformed_dfs = []\n\n# Process each source file\nfor file_path in source_files:\n    # Load the source CSV\n    df = pd.read_csv(file_path)\n    \n    # According to the target schema:\n    # Target columns: ['condition', '0']\n    # Source columns: ['condition', 'click']\n    # The target column '0' corresponds to the count of rows per condition.\n    # So we group by 'condition' and count the number of rows (or sum of clicks if needed).\n    \n    # Group by 'condition' and count the number of rows (since click is always 0, count is used)\n    grouped = df.groupby('condition').size().reset_index(name='0')\n    \n    # Append to list\n    transformed_dfs.append(grouped)\n\n# Concatenate all transformed DataFrames from all sources\nif transformed_dfs:\n    result_df = pd.concat(transformed_dfs)\nelse:\n    # If no sources, create empty DataFrame with target schema\n    result_df = pd.DataFrame(columns=['condition', '0'])\n\n# Since multiple sources might have overlapping 'condition' values,\n# aggregate again by 'condition' summing the counts\nresult_df = result_df.groupby('condition', as_index=False)['0'].sum()\n\n# Convert columns to integer type as per target schema\nresult_df['condition'] = result_df['condition'].astype(int)\nresult_df['0'] = result_df['0'].astype(int)\n\n# Save the result to the target path\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -458,6 +458,7 @@ def get_prompt(
 
     elif prompt_type == "python_script":
 
+        raw_target_schema = target_data_schema
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
             # print(target_data_schema)
@@ -488,6 +489,12 @@ def get_prompt(
             all_intermediate_results,
             static_hints,
             past_context=past_context,
+            hint_source=hint_source,
+            source_data_name_list=source_data_name_list,
+            source_data_schema_list=source_data_schema_list,
+            directory=directory,
+            len_idx_target_idx=len_idx_target_idx,
+            raw_target_schema=raw_target_schema,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -514,6 +521,12 @@ def get_prompt(
             all_intermediate_results,
             static_hints,
             past_context=past_context,
+            hint_source=hint_source,
+            source_data_name_list=source_data_name_list,
+            source_data_schema_list=source_data_schema_list,
+            directory=directory,
+            len_idx_target_idx=len_idx_target_idx,
+            raw_target_schema=raw_target_schema,
         )[0]
     elif prompt_type == "mcts_expand":
         # Shared fd_hints logic (already computed above if fd_flag==1)

@@ -1,0 +1,19 @@
+{
+  "case": "4_41",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.00133,
+        "latency": 7.415694236755371,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.857 + 1.000) / 2 = 0.830 (1.0 is perfect).\nGround truth candidate keys: {y}.\nGenerated table candidate keys: {y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.857 (precision=1.000, recall=0.750).\nMissing FDs from ground truth: ['label'] \u2192 x.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['y', 'x', 'label']\nNumber of Tuples: 70\nExamples:\n       y  x  label\n3.165354  1      1\n1.968262  1      1\n3.967276  3      1",
+        "code": "import pandas as pd\n\n# Step 1: Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_41/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_41/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_41/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_41/test_3.csv\"\n]\n\n# Step 2: Define a mapping from source label strings to target integer labels\n# From the examples, target label is integer 1 for some rows.\n# Source labels are strings like 'g', 'r', 'purple', 'b'.\n# We need to map these string labels to integers.\n# Since target examples show label=1 for some rows, we will map all source labels to 1.\n# If more label classes existed, we would map accordingly.\nlabel_mapping = {\n    'g': 1,\n    'r': 1,\n    'purple': 1,\n    'b': 1\n}\n\n# Step 3: Load, transform, and concatenate all source tables\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path)\n    # Ensure columns are ['x', 'y', 'label']\n    # Convert label from string to integer using mapping\n    df['label'] = df['label'].map(label_mapping)\n    # Convert y to float and x to integer as per target schema\n    # Source x is float, but target x is integer, so convert by rounding or flooring\n    # We will convert by rounding to nearest integer\n    df['x'] = df['x'].round().astype(int)\n    df['y'] = df['y'].astype(float)\n    # Keep only the target columns in the target order: ['y', 'x', 'label']\n    df = df[['y', 'x', 'label']]\n    dfs.append(df)\n\n# Step 4: Concatenate all transformed dataframes\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Step 5: Export the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_41/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "case": "1_98",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6581666666666667,
+        "cost": 0.0056224000000000005,
+        "latency": 27.50293469429016,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.500 + 1.000) / 2 = 0.750 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {Unnamed: 0}; {0_x}; {0_y}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Unnamed: 0'] \u2192 0_y; ['0_x'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 0_x; ['0_y'] \u2192 Unnamed: 0.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', '0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n Unnamed: 0       0_x      0_y\n        168 -0.148069 0.623280\n        102 -0.687792 1.434926\n        232  0.419157 3.028452",
+        "code": "import pandas as pd\n\n# Load source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Read CSVs with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation history:\n# JOIN : [[\"Source1_98_0\", \"Source1_98_1\"], [\"right_index\", \"0\"]]\n# Join df0 and df1 on df0.right_index == df1.index (which is the default index of df1)\n# df0 has columns: ['right_index', '0']\n# df1 has columns: ['0']\n# We join on df0.right_index == df1.index (which is the default index of df1)\n# After join, columns from df0: '0' and from df1: '0' will conflict, so suffixes needed.\n\n# Set df0 index to 'right_index' to join on index\ndf0_indexed = df0.set_index('right_index')\n\n# Join df0_indexed with df1 on index (right join on df0_indexed index and df1 index)\n# The operation history suggests join on df0.right_index and df1 index (which is 0-based)\n# Use suffixes to avoid column name collision\njoined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# The target schema is ['0_x': float, '0_y': float]\n# So rename columns accordingly (already named by suffixes)\n# Ensure columns are float type\njoined = joined.astype({'0_x': float, '0_y': float})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\njoined.to_csv(target_path)",
+        "generated_csv_head": "Unnamed: 0,0_x,0_y\n0,-0.3978113835805185,0.148736393862684\n1,0.1220424338227182,1.55109411814864\n2,-0.0533155676662677,5.411766090434909\n3,0.4244605508801097,-2.589168112518434\n4,0.6409487972193374,-0.1889620633069952\n5,0.2755420052625594,1.7576444357581005\n6,-0.2716260191235253,2.097212466023389\n7,1.10010973135639,1.5621410030440537\n8,0.0899515799375942,6.657940857079273\n9,-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6581666666666667,
+        "cost": 0.0024051999999999997,
+        "latency": 4.6203649044036865,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.500 + 1.000) / 2 = 0.750 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {Unnamed: 0}; {0_x}; {0_y}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Unnamed: 0'] \u2192 0_y; ['0_x'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 0_x; ['0_y'] \u2192 Unnamed: 0.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', '0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n Unnamed: 0       0_x       0_y\n        205 -0.066031 -0.938799\n        370  1.163954  3.473669\n        375  0.271611 -2.247252",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0 index to 'right_index' to join on df0.right_index == df1.index\ndf0_indexed = df0.set_index('right_index')\n\n# Join df0_indexed with df1 on index (inner join)\n# Use suffixes to distinguish columns named '0' from each table\njoined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Ensure the columns are float type as per target schema ['0_x', '0_y']\njoined = joined.astype({'0_x': float, '0_y': float})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\njoined.to_csv(target_path)",
+        "generated_csv_head": "Unnamed: 0,0_x,0_y\n0,-0.3978113835805185,0.148736393862684\n1,0.1220424338227182,1.55109411814864\n2,-0.0533155676662677,5.411766090434909\n3,0.4244605508801097,-2.589168112518434\n4,0.6409487972193374,-0.1889620633069952\n5,0.2755420052625594,1.7576444357581005\n6,-0.2716260191235253,2.097212466023389\n7,1.10010973135639,1.5621410030440537\n8,0.0899515799375942,6.657940857079273\n9,-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6581666666666667,
+        "cost": 0.0029224000000000003,
+        "latency": 4.890038967132568,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.500 + 1.000) / 2 = 0.750 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {Unnamed: 0}; {0_x}; {0_y}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Unnamed: 0'] \u2192 0_y; ['0_x'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 0_x; ['0_y'] \u2192 Unnamed: 0.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', '0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n Unnamed: 0       0_x       0_y\n        446 -0.937664 -2.122412\n         28 -0.072190  2.422169\n        309  0.279227  4.640549",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0 index to 'right_index' to join on df0.right_index == df1.index\ndf0_indexed = df0.set_index('right_index')\n\n# Join df0_indexed with df1 on index (inner join)\n# Use suffixes to distinguish columns named '0' from each table\njoined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Ensure the columns are float type as per target schema ['0_x', '0_y']\njoined = joined.astype({'0_x': float, '0_y': float})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\njoined.to_csv(target_path)",
+        "generated_csv_head": "Unnamed: 0,0_x,0_y\n0,-0.3978113835805185,0.148736393862684\n1,0.1220424338227182,1.55109411814864\n2,-0.0533155676662677,5.411766090434909\n3,0.4244605508801097,-2.589168112518434\n4,0.6409487972193374,-0.1889620633069952\n5,0.2755420052625594,1.7576444357581005\n6,-0.2716260191235253,2.097212466023389\n7,1.10010973135639,1.5621410030440537\n8,0.0899515799375942,6.657940857079273\n9,-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6581666666666667,
+        "cost": 0.0034384000000000003,
+        "latency": 5.033314943313599,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.500 + 1.000) / 2 = 0.750 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {Unnamed: 0}; {0_x}; {0_y}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Unnamed: 0'] \u2192 0_y; ['0_x'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 0_x; ['0_y'] \u2192 Unnamed: 0.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', '0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n Unnamed: 0       0_x      0_y\n        447 -1.085871 2.153479\n         64  0.343102 2.418458\n        168 -0.148069 0.623280",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0 index to 'right_index' to join on df0.right_index == df1.index\ndf0_indexed = df0.set_index('right_index')\n\n# Join df0_indexed with df1 on index (inner join)\n# Use suffixes to distinguish columns named '0' from each table\njoined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Ensure the columns are float type as per target schema ['0_x', '0_y']\njoined = joined.astype({'0_x': float, '0_y': float})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\njoined.to_csv(target_path)",
+        "generated_csv_head": "Unnamed: 0,0_x,0_y\n0,-0.3978113835805185,0.148736393862684\n1,0.1220424338227182,1.55109411814864\n2,-0.0533155676662677,5.411766090434909\n3,0.4244605508801097,-2.589168112518434\n4,0.6409487972193374,-0.1889620633069952\n5,0.2755420052625594,1.7576444357581005\n6,-0.2716260191235253,2.097212466023389\n7,1.10010973135639,1.5621410030440537\n8,0.0899515799375942,6.657940857079273\n9,-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6581666666666667,
+        "cost": 0.0039548,
+        "latency": 5.372176885604858,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.500 + 1.000) / 2 = 0.750 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {Unnamed: 0}; {0_x}; {0_y}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Unnamed: 0'] \u2192 0_y; ['0_x'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 0_x; ['0_y'] \u2192 Unnamed: 0.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', '0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n Unnamed: 0       0_x      0_y\n        453 -0.754323 1.443350\n        182  0.477135 1.424734\n        269 -0.398043 5.092403",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0 index to 'right_index' to join on df0.right_index == df1.index\ndf0_indexed = df0.set_index('right_index')\n\n# Join df0_indexed with df1 on index (inner join)\n# Use suffixes to distinguish columns named '0' from each table\njoined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Ensure the columns are float type as per target schema ['0_x', '0_y']\njoined = joined.astype({'0_x': float, '0_y': float})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\njoined.to_csv(target_path)",
+        "generated_csv_head": "Unnamed: 0,0_x,0_y\n0,-0.3978113835805185,0.148736393862684\n1,0.1220424338227182,1.55109411814864\n2,-0.0533155676662677,5.411766090434909\n3,0.4244605508801097,-2.589168112518434\n4,0.6409487972193374,-0.1889620633069952\n5,0.2755420052625594,1.7576444357581005\n6,-0.2716260191235253,2.097212466023389\n7,1.10010973135639,1.5621410030440537\n8,0.0899515799375942,6.657940857079273\n9,-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6581666666666667,
+        "cost": 0.0044692,
+        "latency": 5.064322471618652,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.500 + 1.000) / 2 = 0.750 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {Unnamed: 0}; {0_x}; {0_y}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Unnamed: 0'] \u2192 0_y; ['0_x'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 0_x; ['0_y'] \u2192 Unnamed: 0.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', '0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n Unnamed: 0       0_x       0_y\n        231 -0.490638 -0.126274\n          9 -1.551866  1.324573\n        162  1.318566 -3.090028",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0 index to 'right_index' to join on df0.right_index == df1.index\ndf0_indexed = df0.set_index('right_index')\n\n# Join df0_indexed with df1 on index (inner join)\n# Use suffixes to distinguish columns named '0' from each table\njoined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Ensure the columns are float type as per target schema ['0_x', '0_y']\njoined = joined.astype({'0_x': float, '0_y': float})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\njoined.to_csv(target_path)",
+        "generated_csv_head": "Unnamed: 0,0_x,0_y\n0,-0.3978113835805185,0.148736393862684\n1,0.1220424338227182,1.55109411814864\n2,-0.0533155676662677,5.411766090434909\n3,0.4244605508801097,-2.589168112518434\n4,0.6409487972193374,-0.1889620633069952\n5,0.2755420052625594,1.7576444357581005\n6,-0.2716260191235253,2.097212466023389\n7,1.10010973135639,1.5621410030440537\n8,0.0899515799375942,6.657940857079273\n9,-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    }
+  ]
+}

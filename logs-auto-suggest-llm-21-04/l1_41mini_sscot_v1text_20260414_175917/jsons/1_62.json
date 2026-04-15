@@ -1,0 +1,19 @@
+{
+  "case": "1_62",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0009428,
+        "latency": 5.424577474594116,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Month}; {Power Use}; {Water Use}.\nGenerated table candidate keys: {Month}; {Power Use}; {Water Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Month', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n   Month  Water Use  Power Use\nNov_2012     965.81      35598\nJul_2006    6420.15      45586\nMay_2012    3449.18      32340",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_62/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_62/target_multisource_cot.csv\"\n\n    # Load source data\n    df0 = pd.read_csv(source0_path)\n\n    # Inspect columns:\n    # ['Text Date', 'Value Date', 'Zip Code', 'Water Use', 'Power Use']\n    # Target schema: ['Month': string, 'Water Use': float, 'Power Use': integer]\n\n    # Transformation plan:\n    # - The target 'Month' corresponds to 'Text Date' in source.\n    # - Aggregate by 'Text Date' (Month) summing Water Use and Power Use.\n    # - Water Use: float, Power Use: integer (round Power Use after sum)\n    # - Some Water Use or Power Use may be null, sum will ignore nulls by default.\n    # - Resulting dataframe columns: ['Month', 'Water Use', 'Power Use']\n\n    # Group by 'Text Date' and aggregate\n    grouped = df0.groupby('Text Date', dropna=True).agg({\n        'Water Use': 'sum',\n        'Power Use': 'sum'\n    }).reset_index()\n\n    # Rename 'Text Date' to 'Month'\n    grouped.rename(columns={'Text Date': 'Month'}, inplace=True)\n\n    # Ensure data types\n    grouped['Water Use'] = grouped['Water Use'].astype(float)\n    grouped['Power Use'] = grouped['Power Use'].round().astype(int)\n\n    # Save to CSV\n    grouped.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

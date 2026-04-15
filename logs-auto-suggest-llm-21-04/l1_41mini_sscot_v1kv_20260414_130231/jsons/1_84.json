@@ -1,0 +1,19 @@
+{
+  "case": "1_84",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.000598,
+        "latency": 6.211796045303345,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHV3-49\nIGHV3-30\nIGHV1-46",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file, transform, and collect\nfor file_path in source_files:\n    # Read source CSV\n    df_source = pd.read_csv(file_path)\n    \n    # Transform: Extract V_GENE from V_CALL by removing everything after '*'\n    df_source['V_GENE'] = df_source['V_CALL'].str.split('*').str[0]\n    \n    # Select only the target column\n    df_target = df_source[['V_GENE']]\n    \n    dfs.append(df_target)\n\n# Concatenate all transformed dataframes (if multiple sources)\ndf_final = pd.concat(dfs, ignore_index=True)\n\n# Since the target examples show unique V_GENE values, drop duplicates\ndf_final = df_final.drop_duplicates().reset_index(drop=True)\n\n# Write the final dataframe to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource_cot.csv\"\ndf_final.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

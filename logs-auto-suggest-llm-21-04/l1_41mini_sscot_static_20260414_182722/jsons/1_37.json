@@ -1,0 +1,19 @@
+{
+  "case": "1_37",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0019036,
+        "latency": 9.731383562088013,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {business_id, date, type, ViolationTypeID}.\nGenerated table candidate keys: {business_id, date, type, ViolationTypeID}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['business_id', 'Score', 'date', 'type', 'ViolationTypeID', 'risk_category', 'description']\nNumber of Tuples: 21475\nExamples:\n business_id  Score     date                  type  ViolationTypeID risk_category                                      description\n        5961   92.0 20160219 Routine - Unscheduled           103154      Low Risk     Unclean or degraded floors walls or ceilings\n        4620   88.0 20140212 Routine - Unscheduled           103144      Low Risk Unapproved or unmaintained equipment or utensils\n        5459   96.0 20140914 Routine - Unscheduled           103120 Moderate Risk          Moderate risk food holding temperature ",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_37/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_37/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Source0 schema: ['business_id', 'Score', 'date', 'type']\n# Source1 schema: ['business_id', 'date', 'ViolationTypeID', 'risk_category', 'description']\n\n# Target schema:\n# ['business_id': int, 'Score': float, 'date': int, 'type': str, 'ViolationTypeID': int, 'risk_category': str, 'description': str]\n\n# Transformation plan:\n# - The two source tables share 'business_id' and 'date' columns.\n# - Source0 has Score and type, Source1 has ViolationTypeID, risk_category, description.\n# - Join Source0 and Source1 on ['business_id', 'date'] to get all columns for the target.\n# - Score in Source0 has NaNs; keep as is (float).\n# - date is integer in both sources and target.\n# - After join, ensure columns are in target order and types are correct.\n# - There is no aggregation needed because target examples show multiple rows with same business_id but different ViolationTypeID.\n# - Use inner join to keep only rows that have matching keys in both sources (since target examples have all columns).\n# - Finally, write to the target CSV path.\n\n# Perform inner join on ['business_id', 'date']\ndf_merged = pd.merge(df0, df1, on=['business_id', 'date'], how='inner')\n\n# Reorder columns to match target schema\ntarget_columns = ['business_id', 'Score', 'date', 'type', 'ViolationTypeID', 'risk_category', 'description']\ndf_target = df_merged[target_columns]\n\n# Ensure correct dtypes according to target schema\ndf_target['business_id'] = df_target['business_id'].astype(int)\ndf_target['Score'] = df_target['Score'].astype(float)\ndf_target['date'] = df_target['date'].astype(int)\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['ViolationTypeID'] = df_target['ViolationTypeID'].astype(int)\ndf_target['risk_category'] = df_target['risk_category'].astype(str)\ndf_target['description'] = df_target['description'].astype(str)\n\n# Write the result to the target CSV file without the index column\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_37/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_30",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.00266,
+        "latency": 17.752301454544067,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.714 + 1.000) / 2 = 0.638 (1.0 is perfect).\nGround truth candidate keys: {title, userId, tag}; {title, tag, timestamp}; {movieId, tag, timestamp}; {movieId, userId, tag}.\nGenerated table candidate keys: {movieId, tag, timestamp}; {title, tag, timestamp}; {Unnamed: 0}; {title, userId, tag}; {movieId, userId, tag}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.714 (precision=0.556, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['movieId', 'tag', 'timestamp'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 movieId; ['Unnamed: 0'] \u2192 tag; ['Unnamed: 0'] \u2192 timestamp; ['movieId', 'tag', 'userId'] \u2192 Unnamed: 0 (and 3 more).\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'movieId', 'title', 'genres', 'userId', 'tag', 'timestamp']\nNumber of Tuples: 567\nExamples:\n Unnamed: 0  movieId                 title                genres  userId           tag  timestamp\n        538     6863 School of Rock (2003)        Comedy|Musical     531 rock and roll 1243454326\n        203     1272         Patton (1970)             Drama|War     547      holes70s 1342849087\n        353     3499         Misery (1990) Drama|Horror|Thriller     313     Ei muista 1168878727",
+        "code": "import pandas as pd\n\ndef main():\n    # Define source file paths\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_30/test_0.csv\"\n    source1_path = \"autopipeline-benchmarks/github-pipelines/length1_30/test_1.csv\"\n    \n    # Define target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_30/target_multisource_cot.csv\"\n    \n    # Load Source 0: userId, movieId, tag, timestamp\n    # Note: The CSV might contain an unnamed index column, so we use index_col=0 to drop it if present\n    df_source0 = pd.read_csv(source0_path, index_col=0)\n    \n    # Verify and fix columns if needed (drop any unexpected columns)\n    expected_cols_0 = ['userId', 'movieId', 'tag', 'timestamp']\n    df_source0 = df_source0[expected_cols_0]\n    \n    # Load Source 1: movieId, title, genres\n    df_source1 = pd.read_csv(source1_path)\n    expected_cols_1 = ['movieId', 'title', 'genres']\n    df_source1 = df_source1[expected_cols_1]\n    \n    # Join Source0 and Source1 on movieId to get full target schema\n    # Source0 has userId, tag, timestamp; Source1 has movieId, title, genres\n    df_merged = pd.merge(df_source0, df_source1, on='movieId', how='inner')\n    \n    # Reorder columns to match target schema:\n    # ['movieId': int, 'title': str, 'genres': str, 'userId': int, 'tag': str, 'timestamp': int]\n    df_target = df_merged[['movieId', 'title', 'genres', 'userId', 'tag', 'timestamp']]\n    \n    # Ensure correct dtypes\n    df_target['movieId'] = df_target['movieId'].astype(int)\n    df_target['userId'] = df_target['userId'].astype(int)\n    df_target['timestamp'] = df_target['timestamp'].astype(int)\n    df_target['title'] = df_target['title'].astype(str)\n    df_target['genres'] = df_target['genres'].astype(str)\n    df_target['tag'] = df_target['tag'].astype(str)\n    \n    # Save to target CSV without index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

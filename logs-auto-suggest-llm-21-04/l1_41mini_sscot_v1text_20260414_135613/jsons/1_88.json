@@ -1,0 +1,19 @@
+{
+  "case": "1_88",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0011728,
+        "latency": 176.60866737365723,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Date_of_Journey, Route, Dep_Time, Arrival_Time, Price}; {Date_of_Journey, Route, Arrival_Time, Duration, Price}.\nGenerated table candidate keys: {Date_of_Journey, Route, Dep_Time, Arrival_Time, Price}; {Date_of_Journey, Route, Arrival_Time, Duration, Price}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route', 'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops', 'Additional_Info', 'Price']\nNumber of Tuples: 5341\nExamples:\n    Airline Date_of_Journey   Source Destination           Route Dep_Time Arrival_Time Duration Total_Stops             Additional_Info  Price\n     IndiGo      12/05/2019  Kolkata    Banglore CCU \u2192 HYD \u2192 BLR    04:50        09:50       5h      1 stop                     No info   4176\nJet Airways      18/03/2019   Mumbai   Hyderabad       BOM \u2192 HYD    02:55        04:25   1h 30m    non-stop In-flight meal not included   2228\n  Air India      18/03/2019 Banglore   New Delhi       BLR \u2192 DEL    17:00        19:45   2h 45m    non-stop                     No info   4441",
+        "code": "import pandas as pd\n\ndef main():\n    # Define source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_88/test_0.csv\"\n        # If there were more sources, add them here\n    ]\n\n    # Define the target schema columns and their types\n    target_columns = ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route',\n                      'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops',\n                      'Additional_Info', 'Price']\n\n    # List to hold dataframes from all sources\n    dfs = []\n\n    for file_path in source_files:\n        # Load source CSV\n        df = pd.read_csv(file_path)\n\n        # Ensure all target columns exist in source (they do in this case)\n        # Convert Price to integer (some values might be float or string)\n        # Handle missing or malformed Price by coercing errors and filling with 0 or dropping\n        df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0).astype(int)\n\n        # Strip whitespace from string columns to ensure consistency\n        for col in target_columns:\n            if col != 'Price':\n                df[col] = df[col].astype(str).str.strip()\n\n        # Append to list\n        dfs.append(df[target_columns])\n\n    # Concatenate all source dataframes into one target dataframe\n    target_df = pd.concat(dfs, ignore_index=True)\n\n    # Optional: If aggregation is needed on Price or duplicates removal, it can be done here.\n    # But based on instructions, just union all source data as is.\n\n    # Write the combined dataframe to the target CSV path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_88/target_multisource_cot.csv\"\n    target_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

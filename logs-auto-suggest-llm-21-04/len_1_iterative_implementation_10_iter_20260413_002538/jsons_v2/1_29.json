@@ -1,0 +1,89 @@
+{
+  "case": "1_29",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022136,
+        "latency": 6.201304912567139,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Gender}; {0}.\nGenerated table candidate keys: {Gender}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\n                 Male 325\nOther / Non-Disclosed   9\n               Female  56",
+        "code": "import pandas as pd\n\n# Load source table\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\ndf_source_0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform the transformation as per operation history:\n# group_by = [Source1_29_0.Gender], aggregations = [count(Source1_29_0.Purchase ID)]\ndf_result = df_source_0.groupby(\"Gender\", as_index=False).agg({\"Purchase ID\": \"count\"})\n\n# Rename columns to match target schema: ['Gender': string, '0': integer]\ndf_result.rename(columns={\"Purchase ID\": \"0\"}, inplace=True)\n\n# Ensure column order matches target schema\ndf_result = df_result[[\"Gender\", \"0\"]]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Gender,0\nFemale,56\nMale,325\nOther / Non-Disclosed,9\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019896000000000002,
+        "latency": 5.227937459945679,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Gender}; {0}.\nGenerated table candidate keys: {Gender}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\nOther / Non-Disclosed   9\n                 Male 325\n               Female  56",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source_0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation:\n# Group by \"Gender\" and count the number of \"Purchase ID\" entries per gender\ndf_result = df_source_0.groupby(\"Gender\", as_index=False).agg({\"Purchase ID\": \"count\"})\n\n# Rename the aggregated column to \"0\" to match the target schema\ndf_result.rename(columns={\"Purchase ID\": \"0\"}, inplace=True)\n\n# Reorder columns to match target schema exactly\ndf_result = df_result[[\"Gender\", \"0\"]]\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource.csv\"\n\n# Save the transformed dataframe to CSV without the index\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Gender,0\nFemale,56\nMale,325\nOther / Non-Disclosed,9\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.00234,
+        "latency": 3.620274782180786,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Gender}; {0}.\nGenerated table candidate keys: {Gender}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\n               Female  56\nOther / Non-Disclosed   9\n                 Male 325",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source_0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation:\n# Group by \"Gender\" and count the number of \"Purchase ID\" entries per gender\ndf_result = df_source_0.groupby(\"Gender\", as_index=False).agg({\"Purchase ID\": \"count\"})\n\n# Rename the aggregated column to \"0\" to match the target schema\ndf_result.rename(columns={\"Purchase ID\": \"0\"}, inplace=True)\n\n# Reorder columns to match target schema exactly\ndf_result = df_result[[\"Gender\", \"0\"]]\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource.csv\"\n\n# Save the transformed dataframe to CSV without the index\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Gender,0\nFemale,56\nMale,325\nOther / Non-Disclosed,9\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026904000000000003,
+        "latency": 4.036367654800415,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Gender}; {0}.\nGenerated table candidate keys: {Gender}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\n                 Male 325\n               Female  56\nOther / Non-Disclosed   9",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source_0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation:\n# Group by \"Gender\" and count the number of \"Purchase ID\" entries per gender\ndf_result = df_source_0.groupby(\"Gender\", as_index=False).agg({\"Purchase ID\": \"count\"})\n\n# Rename the aggregated column to \"0\" to match the target schema\ndf_result.rename(columns={\"Purchase ID\": \"0\"}, inplace=True)\n\n# Reorder columns to match target schema exactly\ndf_result = df_result[[\"Gender\", \"0\"]]\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource.csv\"\n\n# Save the transformed dataframe to CSV without the index\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Gender,0\nFemale,56\nMale,325\nOther / Non-Disclosed,9\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0030408000000000006,
+        "latency": 4.958557844161987,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Gender}; {0}.\nGenerated table candidate keys: {Gender}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\n                 Male 325\nOther / Non-Disclosed   9\n               Female  56",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source_0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation:\n# Group by \"Gender\" and count the number of \"Purchase ID\" entries per gender\ndf_result = df_source_0.groupby(\"Gender\", as_index=False).agg({\"Purchase ID\": \"count\"})\n\n# Rename the aggregated column to \"0\" to match the target schema\ndf_result.rename(columns={\"Purchase ID\": \"0\"}, inplace=True)\n\n# Reorder columns to match target schema exactly\ndf_result = df_result[[\"Gender\", \"0\"]]\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource.csv\"\n\n# Save the transformed dataframe to CSV without the index\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Gender,0\nFemale,56\nMale,325\nOther / Non-Disclosed,9\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033912000000000005,
+        "latency": 4.328232526779175,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Gender}; {0}.\nGenerated table candidate keys: {Gender}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\nOther / Non-Disclosed   9\n               Female  56\n                 Male 325",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the first numerical index column\ndf_source_0 = pd.read_csv(source_path_0, index_col=0)\n\n# Transformation:\n# Group by \"Gender\" and count the number of \"Purchase ID\" entries per gender\ndf_result = df_source_0.groupby(\"Gender\", as_index=False).agg({\"Purchase ID\": \"count\"})\n\n# Rename the aggregated column to \"0\" to match the target schema\ndf_result.rename(columns={\"Purchase ID\": \"0\"}, inplace=True)\n\n# Reorder columns to match target schema exactly\ndf_result = df_result[[\"Gender\", \"0\"]]\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource.csv\"\n\n# Save the transformed dataframe to CSV without the index\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Gender,0\nFemale,56\nMale,325\nOther / Non-Disclosed,9\n"
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "case": "1_87",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6288666666666667,
+        "cost": 0.0015164000000000002,
+        "latency": 5.142436981201172,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.500 (1.0 is perfect).\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition, click}.\nKeys present in ground truth but absent in generated: {click}; {condition}.\nSpurious keys in generated not present in ground truth: {click, condition}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['condition'] \u2192 click; ['click'] \u2192 condition.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 499\nExamples:\n condition  click\n         0    0.0\n         1    0.0\n         0    0.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_87/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since all source tables have the same schema as the target,\n# and target schema is ['condition': integer, 'click': float],\n# we can union (concatenate) all source tables.\n\n# Concatenate all source DataFrames\ncombined_df = pd.concat(source_dfs, ignore_index=True)\n\n# Ensure the data types match the target schema\ncombined_df['condition'] = combined_df['condition'].astype(int)\ncombined_df['click'] = combined_df['click'].astype(float)\n\n# Write the result to the target path\ncombined_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "condition,click\n1,0.0\n0,0.0\n0,0.0\n1,1.0\n1,0.0\n1,0.0\n0,0.0\n1,1.0\n0,0.0\n1,0.0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.002836,
+          "latency": 9.859151601791382,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 2\nExamples:\n condition    click\n         1 0.113821\n         0 0.075099",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 as per hint 21\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_87/test_0.csv\"\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['condition': int, 'click': float]\n# Source schema is ['condition', 'click'] with click as int (0 or 1)\n# Target click is float with average values per condition\n\n# According to FD, 'condition' is the key, so we group by 'condition'\n# and aggregate 'click' by average to get float values matching target\n\n# GroupBy 'condition' and Aggregate average of 'click'\nresult = df0.groupby('condition', as_index=False).agg({'click': 'mean'})\n\n# Ensure 'condition' is int and 'click' is float (should be by default)\nresult['condition'] = result['condition'].astype(int)\nresult['click'] = result['click'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_87/target_multisource_critique_history.csv\", index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019944000000000003,
+        "latency": 5.902728319168091,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 2\nExamples:\n condition    click\n         1 0.113821\n         0 0.075099",
+        "code": "import pandas as pd\n\n# Paths to all source CSV files\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_87/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# Since all source tables have the same schema ['condition', 'click'],\n# and the target table schema is also ['condition': int, 'click': float],\n# we can UNION all source tables first.\n\n# Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# According to the functional dependency, 'condition' is the key,\n# and 'click' in the target is a float representing average click per condition.\n\n# Group by 'condition' and aggregate 'click' by mean to get float values\nresult = combined_df.groupby('condition', as_index=False).agg({'click': 'mean'})\n\n# Ensure correct data types\nresult['condition'] = result['condition'].astype(int)\nresult['click'] = result['click'].astype(float)\n\n# Write the transformed data to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "condition,click\n0,0.075098814229249\n1,0.1138211382113821\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023784,
+        "latency": 5.775764465332031,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 2\nExamples:\n condition    click\n         1 0.113821\n         0 0.075099",
+        "code": "import pandas as pd\n\n# List all source CSV file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_87/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames, ignoring the first index column as per hint 24\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# All source tables have the same schema ['condition', 'click']\n# The target schema is ['condition': int, 'click': float]\n# According to the functional dependency, 'condition' is the key,\n# and 'click' in the target is a float representing average click per condition.\n\n# Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'condition' and aggregate 'click' by mean to get float values\nresult = combined_df.groupby('condition', as_index=False).agg({'click': 'mean'})\n\n# Ensure correct data types\nresult['condition'] = result['condition'].astype(int)\nresult['click'] = result['click'].astype(float)\n\n# Write the transformed data to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "condition,click\n0,0.075098814229249\n1,0.1138211382113821\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027752,
+        "latency": 5.311208963394165,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 2\nExamples:\n condition    click\n         1 0.113821\n         0 0.075099",
+        "code": "import pandas as pd\n\n# List all source CSV file paths (only one source file given)\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_87/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames, ignoring the first index column as per hint 24\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# All source tables have the same schema ['condition', 'click']\n# The target schema is ['condition': int, 'click': float]\n# According to the functional dependency, 'condition' is the key,\n# and 'click' in the target is a float representing average click per condition.\n\n# Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'condition' and aggregate 'click' by mean to get float values\nresult = combined_df.groupby('condition', as_index=False).agg({'click': 'mean'})\n\n# Ensure correct data types\nresult['condition'] = result['condition'].astype(int)\nresult['click'] = result['click'].astype(float)\n\n# Write the transformed data to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "condition,click\n0,0.075098814229249\n1,0.1138211382113821\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0031576,
+        "latency": 5.7177088260650635,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 2\nExamples:\n condition    click\n         0 0.075099\n         1 0.113821",
+        "code": "import pandas as pd\n\n# List all source CSV file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_87/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames, ignoring the first index column as per hint 24\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# All source tables have the same schema ['condition', 'click']\n# The target schema is ['condition': int, 'click': float]\n# According to the functional dependency, 'condition' is the key,\n# and 'click' in the target is a float representing average click per condition.\n\n# Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'condition' and aggregate 'click' by mean to get float values\nresult = combined_df.groupby('condition', as_index=False).agg({'click': 'mean'})\n\n# Ensure correct data types\nresult['condition'] = result['condition'].astype(int)\nresult['click'] = result['click'].astype(float)\n\n# Write the transformed data to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "condition,click\n0,0.075098814229249\n1,0.1138211382113821\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035448000000000003,
+        "latency": 6.271917819976807,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 2\nExamples:\n condition    click\n         0 0.075099\n         1 0.113821",
+        "code": "import pandas as pd\n\n# List all source CSV file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_87/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames, ignoring the first index column as per hint 24\ndfs = [pd.read_csv(path, index_col=0) for path in source_paths]\n\n# All source tables have the same schema ['condition', 'click']\n# The target schema is ['condition': int, 'click': float]\n# According to the functional dependency, 'condition' is the key,\n# and 'click' in the target is a float representing average click per condition.\n\n# Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'condition' and aggregate 'click' by mean to get float values\nresult = combined_df.groupby('condition', as_index=False).agg({'click': 'mean'})\n\n# Ensure correct data types\nresult['condition'] = result['condition'].astype(int)\nresult['click'] = result['click'].astype(float)\n\n# Write the transformed data to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "condition,click\n0,0.075098814229249\n1,0.1138211382113821\n"
+      },
+      "critiques": []
+    }
+  ]
+}

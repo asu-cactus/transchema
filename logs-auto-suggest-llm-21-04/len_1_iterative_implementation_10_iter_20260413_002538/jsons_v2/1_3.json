@@ -1,0 +1,89 @@
+{
+  "case": "1_3",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024856,
+        "latency": 5.18431544303894,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category       Median\nIndustrial Arts & Consumer Services 40250.000000\n            Computers & Mathematics 61571.428571\n                        Engineering 77857.142857",
+        "code": "import pandas as pd\n\n# Load source data\nsource1_3_0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\nsource1_3_0 = pd.read_csv(source1_3_0_path, index_col=0)\n\n# Perform transformation according to operation history:\n# group_by = [Source1_3_0.Major_category]\n# aggregations = [avg(Source1_3_0.Median)]\n\n# Group by 'Major_category' and calculate average of 'Median'\ntarget1_3 = source1_3_0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Ensure target schema: ['Major_category': string, 'Median': float]\ntarget1_3['Major_category'] = target1_3['Major_category'].astype(str)\ntarget1_3['Median'] = target1_3['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv\"\ntarget1_3.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0021068,
+        "latency": 3.805389404296875,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                 Major_category   Median\n            Law & Public Policy 49000.00\nAgriculture & Natural Resources 55000.00\n                      Education 43831.25",
+        "code": "import pandas as pd\n\n# Load source data\nsource1_3_0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\nsource1_3_0 = pd.read_csv(source1_3_0_path, index_col=0)\n\n# Transformation:\n# Group by 'Major_category' and calculate the average of 'Median' as per the target schema and examples.\n\ntarget1_3 = source1_3_0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Ensure target schema types\ntarget1_3['Major_category'] = target1_3['Major_category'].astype(str)\ntarget1_3['Median'] = target1_3['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv\"\ntarget1_3.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024536,
+        "latency": 3.2908239364624023,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category  Median\n          Humanities & Liberal Arts 46712.5\n                Law & Public Policy 49000.0\nIndustrial Arts & Consumer Services 40250.0",
+        "code": "import pandas as pd\n\n# Load source data\nsource1_3_0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\nsource1_3_0 = pd.read_csv(source1_3_0_path, index_col=0)\n\n# Transformation:\n# Group by 'Major_category' and calculate the average of 'Median' as per the target schema and examples.\n\ntarget1_3 = source1_3_0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Ensure target schema types\ntarget1_3['Major_category'] = target1_3['Major_category'].astype(str)\ntarget1_3['Median'] = target1_3['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv\"\ntarget1_3.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028008,
+        "latency": 3.227539300918579,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category       Median\n    Agriculture & Natural Resources 55000.000000\n             Biology & Life Science 51833.333333\nIndustrial Arts & Consumer Services 40250.000000",
+        "code": "import pandas as pd\n\n# Load source data\nsource1_3_0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\nsource1_3_0 = pd.read_csv(source1_3_0_path, index_col=0)\n\n# Transformation:\n# Group by 'Major_category' and calculate the average of 'Median' as per the target schema and examples.\n\ntarget1_3 = source1_3_0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Ensure target schema types\ntarget1_3['Major_category'] = target1_3['Major_category'].astype(str)\ntarget1_3['Median'] = target1_3['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv\"\ntarget1_3.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032124000000000002,
+        "latency": 4.346146583557129,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n             Major_category       Median\n    Computers & Mathematics 61571.428571\n        Law & Public Policy 49000.000000\nCommunications & Journalism 49500.000000",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - The target table schema is ['Major_category': string, 'Median': float].\n# - The source table has these columns plus many others.\n# - The target examples show aggregation by Major_category with average Median.\n# - So group by 'Major_category' and compute mean of 'Median'.\n# - Ensure the types match target schema.\n\ntarget = source0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Enforce target schema types explicitly\ntarget['Major_category'] = target['Major_category'].astype(str)\ntarget['Median'] = target['Median'].astype(float)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ntarget.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035851999999999998,
+        "latency": 3.917203664779663,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category   Median\n                Law & Public Policy 49000.00\n                          Education 43831.25\nIndustrial Arts & Consumer Services 40250.00",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Major_category': string, 'Median': float]\n# - Source table has these columns plus others.\n# - Target examples show aggregation by Major_category with average Median.\n# - So group by 'Major_category' and compute mean of 'Median'.\n# - Ensure the types match target schema.\n\ntarget = source0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Enforce target schema types explicitly\ntarget['Major_category'] = target['Major_category'].astype(str)\ntarget['Median'] = target['Median'].astype(float)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ntarget.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,55000.0\nBiology & Life Science,51833.333333333336\nCommunications & Journalism,49500.0\nComputers & Mathematics,61571.42857142857\nEducation,43831.25\nEngineering,77857.14285714286\nHumanities & Liberal Arts,46712.5\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    }
+  ]
+}

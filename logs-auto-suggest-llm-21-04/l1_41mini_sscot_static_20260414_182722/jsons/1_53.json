@@ -1,0 +1,19 @@
+{
+  "case": "1_53",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0016564000000000001,
+        "latency": 9.036476135253906,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {total_litres_of_pure_alcohol}; {continent}; {wine_servings}; {spirit_servings}; {beer_servings}.\nGenerated table candidate keys: {total_litres_of_pure_alcohol}; {continent}; {wine_servings}; {spirit_servings}; {beer_servings}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']\nNumber of Tuples: 5\nExamples:\ncontinent  beer_servings  spirit_servings  wine_servings  total_litres_of_pure_alcohol\n       AF      67.115385        15.576923      18.692308                      2.788462\n       SA     164.142857       112.428571      60.571429                      6.057143\n       AS      31.900000        56.500000      10.750000                      2.000000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_53/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join is needed.\n# The source schema is:\n# ['country', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol', 'continent']\n# The target schema is:\n# ['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']\n\n# We need to aggregate the source data by continent, computing the mean of the numeric columns\n# because the target examples show aggregated values per continent.\n\n# Select relevant columns\ndf_source = source_dfs[0]\n\n# Group by 'continent' and aggregate numeric columns by mean\ndf_target = df_source.groupby('continent', as_index=False).agg({\n    'beer_servings': 'mean',\n    'spirit_servings': 'mean',\n    'wine_servings': 'mean',\n    'total_litres_of_pure_alcohol': 'mean'\n})\n\n# Ensure the column order matches the target schema\ndf_target = df_target[['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']]\n\n# Convert data types to match target schema: continent as string, others as float\ndf_target['continent'] = df_target['continent'].astype(str)\ndf_target['beer_servings'] = df_target['beer_servings'].astype(float)\ndf_target['spirit_servings'] = df_target['spirit_servings'].astype(float)\ndf_target['wine_servings'] = df_target['wine_servings'].astype(float)\ndf_target['total_litres_of_pure_alcohol'] = df_target['total_litres_of_pure_alcohol'].astype(float)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_53/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

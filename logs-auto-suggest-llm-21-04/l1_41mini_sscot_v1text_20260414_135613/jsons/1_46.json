@@ -1,0 +1,19 @@
+{
+  "case": "1_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.001202,
+        "latency": 9.328591585159302,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.667 + 1.000) / 2 = 0.556 (1.0 is perfect).\nGround truth candidate keys: {Water Use}; {Date}; {Power Use}.\nGenerated table candidate keys: {Date}; {Unnamed: 0}; {Power Use}; {Water Use}.\nSpurious keys in generated not present in ground truth: {Unnamed: 0}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Date'] \u2192 Unnamed: 0; ['Water Use'] \u2192 Unnamed: 0; ['Power Use'] \u2192 Unnamed: 0; ['Unnamed: 0'] \u2192 Date; ['Unnamed: 0'] \u2192 Water Use (and 1 more).\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Unnamed: 0', 'Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n Unnamed: 0     Date  Water Use  Power Use\n         76 Nov_2009    6499.58      32486\n         90 Sep_2007    3836.11      36095\n         71 May_2013    1263.08      34251",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_46/test_0.csv\"\n    ]\n\n    # List to hold transformed DataFrames from each source\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Inspect columns: ['Text Date', 'Value Date', 'Zip Code', 'Water Use', 'Power Use']\n        # Target schema: ['Date': string, 'Water Use': float, 'Power Use': integer]\n\n        # We choose 'Text Date' as the Date column in target (matches target examples format like \"Jul_2009\")\n        # Group by 'Text Date' to aggregate Water Use and Power Use\n        # Aggregation:\n        #   Water Use: sum (to accumulate total water use per date)\n        #   Power Use: sum (to accumulate total power use per date)\n        # This matches the target examples where values are large sums.\n\n        # Convert Water Use and Power Use to numeric, coerce errors to NaN\n        df['Water Use'] = pd.to_numeric(df['Water Use'], errors='coerce')\n        df['Power Use'] = pd.to_numeric(df['Power Use'], errors='coerce')\n\n        # Group by 'Text Date' and aggregate\n        grouped = df.groupby('Text Date', as_index=False).agg({\n            'Water Use': 'sum',\n            'Power Use': 'sum'\n        })\n\n        # Rename 'Text Date' to 'Date' to match target schema\n        grouped.rename(columns={'Text Date': 'Date'}, inplace=True)\n\n        # Ensure data types match target schema\n        grouped['Date'] = grouped['Date'].astype(str)\n        grouped['Water Use'] = grouped['Water Use'].astype(float)\n        grouped['Power Use'] = grouped['Power Use'].astype(int)\n\n        transformed_dfs.append(grouped)\n\n    # Since we have only one source, just use that DataFrame\n    # If multiple sources existed, we would concatenate them here\n    target_df = pd.concat(transformed_dfs, ignore_index=True)\n\n    # Sort by Date for neatness (optional)\n    target_df = target_df.sort_values(by='Date').reset_index(drop=True)\n\n    # Write to target CSV\n    target_df.to_csv(\n        \"autopipeline-benchmarks/github-pipelines/length1_46/target_multisource_cot.csv\",\n        index=False\n    )\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

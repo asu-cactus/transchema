@@ -1,0 +1,19 @@
+{
+  "case": "1_62",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010552,
+        "latency": 5.641302108764648,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Month}; {Water Use}; {Power Use}.\nGenerated table candidate keys: {Month}; {Water Use}; {Power Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Month', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n   Month  Water Use  Power Use\nOct_2012    1015.62      36607\nMay_2009    4630.62      29492\nJul_2009    6673.80      33333",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_62/test_0.csv\"\n    ]\n\n    # List to hold dataframes from all sources\n    dfs = []\n\n    for file_path in source_files:\n        # Load source CSV\n        df = pd.read_csv(file_path)\n\n        # Extract relevant columns and rename to target schema\n        # Target schema: ['Month': string, 'Water Use': float, 'Power Use': integer]\n        # Source columns: 'Text Date' -> 'Month'\n        #                 'Water Use' -> 'Water Use'\n        #                 'Power Use' -> 'Power Use'\n\n        # Select needed columns\n        df_selected = df[['Text Date', 'Water Use', 'Power Use']].copy()\n\n        # Rename columns\n        df_selected.rename(columns={'Text Date': 'Month'}, inplace=True)\n\n        # Convert data types\n        df_selected['Month'] = df_selected['Month'].astype(str)\n        df_selected['Water Use'] = pd.to_numeric(df_selected['Water Use'], errors='coerce')\n        df_selected['Power Use'] = pd.to_numeric(df_selected['Power Use'], errors='coerce').fillna(0).astype(int)\n\n        dfs.append(df_selected)\n\n    # Concatenate all source dataframes\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Group by 'Month' and aggregate:\n    # Water Use: sum (float)\n    # Power Use: sum (integer)\n    result_df = combined_df.groupby('Month', as_index=False).agg({\n        'Water Use': 'sum',\n        'Power Use': 'sum'\n    })\n\n    # Ensure correct dtypes after aggregation\n    result_df['Water Use'] = result_df['Water Use'].astype(float)\n    result_df['Power Use'] = result_df['Power Use'].astype(int)\n\n    # Save to target CSV\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_62/target_multisource_cot.csv\"\n    result_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

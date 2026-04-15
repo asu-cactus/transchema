@@ -1,0 +1,19 @@
+{
+  "case": "1_92",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.0012636000000000001,
+        "latency": 9.826818466186523,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {email}; {user_id}.\nGenerated table candidate keys: {email}; {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'email', 'geo']\nNumber of Tuples: 50\nExamples:\n user_id             email       geo\nuser_913  Kinkenbo@mail.ru   \u0412\u043e\u0440\u043e\u043d\u0435\u0436\nuser_990    Kalismed@bk.ru    \u041a\u0430\u0437\u0430\u043d\u044c\nuser_938 Exploator@ukr.net \u042f\u0440\u043e\u0441\u043b\u0430\u0432\u043b\u044c",
+        "code": "import pandas as pd\n\ndef main():\n    # List of source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_92/test_0.csv\"\n        # Add more source files here if available\n    ]\n\n    # List to hold DataFrames\n    dfs = []\n\n    for file_path in source_files:\n        # Read source CSV\n        df = pd.read_csv(file_path, encoding='utf-8')\n\n        # Normalize user_id to lowercase\n        df['user_id'] = df['user_id'].str.lower()\n\n        # Append to list\n        dfs.append(df)\n\n    # Concatenate all source DataFrames\n    target_df = pd.concat(dfs, ignore_index=True)\n\n    # Reorder columns to match target schema explicitly (optional here since same)\n    target_df = target_df[['user_id', 'email', 'geo']]\n\n    # Write to target CSV\n    target_df.to_csv(\n        \"autopipeline-benchmarks/github-pipelines/length1_92/target_multisource_cot.csv\",\n        index=False,\n        encoding='utf-8'\n    )\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

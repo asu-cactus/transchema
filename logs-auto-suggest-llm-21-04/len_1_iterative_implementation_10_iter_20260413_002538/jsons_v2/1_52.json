@@ -1,0 +1,215 @@
+{
+  "case": "1_52",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6666666666666666,
+        "cost": 0.0016596000000000002,
+        "latency": 4.873095512390137,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show counts of 'click' grouped by 'condition':\n# condition 0\n# 0         253\n# 1         246\n#\n# So the target table is a count of rows per condition where click=0.\n# Since source0 has 'condition' and 'click', we filter click=0 and count per condition.\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Count number of rows per 'condition'\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "condition,0\n0,234\n1,218\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.002848,
+          "latency": 9.339064836502075,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition  0\n         1 28\n         0 19",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# According to the problem:\n# - Target schema: ['condition': int, '0': int]\n# - Source schema: ['condition', 'click']\n# - Target key: 'condition'\n# - Target '0' column corresponds to aggregated 'click' counts per 'condition'\n# - The failed output had sums too low, so we need to sum 'click' grouped by 'condition'\n\n# Group by 'condition' and sum 'click' to get the target column '0'\nresult = df0.groupby('condition', as_index=False)['click'].sum()\n\n# Rename 'click' column to '0' to match target schema\nresult = result.rename(columns={'click': '0'})\n\n# Ensure column types match target (integer)\nresult['condition'] = result['condition'].astype(int)\nresult['0'] = result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.0027208,
+          "latency": 8.295037508010864,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition  0\n         1 28\n         0 19",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 as per Hint 21\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by 'condition' (the primary key in target) and aggregate 'click' by sum\n# This is because the target column '0' corresponds to aggregated counts per condition\nresult = df.groupby('condition', as_index=False)['click'].sum()\n\n# Rename the aggregated column 'click' to '0' to match target schema\nresult = result.rename(columns={'click': '0'})\n\n# Ensure column types match target (integer)\nresult['condition'] = result['condition'].astype(int)\nresult['0'] = result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource_critique_history.csv\"\nresult.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6666666666666666,
+        "cost": 0.0020959999999999998,
+        "latency": 6.213296175003052,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         0 234\n         1 218",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show counts of 'click' grouped by 'condition' where click == 0:\n# condition 0\n# 0         253\n# 1         246\n#\n# So the target table is a count of rows per condition where click=0.\n# Since source0 has 'condition' and 'click', we filter click=0 and count per condition.\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Count number of rows per 'condition'\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "condition,0\n0,234\n1,218\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.0038604,
+          "latency": 11.507699251174927,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition  0\n         0 19\n         1 28",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table without index_col to ensure all columns are read correctly\ndf_source0 = pd.read_csv(source0_path)\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Group by 'condition' and count rows\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure correct data types as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.00421,
+          "latency": 14.777847528457642,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table with index_col=0 to ignore numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Group by 'condition' and count rows per group\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure correct data types as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6666666666666666,
+        "cost": 0.0025152,
+        "latency": 5.744968891143799,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show counts of 'click' grouped by 'condition' where click == 0:\n# condition 0\n# 0         253\n# 1         246\n#\n# So the target table is a count of rows per condition where click=0.\n# Since source0 has 'condition' and 'click', we filter click=0 and count per condition.\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Count number of rows per 'condition'\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "condition,0\n0,234\n1,218\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.004002,
+          "latency": 12.345101118087769,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table WITHOUT index_col=0 to avoid dropping rows\ndf_source0 = pd.read_csv(source0_path)\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Group by 'condition' and count rows per group\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure correct data types as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.0044412,
+          "latency": 15.794517517089844,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Ensure 'click' column is integer type (in case of string or float)\ndf_source0['click'] = df_source0['click'].astype(int)\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Group by 'condition' and count number of rows per group\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Sort by 'condition' to match target order (optional)\ndf_result = df_result.sort_values('condition').reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6666666666666666,
+        "cost": 0.0029344,
+        "latency": 6.122556686401367,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         0 234\n         1 218",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show counts of 'click' grouped by 'condition' where click == 0:\n# condition 0\n# 0         253\n# 1         246\n#\n# So the target table is a count of rows per condition where click=0.\n# Since source0 has 'condition' and 'click', we filter click=0 and count per condition.\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Count number of rows per 'condition'\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "condition,0\n0,234\n1,218\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.0041472,
+          "latency": 15.150340557098389,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table WITHOUT index_col=0 because first column is data column 'condition'\ndf_source0 = pd.read_csv(source0_path)\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Group by 'condition' and count rows\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure correct data types\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.0047748,
+          "latency": 27.09481716156006,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         0 234\n         1 218",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Convert 'click' column to string to handle possible string values\ndf_source0['click'] = df_source0['click'].astype(str)\n\n# Filter rows where click == '0' (string)\ndf_filtered = df_source0[df_source0['click'] == '0']\n\n# Group by 'condition' and count rows per group\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6666666666666666,
+        "cost": 0.0033504,
+        "latency": 24.32231855392456,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show counts of rows grouped by 'condition' where click == 0:\n# condition 0\n# 0         253\n# 1         246\n#\n# So the target table is a count of rows per condition where click=0.\n# Since source0 has 'condition' and 'click', we filter click=0 and count per condition.\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Count number of rows per 'condition'\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "condition,0\n0,234\n1,218\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 1.0,
+          "cost": 0.0043616,
+          "latency": 23.961374044418335,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         0 234\n         1 218",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Group by 'condition' and count number of rows per condition (no filtering on 'click')\ndf_result = df_source0.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.0039192,
+          "latency": 24.825859785079956,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         0 234\n         1 218",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table, ignoring the first index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Group by 'condition' and count rows per group\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure correct data types as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6666666666666666,
+        "cost": 0.003768,
+        "latency": 7.515679597854614,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 218\n         0 234",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show counts of rows grouped by 'condition' where click == 0:\n# condition 0\n# 0         253\n# 1         246\n#\n# So the target table is a count of rows per condition where click=0.\n# Since source0 has 'condition' and 'click', we filter click=0 and count per condition.\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Count number of rows per 'condition'\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "condition,0\n0,234\n1,218\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": false,
+          "score": 0.6666666666666666,
+          "cost": 0.0053528000000000004,
+          "latency": 28.313058376312256,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         0 234\n         1 218",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Filter rows where click == 0\ndf_filtered = df_source0[df_source0['click'] == 0]\n\n# Group by 'condition' and count rows per group\ndf_result = df_filtered.groupby('condition').size().reset_index(name='0')\n\n# Ensure correct data types as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Sort by 'condition' to match target example order\ndf_result = df_result.sort_values('condition').reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        },
+        {
+          "type": "metadata",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.005138,
+          "latency": 25.83868980407715,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 246\n         0 253",
+          "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_52/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show counts of rows per condition (ignoring click):\n# condition 0 -> 253\n# condition 1 -> 246\n#\n# So the target table is a count of rows per condition regardless of click.\n\n# Count number of rows per 'condition'\ndf_result = df_source0.groupby('condition').size().reset_index(name='0')\n\n# Ensure the 'condition' and '0' columns are integer type as per target schema\ndf_result['condition'] = df_result['condition'].astype(int)\ndf_result['0'] = df_result['0'].astype(int)\n\n# Sort by 'condition' to match target example order\ndf_result = df_result.sort_values('condition').reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_52/target_multisource_critique_history.csv\"\ndf_result.to_csv(target_path, index=False)"
+        }
+      ]
+    }
+  ]
+}

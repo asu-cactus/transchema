@@ -1,0 +1,19 @@
+{
+  "case": "1_82",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010944000000000001,
+        "latency": 7.10296893119812,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {conservation_status}; {scientific_name}.\nGenerated table candidate keys: {conservation_status}; {scientific_name}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 4\nExamples:\nconservation_status  scientific_name\n         Endangered               11\n Species of Concern               84\n         Threatened                5",
+        "code": "import pandas as pd\n\n# Step 1: Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_82/test_0.csv\"\n]\n\n# Step 2: Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path)\n    source_dfs.append(df)\n\n# Step 3: Concatenate all source DataFrames (only one source here, but scalable)\ncombined_df = pd.concat(source_dfs, ignore_index=True)\n\n# Step 4: Transform the combined DataFrame to match the target schema:\n# Target schema: ['conservation_status': string, 'scientific_name': integer]\n# Notes:\n# - 'conservation_status' is already present in source, but may have NaNs.\n# - 'scientific_name' in source is string, but target expects integer.\n#   From the example, it looks like the target 'scientific_name' column is a count or aggregated integer.\n# - The target examples show conservation_status with counts of scientific_name.\n# So the transformation is:\n#   Group by 'conservation_status' and count the number of distinct scientific_name entries per group.\n\n# Step 5: Clean data before aggregation\n# - Drop rows where 'scientific_name' is NaN or empty (to count valid scientific names)\n# - For grouping, treat NaN conservation_status as a separate group or drop? \n#   The target examples do not show NaNs, so drop rows with NaN conservation_status.\n\nclean_df = combined_df.dropna(subset=['conservation_status', 'scientific_name'])\n\n# Step 6: Group by 'conservation_status' and count distinct 'scientific_name'\nagg_df = (\n    clean_df.groupby('conservation_status')['scientific_name']\n    .nunique()\n    .reset_index()\n    .rename(columns={'scientific_name': 'scientific_name'})\n)\n\n# Step 7: Ensure column types match target schema\nagg_df['conservation_status'] = agg_df['conservation_status'].astype(str)\nagg_df['scientific_name'] = agg_df['scientific_name'].astype(int)\n\n# Step 8: Sort by conservation_status or scientific_name if needed (optional)\nagg_df = agg_df.sort_values(by='conservation_status').reset_index(drop=True)\n\n# Step 9: Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource_cot.csv\"\nagg_df.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

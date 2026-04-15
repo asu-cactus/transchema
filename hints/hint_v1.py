@@ -267,6 +267,8 @@ def get_join_hints(
                 reverse=True,
             ):
                 cnt += 1
+                if cnt > 10:
+                    break
                 hint = f' - {k.replace(" <-> ", " POTENTIAL JOIN ")} ' + " { "
 
                 # todo create two functions, one for key-value pair and one for the text representation.
@@ -303,8 +305,6 @@ def get_join_hints(
                 hint = hint[:-3] + " }"
                 # print(hint)
                 hints += hint + "\n"
-                # if cnt > 10:
-                #     break
 
         # add the hint string
         # print(feat_dict)
@@ -598,14 +598,14 @@ def get_groupby_aggregate_hints(
                 feat_dict_gb, key=lambda k: len(feat_dict_gb[k]), reverse=True
             ):
                 cnt += 1
+                if cnt > 10:
+                    break
                 if len(feat_dict_gb[k]) > 0:
                     hint = f" - {k}  " + " { "
                     for ky, v in feat_dict_gb[k].items():
                         hint += f"{ky} : {v} , "
                     hint = hint[:-3] + " }\n"
                     hints += hint
-                    # if cnt > 10:
-                    #     break
 
             hints += "Aggregation Candidates : \n"
             cnt = 0
@@ -615,14 +615,14 @@ def get_groupby_aggregate_hints(
                 reverse=True,
             ):
                 cnt += 1
+                if cnt > 10:
+                    break
                 if len(feat_dict_aggregate[k]) > 0:
                     hint = f" - {k} : " + " { "
                     for ky, v in feat_dict_aggregate[k].items():
                         hint += f"{ky} : {v} , "
                     hint = hint[:-3] + " }"
                     hints += hint
-                    # if cnt > 10:
-                    #     break
     # print(hints)
     return [hints]
     # return dict(sorted(feat_dict_gb.items(), key=lambda item: len(item[1]), reverse=True)),dict(sorted(feat_dict_aggregate.items(), key=lambda item: len(item[1]), reverse=True))

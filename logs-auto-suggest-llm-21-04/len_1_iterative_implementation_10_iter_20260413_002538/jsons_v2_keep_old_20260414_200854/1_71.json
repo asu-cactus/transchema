@@ -1,0 +1,89 @@
+{
+  "case": "1_71",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024672,
+        "latency": 7.321873903274536,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Region}; {Poblacion}; {Superficie}.\nGenerated table candidate keys: {Region}; {Poblacion}; {Superficie}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 9\nExamples:\n  Region  Poblacion  Superficie\nTarapac\u00e1     205566     41632.6\nCoquimbo     714856     40967.8\n   Maule     298073      9391.8",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_71/test_0.csv\"\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Perform the transformation as per operation_history:\n# group_by = [Source1_71_0.Region]\n# aggregations = [sum(Source1_71_0.Poblacion), sum(Source1_71_0.Superficie)]\n\n# Group by 'Region' and aggregate sum of 'Poblacion' and 'Superficie'\ntarget_df = source0_df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Ensure the target schema types:\n# 'Region': string, 'Poblacion': integer, 'Superficie': float\ntarget_df['Region'] = target_df['Region'].astype(str)\ntarget_df['Poblacion'] = target_df['Poblacion'].astype(int)\ntarget_df['Superficie'] = target_df['Superficie'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Region,Poblacion,Superficie\nAntofagasta,551627,126048.8\nArica y Parinacota,308271,17446.2\nAtacama,292054,74806.3\nCoquimbo,714856,40967.8\nLibertador General Bernardo O'Higgins,903248,16583.3\nMaule,298073,9391.8\nMetropolitana de Santiago,7150480,15547.0\nTarapac\u00e1,205566,41632.6\nValpara\u00edso,1859312,12646.28\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023144,
+        "latency": 4.546367645263672,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Region}; {Poblacion}; {Superficie}.\nGenerated table candidate keys: {Region}; {Poblacion}; {Superficie}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 9\nExamples:\n                               Region  Poblacion  Superficie\n                           Valpara\u00edso    1859312    12646.28\n                          Antofagasta     551627   126048.80\nLibertador General Bernardo O'Higgins     903248    16583.30",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_71/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - The target table schema is ['Region': string, 'Poblacion': integer, 'Superficie': float]\n# - Source table has columns including 'Region', 'Poblacion', 'Superficie' among others.\n# - The target table aggregates data by 'Region', summing 'Poblacion' and 'Superficie'.\n# - So group by 'Region' and sum 'Poblacion' and 'Superficie'.\n\n# Group by 'Region' and aggregate sums\ntarget_df = source0_df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Cast columns to target schema types\ntarget_df['Region'] = target_df['Region'].astype(str)\ntarget_df['Poblacion'] = target_df['Poblacion'].astype(int)\ntarget_df['Superficie'] = target_df['Superficie'].astype(float)\n\n# Output file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Region,Poblacion,Superficie\nAntofagasta,551627,126048.8\nArica y Parinacota,308271,17446.2\nAtacama,292054,74806.3\nCoquimbo,714856,40967.8\nLibertador General Bernardo O'Higgins,903248,16583.3\nMaule,298073,9391.8\nMetropolitana de Santiago,7150480,15547.0\nTarapac\u00e1,205566,41632.6\nValpara\u00edso,1859312,12646.28\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027884000000000003,
+        "latency": 4.7054338455200195,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Region}; {Poblacion}; {Superficie}.\nGenerated table candidate keys: {Region}; {Poblacion}; {Superficie}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 9\nExamples:\n                   Region  Poblacion  Superficie\nMetropolitana de Santiago    7150480    15547.00\n               Valpara\u00edso    1859312    12646.28\n                 Tarapac\u00e1     205566    41632.60",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_71/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Region': string, 'Poblacion': integer, 'Superficie': float]\n# - Source schema includes 'Region', 'Poblacion', 'Superficie' among others.\n# - Target aggregates data by 'Region', summing 'Poblacion' and 'Superficie'.\n# - So group by 'Region' and sum 'Poblacion' and 'Superficie'.\n\n# Group by 'Region' and aggregate sums\ntarget_df = source0_df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Cast columns to target schema types\ntarget_df['Region'] = target_df['Region'].astype(str)\ntarget_df['Poblacion'] = target_df['Poblacion'].astype(int)\ntarget_df['Superficie'] = target_df['Superficie'].astype(float)\n\n# Output file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Region,Poblacion,Superficie\nAntofagasta,551627,126048.8\nArica y Parinacota,308271,17446.2\nAtacama,292054,74806.3\nCoquimbo,714856,40967.8\nLibertador General Bernardo O'Higgins,903248,16583.3\nMaule,298073,9391.8\nMetropolitana de Santiago,7150480,15547.0\nTarapac\u00e1,205566,41632.6\nValpara\u00edso,1859312,12646.28\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032616000000000003,
+        "latency": 4.357442140579224,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Region}; {Poblacion}; {Superficie}.\nGenerated table candidate keys: {Region}; {Poblacion}; {Superficie}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 9\nExamples:\n            Region  Poblacion  Superficie\n       Antofagasta     551627    126048.8\nArica y Parinacota     308271     17446.2\n          Tarapac\u00e1     205566     41632.6",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_71/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Region': string, 'Poblacion': integer, 'Superficie': float]\n# - Source schema includes 'Region', 'Poblacion', 'Superficie' among others.\n# - Target aggregates data by 'Region', summing 'Poblacion' and 'Superficie'.\n# - So group by 'Region' and sum 'Poblacion' and 'Superficie'.\n\n# Group by 'Region' and aggregate sums\ntarget_df = source0_df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Cast columns to target schema types\ntarget_df['Region'] = target_df['Region'].astype(str)\ntarget_df['Poblacion'] = target_df['Poblacion'].astype(int)\ntarget_df['Superficie'] = target_df['Superficie'].astype(float)\n\n# Output file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Region,Poblacion,Superficie\nAntofagasta,551627,126048.8\nArica y Parinacota,308271,17446.2\nAtacama,292054,74806.3\nCoquimbo,714856,40967.8\nLibertador General Bernardo O'Higgins,903248,16583.3\nMaule,298073,9391.8\nMetropolitana de Santiago,7150480,15547.0\nTarapac\u00e1,205566,41632.6\nValpara\u00edso,1859312,12646.28\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0037368000000000006,
+        "latency": 4.821015119552612,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Region}; {Poblacion}; {Superficie}.\nGenerated table candidate keys: {Region}; {Poblacion}; {Superficie}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 9\nExamples:\n    Region  Poblacion  Superficie\n  Coquimbo     714856    40967.80\nValpara\u00edso    1859312    12646.28\n   Atacama     292054    74806.30",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_71/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Region': string, 'Poblacion': integer, 'Superficie': float]\n# - Source schema includes 'Region', 'Poblacion', 'Superficie' among others.\n# - Target aggregates data by 'Region', summing 'Poblacion' and 'Superficie'.\n# - So group by 'Region' and sum 'Poblacion' and 'Superficie'.\n\n# Group by 'Region' and aggregate sums\ntarget_df = source0_df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Cast columns to target schema types\ntarget_df['Region'] = target_df['Region'].astype(str)\ntarget_df['Poblacion'] = target_df['Poblacion'].astype(int)\ntarget_df['Superficie'] = target_df['Superficie'].astype(float)\n\n# Output file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Region,Poblacion,Superficie\nAntofagasta,551627,126048.8\nArica y Parinacota,308271,17446.2\nAtacama,292054,74806.3\nCoquimbo,714856,40967.8\nLibertador General Bernardo O'Higgins,903248,16583.3\nMaule,298073,9391.8\nMetropolitana de Santiago,7150480,15547.0\nTarapac\u00e1,205566,41632.6\nValpara\u00edso,1859312,12646.28\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.00421,
+        "latency": 4.540696382522583,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Region}; {Poblacion}; {Superficie}.\nGenerated table candidate keys: {Region}; {Poblacion}; {Superficie}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 9\nExamples:\n                               Region  Poblacion  Superficie\n                           Valpara\u00edso    1859312    12646.28\nLibertador General Bernardo O'Higgins     903248    16583.30\n                             Tarapac\u00e1     205566    41632.60",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_71/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Region': string, 'Poblacion': integer, 'Superficie': float]\n# - Source schema includes 'Region', 'Poblacion', 'Superficie' among others.\n# - Target aggregates data by 'Region', summing 'Poblacion' and 'Superficie'.\n# - So group by 'Region' and sum 'Poblacion' and 'Superficie'.\n\n# Group by 'Region' and aggregate sums\ntarget_df = source0_df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Cast columns to target schema types\ntarget_df['Region'] = target_df['Region'].astype(str)\ntarget_df['Poblacion'] = target_df['Poblacion'].astype(int)\ntarget_df['Superficie'] = target_df['Superficie'].astype(float)\n\n# Output file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource.csv\"\n\n# Write the transformed data to CSV without the index\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Region,Poblacion,Superficie\nAntofagasta,551627,126048.8\nArica y Parinacota,308271,17446.2\nAtacama,292054,74806.3\nCoquimbo,714856,40967.8\nLibertador General Bernardo O'Higgins,903248,16583.3\nMaule,298073,9391.8\nMetropolitana de Santiago,7150480,15547.0\nTarapac\u00e1,205566,41632.6\nValpara\u00edso,1859312,12646.28\n"
+      },
+      "critiques": []
+    }
+  ]
+}

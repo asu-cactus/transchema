@@ -1,0 +1,89 @@
+{
+  "case": "1_4",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024904,
+        "latency": 7.052426338195801,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4566\nExamples:\n   fname  count_of_obs\n42_2A_15            24\n 66_2C_5            20\n69_4D_13            24",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_4/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Perform the transformation as per operation history:\n# group_by = [Source1_4_0.fname], aggregations = [count(Source1_4_0.fname)]\n# This means group by 'fname' and count the occurrences of 'fname'\n\n# Group by 'fname' and count the number of rows per 'fname'\ngrouped_df = source0_df.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Ensure the target schema: ['fname': string, 'count_of_obs': integer]\n# Convert 'fname' to string explicitly (usually already string, but to be safe)\ngrouped_df['fname'] = grouped_df['fname'].astype(str)\n# Convert 'count_of_obs' to integer explicitly\ngrouped_df['count_of_obs'] = grouped_df['count_of_obs'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource.csv\"\ngrouped_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "fname,count_of_obs\n01_1D_11,24\n01_1D_13,24\n01_1D_15,24\n01_1D_17,20\n01_1D_5,19\n01_1D_7,26\n01_1D_9,17\n01_2B_11,22\n01_2B_5,27\n01_2B_7,18\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022259999999999997,
+        "latency": 4.029329299926758,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4566\nExamples:\n   fname  count_of_obs\n 32_1A_9            17\n66_2B_13            26\n66_4A_15            19",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_4/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - The target table schema is ['fname': string, 'count_of_obs': integer]\n# - The source table contains 'fname' among other columns.\n# - We need to group by 'fname' and count the number of occurrences per 'fname'.\n# - This count corresponds to 'count_of_obs' in the target.\n# - Convert 'fname' to string and 'count_of_obs' to int explicitly.\n# - Write the result to the target path.\n\n# Group by 'fname' and count the number of rows per 'fname'\ngrouped_df = source0_df.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Ensure the target schema types\ngrouped_df['fname'] = grouped_df['fname'].astype(str)\ngrouped_df['count_of_obs'] = grouped_df['count_of_obs'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource.csv\"\ngrouped_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "fname,count_of_obs\n01_1D_11,24\n01_1D_13,24\n01_1D_15,24\n01_1D_17,20\n01_1D_5,19\n01_1D_7,26\n01_1D_9,17\n01_2B_11,22\n01_2B_5,27\n01_2B_7,18\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026103999999999997,
+        "latency": 6.223714351654053,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4566\nExamples:\n   fname  count_of_obs\n 25_1A_9            14\n23_2A_13            22\n 41_1D_5            20",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_4/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['fname': string, 'count_of_obs': integer]\n# - Source schema includes 'fname' among other columns.\n# - We need to group by 'fname' and count the number of occurrences per 'fname'.\n# - This count corresponds to 'count_of_obs' in the target.\n# - Convert 'fname' to string and 'count_of_obs' to int explicitly.\n# - Write the result to the target path.\n\n# Group by 'fname' and count the number of rows per 'fname'\ngrouped_df = source0_df.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Ensure the target schema types\ngrouped_df['fname'] = grouped_df['fname'].astype(str)\ngrouped_df['count_of_obs'] = grouped_df['count_of_obs'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource.csv\"\ngrouped_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "fname,count_of_obs\n01_1D_11,24\n01_1D_13,24\n01_1D_15,24\n01_1D_17,20\n01_1D_5,19\n01_1D_7,26\n01_1D_9,17\n01_2B_11,22\n01_2B_5,27\n01_2B_7,18\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0029988,
+        "latency": 4.004426002502441,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4566\nExamples:\n  fname  count_of_obs\n46_1A_5            17\n42_6D_9            21\n03_5D_9            23",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_4/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['fname': string, 'count_of_obs': integer]\n# - Source schema includes 'fname' among other columns.\n# - We need to group by 'fname' and count the number of occurrences per 'fname'.\n# - This count corresponds to 'count_of_obs' in the target.\n# - Convert 'fname' to string and 'count_of_obs' to int explicitly.\n# - Write the result to the target path.\n\n# Group by 'fname' and count the number of rows per 'fname'\ngrouped_df = source0_df.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Ensure the target schema types\ngrouped_df['fname'] = grouped_df['fname'].astype(str)\ngrouped_df['count_of_obs'] = grouped_df['count_of_obs'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource.csv\"\ngrouped_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "fname,count_of_obs\n01_1D_11,24\n01_1D_13,24\n01_1D_15,24\n01_1D_17,20\n01_1D_5,19\n01_1D_7,26\n01_1D_9,17\n01_2B_11,22\n01_2B_5,27\n01_2B_7,18\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033856000000000003,
+        "latency": 6.065714359283447,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4566\nExamples:\n   fname  count_of_obs\n 35_2D_5            27\n14_2A_11            23\n 15_2C_5            25",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_4/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['fname': string, 'count_of_obs': integer]\n# - Source schema includes 'fname' among other columns.\n# - We need to group by 'fname' and count the number of occurrences per 'fname'.\n# - This count corresponds to 'count_of_obs' in the target.\n# - Convert 'fname' to string and 'count_of_obs' to int explicitly.\n# - Write the result to the target path.\n\n# Group by 'fname' and count the number of rows per 'fname'\ngrouped_df = source0_df.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Ensure the target schema types\ngrouped_df['fname'] = grouped_df['fname'].astype(str)\ngrouped_df['count_of_obs'] = grouped_df['count_of_obs'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource.csv\"\ngrouped_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "fname,count_of_obs\n01_1D_11,24\n01_1D_13,24\n01_1D_15,24\n01_1D_17,20\n01_1D_5,19\n01_1D_7,26\n01_1D_9,17\n01_2B_11,22\n01_2B_5,27\n01_2B_7,18\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0037732,
+        "latency": 6.051770925521851,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4566\nExamples:\n   fname  count_of_obs\n 17_1D_9            23\n 28_5B_7            15\n34_4A_15            22",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_4/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['fname': string, 'count_of_obs': integer]\n# - Source schema includes 'fname' among other columns.\n# - We need to group by 'fname' and count the number of occurrences per 'fname'.\n# - This count corresponds to 'count_of_obs' in the target.\n# - Convert 'fname' to string and 'count_of_obs' to int explicitly.\n# - Write the result to the target path.\n\n# Group by 'fname' and count the number of rows per 'fname'\ngrouped_df = source0_df.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Ensure the target schema types\ngrouped_df['fname'] = grouped_df['fname'].astype(str)\ngrouped_df['count_of_obs'] = grouped_df['count_of_obs'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource.csv\"\ngrouped_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "fname,count_of_obs\n01_1D_11,24\n01_1D_13,24\n01_1D_15,24\n01_1D_17,20\n01_1D_5,19\n01_1D_7,26\n01_1D_9,17\n01_2B_11,22\n01_2B_5,27\n01_2B_7,18\n"
+      },
+      "critiques": []
+    }
+  ]
+}

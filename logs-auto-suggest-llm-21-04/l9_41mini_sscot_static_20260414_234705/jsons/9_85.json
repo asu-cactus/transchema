@@ -1,0 +1,19 @@
+{
+  "case": "9_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.002164,
+        "latency": 12.341158866882324,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {admit, gre, gpa}.\nGenerated table candidate keys: {admit, gre, gpa}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['admit', 'gre', 'gpa', 'prestige']\nNumber of Tuples: 579\nExamples:\n admit  gre  gpa  prestige\n     1  620 3.61         1\n     1  480 3.58         1\n     1  620 3.37         1",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_85/test_9.csv\"\n]\n\n# Target schema columns and types\ntarget_columns = ['admit', 'gre', 'gpa', 'prestige']\ntarget_dtypes = {\n    'admit': int,\n    'gre': int,\n    'gpa': float,\n    'prestige': int\n}\n\n# Step 1: Load all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Ensure columns are exactly the target columns\n    # According to the prompt, all source schemas are identical to target schema\n    # So no renaming or filtering needed here\n    \n    # Enforce correct dtypes for consistency before union\n    df = df.astype(target_dtypes)\n    \n    dfs.append(df)\n\n# Step 2: Union all source tables (concatenate)\n# Since all have the same schema, union (concat) is appropriate\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Step 3: Final type enforcement (in case of any subtle dtype issues)\ncombined_df = combined_df.astype(target_dtypes)\n\n# Step 4: Write the combined DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length9_85/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

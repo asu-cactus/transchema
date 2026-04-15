@@ -1,0 +1,19 @@
+{
+  "case": "1_3",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.00114,
+        "latency": 10.18644380569458,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n         Major_category       Median\n Biology & Life Science 51833.333333\nComputers & Mathematics 61571.428571\n    Law & Public Policy 49000.000000",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path(s)\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n    ]\n\n    # List to hold dataframes from all sources after transformation\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # We want to produce a dataframe with schema:\n        # ['Major_category': string, 'Median': float]\n        # The source has multiple rows per Major_category, so we need to aggregate.\n\n        # Median salary might be missing for some rows (82% emptiness),\n        # so we should exclude rows with missing Median before aggregation.\n\n        # Group by Major_category and compute the median of Median salaries.\n        # Since Median is a median salary per major, taking median of medians per category is reasonable.\n\n        df_valid = df.dropna(subset=['Median'])\n\n        # Convert Median to float (in case it's not)\n        df_valid['Median'] = df_valid['Median'].astype(float)\n\n        grouped = df_valid.groupby('Major_category', as_index=False)['Median'].median()\n\n        transformed_dfs.append(grouped)\n\n    # If multiple sources, concatenate results and aggregate again by Major_category\n    if len(transformed_dfs) > 1:\n        combined = pd.concat(transformed_dfs, ignore_index=True)\n        # Aggregate again by Major_category to get final median\n        final_df = combined.groupby('Major_category', as_index=False)['Median'].median()\n    else:\n        final_df = transformed_dfs[0]\n\n    # Sort by Major_category alphabetically for consistent output (optional)\n    final_df = final_df.sort_values('Major_category').reset_index(drop=True)\n\n    # Write to target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\n    final_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_67",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 3.0,
+        "cost": 0.0011508,
+        "latency": 9.771775245666504,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'sad', 'stressed']\nNumber of Tuples: 35\nExamples:\n user_id      sad  stressed\n      29 0.000000  0.000000\n       2 0.408163  0.173469\n      32 0.038462  0.064103",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_67/test_0.csv\"\n    \n    # Load source data\n    df_source0 = pd.read_csv(source0_path)\n    \n    # Inspect columns:\n    # ['user_id', 'time', 'sore.throat.cough', 'runnynose.congestion.sneezing', 'fever', \n    #  'nausea.vomiting.diarrhea', 'sad.depressed', 'open.stressed']\n    \n    # Transformation plan:\n    # Target schema: ['user_id': int, 'sad': float, 'stressed': float]\n    # From source:\n    #   - user_id: keep as is\n    #   - sad: aggregate 'sad.depressed' by user_id (mean)\n    #   - stressed: aggregate 'open.stressed' by user_id (mean)\n    #\n    # Since source has multiple rows per user_id (different times), we group by user_id and take mean of sad.depressed and open.stressed.\n    #\n    # Finally, rename columns to match target schema and export.\n    \n    # Group by user_id and aggregate mean of sad.depressed and open.stressed\n    df_agg = df_source0.groupby('user_id', as_index=False).agg({\n        'sad.depressed': 'mean',\n        'open.stressed': 'mean'\n    })\n    \n    # Rename columns to target schema\n    df_agg.rename(columns={\n        'sad.depressed': 'sad',\n        'open.stressed': 'stressed'\n    }, inplace=True)\n    \n    # Ensure user_id is integer type\n    df_agg['user_id'] = df_agg['user_id'].astype(int)\n    \n    # Reorder columns to match target schema exactly\n    df_target = df_agg[['user_id', 'sad', 'stressed']]\n    \n    # Output path\n    output_path = \"autopipeline-benchmarks/github-pipelines/length1_67/target_multisource_cot.csv\"\n    \n    # Save to CSV without index\n    df_target.to_csv(output_path, index=False)\n    \nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}
