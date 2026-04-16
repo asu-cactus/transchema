@@ -1,0 +1,19 @@
+{
+  "case": "4_79",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0017440000000000003,
+        "latency": 6.266063451766968,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (0.000 + 1.000) / 2 = 0.510 (1.0 is perfect).\nGround truth candidate keys: {hero, matches}.\nGenerated table candidate keys: {matches}; {winrate}; {hero}.\nKeys present in ground truth but absent in generated: {hero, matches}.\nSpurious keys in generated not present in ground truth: {winrate}; {hero}; {matches}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['winrate'] \u2192 disadvantage; ['hero'] \u2192 disadvantage; ['matches'] \u2192 hero; ['matches'] \u2192 winrate; ['matches'] \u2192 disadvantage (and 4 more).\nMissing FDs from ground truth: ['hero', 'matches'] \u2192 winrate; ['hero', 'matches'] \u2192 disadvantage.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['hero', 'disadvantage', 'winrate', 'matches']\nNumber of Tuples: 119\nExamples:\n       hero  disadvantage  winrate  matches\n       Riki         1.320   46.760   423388\n  Clockwerk        -1.735   50.135   331251\nBeastmaster         0.510   52.480   108610",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_79/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/test_4.csv\"\n]\n\n# Read all source CSV files into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# All source tables have the exact same schema as the target:\n# ['hero', 'disadvantage', 'winrate', 'matches']\n# According to Hint 2 and Hint 4, since schemas are identical and match target schema,\n# we should UNION (concatenate) all source tables.\n\n# Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# The target table has 531 rows, sources combined have:\n# 59 + 118 + 118 + 118 + 118 = 531 rows total, so no aggregation needed.\n\n# Data types enforcement according to target schema:\n# 'hero': string\n# 'disadvantage': float\n# 'winrate': float\n# 'matches': integer\n\ncombined_df['hero'] = combined_df['hero'].astype(str)\ncombined_df['disadvantage'] = combined_df['disadvantage'].astype(float)\ncombined_df['winrate'] = combined_df['winrate'].astype(float)\ncombined_df['matches'] = combined_df['matches'].astype(int)\n\n# Save the combined DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_79/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

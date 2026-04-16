@@ -1,0 +1,19 @@
+{
+  "case": "1_42",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0024732,
+        "latency": 16.622597217559814,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {item_id, timestamp}; {user_id, item_id}.\nGenerated table candidate keys: {item_id, timestamp}; {user_id, item_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']\nNumber of Tuples: 50000\nExamples:\n user_id  item_id  rating  timestamp               movie title\n     251       60       4  886271641 Three Colors: Blue (1993)\n      21      680       1  874950972 Kull the Conqueror (1997)\n     262      185       3  879793164             Psycho (1960)",
+        "code": "import pandas as pd\n\ndef main():\n    # File paths for the source CSV files\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_42/test_0.csv\"\n    source1_path = \"autopipeline-benchmarks/github-pipelines/length1_42/test_1.csv\"\n    target_output_path = \"autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_cot.csv\"\n\n    # Load Source 0: user ratings data\n    # Schema: ['user_id', 'item_id', 'rating', 'timestamp']\n    # index_col=0 to ignore the numerical index column\n    df_source0 = pd.read_csv(source0_path, index_col=0)\n\n    # Load Source 1: movie metadata\n    # Schema: ['item_id', 'movie title', 'release date', 'video release date', 'IMDb URL', ...]\n    df_source1 = pd.read_csv(source1_path, index_col=0)\n\n    # We need to produce the target schema:\n    # ['user_id': int, 'item_id': int, 'rating': int, 'timestamp': int, 'movie title': string]\n\n    # Join Source0 and Source1 on 'item_id' to get movie titles for each rating\n    # Source0 has user_id, item_id, rating, timestamp\n    # Source1 has item_id, movie title, and many other columns\n    # We only need 'item_id' and 'movie title' from Source1 for the join\n\n    # Select only needed columns from Source1 to reduce memory usage\n    df_source1_small = df_source1[['item_id', 'movie title']]\n\n    # Perform inner join on 'item_id'\n    df_merged = pd.merge(df_source0, df_source1_small, on='item_id', how='inner')\n\n    # Ensure the data types match the target schema\n    # user_id, item_id, rating, timestamp as integers\n    # movie title as string\n\n    # Convert columns to appropriate types\n    df_merged['user_id'] = df_merged['user_id'].astype(int)\n    df_merged['item_id'] = df_merged['item_id'].astype(int)\n    df_merged['rating'] = df_merged['rating'].astype(int)\n    # timestamp might have missing or float values, convert safely to int\n    # If any NaNs, fill with 0 or drop? The prompt suggests timestamp is integer.\n    # We'll fill NaNs with 0 (assuming no missing in source0, but safe)\n    df_merged['timestamp'] = pd.to_numeric(df_merged['timestamp'], errors='coerce').fillna(0).astype(int)\n\n    # movie title as string (should already be string)\n    df_merged['movie title'] = df_merged['movie title'].astype(str)\n\n    # Reorder columns to match target schema exactly\n    df_target = df_merged[['user_id', 'item_id', 'rating', 'timestamp', 'movie title']]\n\n    # Save the result to the target CSV file without the index\n    df_target.to_csv(target_output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "4_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0011232,
+        "latency": 5.874044418334961,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Nominee, Movie}; {Year, Category, Nominee}.\nGenerated table candidate keys: {Nominee, Movie}; {Year, Category, Nominee}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 1411\nExamples:\n       Year                 Category        Nominee                               Movie Winner\n1960 (33rd) Actor -- Supporting Role    Chill Wills             The Alamo {'Beekeeper'}     NO\n2002 (75th)    Actor -- Leading Role Jack Nicholson    About Schmidt {'Warren Schmidt'}     NO\n 1936 (9th)    Actor -- Leading Role  Spencer Tracy San Francisco {'Father Tim Mullen'}     NO",
+        "code": "import pandas as pd\n\ndef main():\n    # Define source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length4_65/test_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length4_65/test_1.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length4_65/test_2.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length4_65/test_3.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length4_65/test_4.csv\"\n    ]\n\n    # List to hold dataframes from each source\n    dfs = []\n\n    # Load each source CSV into a dataframe\n    for file_path in source_files:\n        df = pd.read_csv(file_path, dtype=str)  # Read all columns as string to match target schema\n        # Ensure columns are exactly as target schema and in correct order\n        df = df[['Year', 'Category', 'Nominee', 'Movie', 'Winner']]\n        dfs.append(df)\n\n    # Concatenate all source dataframes into one\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Optional: Clean data if needed (not specified, so we keep as is)\n    # For example, strip whitespace from string columns\n    for col in combined_df.columns:\n        combined_df[col] = combined_df[col].str.strip()\n\n    # Write the combined dataframe to the target CSV file\n    target_path = \"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource_cot.csv\"\n    combined_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

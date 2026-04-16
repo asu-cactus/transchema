@@ -1,0 +1,19 @@
+{
+  "case": "1_42",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0017948,
+        "latency": 8.612504243850708,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {user_id, item_id}; {item_id, timestamp}.\nGenerated table candidate keys: {user_id, item_id}; {item_id, timestamp}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']\nNumber of Tuples: 50000\nExamples:\n user_id  item_id  rating  timestamp                  movie title\n      72       77       4  880036945             Firm, The (1993)\n       4       11       4  892004520         Seven (Se7en) (1995)\n     448     1602       4  891888042 Price Above Rubies, A (1998)",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_42/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_42/test_1.csv\"\n\n# Load Source 0: user_id, item_id, rating, timestamp\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: item_id, movie title, and many other columns\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# We only need 'item_id' and 'movie title' from Source 1 for the target schema\ndf_source1_reduced = df_source1[['item_id', 'movie title']]\n\n# Join Source 0 and Source 1 on 'item_id' to get the movie title for each rating record\n# This is a many-to-one join: many ratings per movie, one movie title per item_id\ndf_merged = pd.merge(df_source0, df_source1_reduced, on='item_id', how='left')\n\n# Ensure the target schema and types:\n# Target schema: ['user_id': int, 'item_id': int, 'rating': int, 'timestamp': int, 'movie title': str]\n\n# Convert columns to correct types explicitly\ndf_merged['user_id'] = df_merged['user_id'].astype(int)\ndf_merged['item_id'] = df_merged['item_id'].astype(int)\ndf_merged['rating'] = df_merged['rating'].astype(int)\ndf_merged['timestamp'] = df_merged['timestamp'].astype(int)\ndf_merged['movie title'] = df_merged['movie title'].astype(str)\n\n# Reorder columns to match target schema exactly\ndf_target = df_merged[['user_id', 'item_id', 'rating', 'timestamp', 'movie title']]\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

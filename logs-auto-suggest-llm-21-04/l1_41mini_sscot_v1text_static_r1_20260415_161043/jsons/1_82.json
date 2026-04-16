@@ -1,0 +1,19 @@
+{
+  "case": "1_82",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0016324,
+        "latency": 6.600646495819092,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {scientific_name}; {conservation_status}.\nGenerated table candidate keys: {scientific_name}; {conservation_status}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 4\nExamples:\nconservation_status  scientific_name\n Species of Concern               84\n         Endangered               11\n        In Recovery                1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_82/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(source0_path, index_col=0)\n\n# Inspect source0 columns:\n# ['category', 'scientific_name', 'common_names', 'conservation_status']\n\n# Target schema: ['conservation_status': string, 'scientific_name': integer]\n\n# From the source0 example:\n# - conservation_status exists but has many NaNs\n# - scientific_name in source0 is a string (scientific names), but target expects integer\n# - Target examples show scientific_name as integer values (e.g., 5, 1, 84)\n# This implies scientific_name in target is some kind of count or aggregation, not the raw scientific name string.\n\n# Transformation plan:\n# 1. Use 'conservation_status' from source0 as is (string).\n# 2. For 'scientific_name' in target, since source0.scientific_name is string, we interpret target's scientific_name as a count of distinct scientific names per conservation_status.\n# 3. Because source0 has NaNs in conservation_status, we exclude those rows from aggregation.\n# 4. Group by conservation_status and count distinct scientific_name values.\n# 5. The result will have columns: conservation_status (string), scientific_name (integer count).\n# 6. This matches the target schema and example data.\n\n# Filter out rows with missing conservation_status\nfiltered_source0 = source0.dropna(subset=['conservation_status'])\n\n# Group by conservation_status and count distinct scientific_name\nagg_df = (\n    filtered_source0.groupby('conservation_status')['scientific_name']\n    .nunique()\n    .reset_index()\n    .rename(columns={'scientific_name': 'scientific_name'})\n)\n\n# Ensure scientific_name column is integer type\nagg_df['scientific_name'] = agg_df['scientific_name'].astype(int)\n\n# Reorder columns to match target schema explicitly\nagg_df = agg_df[['conservation_status', 'scientific_name']]\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource_cot.csv\"\nagg_df.to_csv(target_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

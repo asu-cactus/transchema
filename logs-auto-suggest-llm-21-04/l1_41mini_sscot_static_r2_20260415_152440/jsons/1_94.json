@@ -1,0 +1,19 @@
+{
+  "case": "1_94",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0020616000000000002,
+        "latency": 17.752694606781006,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Store, Dept, Date, Weekly_Sales, ID}.\nGenerated table candidate keys: {Store, Dept, Date, Weekly_Sales, ID}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Store', 'Dept', 'Date', 'Weekly_Sales', 'IsHoliday', 'ID', 'shop_id', 'item_id']\nNumber of Tuples: 300000\nExamples:\n Store  Dept       Date  Weekly_Sales IsHoliday       ID  shop_id  item_id\n   NaN   NaN        NaN           NaN       NaN  72817.0     21.0   3552.0\n   5.0  72.0 2012-03-16       8747.62     False      NaN      NaN      NaN\n   NaN   NaN        NaN           NaN       NaN 211555.0     45.0   4660.0",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_94/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_94/test_1.csv\"\n\n# Load Source 0: columns ['Store', 'Dept', 'Date', 'Weekly_Sales', 'IsHoliday']\n# index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: columns ['ID', 'shop_id', 'item_id']\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Store': float, 'Dept': float, 'Date': string, 'Weekly_Sales': float, 'IsHoliday': string, 'ID': float, 'shop_id': float, 'item_id': float]\n# - Source0 has Store, Dept, Date, Weekly_Sales, IsHoliday\n# - Source1 has ID, shop_id, item_id\n# - They share no common columns to join on.\n# - Target examples show rows with either Store/Dept/Date/Weekly_Sales/IsHoliday populated or ID/shop_id/item_id populated, but not both.\n# - So the target table is a vertical union of two datasets with disjoint columns.\n# - For missing columns in each source, fill with NaN.\n# - Ensure types match target schema.\n# - IsHoliday in source0 is boolean, target expects string, so convert boolean to string (\"True\"/\"False\").\n# - Date is string, keep as is.\n# - Output file path:\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_94/target_multisource_cot.csv\"\n\n# Prepare Source0 dataframe to match target schema columns\ndf_source0_transformed = pd.DataFrame({\n    'Store': df_source0['Store'].astype(float),\n    'Dept': df_source0['Dept'].astype(float),\n    'Date': df_source0['Date'].astype(str),\n    'Weekly_Sales': df_source0['Weekly_Sales'].astype(float),\n    'IsHoliday': df_source0['IsHoliday'].astype(str),  # convert boolean to string \"True\"/\"False\"\n    'ID': pd.NA,\n    'shop_id': pd.NA,\n    'item_id': pd.NA\n})\n\n# Prepare Source1 dataframe to match target schema columns\ndf_source1_transformed = pd.DataFrame({\n    'Store': pd.NA,\n    'Dept': pd.NA,\n    'Date': pd.NA,\n    'Weekly_Sales': pd.NA,\n    'IsHoliday': pd.NA,\n    'ID': df_source1['ID'].astype(float),\n    'shop_id': df_source1['shop_id'].astype(float),\n    'item_id': df_source1['item_id'].astype(float)\n})\n\n# Concatenate vertically (union)\ndf_target = pd.concat([df_source0_transformed, df_source1_transformed], ignore_index=True)\n\n# Ensure column order and types exactly as target schema\ndf_target = df_target[['Store', 'Dept', 'Date', 'Weekly_Sales', 'IsHoliday', 'ID', 'shop_id', 'item_id']]\n\n# Export to CSV without the index column\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

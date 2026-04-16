@@ -1,0 +1,19 @@
+{
+  "case": "1_42",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0012088,
+        "latency": 7.918321371078491,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {user_id, item_id}; {item_id, timestamp}.\nGenerated table candidate keys: {user_id, item_id}; {item_id, timestamp}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']\nNumber of Tuples: 50000\nExamples:\n user_id  item_id  rating  timestamp                                               movie title\n     417      963       4  879647431                   Some Folks Call It a Sling Blade (1993)\n     448      884       4  891889281                                  Year of the Horse (1997)\n     201     1006       2  884112136 Until the End of the World (Bis ans Ende der Welt) (1991)",
+        "code": "import pandas as pd\n\ndef main():\n    # File paths for source data\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_42/test_0.csv\"\n    source1_path = \"autopipeline-benchmarks/github-pipelines/length1_42/test_1.csv\"\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_cot.csv\"\n\n    # Load Source 0: user ratings data\n    # Schema: ['user_id', 'item_id', 'rating', 'timestamp']\n    df_ratings = pd.read_csv(source0_path)\n    # Ensure correct dtypes\n    df_ratings = df_ratings.astype({\n        'user_id': 'int64',\n        'item_id': 'int64',\n        'rating': 'int64',\n        'timestamp': 'int64'\n    })\n\n    # Load Source 1: movie metadata\n    # Schema includes 'item_id' and 'movie title' among others\n    df_movies = pd.read_csv(source1_path)\n    # Keep only 'item_id' and 'movie title' columns\n    df_movies = df_movies[['item_id', 'movie title']]\n    # Ensure 'item_id' is integer and 'movie title' is string\n    df_movies['item_id'] = df_movies['item_id'].astype('int64')\n    df_movies['movie title'] = df_movies['movie title'].astype(str)\n\n    # Merge ratings with movie titles on 'item_id'\n    df_merged = pd.merge(df_ratings, df_movies, on='item_id', how='left')\n\n    # Check for any missing movie titles after merge (optional)\n    missing_titles = df_merged['movie title'].isna().sum()\n    if missing_titles > 0:\n        print(f\"Warning: {missing_titles} ratings have no matching movie title.\")\n\n    # Reorder columns to match target schema:\n    # ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']\n    df_target = df_merged[['user_id', 'item_id', 'rating', 'timestamp', 'movie title']]\n\n    # Save the transformed data to the target CSV file\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

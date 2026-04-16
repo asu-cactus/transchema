@@ -1,0 +1,19 @@
+{
+  "case": "1_92",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.00141,
+        "latency": 5.303298234939575,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {user_id}; {email}.\nGenerated table candidate keys: {user_id}; {email}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'email', 'geo']\nNumber of Tuples: 50\nExamples:\n user_id               email             geo\nuser_977 Goriness@rambler.ru           \u041f\u0435\u0440\u043c\u044c\nuser_954   BullSpice@ukr.net \u0421\u0430\u043d\u043a\u0442-\u041f\u0435\u0442\u0435\u0440\u0431\u0443\u0440\u0433\nuser_962     Anachso@ukr.net       \u041a\u0440\u0430\u0441\u043d\u043e\u0434\u0430\u0440",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_92/test_0.csv\"\n]\n\n# Target schema columns\ntarget_columns = ['user_id', 'email', 'geo']\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)  # ignore the first numerical index column\n    source_dfs.append(df)\n\n# Since there is only one source table and its schema matches the target schema exactly,\n# the transformation is straightforward: just ensure column names and types match target.\n\n# Concatenate all source tables (only one here, but code supports multiple)\ncombined_df = pd.concat(source_dfs, ignore_index=True)\n\n# Normalize column names to match target schema exactly (case sensitive)\n# Source columns are ['user_id', 'email', 'geo'] which matches target columns exactly,\n# but user_id values have different casing (e.g. 'User_943' vs 'user_967' in target examples).\n# To match target examples, convert user_id to lowercase.\n\ncombined_df['user_id'] = combined_df['user_id'].str.lower()\n\n# Ensure email and geo columns are strings (they should be by default)\ncombined_df['email'] = combined_df['email'].astype(str)\ncombined_df['geo'] = combined_df['geo'].astype(str)\n\n# Reorder columns to target schema order (already in order, but just to be safe)\ncombined_df = combined_df[target_columns]\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_92/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_30",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0018164000000000001,
+        "latency": 5.1254723072052,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title, tag, timestamp}; {movieId, userId, tag}; {title, userId, tag}; {movieId, tag, timestamp}.\nGenerated table candidate keys: {title, tag, timestamp}; {movieId, userId, tag}; {title, userId, tag}; {movieId, tag, timestamp}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['movieId', 'title', 'genres', 'userId', 'tag', 'timestamp']\nNumber of Tuples: 567\nExamples:\n movieId                                             title                  genres  userId       tag  timestamp\n    5984             Story of O, The (Histoire d'O) (1975)           Drama|Romance     546 Blindfold 1301785976\n    1210 Star Wars: Episode VI - Return of the Jedi (1983) Action|Adventure|Sci-Fi     364       war 1444529884\n    5952     Lord of the Rings: The Two Towers, The (2002)       Adventure|Fantasy     346      long 1159734622",
+        "code": "import pandas as pd\n\n# File paths for source CSVs\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_30/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_30/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)  # Schema: ['userId', 'movieId', 'tag', 'timestamp']\ndf_source1 = pd.read_csv(source1_path, index_col=0)  # Schema: ['movieId', 'title', 'genres']\n\n# Inspect schemas:\n# df_source0: userId, movieId, tag, timestamp\n# df_source1: movieId, title, genres\n\n# Target schema: ['movieId': int, 'title': str, 'genres': str, 'userId': int, 'tag': str, 'timestamp': int]\n\n# Transformation plan:\n# 1. Join df_source0 and df_source1 on 'movieId' to get all columns needed.\n# 2. The join is an inner join because we want only records where movieId exists in both.\n# 3. After join, reorder columns to match target schema.\n# 4. Ensure data types match target schema.\n# 5. Write to CSV.\n\n# Perform inner join on 'movieId'\ndf_merged = pd.merge(df_source0, df_source1, on='movieId', how='inner')\n\n# Reorder columns to target schema order\ndf_target = df_merged[['movieId', 'title', 'genres', 'userId', 'tag', 'timestamp']]\n\n# Enforce data types according to target schema\ndf_target = df_target.astype({\n    'movieId': 'int64',\n    'title': 'string',\n    'genres': 'string',\n    'userId': 'int64',\n    'tag': 'string',\n    'timestamp': 'int64'\n})\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_30/target_multisource_cot.csv\"\n\n# Write to CSV without the index column\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

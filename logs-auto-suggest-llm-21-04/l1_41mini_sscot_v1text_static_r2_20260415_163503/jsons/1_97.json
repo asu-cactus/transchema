@@ -1,0 +1,19 @@
+{
+  "case": "1_97",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0016443999999999999,
+        "latency": 5.009487867355347,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}; {critic}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n Mexico       1\n     US       3",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n]\n\n# Load source tables\n# According to Hint 24, index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source_files[0], index_col=0)\n\n# Inspect source schema:\n# ['movie', 'director', 'm_year', 'crit_rank', 'critic', 'crit_org', 'crit_cn']\n# Target schema: ['crit_cn': string, 'critic': integer]\n\n# From the example, target 'critic' is integer, but in source it is string (e.g. \"Simon Abrams\").\n# The target example shows critic as integer values (3,1).\n# This means we need to transform the 'critic' column from source string to an integer count or ranking.\n\n# Since the target examples:\n# crit_cn  critic\n# US       3\n# Mexico   1\n# This suggests that the target table aggregates counts of critics per crit_cn.\n\n# Transformation plan:\n# - Group source data by 'crit_cn'\n# - Count distinct 'critic' values or count rows per 'crit_cn' to get integer 'critic'\n# - The example shows critic counts per country (crit_cn)\n# - So we count how many critics (or critic entries) per crit_cn\n\n# Check if 'critic' values are unique per row or repeated:\n# We will count distinct critics per crit_cn to match the example (3 for US, 1 for Mexico)\n\n# Perform aggregation:\n# Count distinct critics per crit_cn\n\ndf_agg = (\n    df_source0.groupby('crit_cn')['critic']\n    .nunique()\n    .reset_index()\n    .rename(columns={'critic': 'critic'})\n)\n\n# Ensure 'critic' column is integer type\ndf_agg['critic'] = df_agg['critic'].astype(int)\n\n# The target table name is Target1_97, but we will write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource_cot.csv\"\n\n# Save the result to CSV without the index\ndf_agg.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

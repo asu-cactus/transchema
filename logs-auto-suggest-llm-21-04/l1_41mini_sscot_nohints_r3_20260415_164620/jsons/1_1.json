@@ -1,0 +1,19 @@
+{
+  "case": "1_1",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010016,
+        "latency": 6.027507305145264,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Student ID}.\nGenerated table candidate keys: {Student ID}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\nNumber of Tuples: 19585\nExamples:\n Student ID   student_name gender grade         school_name  reading_score  math_score  School ID     type  size  budget\n      19321 Joseph Gilbert      M  12th  Bailey High School             70          88          7 District  4976 3124928\n       7491  Teresa Bailey      F  11th Shelton High School             74          97          2  Charter  1761 1056600\n       6687   Jessica Koch      F  10th Shelton High School             95          86          2  Charter  1761 1056600",
+        "code": "import pandas as pd\n\n# File paths for the source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_1/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_1/test_1.csv\"\n\n# Load Source 0: Student-level data\ndf_students = pd.read_csv(source0_path)\n\n# Load Source 1: School-level data\ndf_schools = pd.read_csv(source1_path)\n\n# Merge the two dataframes on 'school_name' to bring school info into student records\ndf_merged = pd.merge(df_students, df_schools, on=\"school_name\", how=\"left\")\n\n# Reorder and select columns to match the target schema exactly:\n# Target Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name',\n#                 'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\n\ntarget_columns = ['Student ID', 'student_name', 'gender', 'grade', 'school_name',\n                  'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\n\ndf_target = df_merged[target_columns]\n\n# Ensure correct dtypes according to target schema\ndf_target = df_target.astype({\n    'Student ID': 'int64',\n    'student_name': 'string',\n    'gender': 'string',\n    'grade': 'string',\n    'school_name': 'string',\n    'reading_score': 'int64',\n    'math_score': 'int64',\n    'School ID': 'int64',\n    'type': 'string',\n    'size': 'int64',\n    'budget': 'int64'\n})\n\n# Write the transformed dataframe to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_1/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

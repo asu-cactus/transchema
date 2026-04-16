@@ -1,0 +1,19 @@
+{
+  "case": "1_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0016184,
+        "latency": 5.690261602401733,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Inspected source schema:\n    # ['facid', 'fac_type', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']\n    # Target schema: ['fac_type': string, 'capacity': integer]\n\n    # Transformation plan:\n    # - Extract only the columns needed for the target: 'fac_type' and 'capacity'\n    # - Convert 'capacity' to integer (source has float)\n    # - Since target examples show capacity as integer, round or convert safely\n    # - No aggregation or grouping needed because target examples show distinct fac_type with summed capacity\n    #   but source has multiple rows per fac_type, so we need to aggregate capacity by fac_type (sum)\n    # - The target examples show capacity as sum of capacities per fac_type (e.g. RCF 7136, NF 11201)\n    #   So we do groupby fac_type and sum capacity\n\n    # Clean and convert capacity to numeric (float), then to int after aggregation\n    df0['capacity'] = pd.to_numeric(df0['capacity'], errors='coerce').fillna(0)\n\n    # Group by fac_type and sum capacity\n    df_target = df0.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Convert capacity to integer type as per target schema\n    df_target['capacity'] = df_target['capacity'].astype(int)\n\n    # Reorder columns to match target schema explicitly\n    df_target = df_target[['fac_type', 'capacity']]\n\n    # Save to CSV without index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

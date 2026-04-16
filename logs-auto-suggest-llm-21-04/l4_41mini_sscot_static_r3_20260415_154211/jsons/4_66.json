@@ -1,0 +1,19 @@
+{
+  "case": "4_66",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0017144,
+        "latency": 4.672205686569214,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Nominee, Movie}; {Year, Movie}; {Year, Nominee}.\nGenerated table candidate keys: {Nominee, Movie}; {Year, Movie}; {Year, Nominee}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 361\nExamples:\n       Year                   Category         Nominee                                              Movie Winner\n1968 (41st)      Actor -- Leading Role Cliff Robertson                           Charly {'Charly Gordon'}    YES\n1957 (30th)      Actor -- Leading Role   Alec Guinness The Bridge on the River Kwai {'Colonel Nicholson'}    YES\n1969 (42nd) Actress -- Supporting Role     Goldie Hawn                     Cactus Flower {'Toni Simmons'}    YES",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_66/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/test_4.csv\"\n]\n\n# Read all source CSV files into dataframes with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(path, index_col=0) for path in source_files]\n\n# All source tables have the exact same schema as the target:\n# ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\n# So we can safely concatenate (union) all rows from all sources.\n\n# Concatenate all source dataframes vertically (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure columns are in the target schema order and types as strings\ntarget_columns = ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\ncombined_df = combined_df[target_columns]\n\n# Convert all columns to string type to match target schema\nfor col in target_columns:\n    combined_df[col] = combined_df[col].astype(str)\n\n# Write the combined dataframe to the target CSV file path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_66/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_70",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0014644000000000003,
+        "latency": 9.967933177947998,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {order_id, product_id}.\nGenerated table candidate keys: {order_id, product_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['order_id', 'order_status', 'order_approved_at', 'product_id', 'seller_id', 'price', 'freight_value']\nNumber of Tuples: 56325\nExamples:\n                        order_id order_status   order_approved_at                       product_id                        seller_id  price  freight_value\n4327d6afdb4f716533cefc4929796d14      shipped 2017-05-11 04:02:48 eebe3620616be538e26842c73df11e65 2138ccb85b11a4ec1e37afbd1c8eda1f  18.99          21.15\n6f32b46fc3b01903852f3bcc592c5687    delivered 2017-09-09 06:34:44 125e5760a3ff01937be3b2a1a7f14aa6 4a3ca9315b744ce9f8e9374361493884  48.90          12.69\n4ed7c2d75d3cc4d2c1c0d941388640d7    delivered 2018-01-22 13:54:58 7b5d8be0e04080e4c8ee6a7ec2f1f597 1025f0e2d44d7041d6cf58b6550e0bfa  38.40          16.11",
+        "code": "import pandas as pd\n\ndef main():\n    # File paths for the source CSV files\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_70/test_0.csv\"\n    source1_path = \"autopipeline-benchmarks/github-pipelines/length1_70/test_1.csv\"\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_70/target_multisource_cot.csv\"\n\n    # Load Source 0: order-level data\n    df_orders = pd.read_csv(source0_path, dtype=str)\n    # Load Source 1: order item-level data\n    df_items = pd.read_csv(source1_path, dtype=str)\n\n    # Convert price and freight_value columns in df_items to float\n    df_items['price'] = df_items['price'].astype(float)\n    df_items['freight_value'] = df_items['freight_value'].astype(float)\n\n    # Select relevant columns from df_orders for the target\n    # We need: order_id, order_status, order_approved_at\n    df_orders_reduced = df_orders[['order_id', 'order_status', 'order_approved_at']]\n\n    # Merge df_items with df_orders_reduced on 'order_id' to get order_status and order_approved_at for each item\n    df_merged = pd.merge(df_items, df_orders_reduced, on='order_id', how='inner')\n\n    # Reorder and rename columns to match target schema:\n    # ['order_id': string, 'order_status': string, 'order_approved_at': string,\n    #  'product_id': string, 'seller_id': string, 'price': float, 'freight_value': float]\n    df_target = df_merged[['order_id', 'order_status', 'order_approved_at', 'product_id', 'seller_id', 'price', 'freight_value']]\n\n    # Ensure data types:\n    df_target['order_id'] = df_target['order_id'].astype(str)\n    df_target['order_status'] = df_target['order_status'].astype(str)\n    df_target['order_approved_at'] = df_target['order_approved_at'].astype(str)\n    df_target['product_id'] = df_target['product_id'].astype(str)\n    df_target['seller_id'] = df_target['seller_id'].astype(str)\n    # price and freight_value already float\n\n    # Write the result to the target CSV file without the index\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

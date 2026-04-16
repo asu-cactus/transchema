@@ -1,0 +1,19 @@
+{
+  "case": "1_47",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0018748,
+        "latency": 8.049001932144165,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Student ID}.\nGenerated table candidate keys: {Student ID}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\nNumber of Tuples: 19585\nExamples:\n Student ID student_name gender grade           school_name  reading_score  math_score  School ID     type  size  budget\n       2397  Robert Byrd      M  12th     Huang High School             71          83          0 District  2917 1910635\n       9817 Louis Taylor      M   9th Hernandez High School             63          59          3 District  4635 3022020\n      14195   Joseph Lee      M  10th    Wilson High School             89          91          5  Charter  2283 1319574",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_47/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_47/test_1.csv\"\n\n# Load Source 0: Student-level data\n# index_col=0 to ignore the first numerical index column as per Hint 24\ndf_students = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: School-level data\ndf_schools = pd.read_csv(source1_path, index_col=0)\n\n# Join the two dataframes on 'school_name' to bring school attributes to student records\n# Both have 'school_name' column, which is the natural join key here\ndf_merged = pd.merge(df_students, df_schools, on='school_name', how='left')\n\n# Reorder and select columns to match the target schema exactly:\n# Target Schema: \n# ['Student ID': int, 'student_name': str, 'gender': str, 'grade': str, 'school_name': str,\n#  'reading_score': int, 'math_score': int, 'School ID': int, 'type': str, 'size': int, 'budget': int]\n\n# Ensure correct dtypes (cast if necessary)\ndf_merged['Student ID'] = df_merged['Student ID'].astype(int)\ndf_merged['student_name'] = df_merged['student_name'].astype(str)\ndf_merged['gender'] = df_merged['gender'].astype(str)\ndf_merged['grade'] = df_merged['grade'].astype(str)\ndf_merged['school_name'] = df_merged['school_name'].astype(str)\ndf_merged['reading_score'] = df_merged['reading_score'].astype(int)\ndf_merged['math_score'] = df_merged['math_score'].astype(int)\ndf_merged['School ID'] = df_merged['School ID'].astype(int)\ndf_merged['type'] = df_merged['type'].astype(str)\ndf_merged['size'] = df_merged['size'].astype(int)\ndf_merged['budget'] = df_merged['budget'].astype(int)\n\n# Select and order columns exactly as target schema\ndf_target = df_merged[\n    ['Student ID', 'student_name', 'gender', 'grade', 'school_name',\n     'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\n]\n\n# Write the transformed dataframe to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_47/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

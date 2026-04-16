@@ -182,8 +182,6 @@ def build_nl_score_interpretation(
     lines = []
 
     # --- Overall verdict ---
-    dist_info = debug_dict.get("distribution", {})
-    avg_sim = dist_info.get("avg_distribution_similarity")
 
     if true_combined_score >= 1.0 - EPS:
         lines.append("Overall: the generated table appears to be a near-perfect match.")
@@ -192,10 +190,21 @@ def build_nl_score_interpretation(
     else:
         lines.append("Overall: the generated table has significant structural differences from ground truth.")
 
-    lines.append(
-        f"Combined score = (fd_f1 + col_ratio) / 2 = "
-        f"({fd_f1:.3f} + {col_ratio:.3f}) / 2 = {true_combined_score:.3f} (1.0 is perfect)."
-    )
+    dist_info = debug_dict.get("distribution", {})
+    js_sim_val    = dist_info.get("avg_js_similarity")
+    range_ovlp    = dist_info.get("avg_range_overlap")
+    if js_sim_val is not None and range_ovlp is not None:
+        formula = (
+            f"(fd_f1 + range_overlap + js_similarity) / 3 = "
+            f"({fd_f1:.3f} + {range_ovlp:.3f} + {js_sim_val:.3f}) / 3"
+        )
+    elif range_ovlp is not None:
+        formula = f"(fd_f1 + range_overlap) / 2 = ({fd_f1:.3f} + {range_ovlp:.3f}) / 2"
+    elif js_sim_val is not None:
+        formula = f"(fd_f1 + js_similarity) / 2 = ({fd_f1:.3f} + {js_sim_val:.3f}) / 2"
+    else:
+        formula = f"fd_f1 = {fd_f1:.3f}"
+    lines.append(f"Combined score = {formula} = {true_combined_score:.3f} (1.0 is perfect).")
 
     # --- Key structure comparison ---
     fd_info = debug_dict.get("fd", {})
@@ -290,59 +299,37 @@ def build_nl_score_interpretation(
             overflow = f" (and {len(fd_fn) - 5} more)" if len(fd_fn) > 5 else ""
             lines.append(f"Missing FDs from ground truth: {'; '.join(fn_strs)}{overflow}.")
 
-    # --- Column mapping ---
-    col_info = debug_dict.get("columns", {})
-    if col_ratio >= 1.0 - EPS:
-        lines.append("Column mapping is complete — all ground truth columns are accounted for.")
+    # --- Distribution analysis ---
+    _DIST_THRESHOLD = 0.95
+    per_col = debug_dict.get("distribution", {}).get("per_column", {})
+    if not per_col:
+        lines.append("No numerical columns found — distribution comparison not applicable.")
     else:
-        lines.append(f"Column coverage ratio: {col_ratio:.3f} — some ground truth columns are missing or misnamed.")
-        a_to_b = col_info.get("A_to_B", {})
-        b_to_b = col_info.get("B_to_B", {})
-        lines.append(
-            f"Generated→GroundTruth column matches: {a_to_b.get('count', '?')} / {b_to_b.get('count', '?')}."
-        )
-
-    # --- Numerical column distribution analysis (commented out) ---
-    # per_col = dist_info.get("per_column", {})
-    # if per_col:
-    #     lines.append("")
-    #     lines.append("Numerical Column Distribution Analysis (Normalized Wasserstein Distance):")
-    #     if avg_sim is not None:
-    #         lines.append(f"  Average distribution similarity across numerical columns: {avg_sim:.3f} (1.0 = identical).")
-    #     for gt_col, info in per_col.items():
-    #         gen_col  = info["gen_col"]
-    #         sim      = info["distribution_similarity"]
-    #         gs       = info["gen_stats"]
-    #         ts       = info["gt_stats"]
-    #         col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
-    #         lines.append(f"  Column '{col_label}': distribution similarity = {sim:.3f}")
-    #         lines.append(f"    Generated  — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}")
-    #         lines.append(f"    GroundTruth— min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}")
-    #         gen_range = gs["max"] - gs["min"]
-    #         gt_range  = ts["max"] - ts["min"]
-    #         if gt_range > 1e-6:
-    #             ratio = gen_range / gt_range
-    #             if ratio > 5 or ratio < 0.2:
-    #                 lines.append(
-    #                     f"    WARNING: value range is {ratio:.1f}x that of ground truth — "
-    #                     "likely wrong aggregation function (e.g. SUM used instead of AVG, or vice versa)."
-    #                 )
-    #         if sim < 0.5:
-    #             lines.append(
-    #                 f"    The generated values for this column differ substantially in both scale "
-    #                 "and distribution. Consider whether the aggregation function (SUM, AVG, COUNT, MIN, MAX) "
-    #                 "is correct, or whether a GROUP BY is missing/incorrect."
-    #             )
-    #     if avg_sim is not None and avg_sim < 0.7 and fd_f1 >= 0.8:
-    #         lines.append("")
-    #         lines.append(
-    #             "Note: Functional dependency structure looks correct (FD F1 ≥ 0.80) but numerical "
-    #             "distributions are misaligned (avg similarity < 0.70). This pattern strongly suggests "
-    #             "the GROUP BY columns are correct but the aggregation function is wrong. "
-    #             "Review each numerical column above and select the appropriate aggregation: "
-    #             "use AVG for ratios/rates, SUM for totals, COUNT for row counts, "
-    #             "MIN/MAX for extremes."
-    #         )
+        problem_cols = {
+            gt_col: info for gt_col, info in per_col.items()
+            if info.get("range_overlap", 1.0) < _DIST_THRESHOLD
+            or info.get("js_similarity", 1.0) < _DIST_THRESHOLD
+        }
+        if not problem_cols:
+            lines.append("All numerical columns show complete value range overlap and matching distributions.")
+        else:
+            lines.append("Distribution Analysis (numerical columns with issues):")
+            for gt_col, info in problem_cols.items():
+                gen_col       = info["gen_col"]
+                range_overlap = info.get("range_overlap", float("nan"))
+                js_sim_val    = info.get("js_similarity", float("nan"))
+                gs            = info["gen_stats"]
+                ts            = info["gt_stats"]
+                col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
+                lines.append(
+                    f"  Column '{col_label}': range overlap={range_overlap:.3f}, JS similarity={js_sim_val:.3f}"
+                )
+                lines.append(
+                    f"    Generated    — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}"
+                )
+                lines.append(
+                    f"    Ground Truth — min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}"
+                )
 
     return "\n".join(lines)
 

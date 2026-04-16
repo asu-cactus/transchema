@@ -1,0 +1,19 @@
+{
+  "case": "1_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0019420000000000001,
+        "latency": 5.922752380371094,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year  0\n 1983  7\n 1984 15\n 1989 12",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df_source0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['year': integer, '0': integer]\n    # From the target examples, the column '0' looks like a count or aggregation.\n    # Since only one source table is given, and it contains a 'year' column,\n    # we can aggregate the count of rows per year as the '0' column.\n\n    # Check that 'year' column exists in source\n    if 'year' not in df_source0.columns:\n        raise ValueError(\"Source table does not contain 'year' column required for target.\")\n\n    # Aggregate: count number of rows per year\n    df_agg = df_source0.groupby('year').size().reset_index(name='0')\n\n    # Ensure the types match target schema: year and 0 as integers\n    df_agg['year'] = df_agg['year'].astype(int)\n    df_agg['0'] = df_agg['0'].astype(int)\n\n    # Sort by year ascending (optional, for neatness)\n    df_agg = df_agg.sort_values('year').reset_index(drop=True)\n\n    # Write to target CSV with header and no index\n    df_agg.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

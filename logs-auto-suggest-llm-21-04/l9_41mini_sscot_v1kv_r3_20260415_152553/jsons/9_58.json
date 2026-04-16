@@ -1,0 +1,19 @@
+{
+  "case": "9_58",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0017464,
+        "latency": 8.172791481018066,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {code}; {name}.\nGenerated table candidate keys: {code}; {name}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['code', 'name']\nNumber of Tuples: 1374\nExamples:\n code                                         name\n   11 Environment and natural resources management\n    8                            Human development\n    5                        Trade and integration",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_1.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_2.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_3.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_4.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_5.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_6.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_7.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_8.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_9.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_58/test_10.csv\"\n    ]\n\n    # Read all source tables into a list of DataFrames\n    dfs = []\n    for file_path in source_files:\n        df = pd.read_csv(file_path, dtype={'code': int, 'name': str})\n        dfs.append(df)\n\n    # Concatenate all source DataFrames vertically (union all)\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # According to the target schema and examples:\n    # - Target schema: ['code': integer, 'name': string]\n    # - The source schemas are already aligned with the target schema.\n    # - The target has 1374 examples, which matches the sum of all source tuples (sum of counts: 216+125+130+38+77+146+210+15+199+168+50=1374)\n    # So the transformation is basically union all source tables.\n\n    # Remove duplicates if any (not explicitly required, but usually target examples are distinct)\n    # However, the examples show repeated rows in sources, so we keep duplicates to match total count.\n    # If deduplication is needed, uncomment the next line:\n    # combined_df = combined_df.drop_duplicates().reset_index(drop=True)\n\n    # Ensure correct data types\n    combined_df['code'] = combined_df['code'].astype(int)\n    combined_df['name'] = combined_df['name'].astype(str)\n\n    # Write the combined DataFrame to the target CSV file\n    target_path = \"autopipeline-benchmarks/github-pipelines/length9_58/target_multisource_cot.csv\"\n    combined_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

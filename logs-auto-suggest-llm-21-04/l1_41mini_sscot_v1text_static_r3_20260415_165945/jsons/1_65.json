@@ -1,0 +1,19 @@
+{
+  "case": "1_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0020636,
+        "latency": 10.419503450393677,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 53\nExamples:\n year  0\n 1960  1\n 1982 10\n 1973  1",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_65/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df_source0 = pd.read_csv(source0_path, index_col=0)\n\n    # The target schema is ['year': integer, '0': integer]\n    # From the source schema and target examples, the 'year' column exists in source0.\n    # The target column '0' is an integer count or aggregation.\n    # Since the target examples show counts per year (e.g., year=1970, 0=4),\n    # the transformation plan is to count the number of rows per year in source0.\n\n    # Step 1: Filter out rows with missing or invalid 'year' values\n    # (e.g., NaN or non-integer years)\n    df_source0 = df_source0.dropna(subset=['year'])\n    # Ensure 'year' is integer type (convert if needed)\n    df_source0['year'] = df_source0['year'].astype(int)\n\n    # Step 2: Group by 'year' and count the number of rows per year\n    # The count corresponds to the target column '0'\n    df_target = df_source0.groupby('year').size().reset_index(name='0')\n\n    # Step 3: Ensure the target columns have correct types\n    df_target['year'] = df_target['year'].astype(int)\n    df_target['0'] = df_target['0'].astype(int)\n\n    # Step 4: Sort by 'year' ascending for neatness (optional)\n    df_target = df_target.sort_values('year').reset_index(drop=True)\n\n    # Step 5: Write the result to the target CSV file\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

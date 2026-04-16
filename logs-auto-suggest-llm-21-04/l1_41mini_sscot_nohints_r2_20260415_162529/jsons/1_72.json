@@ -1,0 +1,19 @@
+{
+  "case": "1_72",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0016220000000000002,
+        "latency": 10.237406969070435,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 246\n         0 253",
+        "code": "import pandas as pd\n\ndef process_source_file(file_path):\n    \"\"\"\n    Reads a source CSV file, groups by 'condition', counts rows,\n    and returns a DataFrame with columns ['condition', '0'].\n    \"\"\"\n    df = pd.read_csv(file_path)\n    # Group by 'condition' and count rows\n    grouped = df.groupby('condition').size().reset_index(name='0')\n    # Ensure 'condition' and '0' are integers\n    grouped['condition'] = grouped['condition'].astype(int)\n    grouped['0'] = grouped['0'].astype(int)\n    return grouped\n\ndef main():\n    # List of source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_72/test_0.csv\"\n        # Add more source files here if needed\n    ]\n\n    # Process each source file and accumulate counts\n    dfs = []\n    for file_path in source_files:\n        df = process_source_file(file_path)\n        dfs.append(df)\n\n    # Combine counts from all sources by summing counts per condition\n    if dfs:\n        combined_df = pd.concat(dfs)\n        # Sum counts grouped by 'condition'\n        target_df = combined_df.groupby('condition', as_index=False)['0'].sum()\n    else:\n        # No source files, create empty DataFrame with target schema\n        target_df = pd.DataFrame(columns=['condition', '0'])\n\n    # Sort by 'condition' for consistent output\n    target_df = target_df.sort_values(by='condition').reset_index(drop=True)\n\n    # Write to target CSV\n    target_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_72/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

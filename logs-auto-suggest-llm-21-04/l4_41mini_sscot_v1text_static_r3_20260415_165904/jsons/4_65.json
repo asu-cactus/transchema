@@ -1,0 +1,19 @@
+{
+  "case": "4_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0024212,
+        "latency": 8.528218269348145,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 1411\nExamples:\n       Year              Category      Nominee                               Movie Winner\n1986 (59th) Actor -- Leading Role William Hurt  Children of a Lesser God {'James'}     NO\n1962 (35th) Actor -- Leading Role  Jack Lemmon Days of Wine and Roses {'Joe Clay'}     NO\n1954 (27th)             Directing  Rear Window                    Alfred Hitchcock     NO",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_65/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/test_4.csv\"\n]\n\n# Read all source CSV files into dataframes with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source_files[0], index_col=0)\ndf1 = pd.read_csv(source_files[1], index_col=0)\ndf2 = pd.read_csv(source_files[2], index_col=0)\ndf3 = pd.read_csv(source_files[3], index_col=0)\ndf4 = pd.read_csv(source_files[4], index_col=0)\n\n# All source tables have the exact same schema as the target:\n# ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\n# So we can union (concatenate) all source tables vertically.\n\n# Concatenate all source dataframes\ndf_all = pd.concat([df0, df1, df2, df3, df4], ignore_index=True)\n\n# Ensure columns are in the target schema order and types\ntarget_columns = ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\ndf_all = df_all[target_columns]\n\n# Convert all columns to string type as target schema requires string types\nfor col in target_columns:\n    df_all[col] = df_all[col].astype(str)\n\n# The target examples show that the 'Winner' column values are 'NO' or presumably 'YES'.\n# Check if any 'Winner' values are not uppercase 'NO'/'YES' and normalize them.\ndf_all['Winner'] = df_all['Winner'].str.upper()\ndf_all['Winner'] = df_all['Winner'].replace({'NO': 'NO', 'YES': 'YES'})  # Just to be explicit\n\n# Write the combined dataframe to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource_cot.csv\"\ndf_all.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

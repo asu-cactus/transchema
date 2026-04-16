@@ -1,0 +1,19 @@
+{
+  "case": "1_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0013556000000000002,
+        "latency": 4.440848112106323,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n           Major_category       Median\n   Biology & Life Science 51833.333333\nHumanities & Liberal Arts 46712.500000\n              Engineering 77857.142857",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Major_category': string, 'Median': float]\n# - Source0 has these columns, including 'Major_category' and 'Median'.\n# - We need to aggregate Median by Major_category.\n# - Since Median is a float and Major_category is string, and target examples show one row per Major_category,\n#   we will group by 'Major_category' and compute the average of 'Median' values.\n# - This matches the target examples where Median is averaged per Major_category.\n# - There is only one source table, so no union or join needed.\n\n# Group by 'Major_category' and calculate mean of 'Median'\nresult = df0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Ensure the column types match target schema\nresult['Major_category'] = result['Major_category'].astype(str)\nresult['Median'] = result['Median'].astype(float)\n\n# Write the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

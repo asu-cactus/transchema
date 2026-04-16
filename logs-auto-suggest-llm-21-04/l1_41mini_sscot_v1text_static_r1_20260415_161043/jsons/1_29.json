@@ -1,0 +1,19 @@
+{
+  "case": "1_29",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0017208000000000002,
+        "latency": 5.864425420761108,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0}; {Gender}.\nGenerated table candidate keys: {0}; {Gender}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\nOther / Non-Disclosed   9\n               Female  56\n                 Male 325",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_29/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Inspecting source schema and target schema:\n# Source columns: ['Purchase ID', 'SN', 'Age', 'Gender', 'Item ID', 'Item Name', 'Price']\n# Target columns: ['Gender' (string), '0' (integer)]\n\n# Transformation plan:\n# - The target table aggregates counts of records grouped by Gender.\n# - The target column '0' corresponds to the count of rows per Gender.\n# - So, group by 'Gender' and count the number of rows (e.g., count of 'Purchase ID' or any non-null column).\n# - The count should be integer type.\n# - The Gender values should be exactly as in source (string).\n# - No other source tables to consider.\n# - Write the result to the specified target path.\n\n# Perform aggregation: count number of rows per Gender\nresult = df_source0.groupby('Gender', dropna=False).size().reset_index(name='0')\n\n# Ensure '0' column is integer type\nresult['0'] = result['0'].astype(int)\n\n# Sort by Gender to match example order if needed (optional)\n# The example order is: Male, Other / Non-Disclosed, Female\n# We can reorder rows to match example output order exactly:\ndesired_order = ['Male', 'Other / Non-Disclosed', 'Female']\nresult['Gender'] = result['Gender'].astype(str)  # ensure string type\nresult['Gender'] = result['Gender'].str.strip()  # strip whitespace if any\n\n# Filter and reorder rows according to desired_order, keep any other genders at the end\nordered_result = pd.DataFrame()\nfor gender in desired_order:\n    filtered = result[result['Gender'] == gender]\n    ordered_result = pd.concat([ordered_result, filtered], ignore_index=True)\n# Append any other genders not in desired_order at the end\nothers = result[~result['Gender'].isin(desired_order)]\nordered_result = pd.concat([ordered_result, others], ignore_index=True)\n\n# Write the result to the target CSV file with index=False\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource_cot.csv\"\nordered_result.to_csv(target_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

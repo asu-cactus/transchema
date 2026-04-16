@@ -1,0 +1,19 @@
+{
+  "case": "1_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0013892000000000002,
+        "latency": 5.119272470474243,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category       Median\n                        Engineering 77857.142857\nIndustrial Arts & Consumer Services 40250.000000\n            Computers & Mathematics 61571.428571",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_21/test_0.csv\"\n]\n\n# List to hold dataframes from each source\ndfs = []\n\n# Load each source file with index_col=0 to ignore the numerical index column\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, and it already contains the columns needed for the target,\n# we just need to select the relevant columns and ensure the types match the target schema.\n\n# Target schema: ['Major_category': string, 'Median': float]\n\n# Extract relevant columns from the single source dataframe\ndf_source = dfs[0]\n\n# Select columns 'Major_category' and 'Median'\ndf_target = df_source[['Major_category', 'Median']].copy()\n\n# Ensure correct data types\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# There might be duplicate Major_category entries with different Median values.\n# The target examples show one Median per Major_category, so we aggregate by taking the median of Median.\ndf_target = df_target.groupby('Major_category', as_index=False)['Median'].median()\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

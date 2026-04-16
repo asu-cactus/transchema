@@ -1,0 +1,19 @@
+{
+  "case": "4_83",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0017316000000000002,
+        "latency": 8.457459211349487,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {city}; {average_fare}.\nGenerated table candidate keys: {city}; {average_fare}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['city', 'driver_count', 'type', 'average_fare']\nNumber of Tuples: 66\nExamples:\n        city  driver_count  type  average_fare\nAntoniomouth            21 Urban     20.294286\n   South Roy            35 Urban     23.702857\n Carrollfort            55 Urban     25.920000",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_83/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_83/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Source0 schema: ['city', 'date', 'fare', 'ride_id']\n# Source1 schema: ['city', 'driver_count', 'type']\n\n# Target schema: ['city': string, 'driver_count': integer, 'type': string, 'average_fare': float]\n\n# Transformation plan:\n# 1. From Source0, we can get city and fare per ride.\n# 2. From Source1, we have city, driver_count, and type.\n# 3. We need to compute average_fare per city from Source0.\n# 4. Join the aggregated Source0 data with Source1 on city.\n# 5. The join is an inner join on city because target examples show only cities present in both.\n# 6. Ensure data types match target schema.\n# 7. Write the final dataframe to the specified output path.\n\n# Step 1 & 3: Aggregate Source0 to get average fare per city\navg_fare_per_city = df0.groupby('city', as_index=False)['fare'].mean()\navg_fare_per_city.rename(columns={'fare': 'average_fare'}, inplace=True)\n\n# Step 4: Join aggregated Source0 with Source1 on 'city'\nmerged_df = pd.merge(df1, avg_fare_per_city, on='city', how='inner')\n\n# Step 6: Ensure correct data types as per target schema\nmerged_df['city'] = merged_df['city'].astype(str)\nmerged_df['driver_count'] = merged_df['driver_count'].astype(int)\nmerged_df['type'] = merged_df['type'].astype(str)\nmerged_df['average_fare'] = merged_df['average_fare'].astype(float)\n\n# Reorder columns to match target schema exactly\nfinal_df = merged_df[['city', 'driver_count', 'type', 'average_fare']]\n\n# Step 7: Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_83/target_multisource_cot.csv\"\nfinal_df.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

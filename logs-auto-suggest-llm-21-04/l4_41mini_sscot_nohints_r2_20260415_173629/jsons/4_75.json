@@ -1,0 +1,19 @@
+{
+  "case": "4_75",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010056000000000002,
+        "latency": 6.648963451385498,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 0.691 (1.0 is perfect).\nGround truth candidate keys: {type}; {a}; {b}.\nGenerated table candidate keys: {type}; {a}; {b}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type         a         b\nDistrict 81.037004 76.966107\n Charter 83.888602 83.256445",
+        "code": "import pandas as pd\n\n# File paths for the source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_75/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_75/test_1.csv\"\n\n# Load Source 0: School data\ndf_schools = pd.read_csv(source0_path)\n# Schema: ['School ID', 'school_name', 'type', 'size', 'budget']\n\n# Load Source 1: Student data\ndf_students = pd.read_csv(source1_path)\n# Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']\n\n# Transformation plan:\n# 1. Join student data with school data on 'school_name' to get the 'type' of each student\u2019s school.\n# 2. For each school type (e.g., 'Charter', 'District'), calculate:\n#    - 'a': average reading_score\n#    - 'b': average math_score\n# 3. Resulting dataframe should have columns ['type', 'a', 'b'] with 'a' and 'b' as floats.\n\n# Merge student data with school data to get school 'type' for each student\ndf_merged = pd.merge(df_students, df_schools[['school_name', 'type']], on='school_name', how='left')\n\n# Group by 'type' and calculate average reading_score and math_score\ndf_result = df_merged.groupby('type').agg(\n    a=pd.NamedAgg(column='reading_score', aggfunc='mean'),\n    b=pd.NamedAgg(column='math_score', aggfunc='mean')\n).reset_index()\n\n# Ensure the types are correct\ndf_result['type'] = df_result['type'].astype(str)\ndf_result['a'] = df_result['a'].astype(float)\ndf_result['b'] = df_result['b'].astype(float)\n\n# Write the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource_cot.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

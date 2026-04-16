@@ -1,0 +1,19 @@
+{
+  "case": "1_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0015400000000000001,
+        "latency": 6.25768256187439,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n\n    # Read source tables with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Inspect columns of source0:\n    # ['facid', 'fac_type', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']\n\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target examples:\n    # fac_type  capacity\n    # RCF       7136\n    # NF        11201\n\n    # Transformation plan:\n    # - We have only one source table.\n    # - The target table requires only 'fac_type' and 'capacity'.\n    # - 'capacity' in source is float (e.g., 96.0), target expects integer.\n    # - We will group by 'fac_type' and sum the 'capacity' to get total capacity per fac_type.\n    # - Convert capacity to integer after aggregation.\n    # - This matches the target examples where capacity is aggregated per fac_type.\n\n    # Perform aggregation: sum capacity per fac_type\n    df_agg = df0.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Convert capacity to integer (rounding down)\n    df_agg['capacity'] = df_agg['capacity'].astype(int)\n\n    # Reorder columns to match target schema explicitly\n    df_target = df_agg[['fac_type', 'capacity']]\n\n    # Write the result to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n    df_target.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "case": "1_47",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0017900000000000001,
+        "latency": 7.693612098693848,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Student ID}.\nGenerated table candidate keys: {Student ID}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\nNumber of Tuples: 19585\nExamples:\n Student ID     student_name gender grade           school_name  reading_score  math_score  School ID     type  size  budget\n      12021 Taylor Stevenson      F  11th Hernandez High School             76          98          3 District  4635 3022020\n       2506     Thomas Ortiz      M  10th     Huang High School             84          73          0 District  2917 1910635\n      12556  Joanna Fletcher      F  11th   Griffin High School             82          85          4  Charter  1468  917500",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_47/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_47/test_1.csv\"\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_47/target_multisource_cot.csv\"\n\n# Step 1: Load source tables with index_col=0 to ignore the first numerical index column\ndf_students = pd.read_csv(source0_path, index_col=0)\ndf_schools = pd.read_csv(source1_path, index_col=0)\n\n# Step 2: Inspect schemas and plan join\n# Source0 columns: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']\n# Source1 columns: ['School ID', 'school_name', 'type', 'size', 'budget']\n# Target columns: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\n\n# Join on 'school_name' because it is the common column between the two sources and exists in the target schema.\n# This will add school attributes to each student record.\n\n# Step 3: Perform the join\ndf_merged = pd.merge(df_students, df_schools, on='school_name', how='left')\n\n# Step 4: Ensure column order and types match the target schema exactly\ntarget_columns = [\n    'Student ID', 'student_name', 'gender', 'grade', 'school_name',\n    'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget'\n]\n\n# Reorder columns\ndf_final = df_merged[target_columns]\n\n# Step 5: Enforce data types as per target schema\ndf_final = df_final.astype({\n    'Student ID': 'int64',\n    'student_name': 'string',\n    'gender': 'string',\n    'grade': 'string',\n    'school_name': 'string',\n    'reading_score': 'int64',\n    'math_score': 'int64',\n    'School ID': 'int64',\n    'type': 'string',\n    'size': 'int64',\n    'budget': 'int64'\n})\n\n# Step 6: Write the result to the specified output path\ndf_final.to_csv(output_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

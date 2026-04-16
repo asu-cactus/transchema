@@ -1,0 +1,19 @@
+{
+  "case": "1_97",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0016987999999999999,
+        "latency": 5.686169385910034,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {critic}; {crit_cn}.\nGenerated table candidate keys: {critic}; {crit_cn}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 2\nExamples:\ncrit_cn  critic\n     US       3\n Mexico       1",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_97/test_0.csv\"\n\n    # Load source data with index_col=0 to ignore the numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Inspect columns of source0:\n    # ['movie', 'director', 'm_year', 'crit_rank', 'critic', 'crit_org', 'crit_cn']\n\n    # Target schema: ['crit_cn': string, 'critic': integer]\n    # Target examples:\n    # crit_cn  critic\n    # US       3\n    # Mexico   1\n\n    # From source0, 'crit_cn' is already present as string.\n    # 'critic' in source0 is string (e.g. \"Simon Abrams\"), but target expects integer.\n    # The target example shows 'critic' as integer counts (3, 1).\n    # So we need to convert source0's 'critic' string values into counts grouped by 'crit_cn'.\n\n    # Transformation plan:\n    # 1. Group source0 by 'crit_cn' and count distinct 'critic' values or count occurrences of 'critic'.\n    #    Since target examples show integer counts, likely count of critics per crit_cn.\n    # 2. The target examples show counts like 3 for US, 1 for Mexico.\n    #    So count distinct critics per crit_cn or count total critics per crit_cn.\n    # 3. Since source0 has 'critic' as string (critic names), count distinct critics per crit_cn.\n\n    # Perform groupby and aggregation\n    # Count distinct critics per crit_cn\n    result = df0.groupby('crit_cn')['critic'].nunique().reset_index()\n\n    # Rename columns to match target schema\n    result.rename(columns={'critic': 'critic'}, inplace=True)\n\n    # Ensure 'critic' column is integer type\n    result['critic'] = result['critic'].astype(int)\n\n    # Reorder columns to match target schema exactly\n    result = result[['crit_cn', 'critic']]\n\n    # Write the result to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_97/target_multisource_cot.csv\"\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

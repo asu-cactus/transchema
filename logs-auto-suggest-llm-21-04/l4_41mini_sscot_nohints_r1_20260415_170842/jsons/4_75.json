@@ -1,0 +1,19 @@
+{
+  "case": "4_75",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010648,
+        "latency": 7.455113887786865,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 0.691 (1.0 is perfect).\nGround truth candidate keys: {a}; {type}; {b}.\nGenerated table candidate keys: {a}; {type}; {b}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type         a         b\nDistrict 81.037004 76.966107\n Charter 83.888602 83.256445",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_75/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_75/test_1.csv\"\n\n# Output path for the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource_cot.csv\"\n\n# Step 1: Load Source 0 - School data\ndf_schools = pd.read_csv(source0_path)\n# Source 0 schema: ['School ID', 'school_name', 'type', 'size', 'budget']\n\n# Step 2: Load Source 1 - Student data\ndf_students = pd.read_csv(source1_path)\n# Source 1 schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']\n\n# Step 3: Merge student data with school data on 'school_name' to get the 'type' of each student\ndf_merged = pd.merge(df_students, df_schools[['school_name', 'type']], on='school_name', how='left')\n\n# Step 4: For each school type, calculate average reading_score and math_score\n# Convert scores to numeric if not already (just in case)\ndf_merged['reading_score'] = pd.to_numeric(df_merged['reading_score'], errors='coerce')\ndf_merged['math_score'] = pd.to_numeric(df_merged['math_score'], errors='coerce')\n\n# Group by 'type' and calculate mean of reading_score and math_score\ndf_grouped = df_merged.groupby('type').agg({\n    'reading_score': 'mean',\n    'math_score': 'mean'\n}).reset_index()\n\n# Step 5: Rename columns to match target schema ['type': string, 'a': float, 'b': float]\ndf_grouped.rename(columns={\n    'reading_score': 'a',\n    'math_score': 'b'\n}, inplace=True)\n\n# Step 6: Reorder columns to ['type', 'a', 'b']\ndf_target = df_grouped[['type', 'a', 'b']]\n\n# Step 7: Save the result to the target CSV file\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

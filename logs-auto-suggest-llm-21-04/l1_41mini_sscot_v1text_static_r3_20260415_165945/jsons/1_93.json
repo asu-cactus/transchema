@@ -1,0 +1,19 @@
+{
+  "case": "1_93",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.001726,
+        "latency": 16.421303510665894,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {time}.\nGenerated table candidate keys: {time}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'time', 'bet', 'win']\nNumber of Tuples: 500\nExamples:\n user_id                 time  bet  win\nuser_987  [2019-02-11 2:35:29  NaN  NaN\nuser_926 [2019-01-11 13:07:41  NaN  NaN\nuser_928 [2019-02-10 16:01:45  NaN  NaN",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_93/test_0.csv\"\n    ]\n\n    # List to hold loaded DataFrames\n    dfs = []\n\n    # Load each source CSV with index_col=0 to ignore the numerical index column\n    for file in source_files:\n        df = pd.read_csv(file, index_col=0)\n        dfs.append(df)\n\n    # Since all source tables have the same schema as the target:\n    # ['user_id': string, 'time': string, 'bet': float, 'win': float]\n    # and only one source table is given, we just need to ensure types and clean data.\n\n    # Concatenate all source tables (union) - here only one source, so just one df\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Clean and transform columns to match target schema and types\n\n    # 1. user_id: source examples show some user_id values prefixed with \"\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - \"\n    # We need to extract the actual user_id string after this prefix if present.\n    # Example: \"\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_919\" -> \"user_919\"\n    combined_df['user_id'] = combined_df['user_id'].astype(str).str.strip()\n    combined_df['user_id'] = combined_df['user_id'].str.replace(r'^\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 -\\s*', '', regex=True)\n\n    # 2. time: ensure string type, strip spaces if any\n    combined_df['time'] = combined_df['time'].astype(str).str.strip()\n\n    # 3. bet and win: convert to float, keep NaNs as is\n    combined_df['bet'] = pd.to_numeric(combined_df['bet'], errors='coerce')\n    combined_df['win'] = pd.to_numeric(combined_df['win'], errors='coerce')\n\n    # The target examples show NaNs are allowed in bet and win, so no fillna needed.\n\n    # Final schema enforcement and column order\n    combined_df = combined_df[['user_id', 'time', 'bet', 'win']]\n\n    # Write the result to the target CSV path\n    combined_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_93/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

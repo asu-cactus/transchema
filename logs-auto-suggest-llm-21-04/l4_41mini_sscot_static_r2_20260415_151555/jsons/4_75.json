@@ -1,0 +1,19 @@
+{
+  "case": "4_75",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0019500000000000001,
+        "latency": 8.53752875328064,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 0.691 (1.0 is perfect).\nGround truth candidate keys: {type}; {b}; {a}.\nGenerated table candidate keys: {type}; {b}; {a}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type         a         b\nDistrict 81.037004 76.966107\n Charter 83.888602 83.256445",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_75/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_75/test_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(source0_path, index_col=0)\nsource1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['type': string, 'a': float, 'b': float]\n# Target examples show 'type' as school type (e.g., Charter, District)\n# 'a' and 'b' are float values close to ~80, likely aggregated metrics per 'type'.\n#\n# Source0 has 'type' column (school type), 'size' (int), 'budget' (int)\n# Source1 has student scores by school_name.\n#\n# We want to produce a table grouped by 'type' with two aggregated float columns 'a' and 'b'.\n#\n# Hypothesis:\n# - 'a' corresponds to average school size per type (from Source0)\n# - 'b' corresponds to average math_score per type (from Source1 joined via school_name)\n#\n# Steps:\n# 1. From Source0, get school_name, type, size, budget.\n# 2. From Source1, get school_name, math_score.\n# 3. Join Source1 with Source0 on school_name to get type for each student.\n# 4. Aggregate:\n#    - 'a' = average size of schools per type (from Source0)\n#    - 'b' = average math_score of students per type (from joined data)\n# 5. Output dataframe with columns: type, a, b\n\n# Step 1: Aggregate average school size per type from Source0\navg_size_per_type = source0.groupby('type')['size'].mean().rename('a')\n\n# Step 2: Join Source1 with Source0 on 'school_name' to get 'type' for each student\nsource1_with_type = source1.merge(source0[['school_name', 'type']], on='school_name', how='left')\n\n# Step 3: Aggregate average math_score per type from joined data\navg_math_score_per_type = source1_with_type.groupby('type')['math_score'].mean().rename('b')\n\n# Step 4: Combine the two aggregations into one DataFrame\nresult = pd.concat([avg_size_per_type, avg_math_score_per_type], axis=1).reset_index()\n\n# Step 5: Ensure columns are in the order and types as target schema\nresult = result[['type', 'a', 'b']]\nresult['type'] = result['type'].astype(str)\nresult['a'] = result['a'].astype(float)\nresult['b'] = result['b'].astype(float)\n\n# Step 6: Write the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

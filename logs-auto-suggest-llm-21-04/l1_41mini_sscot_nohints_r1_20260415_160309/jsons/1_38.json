@@ -1,0 +1,19 @@
+{
+  "case": "1_38",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0010556,
+        "latency": 5.429123163223267,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['user_id', 'sad', 'stressed']\nNumber of Tuples: 35\nExamples:\n user_id      sad  stressed\n      27 0.012195  0.560976\n       6 0.500000  0.850000\n      18 0.150000  0.662500",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_38/test_0.csv\"\n        # If there were more sources, list them here\n    ]\n\n    # List to hold transformed DataFrames from each source\n    transformed_dfs = []\n\n    for file_path in source_files:\n        # Load source data\n        df = pd.read_csv(file_path)\n\n        # Transformation:\n        # Target schema: ['user_id': int, 'sad': float, 'stressed': float]\n        # Source columns to map:\n        #   'user_id' -> 'user_id'\n        #   'sad.depressed' -> 'sad' (convert to float)\n        #   'open.stressed' -> 'stressed' (convert to float)\n\n        # Aggregate by user_id: average the sad.depressed and open.stressed values per user_id\n        agg_df = df.groupby('user_id').agg({\n            'sad.depressed': 'mean',\n            'open.stressed': 'mean'\n        }).reset_index()\n\n        # Rename columns to target schema\n        agg_df.rename(columns={\n            'sad.depressed': 'sad',\n            'open.stressed': 'stressed'\n        }, inplace=True)\n\n        # Ensure correct dtypes\n        agg_df['user_id'] = agg_df['user_id'].astype(int)\n        agg_df['sad'] = agg_df['sad'].astype(float)\n        agg_df['stressed'] = agg_df['stressed'].astype(float)\n\n        transformed_dfs.append(agg_df)\n\n    # Concatenate all transformed dataframes (if multiple sources)\n    if len(transformed_dfs) > 1:\n        result_df = pd.concat(transformed_dfs, ignore_index=True)\n        # If user_id overlaps across sources, aggregate again by user_id\n        result_df = result_df.groupby('user_id').agg({\n            'sad': 'mean',\n            'stressed': 'mean'\n        }).reset_index()\n    else:\n        result_df = transformed_dfs[0]\n\n    # Save the final transformed dataframe to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_38/target_multisource_cot.csv\"\n    result_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -249,12 +249,16 @@ def relative_csv_score(df_a, df_b):
     distribution_info = compute_distribution_scores(df_a, df_b, col_map)
     js_sim        = distribution_info.get("avg_js_similarity")
     range_overlap = distribution_info.get("avg_range_overlap")
-    if js_sim is not None and range_overlap is not None:
-        true_combined_score = round((fd_f1 + col_ratio + js_sim + range_overlap) / 4, 4)
+    # Score = (fd_f1 + range_overlap + js_similarity) / 3
+    # Falls back gracefully when numerical columns are absent
+    if range_overlap is not None and js_sim is not None:
+        true_combined_score = round((fd_f1 + range_overlap + js_sim) / 3, 4)
+    elif range_overlap is not None:
+        true_combined_score = round((fd_f1 + range_overlap) / 2, 4)
     elif js_sim is not None:
-        true_combined_score = round((fd_f1 + col_ratio + js_sim) / 3, 4)
+        true_combined_score = round((fd_f1 + js_sim) / 2, 4)
     else:
-        true_combined_score = round((fd_f1 + col_ratio) / 2, 4)
+        true_combined_score = round(fd_f1, 4)
 
     debug_dict = {
         "fd": {

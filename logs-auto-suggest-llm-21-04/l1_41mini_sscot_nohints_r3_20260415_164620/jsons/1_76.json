@@ -1,0 +1,19 @@
+{
+  "case": "1_76",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.0,
+        "cost": 0.0012144,
+        "latency": 7.515008211135864,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + col_ratio) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Student ID}.\nGenerated table candidate keys: {Student ID}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nColumn mapping is complete \u2014 all ground truth columns are accounted for.",
+        "generated_samples": "Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']\nNumber of Tuples: 19585\nExamples:\n Student ID   student_name gender grade         school_name  reading_score  math_score  School ID     type  size  budget\n      19321 Joseph Gilbert      M  12th  Bailey High School             70          88          7 District  4976 3124928\n       7491  Teresa Bailey      F  11th Shelton High School             74          97          2  Charter  1761 1056600\n       6687   Jessica Koch      F  10th Shelton High School             95          86          2  Charter  1761 1056600",
+        "code": "import pandas as pd\n\ndef main():\n    # File paths for the source data\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_76/test_0.csv\"\n    source1_path = \"autopipeline-benchmarks/github-pipelines/length1_76/test_1.csv\"\n    target_output_path = \"autopipeline-benchmarks/github-pipelines/length1_76/target_multisource_cot.csv\"\n\n    # Load Source 0: Student-level data\n    df_students = pd.read_csv(source0_path)\n    # Expected columns: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']\n\n    # Load Source 1: School-level data\n    df_schools = pd.read_csv(source1_path)\n    # Expected columns: ['School ID', 'school_name', 'type', 'size', 'budget']\n\n    # Merge student data with school data on 'school_name'\n    # This will add 'School ID', 'type', 'size', 'budget' columns to each student record\n    df_merged = pd.merge(df_students, df_schools, on='school_name', how='left')\n\n    # Check for any students with missing school info after merge (optional)\n    missing_school_info = df_merged['School ID'].isna().sum()\n    if missing_school_info > 0:\n        print(f\"Warning: {missing_school_info} student records have no matching school information.\")\n\n    # Ensure correct data types according to target schema\n    df_merged['Student ID'] = df_merged['Student ID'].astype(int)\n    df_merged['reading_score'] = df_merged['reading_score'].astype(int)\n    df_merged['math_score'] = df_merged['math_score'].astype(int)\n    df_merged['School ID'] = df_merged['School ID'].astype(int)\n    df_merged['size'] = df_merged['size'].astype(int)\n    df_merged['budget'] = df_merged['budget'].astype(int)\n\n    # Reorder and rename columns to match target schema exactly\n    target_columns = [\n        'Student ID', 'student_name', 'gender', 'grade', 'school_name',\n        'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget'\n    ]\n    df_target = df_merged[target_columns]\n\n    # Write the transformed data to the target CSV file\n    df_target.to_csv(target_output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": ""
+      },
+      "critiques": []
+    }
+  ]
+}
