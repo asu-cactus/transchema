@@ -4,7 +4,7 @@ Chart: accuracy and cost across experiments (iter/early_stop configs) for L1, L4
 Experiments:
   iter10_es5  — L1, L4, L9  (default 10 iter / 5 early stop)
   iter20_es10 — L1, L4, L9
-  iter30_es15 — L1 only (still running for L4/L9)
+  iter30_es15 — L1, L4, L9
 """
 
 import os
@@ -34,6 +34,8 @@ EXPERIMENTS = {
             os.path.join(_RES, "mcts_github_partial_l1_iter30_es15_20260409_173849", "results_summary.csv"),
             os.path.join(_RES, "mcts_github_partial_l1_iter30_es15_20260410_080253", "results_summary.csv"),
         ],
+        "L4": os.path.join(_RES, "mcts_github_partial_l4_iter30_es15_20260410_081855", "results_summary.csv"),
+        "L9": os.path.join(_RES, "mcts_github_partial_l9_iter30_es15_20260410_125635", "results_summary.csv"),
     },
 }
 
@@ -41,7 +43,7 @@ LENGTHS = ["L1", "L4", "L9"]
 EXP_LABELS = {
     "iter10_es5":  "iter=10, es=5",
     "iter20_es10": "iter=20, es=10",
-    "iter30_es15": "iter=30, es=15\n(L1 only)",
+    "iter30_es15": "iter=30, es=15",
 }
 
 
