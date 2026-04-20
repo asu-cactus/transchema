@@ -6,6 +6,7 @@ from test_scope import get_test_cases_ids
 from methods.multi_step import Config, get_python_response
 
 from log_util.log_util import create_logger
+from eval_score.score import relative_csv_score
 import pandas as pd
 import os
 import traceback
@@ -19,6 +20,10 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
     case_accuracy_ = 0
     score = 0
     case_accuracy = 0
+    df_our_response = None
+    fd_f1_val = 0.0
+    col_ratio_val = 0.0
+    debug_dict_val = {}
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     cost_summary = []
     start_time = time.time()
@@ -154,7 +159,6 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
                 file.write(script)
 
             try:
-                # name_of_experiment_pass_1
                 df_our_response = pd.read_csv(target_file_location, low_memory=False)
                 df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
                 df_ground_truth.drop(
@@ -170,6 +174,10 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
                 except Exception as e:
                     print("".join(traceback.format_exc()))
                     is_correct = False
+                try:
+                    _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(df_our_response, df_ground_truth)
+                except Exception as e:
+                    print("".join(traceback.format_exc()))
             except Exception as e:
                 print("".join(traceback.format_exc()))
                 case_accuracy = 0
@@ -198,4 +206,4 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
     print(f"ms_info: {ms_info}")
     logger.info("Total Queries Made : {q}".format(q=q_count["total"]))
 
-    return ms_info
+    return ms_info, (df_our_response, fd_f1_val, col_ratio_val, score, debug_dict_val)

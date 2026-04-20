@@ -117,7 +117,7 @@ def ms(args, length, id, log_dir, experiment_name, past_context_str=""):
     ms_extras = None
     for i in range(0, args.no_of_runs):
         if args.single_step_cot:
-            ms_info = single_step_cot(args, length, id, log_dir, experiment_name, i, past_context_str)
+            ms_info, ms_extras = single_step_cot(args, length, id, log_dir, experiment_name, i, past_context_str)
         else:
             ms_info, ms_extras = multi_step(args, length, id, log_dir, experiment_name, i, past_context_str)
         results.append(ms_info)
@@ -438,6 +438,8 @@ def get_parser():
         "--experiment-name", type=str, default="feature_v3_2", help="Experiment name"
     )
     parser.add_argument("--no_of_runs", type=int, default=1, help="Number of runs")
+    parser.add_argument("--no-critique", dest="no_critique", action="store_true", default=False,
+                        help="Skip critique step — run multi-step only")
     parser.add_argument(
         "--cases",
         type=str,
@@ -736,9 +738,17 @@ def _critique_case_worker(args, length, case, result_queue):
                     })
                 continue
 
-            # No critique for single-step CoT
-            if args.single_step_cot:
+            if getattr(args, 'no_critique', False):
                 break
+
+            # For SSCoT, copy _cot.csv → target_multisource.csv so crit() can find it
+            if args.single_step_cot:
+                cot_path = f"{main_folder_base}/length{case_path}/target_multisource_cot.csv"
+                ms_path  = f"{main_folder_base}/length{case_path}/target_multisource.csv"
+                try:
+                    shutil.copy2(cot_path, ms_path)
+                except Exception:
+                    pass
 
             crit_info, crit_attempts = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason)
 
