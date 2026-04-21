@@ -19,6 +19,7 @@ _TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[1])
 if _TRANSCHEMA_ROOT not in sys.path:
     sys.path.insert(0, _TRANSCHEMA_ROOT)
 from hints.hints_static import get_hints_section, PYTHON_SCRIPT_HINT_IDS
+from hints.hint import get_hints
 
 
 def get_mcts_simulate_prompt(
@@ -29,6 +30,13 @@ def get_mcts_simulate_prompt(
     source_information_with_location,
     csv_save_path,
     error_string,
+    hint_source="",
+    file_count=0,
+    source_data_name_list=None,
+    source_data_schema_list=None,
+    directory="",
+    len_idx_target_idx="",
+    raw_target_schema="",
 ):
     """
     MCTS Simulation prompt.
@@ -54,6 +62,28 @@ def get_mcts_simulate_prompt(
     -------
     list[str]  — single-element list containing the prompt string.
     """
+
+    # Compute data-specific v1-text hints (mirrors get_python_script_for_single_step_cot)
+    data_specific_hints = ""
+    if hint_source and hint_source not in ("none", "") and source_data_name_list is not None:
+        schema_for_hints = raw_target_schema if raw_target_schema else target_data_schema
+        hint_configs = {
+            "get_next_operator": (0, []),
+            "join":              (1, [0.8, 0.8, 0.8, 0.8, 0.8, 0.8]),
+            "group_by_aggregate": (1, [0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2]),
+            "union":             (0, []),
+        }
+        hint_parts = []
+        for pt, (hint_flag, hints_truncate) in hint_configs.items():
+            h = get_hints(
+                pt, hint_source, schema_for_hints, file_count,
+                source_data_name_list, source_data_schema_list, directory, len_idx_target_idx,
+                hint_flag, hints_truncate,
+            )
+            if h and h[0]:
+                hint_parts.append(h[0])
+        if hint_parts:
+            data_specific_hints = "\n".join(hint_parts)
 
     if operation_history:
         history_section = f"""Partial Operation Plan (treat this as a STARTING GUIDE, not a fixed sequence):
@@ -113,6 +143,7 @@ Please quote the Python script between one single "```Python" and "```".
 Hints for Python code generation
 ══════════════════════════════════════════════════════
 {get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
+{data_specific_hints}
 
 Errors in previous attempts: {error_string}
 """

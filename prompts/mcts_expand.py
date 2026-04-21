@@ -37,6 +37,7 @@ from hints.hints_static import (
     JOIN_HINT_IDS,
     GROUPBY_AGG_HINT_IDS,
 )
+from hints.hint import get_hints
 
 
 def get_mcts_expand_prompt(
@@ -49,6 +50,12 @@ def get_mcts_expand_prompt(
     source_information,
     fd_hints,
     k=3,
+    hint_source="",
+    source_data_name_list=None,
+    source_data_schema_list=None,
+    directory="",
+    len_idx_target_idx="",
+    raw_target_schema="",
 ):
     """
     MCTS Expansion prompt.
@@ -81,6 +88,18 @@ def get_mcts_expand_prompt(
     -------
     list[str]  — single-element list containing the prompt string.
     """
+
+    # Compute data-specific operator selection hints (v1-text table matching)
+    operator_data_hints = ""
+    if hint_source and hint_source not in ("none", "") and source_data_name_list is not None:
+        schema_for_hints = raw_target_schema if raw_target_schema else target_data_schema
+        operator_h = get_hints(
+            "get_next_operator", hint_source, schema_for_hints, file_count,
+            source_data_name_list, source_data_schema_list, directory, len_idx_target_idx,
+            0, [],
+        )
+        if operator_h and operator_h[0]:
+            operator_data_hints = "\nData-specific table matching:\n" + operator_h[0]
 
     prompt = f"""You are generating a data-pipeline to transform multiple source tables to the target table and you need to answer "what operation should be performed next?". Take this decision based on "Operation History", the schema of the source, target tables, and examples in the target table.
 
@@ -137,6 +156,7 @@ NO_MORE_OPERATION — the pipeline is complete
 SELECTION GUIDANCE (apply these rules when ranking candidates)
 ══════════════════════════════════════════════════════
 {get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet")}
+{operator_data_hints}
 - If the operation history already covers all needed transformations → propose NO_MORE_OPERATION.
 - Do NOT repeat an operation+configuration already present in the operation history.
 
