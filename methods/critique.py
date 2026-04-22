@@ -5,6 +5,7 @@ import numpy as np
 import re
 import traceback
 import tiktoken
+from transformers import AutoTokenizer
 from pathlib import Path
 from typing import Optional, Union
 from hints.hint_v3 import get_column_equivalence
@@ -13,6 +14,7 @@ from auto_suggest_llm_util import (
     get_source,
     get_target_samples,
     get_filtered_functional_dependency,
+    encode_text,
 )
 from eval_score.score import relative_csv_score
 from util.utils import execute_python, get_test_info
@@ -31,6 +33,8 @@ from rag_pipeline.feature_extractor import (
     parse_operation_history_for_query,
     zscore_normalize,
 )
+
+_tokenizer_cache = {}
 
 
 def resolve_rag_examples_base(
@@ -267,13 +271,42 @@ def critique(
     ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
 
     # get model encoding
-    if args.model == "gpt-4.1-mini":
+    model_str = str(args.model).lower() if args.model else ""
+
+    if "qwen3" in model_str:
+        cache_key = "qwen3-32b" if "32b" in model_str else "qwen3"
+        if cache_key not in _tokenizer_cache:
+            if "32b" in model_str:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+            else:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+        tokenizer = _tokenizer_cache[cache_key]
+        encoding = None
+    elif "qwen" in model_str:
+        if "qwen2.5" not in _tokenizer_cache:
+            _tokenizer_cache["qwen2.5"] = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        tokenizer = _tokenizer_cache["qwen2.5"]
+        encoding = None
+    elif "deepseek-r1" in model_str:
+        if "deepseek-r1" not in _tokenizer_cache:
+            _tokenizer_cache["deepseek-r1"] = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
+        tokenizer = _tokenizer_cache["deepseek-r1"]
+        encoding = None
+    elif "mixtral" in model_str:
+        if "mixtral" not in _tokenizer_cache:
+            _tokenizer_cache["mixtral"] = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+        tokenizer = _tokenizer_cache["mixtral"]
+        encoding = None
+    elif args.model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
+        tokenizer = None
     elif args.model == "o4-mini" or args.model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
+        tokenizer = None
     else:
         encoding = tiktoken.encoding_for_model(args.model)
+        tokenizer = None
 
     num_tokens = args.token_limit
 
@@ -289,8 +322,9 @@ def critique(
         False,
         num_target_samples,
         num_tokens,
-        len(encoding.encode(query)),
+        len(encode_text(query, encoding, tokenizer)),
         encoding,
+        tokenizer,
     )
     if target_data_schema_with_types:
         query = query.replace("$SCHEMA$", target_data_schema_with_types)
@@ -308,6 +342,7 @@ def critique(
         num_source_samples,
         num_tokens,
         encoding,
+        tokenizer,
     )
 
     query = query.replace("$SRC_INFO$", source_information)

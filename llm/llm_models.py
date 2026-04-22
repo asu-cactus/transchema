@@ -4,9 +4,10 @@ import openai
 from openai import OpenAI
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai.api_key)
+client = OpenAI(api_key=openai.api_key) if openai.api_key else None
 import backoff
 import tiktoken
+from transformers import AutoTokenizer
 
 
 class TokenUsageTracker:
@@ -34,8 +35,6 @@ class TokenUsageTracker:
             # gpt-4-turbo supports at most 4096 completion tokens
             "gpt-4-turbo": (0.03, 0.01),
             "gpt-4.1-mini": (0.0016, 0.0004),
-            "o4-mini": (0.0044, 0.0011),  # $4.40/1M output, $1.10/1M input
-            "o3": (0.060, 0.010),          # $60/1M output, $10/1M input
         }.get(model, (0, 0))
 
         model_usage = self.usage.get(
@@ -65,18 +64,51 @@ class LLMClient:
 
     def __init__(self, model, tracker, logger):
         """Initializes the client with a specified model and a usage tracker."""
-        self.client = openai.OpenAI(api_key=openai.api_key)
         self.model = model
-        if model == "gpt-4.1-mini":
-            # According to https://github.com/openai/tiktoken/issues/395
-            self.encoding = tiktoken.get_encoding("o200k_base")
-        elif model == "o4-mini" or model == "o3":
-            self.encoding = tiktoken.get_encoding("cl100k_base")
-        else:
-            self.encoding = tiktoken.encoding_for_model(model)
-
         self.tracker = tracker
         self.logger = logger
+        
+        if "qwen2.5" in model.lower():
+            self.client = openai.OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama"  
+            )
+            if "32b" in model.lower():
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-32B-Instruct")
+            else:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        elif "qwen3" in model.lower():
+            self.client = openai.OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama"  
+            )
+            if "32b" in model.lower():
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+            else:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+        elif "deepseek-r1" in model.lower():
+            self.client = openai.OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama"  
+            )
+            # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
+            self.encoding = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
+        elif "mixtral" in model.lower():
+            self.client = openai.OpenAI(
+                base_url="http://localhost:11434/v1",
+                api_key="ollama"  
+            )
+            # Mixtral uses the Mistral tokenizer
+            self.encoding = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+        else:
+            self.client = openai.OpenAI(api_key=openai.api_key)
+            if model == "gpt-4.1-mini":
+                # According to https://github.com/openai/tiktoken/issues/395
+                self.encoding = tiktoken.get_encoding("o200k_base")
+            elif model == "o4-mini" or model == "o3":
+                self.encoding = tiktoken.get_encoding("cl100k_base")
+            else:
+                self.encoding = tiktoken.encoding_for_model(model)
 
     def __repr__(self):
         return f"LLMClient(model={self.model}, tracker={self.tracker})"
@@ -87,10 +119,8 @@ class LLMClient:
     def calculate_token_length(self, text):
         return len(self.encoding.encode(text))
 
-    def chatgpt(self, messages, temperature=None, max_tokens=4096, n=1, stop=None):
+    def chatgpt(self, messages, temperature=1.0, max_tokens=4096, n=1, stop=None):
         """Sends chat requests to the model and returns the responses."""
-        if temperature is None:
-            temperature = 0.0 if "4.1" in self.model else 1.0
         outputs = []
         while n > 0:
             cnt = min(n, 20)  # Ensure at most 20 requests per batch
@@ -145,7 +175,6 @@ class LLMClient:
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
-                    # max_completion_tokens=max_tokens,
                     stop=stop,
                     top_p=1,
                     frequency_penalty=0.0,
@@ -162,6 +191,8 @@ class LLMClient:
 def gpt3(prompt_, stop=None):
     # if stop is None:
     #    stop = ["\n"]
+    if client is None:
+        raise ValueError("OpenAI API key not set. Cannot use GPT-3 model.")
     response = client.chat.completions.create(
         model="gpt-3.5-turbo-16k",
         messages=[{"role": "user", "content": prompt_}],
@@ -178,6 +209,8 @@ def gpt3(prompt_, stop=None):
 def gpt4(prompt_, stop=None):
     # if stop is None:
     #    stop = ["\n"]
+    if client is None:
+        raise ValueError("OpenAI API key not set. Cannot use GPT-4 model.")
     response = client.chat.completions.create(
         model="gpt-4-1106-preview",  # "gpt-4",
         messages=[{"role": "user", "content": prompt_}],

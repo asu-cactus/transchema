@@ -16,6 +16,7 @@ from validation.hard_match import is_column_numerical
 
 # import auto_suggest_llm_prompts as prt
 import tiktoken
+from transformers import AutoTokenizer
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms
 
@@ -34,6 +35,14 @@ from prompts.mcts_simulate import get_mcts_simulate_prompt
 # from prompts.next_operator_prompt_with_intermediate_materialization import (
 #     get_next_operator_prompt_with_intermediate_materialization,
 # )
+
+_tokenizer_cache = {}
+
+
+def encode_text(text, encoding, tokenizer):
+    if tokenizer is not None:
+        return tokenizer.encode(text)
+    return encoding.encode(text)
 
 
 def get_prompt(
@@ -89,13 +98,44 @@ def get_prompt(
     # dynamic : target_examples
     # max_tokens = 128000 # for gpt4turbo
 
-    if model == "gpt-4.1-mini":
+    model_str = str(model).lower() if model else ""
+
+    if "qwen3" in model_str:
+        # Use Qwen3's actual tokenizer from transformers (with caching)
+        cache_key = "qwen3-32b" if "32b" in model_str else "qwen3"
+        if cache_key not in _tokenizer_cache:
+            if "32b" in model_str:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+            else:
+                _tokenizer_cache[cache_key] = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+        tokenizer = _tokenizer_cache[cache_key]
+        encoding = None
+    elif "qwen" in model_str:
+        # Use Qwen's actual tokenizer from transformers (with caching)
+        if "qwen2.5" not in _tokenizer_cache:
+            _tokenizer_cache["qwen2.5"] = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        tokenizer = _tokenizer_cache["qwen2.5"]
+        encoding = None
+    elif "deepseek-r1" in model_str:
+        if "deepseek-r1" not in _tokenizer_cache:
+            _tokenizer_cache["deepseek-r1"] = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
+        tokenizer = _tokenizer_cache["deepseek-r1"]
+        encoding = None
+    elif "mixtral" in model_str:
+        if "mixtral" not in _tokenizer_cache:
+            _tokenizer_cache["mixtral"] = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+        tokenizer = _tokenizer_cache["mixtral"]
+        encoding = None
+    elif model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
+        tokenizer = None
     elif model == "o4-mini" or model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
+        tokenizer = None
     else:
         encoding = tiktoken.encoding_for_model(model)
+        tokenizer = None
 
     if nth_intermediate_step <= 1:
         all_intermediate_results = {}
@@ -105,7 +145,7 @@ def get_prompt(
         intermediate_dir = f"{directory}/length{len_idx_target_idx}/"
         # print(intermediate_dir)
         all_intermediate_results = get_all_intermediate(
-            intermediate_dir, encoding, source_length, nth_intermediate_step
+            intermediate_dir, encoding, tokenizer, source_length, nth_intermediate_step
         )
 
     source_information = get_source(
@@ -117,6 +157,7 @@ def get_prompt(
         source_length,
         max_tokens,
         encoding,
+        tokenizer,
     )
 
     # print("source_information: "+source_information)
@@ -213,7 +254,7 @@ def get_prompt(
                 static_hints=static_hints,
                 past_context=past_context,
             )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -223,6 +264,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
 
         # print("Target Examples: "+target_samples)
@@ -295,7 +337,7 @@ def get_prompt(
             static_hints,
             past_context=past_context,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -305,6 +347,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_join_prompt(
             allowed_operation_list,
@@ -351,7 +394,7 @@ def get_prompt(
             static_hints,
             past_context=past_context,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -361,6 +404,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
@@ -393,7 +437,7 @@ def get_prompt(
             static_hints,
             past_context=past_context,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -403,6 +447,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_union_prompt(
             allowed_operation_list,
@@ -433,6 +478,7 @@ def get_prompt(
             max_tokens,
             0,  # static_prompt_length=0 (no static prompt to account for)
             encoding,
+            tokenizer,
         )
 
         source_information_with_location = get_source_with_location(
@@ -444,6 +490,7 @@ def get_prompt(
             len_idx_target_idx,
             max_tokens,
             encoding,
+            tokenizer,
         )
 
         prompt = (
@@ -472,6 +519,7 @@ def get_prompt(
             len_idx_target_idx,
             max_tokens,
             encoding,
+            tokenizer,
         )
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
         # print(error_string)
@@ -496,7 +544,7 @@ def get_prompt(
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -506,6 +554,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
 
         prompt = get_python_script(
@@ -550,7 +599,7 @@ def get_prompt(
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -560,6 +609,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_mcts_expand_prompt(
             allowed_operation_list,
@@ -593,6 +643,7 @@ def get_prompt(
             len_idx_target_idx,
             max_tokens,
             encoding,
+            tokenizer,
         )
 
         static_prompt = get_mcts_simulate_prompt(
@@ -611,7 +662,7 @@ def get_prompt(
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
         )[0]
-        static_prompt_length = len(encoding.encode(static_prompt))
+        static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
             directory,
             len_idx_target_idx,
@@ -621,6 +672,7 @@ def get_prompt(
             max_tokens,
             static_prompt_length,
             encoding,
+            tokenizer,
         )
         prompt = get_mcts_simulate_prompt(
             operation_history,
@@ -644,7 +696,7 @@ def get_prompt(
 
     # print(prompt)
     # print(len(encoding.encode(prompt)))
-    prompt_len = len(encoding.encode(prompt))
+    prompt_len = len(encode_text(prompt, encoding, tokenizer))
     if prompt_len > max_tokens:
         # print(prompt)
         raise Exception(f"Prompt length {prompt_len} exceeds maximum tokens.")
@@ -705,6 +757,7 @@ def get_target_samples(
     max_tokens,
     static_prompt_length,
     encoding,
+    tokenizer=None,
 ):
     # print(directory,len_idx_target_idx, target_perc,is_perc, target_length, max_tokens, static_prompt_length)
     target_csv_path = directory + "/length" + len_idx_target_idx + "/target.csv"
@@ -739,6 +792,7 @@ def get_source(
     sample_length,
     num_tokens,
     encoding,
+    tokenizer=None,
 ):
     ss = "\n"
     for i in range(file_count):
@@ -796,6 +850,7 @@ def get_source_with_location(
     len_idx_target_idx,
     num_tokens,
     encoding,
+    tokenizer=None,
 ):
     ss = ""
     for i in range(file_count):
@@ -826,7 +881,7 @@ class IntermediateResult:
 
 
 def get_all_intermediate(
-    intermediate_dir, encoding, sample_length, nth_intermediate_step
+    intermediate_dir, encoding, tokenizer, sample_length, nth_intermediate_step
 ):
     def get_intermediate(file_path, encoding, sample_length):
         source_df = pd.read_csv(file_path, low_memory=False)
