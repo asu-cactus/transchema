@@ -1,13 +1,31 @@
 import os
 
+import backoff
+import httpx
 import openai
+import tiktoken
 from openai import OpenAI
+from transformers import AutoTokenizer
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai.api_key) if openai.api_key else None
-import backoff
-import tiktoken
-from transformers import AutoTokenizer
+
+# OpenAI SDK defaults to ~600s; local Ollama runs (especially 30B+) often need longer.
+# Override with TRANSCHEMA_OLLAMA_HTTP_TIMEOUT (seconds), e.g. 7200.
+_OLLAMA_READ_TIMEOUT = float(os.environ.get("TRANSCHEMA_OLLAMA_HTTP_TIMEOUT", "3600"))
+
+
+def _ollama_openai_client():
+    return OpenAI(
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        timeout=httpx.Timeout(
+            connect=60.0,
+            read=_OLLAMA_READ_TIMEOUT,
+            write=120.0,
+            pool=60.0,
+        ),
+    )
 
 
 class TokenUsageTracker:
@@ -69,35 +87,24 @@ class LLMClient:
         self.logger = logger
         
         if "qwen2.5" in model.lower():
-            self.client = openai.OpenAI(
-                base_url="http://localhost:11434/v1",
-                api_key="ollama"  
-            )
+            self.client = _ollama_openai_client()
             if "32b" in model.lower():
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-32B-Instruct")
             else:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
         elif "qwen3" in model.lower():
-            self.client = openai.OpenAI(
-                base_url="http://localhost:11434/v1",
-                api_key="ollama"  
-            )
-            if "32b" in model.lower():
+            self.client = _ollama_openai_client()
+            ml = model.lower()
+            if "32b" in ml or "30b" in ml:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
             else:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
         elif "deepseek-r1" in model.lower():
-            self.client = openai.OpenAI(
-                base_url="http://localhost:11434/v1",
-                api_key="ollama"  
-            )
+            self.client = _ollama_openai_client()
             # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
             self.encoding = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
         elif "mixtral" in model.lower():
-            self.client = openai.OpenAI(
-                base_url="http://localhost:11434/v1",
-                api_key="ollama"  
-            )
+            self.client = _ollama_openai_client()
             # Mixtral uses the Mistral tokenizer
             self.encoding = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
         else:

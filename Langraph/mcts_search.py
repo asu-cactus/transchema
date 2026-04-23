@@ -54,8 +54,6 @@ if _ROOT not in sys.path:
 from dataclasses import dataclass
 from typing import Any, List
 
-import tiktoken
-
 from auto_suggest_llm_util import get_source, get_filtered_functional_dependency
 from llm.llm_models import LLMClient, TokenUsageTracker
 from log_util.log_util import create_logger
@@ -224,15 +222,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
 
         # ── Critique support: pre-compute source_information and fd_hints ────
         mcts_critique_mode = getattr(args, "mcts_critique_mode", "none")
-        try:
-            if model == "gpt-4.1-mini":
-                _enc = tiktoken.get_encoding("o200k_base")
-            elif model in ("o4-mini", "o3"):
-                _enc = tiktoken.get_encoding("cl100k_base")
-            else:
-                _enc = tiktoken.encoding_for_model(model)
-        except Exception:
-            _enc = tiktoken.get_encoding("cl100k_base")
+        # Match token counting to LLMClient (Ollama / HF models are not in tiktoken).
+        _enc = llm_client.encoding
 
         source_information = get_source(
             file_count, source_data_name_list, source_data_schema_list,
@@ -445,8 +436,6 @@ if __name__ == "__main__":
     import multiprocessing
     from datetime import datetime
 
-    _CASE_TIMEOUT = 600  # 10 minutes per case
-
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
         "--length", type=int, default=2, help="Length bucket (e.g. 1, 2, 3)"
@@ -543,6 +532,15 @@ if __name__ == "__main__":
         help="Explicit list of case IDs to run, e.g. --cases 1_41 4_18 9_70. "
              "Overrides --length / --id_start / --id_end.",
     )
+    parser.add_argument(
+        "--case-timeout",
+        type=int,
+        default=3600,
+        metavar="SEC",
+        help="Wall-clock seconds before the per-case worker is killed (default: 3600). "
+        "Use at least ~TRANSCHEMA_OLLAMA_HTTP_TIMEOUT for local Ollama; was 600 and often "
+        "matched the OpenAI client's default HTTP timeout.",
+    )
     args = parser.parse_args()
     args.join_hints_truncate = []
     args.aggregate_hints_truncate = []
@@ -595,10 +593,10 @@ if __name__ == "__main__":
             args=(args, length, case_id, log_dir_, args.experiment_name, _result_queue),
         )
         _proc.start()
-        _proc.join(timeout=_CASE_TIMEOUT)
+        _proc.join(timeout=args.case_timeout)
 
         if _proc.is_alive():
-            print(f"[MCTS] Case {case_id} TIMED OUT after {_CASE_TIMEOUT}s — killing")
+            print(f"[MCTS] Case {case_id} TIMED OUT after {args.case_timeout}s — killing")
             _proc.terminate()
             _proc.join()
             results[case_id] = None
@@ -606,12 +604,12 @@ if __name__ == "__main__":
                 "case_id": case_label,
                 "is_correct": False,
                 "cost": "N/A",
-                "latency_seconds": _CASE_TIMEOUT,
+                "latency_seconds": args.case_timeout,
                 "best_score": "N/A",
                 "operation_history": "",
                 "timestamp": _ts,
                 "status": "timeout",
-                "error": f"Timed out after {_CASE_TIMEOUT}s",
+                "error": f"Timed out after {args.case_timeout}s",
             }
         elif not _result_queue.empty():
             _status, _payload = _result_queue.get()
