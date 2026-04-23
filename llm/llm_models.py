@@ -117,6 +117,9 @@ class LLMClient:
             else:
                 self.encoding = tiktoken.encoding_for_model(model)
 
+        _base = str(getattr(self.client, "base_url", "") or "")
+        self._uses_ollama = "11434" in _base or "ollama" in _base.lower()
+
     def __repr__(self):
         return f"LLMClient(model={self.model}, tracker={self.tracker})"
 
@@ -155,6 +158,27 @@ class LLMClient:
         self.logger.error("Giving up on request")
 
     def _request_completion(self, messages, temperature, max_tokens, stop):
+        combined = "\n".join(
+            str(m.get("content", "")) for m in messages if isinstance(m, dict)
+        )
+        prompt_chars = len(combined)
+        try:
+            est_tokens = self.calculate_token_length(combined) if combined else 0
+        except Exception:
+            est_tokens = -1
+
+        if self._uses_ollama:
+            self.logger.info(
+                "Ollama: sending chat.completions to %s model=%r "
+                "prompt_chars=%s est_tokens=%s max_tokens=%s temp=%s (waiting on server…)",
+                getattr(self.client, "base_url", "?"),
+                self.model,
+                prompt_chars,
+                est_tokens,
+                max_tokens,
+                temperature,
+            )
+
         @backoff.on_exception(
             backoff.expo,
             openai._exceptions.OpenAIError,
@@ -189,8 +213,27 @@ class LLMClient:
                 )
 
         response = _request_with_backoff()
+
+        if self._uses_ollama:
+            text = ""
+            if response.choices:
+                text = response.choices[0].message.content or ""
+            pt = getattr(response, "usage", None)
+            pt_in = getattr(pt, "prompt_tokens", None) if pt else None
+            pt_out = getattr(pt, "completion_tokens", None) if pt else None
+            self.logger.info(
+                "Ollama: reply received model=%r response_chars=%s "
+                "usage_prompt_tokens=%s usage_completion_tokens=%s",
+                self.model,
+                len(text),
+                pt_in,
+                pt_out,
+            )
+
         self.tracker.add_usage(
-            self.model, response.usage.completion_tokens, response.usage.prompt_tokens
+            self.model,
+            response.usage.completion_tokens if response.usage else 0,
+            response.usage.prompt_tokens if response.usage else 0,
         )
         return response
 
