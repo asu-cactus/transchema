@@ -38,6 +38,8 @@ Key args fields
     args.few_shot           int     few-shot examples flag (default 0)
 """
 
+import json
+import json
 import os
 import sys
 import time
@@ -111,7 +113,7 @@ class Config:
     static_hints: bool        # True (default) = inject static hints; False = suppress (--no_static_hints)
     fd_hints: str             # pre-formatted FD hint string (empty if fd_flag=0)
     mcts_critique_mode: str   # "none" | "simulate" | "best"
-    reward_mode: str          # "score" | "validation" | "partial"
+    reward_mode: str          # "score" | "det_score_value" | "validation" | "partial"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -155,6 +157,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
     aggregate_hints_truncate = getattr(args, "aggregate_hints_truncate", [])
     few_shot = getattr(args, "few_shot", 0)
+    llm_judge = getattr(args, "llm_judge", "none")
     benchmark = getattr(args, "benchmark", "github")
     main_folder = (
         "autopipeline-benchmarks/monteprep-pipelines"
@@ -329,6 +332,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "no_improvement_count": 0,
             # Critique
             "simulation_mode": getattr(args, "simulation_mode", "pipeline"),
+            "llm_judge": llm_judge,
+            "judge_verdict": False,
             "critique_attempted": False,
             # Logging
             "log_messages": [],
@@ -340,11 +345,26 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             f"case={len_idx_target_idx}"
         )
         mcts_graph = build_mcts_graph()
-        final_state: MCTSGraphState = mcts_graph.invoke(
+        _checkpoint_file = f"/tmp/mcts_checkpoint_{len_idx_target_idx}.json"
+        final_state: MCTSGraphState = initial_state
+        for _step_state in mcts_graph.stream(
             initial_state,
-            # Increase recursion limit for deep rollout loops
             config={"recursion_limit": 500},
-        )
+            stream_mode="values",
+        ):
+            final_state = _step_state
+            if _step_state.get("best_script"):
+                try:
+                    with open(_checkpoint_file, "w") as _cf:
+                        json.dump({
+                            "best_script": _step_state["best_script"],
+                            "best_score": _step_state.get("best_score", 0.0),
+                            "best_operation_history": str(
+                                _step_state.get("best_operation_history", [])
+                            ),
+                        }, _cf)
+                except Exception:
+                    pass
 
         # ── Extract results from final state ──────────────────────────────
         best_script = final_state["best_script"]
@@ -376,12 +396,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         logger.info(f"[MCTS] Tree viz     → {tree_path}")
 
         # ── Hard accuracy evaluation on best script ────────────────────────
-        # If MCTS already validated the best script during the search, trust that
-        # result and skip the re-validation entirely (avoids hanging on large outputs).
-        if final_state.get("validation_passed", False):
-            is_correct = True
-            logger.info("[MCTS] Skipping final re-validation: already validated during search.")
-        elif best_script:
+        if best_script:
             # Re-execute best script so target_file_location reflects the best result,
             # then validate. Only reached when MCTS never found a validated result.
             try:
@@ -409,6 +424,11 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                     f"[MCTS] Hard accuracy eval failed: {traceback.format_exc()}"
                 )
                 is_correct = False
+
+        try:
+            os.remove(_checkpoint_file)
+        except OSError:
+            pass
 
         logger.info(f"[MCTS] Total queries: {q_count['total']}")
 
@@ -502,10 +522,11 @@ if __name__ == "__main__":
         "--reward",
         type=str,
         default="score",
-        choices=["score", "validation", "partial"],
+        choices=["score", "det_score_value", "validation", "partial"],
         help=(
             "MCTS reward signal used for backpropagation: "
             "'score' = continuous relative_csv_score (FD + column map + distribution), "
+            "'det_score_value' = value_based_relative_csv_score (Jaccard-aligned columns + value-based distribution), "
             "'validation' = binary 1.0 if hard-match validation passes else 0.0, "
             "'partial' = fuzzy column-match ratio (matched target cols / total target cols)"
         ),
@@ -520,6 +541,20 @@ if __name__ == "__main__":
             "Simulation strategy: 'pipeline' = one LLM call completes the full script "
             "(default); 'operator' = multistep operator-by-operator simulation using "
             "get_next_operator + configure prompts, then python_script."
+        ),
+    )
+    parser.add_argument(
+        "--llm_judge",
+        type=str,
+        default="none",
+        choices=["none", "det_score", "llm", "llm_score", "llm_score_hybrid"],
+        help=(
+            "LLM judge used as stopping criterion: "
+            "'none'=disabled (score/validation-based stopping), "
+            "'det_score'=deterministic score threshold, "
+            "'llm'=LLM table comparison, "
+            "'llm_score'=LLM + numeric score, "
+            "'llm_score_hybrid'=LLM + NL score interpretation."
         ),
     )
     parser.add_argument(
@@ -602,17 +637,69 @@ if __name__ == "__main__":
             _proc.terminate()
             _proc.join()
             results[case_id] = None
-            _row = {
-                "case_id": case_label,
-                "is_correct": False,
-                "cost": "N/A",
-                "latency_seconds": _CASE_TIMEOUT,
-                "best_score": "N/A",
-                "operation_history": "",
-                "timestamp": _ts,
-                "status": "timeout",
-                "error": f"Timed out after {_CASE_TIMEOUT}s",
-            }
+
+            # Attempt to recover the best script written during the run
+            _checkpoint_file = f"/tmp/mcts_checkpoint_{length}_{case_id}.json"
+            _recovered = False
+            if os.path.exists(_checkpoint_file):
+                try:
+                    with open(_checkpoint_file) as _cf:
+                        _ckpt = json.load(_cf)
+                    _best_script = _ckpt.get("best_script", "")
+                    _best_score = _ckpt.get("best_score", 0.0)
+                    _best_op_hist = _ckpt.get("best_operation_history", "")
+                    if _best_script:
+                        _mf = (
+                            "autopipeline-benchmarks/monteprep-pipelines"
+                            if args.benchmark == "monteprep"
+                            else "autopipeline-benchmarks/github-pipelines"
+                        )
+                        _target_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts.csv"
+                        _gt_file = f"{_mf}/length{length}_{case_id}/target.csv"
+                        from util.utils import execute_python
+                        _exec_result = execute_python(_best_script)
+                        if _exec_result == "Success":
+                            _df_out = pd.read_csv(_target_file, low_memory=False)
+                            _df_gt = pd.read_csv(_gt_file, low_memory=False)
+                            _df_gt = _df_gt.drop(columns=_df_gt.columns[0], axis=1)
+                            _validate_fn = (
+                                compare_tables_matching
+                                if args.validation == "autopipeline"
+                                else compare_lists_matching
+                            )
+                            _, _is_correct, _, _ = _validate_fn(_df_out, _df_gt)
+                            _recovered = True
+                            print(
+                                f"[MCTS] Case {case_id} timeout-recovered: "
+                                f"is_correct={_is_correct}, best_score={_best_score:.4f}"
+                            )
+                            _row = {
+                                "case_id": case_label,
+                                "is_correct": _is_correct,
+                                "cost": "N/A",
+                                "latency_seconds": _CASE_TIMEOUT,
+                                "best_score": round(_best_score, 4),
+                                "operation_history": _best_op_hist,
+                                "timestamp": _ts,
+                                "status": "timeout_recovered",
+                                "error": f"Timed out after {_CASE_TIMEOUT}s; best script validated",
+                            }
+                    os.remove(_checkpoint_file)
+                except Exception as _e:
+                    print(f"[MCTS] Case {case_id} timeout recovery failed: {_e}")
+
+            if not _recovered:
+                _row = {
+                    "case_id": case_label,
+                    "is_correct": False,
+                    "cost": "N/A",
+                    "latency_seconds": _CASE_TIMEOUT,
+                    "best_score": "N/A",
+                    "operation_history": "",
+                    "timestamp": _ts,
+                    "status": "timeout",
+                    "error": f"Timed out after {_CASE_TIMEOUT}s",
+                }
         elif not _result_queue.empty():
             _status, _payload = _result_queue.get()
             if _status == "ok":

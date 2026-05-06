@@ -577,6 +577,14 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--early-stopping",
+        dest="early_stopping",
+        type=int,
+        default=5,
+        help="Stop iterating early if score has not improved for this many consecutive iterations.",
+    )
+
+    parser.add_argument(
         "--memory_granularity",
         type=str,
         default="summary",
@@ -605,7 +613,7 @@ def get_parser():
     return parser
 
 
-_CASE_TIMEOUT = 600  # 10 minutes per case
+_CASE_TIMEOUT = 1200  # 20 minutes per case
 
 
 def _flush_json(case_record, json_path):
@@ -636,7 +644,7 @@ def _critique_case_worker(args, length, case, result_queue):
         json_path = f"{args.json_directory}/{case_path}.json"
         best_score_so_far = -1.0
         no_improve_count = 0
-        NO_IMPROVE_LIMIT = 5
+        NO_IMPROVE_LIMIT = getattr(args, "early_stopping", 5)
 
         # Create llm_client here (subprocess cannot share the parent's client)
         _token_tracker = TokenUsageTracker()

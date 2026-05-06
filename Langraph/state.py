@@ -33,8 +33,7 @@ class MCTSGraphState(TypedDict):
     ground_truth_location: str       # path to target.csv
     target_file_location: str        # path where generated CSV is written
     validation_mode: str             # "hard_match" or "autopipeline"
-    reward_mode: str                 # "score" | "validation" | "partial"
-    reward_mode: str                 # "score" (continuous) or "validation" (binary 0/1)
+    reward_mode: str                 # "score" | "det_score_value" | "validation" | "partial"
     experiment_name: str             # label for saved scripts
     case_id: str                     # e.g. "2_5" for length2_5
 
@@ -83,6 +82,10 @@ class MCTSGraphState(TypedDict):
 
     # ── Simulation mode ───────────────────────────────────────────────────────
     simulation_mode: str                 # "pipeline" (default) | "operator"
+
+    # ── LLM Judge ────────────────────────────────────────────────────────────
+    llm_judge: str                        # "none" | "det_score" | "llm" | "llm_score" | "llm_score_hybrid"
+    judge_verdict: bool                   # cached judge result for the current iteration
 
     # ── Critique phase ────────────────────────────────────────────────────────
     critique_attempted: bool             # True once critique has run this MCTS iteration

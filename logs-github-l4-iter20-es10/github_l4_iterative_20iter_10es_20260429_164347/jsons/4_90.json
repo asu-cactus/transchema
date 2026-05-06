@@ -1,0 +1,170 @@
+{
+  "case": "4_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.9901,
+        "cost": 0.0036396,
+        "latency": 10.816676616668701,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 0.970) / 3 = 0.990 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 22540\nExamples:\n occluded\n        1\n        1\n        1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Load all source tables with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(path, index_col=0) for path in source_files]\n\n# According to operation_history: UNION of all source tables\n# All source tables have the same schema, so union is valid\n# We only need the 'occluded' column for the target table\n# Extract 'occluded' column from each dataframe\noccluded_dfs = [df[['occluded']] for df in dfs]\n\n# Concatenate (union) all occluded columns vertically\ntarget_df = pd.concat(occluded_dfs, ignore_index=True)\n\n# Ensure the 'occluded' column is integer type as per target schema\ntarget_df['occluded'] = target_df['occluded'].astype(int)\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n0\n0\n0\n1\n1\n1\n1\n1\n1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0040088,
+          "latency": 12.937404870986938,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+          "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        0\n        1",
+          "code": "import pandas as pd\n\n# Load all source tables with index_col=0 as per hint\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\", index_col=0)\n\n# Step 1: UNION all source tables since they share the same schema\ndf_union = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# Step 2: Since target schema has only one column 'occluded' and no keys,\n# and the failed output has too many rows (22540 vs 2),\n# we need to aggregate to match the target data.\n\n# Group by 'occluded' column to reduce rows to unique occluded values\ndf_result = df_union.groupby('occluded', as_index=False).size()\n\n# Rename the count column to 'count' (intermediate step)\ndf_result = df_result.rename(columns={'size': 'count'})\n\n# Since target only has 'occluded' column, drop the count column\ndf_result = df_result[['occluded']]\n\n# Reset index to have a clean DataFrame\ndf_result = df_result.reset_index(drop=True)\n\n# Write the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource_critique_history.csv\", index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0029576000000000003,
+        "latency": 13.135401964187622,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        1\n        0",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033456,
+        "latency": 6.0428307056427,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        0\n        1",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0037447999999999995,
+        "latency": 4.366034269332886,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        0\n        1",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0041383999999999995,
+        "latency": 4.888763904571533,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        1\n        0",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.004532,
+        "latency": 7.140125036239624,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        1\n        0",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0049256,
+        "latency": 5.635487794876099,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        0\n        1",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0053192,
+        "latency": 6.416595697402954,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        1\n        0",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0057128,
+        "latency": 8.284745216369629,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        1\n        0",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0061064,
+        "latency": 7.773087501525879,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        1\n        0",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0065,
+        "latency": 6.774949073791504,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 2\nExamples:\n occluded\n        1\n        0",
+        "code": "import pandas as pd\n\n# List all source file paths exactly as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/test_3.csv\"\n]\n\n# Step 1: Load all source tables with index_col=0 to ignore the first numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Step 2: All source tables share the same schema, and the target schema is a single column 'occluded'.\n# According to hints, UNION operation is preferred here.\n\n# Concatenate all source tables vertically (UNION)\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Step 3: The target table only has the 'occluded' column with two distinct integer values (0 and 1).\n# We need to reduce the unioned data to only unique 'occluded' values to match the target.\n\ndf_result = df_union[['occluded']].drop_duplicates().sort_values(by='occluded').reset_index(drop=True)\n\n# Step 4: Save the result to the target path\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n1\n"
+      },
+      "critiques": []
+    }
+  ]
+}

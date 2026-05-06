@@ -1,5 +1,5 @@
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import is_column_numerical, compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
@@ -12,7 +12,8 @@ from auto_suggest_llm_util import (
     get_columns,
     get_columns_join,
 )
-from eval_score.score import relative_csv_score
+from eval_score_value_based import value_based_relative_csv_score_timed
+from judges import build_nl_score_interpretation
 
 from log_util.log_util import create_logger
 
@@ -64,12 +65,14 @@ class Config:
     token_limit: int
     static_hints: bool
     past_context: str = ""
+    intermediate_scores: dict = field(default_factory=dict)
 
 
-def get_python_response(operation_history, break_flag, csv_save_path, config: Config):
+def get_python_response(operation_history, break_flag, csv_save_path, config: Config, intermediate_scores=None, nth_intermediate_step: int = 0, is_final: bool = False):
     logger = config.logger
     llm_client = config.llm_client
     past_context = getattr(config, "past_context", "")
+    intermediate_scores = intermediate_scores or {}
 
     max_trails = 5
     error_str = ""
@@ -99,6 +102,10 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
             hint_source=config.hint_source,
             static_hints=config.static_hints,
             past_context=past_context,
+            intermediate_scores=intermediate_scores,
+            nth_intermediate_step=nth_intermediate_step,
+            source_length=config.source_length,
+            is_final=is_final,
         )
 
         if prompt[0] == "-1":
@@ -217,11 +224,11 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
     main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
     source_space_dir = f"{main_folder}/intermediate_space"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with 'test' in this subfolder (root only, no subdirs)
     file_count = sum(
         1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
+        for file in os.listdir(path_to_files)
+        if os.path.isfile(os.path.join(path_to_files, file))
         if file.startswith("test")
     )
 
@@ -315,6 +322,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
         operation_history = []
         break_flag = 1
         granularity = getattr(args, "memory_granularity", "summary")
+        intermediate_scores = {}  # {step: (true_combined_score, nl_score)}
 
         step = 0
         while break_flag:
@@ -340,9 +348,10 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                 source_length=source_length,
                 hint_source=hint_source,
                 few_shot=few_shot,
-                nth_intermediate_step=step if args.intermediate_materialization else 0,
+                nth_intermediate_step=step + 1 if args.intermediate_materialization else 0,
                 static_hints=static_hints,
                 past_context=past_context_str,
+                intermediate_scores=intermediate_scores,
             )
             if prompt[0] == "-1":
                 logger.info("Token Limit Exceeded")
@@ -392,7 +401,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     hint_source=hint_source,
                     few_shot=few_shot,
                     nth_intermediate_step=(
-                        step if args.intermediate_materialization else 0
+                        step + 1 if args.intermediate_materialization else 0
                     ),
                     static_hints=static_hints,
                     past_context=past_context_str,
@@ -452,7 +461,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     hint_source=hint_source,
                     few_shot=few_shot,
                     nth_intermediate_step=(
-                        step if args.intermediate_materialization else 0
+                        step + 1 if args.intermediate_materialization else 0
                     ),
                     static_hints=static_hints,
                     past_context=past_context_str,
@@ -508,7 +517,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     hint_source=hint_source,
                     few_shot=few_shot,
                     nth_intermediate_step=(
-                        step if args.intermediate_materialization else 0
+                        step + 1 if args.intermediate_materialization else 0
                     ),
                     static_hints=static_hints,
                     past_context=past_context_str,
@@ -561,11 +570,22 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
 
             # Materialize the intermediate table here itself
             step += 1
-            if args.intermediate_materialization:
+            if args.intermediate_materialization and break_flag != 0:
                 csv_save_path = f"{interm_space_dir}/length{len_idx_target_idx}/intermediate_step{step}.csv"
                 script, response, break_flag = get_python_response(
-                    operation_history, break_flag, csv_save_path, config
+                    operation_history, break_flag, csv_save_path, config, intermediate_scores,
+                    nth_intermediate_step=step,
                 )
+                if os.path.exists(csv_save_path):
+                    try:
+                        df_interm = pd.read_csv(csv_save_path, low_memory=False)
+                        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+                        df_gt.drop(columns=df_gt.columns[0], axis=1, inplace=True)
+                        _, col_ratio_s, _, fd_f1_s, true_combined_s, debug_dict_s = value_based_relative_csv_score_timed(df_interm, df_gt)
+                        nl_score_s = build_nl_score_interpretation(fd_f1_s, col_ratio_s, true_combined_s, debug_dict_s)
+                        intermediate_scores[step] = (true_combined_s, nl_score_s)
+                    except Exception as e:
+                        logger.warning(f"Intermediate score computation failed at step {step}: {e}\n{traceback.format_exc()}")
             print(f"finished step {step}")
 
         # print(operation_history)
@@ -576,7 +596,10 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
 
             # put this in a loop
             script, response, break_flag = get_python_response(
-                operation_history, break_flag, target_file_location, config
+                operation_history, break_flag, target_file_location, config,
+                intermediate_scores=intermediate_scores,
+                nth_intermediate_step=step,
+                is_final=True,
             )
 
             if response == "Success":
@@ -681,7 +704,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                                 sorted_df_our_response, sorted_df_ground_truth
                             )
                         else:
-                            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(df_our_response, df_ground_truth)
+                            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(df_our_response, df_ground_truth)
                     except Exception as e:
                         print("".join(traceback.format_exc()))
                         is_correct = False

@@ -45,6 +45,8 @@ _EVAL_SCORE = os.path.join(_ROOT, "eval_score")
 if _EVAL_SCORE not in sys.path:
     sys.path.insert(0, _EVAL_SCORE)
 
+from judges import judge as llm_judge_fn
+
 from auto_suggest_llm_util import (
     get_mcts_candidates,
     get_operation,
@@ -54,6 +56,7 @@ from auto_suggest_llm_util import (
     query_gpt,
 )
 from eval_score.score import relative_csv_score
+from eval_score_value_based import value_based_relative_csv_score
 from mcts_node import MCTSNode, OPERATOR_TYPES
 from state import MCTSGraphState
 from util.utils import execute_python
@@ -79,8 +82,8 @@ def _score_worker(target_file_location: str, ground_truth_location: str, result_
         df_output = pd.read_csv(target_file_location, low_memory=False)
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
         df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-        _, col_ratio, _, fd_f1, _, _ = relative_csv_score(df_output, df_gt)
-        result_queue.put((fd_f1 + col_ratio) / 2)
+        _, _, _, _, true_combined_score, _ = relative_csv_score(df_output, df_gt)
+        result_queue.put(true_combined_score)
     except Exception:
         result_queue.put(0.0)
 
@@ -112,6 +115,47 @@ def _score_with_timeout(target_file_location: str, ground_truth_location: str) -
         return 0.0
 
 
+def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue):
+    """Subprocess worker: load CSVs and compute value_based score, put result in queue.
+
+    Uses Jaccard-aligned column matching + value-based distribution scoring
+    instead of the standard relative_csv_score.
+    """
+    try:
+        df_output = pd.read_csv(target_file_location, low_memory=False)
+        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        _, _, _, _, true_combined_score, _ = value_based_relative_csv_score(df_output, df_gt)
+        result_queue.put(true_combined_score)
+    except Exception:
+        result_queue.put(0.0)
+
+
+def _value_score_with_timeout(target_file_location: str, ground_truth_location: str) -> float:
+    """Run value_based scoring in a child process with a hard timeout.
+
+    Identical process-isolation pattern to _score_with_timeout but calls
+    value_based_relative_csv_score (Jaccard-aligned columns + value-based
+    distribution). Returns 0.0 on timeout or error.
+    """
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(
+        target=_value_score_worker,
+        args=(target_file_location, ground_truth_location, q),
+        daemon=True,
+    )
+    p.start()
+    p.join(timeout=_SCORE_TIMEOUT)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return 0.0
+    try:
+        return q.get_nowait()
+    except Exception:
+        return 0.0
+
+
 def _score_and_validate_output(
     target_file_location: str,
     ground_truth_location: str,
@@ -120,9 +164,10 @@ def _score_and_validate_output(
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
-      - "score"      : relative_csv_score (FD + column map + distribution)
-      - "validation" : avg_similarity from compare_lists/tables_matching (per-col × per-row)
-      - "partial"    : fuzzy column-match ratio from compare_tables_fuzzy
+      - "score"           : relative_csv_score (FD + column map + distribution)
+      - "det_score_value" : value_based_relative_csv_score (Jaccard-aligned columns + value-based distribution)
+      - "validation"      : avg_similarity from compare_lists/tables_matching (per-col × per-row)
+      - "partial"         : fuzzy column-match ratio from compare_tables_fuzzy
 
     Returns (reward, is_correct) where is_correct is derived from reward == 1.0.
     """
@@ -140,6 +185,10 @@ def _score_and_validate_output(
     elif reward_mode == "partial":
         partial, _ = compare_tables_fuzzy(df_output, df_gt)
         return float(partial), partial == 1.0
+
+    elif reward_mode == "det_score_value":
+        score = _value_score_with_timeout(target_file_location, ground_truth_location)
+        return score, score >= 1.0
 
     else:  # "score"
         score = _score_with_timeout(target_file_location, ground_truth_location)
@@ -856,7 +905,10 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
     reward = 0.0
     iteration_validation_passed = False
+    judge_verdict = False
     reward_mode = state.get("reward_mode", "score")
+    llm_judge = state.get("llm_judge", "none")
+
     if response == "Success":
         try:
             reward, iteration_validation_passed = _score_and_validate_output(
@@ -869,6 +921,26 @@ def execute_and_score(state: MCTSGraphState) -> dict:
             config.logger.warning(
                 f"[execute_and_score] Scoring/validation failed: {traceback.format_exc()}"
             )
+
+        if llm_judge != "none":
+            try:
+                df_output = pd.read_csv(target_file_location, low_memory=False)
+                df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+                df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                judge_verdict, _ = llm_judge_fn(
+                    df_output, df_gt,
+                    judge_type=llm_judge,
+                    llm_client=config.llm_client,
+                    logger=config.logger,
+                )
+                iteration_validation_passed = judge_verdict
+                config.logger.info(
+                    f"[execute_and_score] LLM judge ({llm_judge}): verdict={judge_verdict}"
+                )
+            except Exception:
+                config.logger.warning(
+                    f"[execute_and_score] LLM judge failed: {traceback.format_exc()}"
+                )
 
     validation_passed = state.get("validation_passed", False) or iteration_validation_passed
 
@@ -909,6 +981,7 @@ def execute_and_score(state: MCTSGraphState) -> dict:
     return {
         "current_score": reward,
         "validation_passed": validation_passed,
+        "judge_verdict": judge_verdict,
         "best_score": best_score,
         "best_script": best_script,
         "best_operation_history": best_op_hist,
@@ -916,7 +989,8 @@ def execute_and_score(state: MCTSGraphState) -> dict:
         + [
             f"Iter {state['iteration']}: "
             f"reward={reward:.4f} (mode={reward_mode}) "
-            f"validation_passed={validation_passed} history={rollout_history}"
+            f"validation_passed={validation_passed} "
+            f"judge_verdict={judge_verdict} history={rollout_history}"
         ],
     }
 
@@ -1198,6 +1272,29 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"score {state['current_score']:.4f} → {new_score:.4f}"
     )
 
+    # If LLM judge is active, re-run it on the critiqued output to get an updated verdict.
+    judge_verdict = state.get("judge_verdict", False)
+    llm_judge = state.get("llm_judge", "none")
+    if llm_judge != "none" and new_script and new_response == "Success":
+        try:
+            df_output = pd.read_csv(state["target_file_location"], low_memory=False)
+            df_gt = pd.read_csv(state["ground_truth_location"], low_memory=False)
+            df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+            judge_verdict, _ = llm_judge_fn(
+                df_output, df_gt,
+                judge_type=llm_judge,
+                llm_client=config.llm_client,
+                logger=config.logger,
+            )
+            critique_validation_passed = judge_verdict
+            config.logger.info(
+                f"[mcts_critique] LLM judge ({llm_judge}) after critique: verdict={judge_verdict}"
+            )
+        except Exception:
+            config.logger.warning(
+                f"[mcts_critique] LLM judge failed after critique: {traceback.format_exc()}"
+            )
+
     best_score = state["best_score"]
     best_script = state["best_script"]
     best_op_hist = state["best_operation_history"]
@@ -1219,6 +1316,7 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         "current_score": new_score,
         "current_response": new_response,
         "critique_attempted": True,
+        "judge_verdict": judge_verdict,
         "validation_passed": validation_passed,
         "best_score": best_score,
         "best_script": best_script,
@@ -1227,7 +1325,7 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         + [
             f"[CRITIQUE] iter={state['iteration']} "
             f"score_before={state['current_score']:.4f} score_after={new_score:.4f} "
-            f"validation_passed={validation_passed}"
+            f"judge_verdict={judge_verdict} validation_passed={validation_passed}"
         ],
     }
 
@@ -1249,14 +1347,17 @@ def should_critique(state: MCTSGraphState) -> str:
         return "backpropagate"
 
     mode = getattr(state["config"], "mcts_critique_mode", "none")
+    llm_judge = state.get("llm_judge", "none")
     reward_mode = state.get("reward_mode", "score")
-    critique_threshold = 0.85 if reward_mode == "score" else 1.0
-    if (
-        mode == "simulate"
-        and state["current_score"] < critique_threshold
-        and not state.get("critique_attempted", False)
-    ):
-        return "critique"
+
+    if mode == "simulate" and not state.get("critique_attempted", False):
+        if llm_judge != "none":
+            needs_critique = not state.get("judge_verdict", False)
+        else:
+            critique_threshold = 0.85 if reward_mode in ("score", "det_score_value") else 1.0
+            needs_critique = state["current_score"] < critique_threshold
+        if needs_critique:
+            return "critique"
     return "backpropagate"
 
 

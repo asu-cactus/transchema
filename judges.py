@@ -17,7 +17,7 @@ import pandas as pd
 from eval_score.score import relative_csv_score
 from llm.llm_models import LLMClient, TokenUsageTracker
 
-EPS = 1e-2  # true_combined_score must exceed 1 - EPS to be considered correct
+EPS = 0.002  # true_combined_score must equal exactly 1.0 to be considered correct
 
 
 def judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, judge_type: str, llm_client: LLMClient, logger: logging.Logger = None) -> tuple:
@@ -76,7 +76,8 @@ def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_cli
     {_df_to_prompt_str(df_generated)}
 
     Assess whether the generated table is a correct transformation of the ground truth.
-    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Consider: schema match (column names, data types), column count, key structure (candidate keys), functional dependency structure, value range plausibility, and overall structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected. Focus on structural and schema-level properties, not exact value matches.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
@@ -101,7 +102,7 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
         _, _, _, _, true_combined_score, _ = _score_tuple(df_generated, df_ground_truth)
 
     score_summary = {
-            "Match score based on functional dependencies and column mapping:": round(true_combined_score, 4),
+            "Match score (Functional Dependency F1 + Jensen-Shannon Divergence similarity + Value Range Overlap) / 3:": round(true_combined_score, 4),
     }
 
     prompt = f"""You are evaluating whether a generated data table matches a ground truth table for a schema transformation task.
@@ -114,6 +115,10 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
 
     Similarity Metrics:
     {json.dumps(score_summary, indent=2)}
+
+    Assess whether the generated table is a correct transformation of the ground truth.
+    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected.
 
     Use the tables AND the score together to assess correctness.
     Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
@@ -155,6 +160,10 @@ def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame
 
     Automated Scoring Analysis:
     {nl_interpretation}
+
+    Assess whether the generated table is a correct transformation of the ground truth.
+    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected.
 
     Use the tables AND the scoring analysis together to make a final correctness judgement.
     Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
@@ -291,11 +300,11 @@ def build_nl_score_interpretation(
             f"recall={fd_info.get('recall', float('nan')):.3f})."
         )
         if fd_fp:
-            fp_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fp[:5]]
+            fp_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fp[:5] if fd is not None]
             overflow = f" (and {len(fd_fp) - 5} more)" if len(fd_fp) > 5 else ""
             lines.append(f"Spurious FDs in generated (not in ground truth): {'; '.join(fp_strs)}{overflow}.")
         if fd_fn:
-            fn_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fn[:5]]
+            fn_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fn[:5] if fd is not None]
             overflow = f" (and {len(fd_fn) - 5} more)" if len(fd_fn) > 5 else ""
             lines.append(f"Missing FDs from ground truth: {'; '.join(fn_strs)}{overflow}.")
 
@@ -307,8 +316,9 @@ def build_nl_score_interpretation(
     else:
         problem_cols = {
             gt_col: info for gt_col, info in per_col.items()
-            if info.get("range_overlap", 1.0) < _DIST_THRESHOLD
-            or info.get("js_similarity", 1.0) < _DIST_THRESHOLD
+            if (info.get("range_overlap", 1.0) < _DIST_THRESHOLD
+            or info.get("js_similarity", 1.0) < _DIST_THRESHOLD)
+            and info.get("gen_stats") is not None
         }
         if not problem_cols:
             lines.append("All numerical columns show complete value range overlap and matching distributions.")
@@ -324,12 +334,18 @@ def build_nl_score_interpretation(
                 lines.append(
                     f"  Column '{col_label}': range overlap={range_overlap:.3f}, JS similarity={js_sim_val:.3f}"
                 )
-                lines.append(
-                    f"    Generated    — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}"
-                )
-                lines.append(
-                    f"    Ground Truth — min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}"
-                )
+                if gs is not None:
+                    lines.append(
+                        f"    Generated    — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}"
+                    )
+                else:
+                    lines.append("    Generated    — stats not available")
+                if ts is not None:
+                    lines.append(
+                        f"    Ground Truth — min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}"
+                    )
+                else:
+                    lines.append("    Ground Truth — stats not available")
 
     return "\n".join(lines)
 

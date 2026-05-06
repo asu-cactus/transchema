@@ -70,6 +70,8 @@ def get_prompt(
     mcts_expand_k=3,
     static_hints=False,
     past_context="",
+    intermediate_scores: dict = None,
+    is_final: bool = False,
 ):
     """
     Args:
@@ -254,6 +256,7 @@ def get_prompt(
                 all_intermediate_results,
                 static_hints,
                 past_context=past_context,
+                intermediate_scores=intermediate_scores or {},
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -495,6 +498,8 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            intermediate_scores=intermediate_scores or {},
+            is_final=is_final,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -527,6 +532,8 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            intermediate_scores=intermediate_scores or {},
+            is_final=is_final,
         )[0]
     elif prompt_type == "mcts_expand":
         raw_target_schema = target_data_schema

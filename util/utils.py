@@ -304,12 +304,11 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
     main_folder_name = os.path.abspath(main_folder_path)
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
 
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with 'test' in this subfolder (root only, no subdirs)
     file_count = sum(
         1
-        for _, _, files in os.walk(sub_folder_path)
-        for file in files
-        if file.startswith("test")
+        for file in os.listdir(sub_folder_path)
+        if file.startswith("test") and os.path.isfile(os.path.join(sub_folder_path, file))
     )
 
 

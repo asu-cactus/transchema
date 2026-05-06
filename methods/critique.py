@@ -191,9 +191,8 @@ def critique(
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
         1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
-        if file.startswith("test")
+        for file in os.listdir(path_to_files)
+        if file.startswith("test") and os.path.isfile(os.path.join(path_to_files, file))
     )
 
     ##print(file_count)
@@ -848,13 +847,16 @@ def build_column_distribution_section(
 def get_result_path(args, main_folder, len_idx_target_idx):
 
     if args.intermediate_materialization:
-        result_path = f"{main_folder}/source_space/length{len_idx_target_idx}/"
-        # Iterate through the intermediate files in the source_space folder and get their names
+        result_path = f"{main_folder}/intermediate_space/length{len_idx_target_idx}/"
+        # Find the highest-numbered intermediate_step{n}.csv in the folder
         max_step = 0
         for f in os.listdir(result_path):
-            if f.startswith("intermediate"):
-                step = f.lstrip("intermediate_step").rstrip(".csv")
-                max_step = max(max_step, int(step))
+            if f.startswith("intermediate_step") and f.endswith(".csv"):
+                try:
+                    step = int(f[len("intermediate_step"):-len(".csv")])
+                    max_step = max(max_step, step)
+                except ValueError:
+                    pass
         result_path += f"intermediate_step{max_step}.csv"
     elif getattr(args, "single_step_cot", False):
         result_path = f"{main_folder}/length{len_idx_target_idx}/target_multisource_cot.csv"
