@@ -25,14 +25,9 @@ The failed pipeline used the following operations:
 $OPERATIONS$
 
 After these operations, the resulting table (that does not match target data) has:
-Schema: $RES_SCHEMA$
-Number of Tuples: $NUM_RES_TUPLES$
-Examples: $RES_EXAMPLES$
-
-Current Python script:
-```python
-$CURRENT_SCRIPT$
-```
+Schema: $RES_SCHEMA_NOT_AVAILABLE$
+Number of Tuples: $NUM_RES_TUPLES_NOT_AVAILABLE$
+Examples: $RES_EXAMPLES_NOT_AVAILABLE$
 
 $STATIC_HINTS$
 
@@ -42,22 +37,10 @@ Now produce the corrected pipeline. First, state the corrected sequence of opera
 - Keep column names exactly as in the target schema (no added prefixes/suffixes).
 - NOT use assignment operation for any column.
 
-**IMPORTANT:** The operation sequence in $PLAN$ must use EXACT format (copy-paste style):
+The operation sequence must use EXACT format (copy-paste style):
 - JOIN: "JOIN : [[Table1, Table2]] columns=[[Table1.col, Table2.col]]"
 - UNION: "UNION : [Table1, Table2, ...]"
 - GROUP_BY/AGGREGATE: 'GROUP_BY/AGGREGATE : "group_by" = [col1, col2], "aggregations" = [AGG_FUNC(col), ...]'
 - End with: "NO_MORE_OPERATION"
 
-Reason briefly about what is wrong. Then output the corrected operation sequence:
-
-$PLAN$
-JOIN : [[Source_table1, Source_table2]] columns=[[Source_table1.key, Source_table2.key]]
-GROUP_BY/AGGREGATE : "group_by" = [col1], "aggregations" = [COUNT(col2)]
-NO_MORE_OPERATION
-$END_PLAN$
-
-Then output the corrected Python script in a code block:
-
-```python
-<corrected code here>
-```
+Please quote the Python script between one single "```python" and "```".

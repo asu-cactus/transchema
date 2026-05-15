@@ -157,10 +157,32 @@ def critique(
         ...                   rag_examples_base="/path/to/rag-examples-w-pipeline")
     """
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
+    # Benchmark selector: github | monteprep (need this early for target_location_critique)
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder_early = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    len_id_early = length
+    target_id_early = id_
+    len_idx_target_idx_early = str(len_id_early) + "_" + str(target_id_early)
+
+    # Pre-calculate target_location_critique for placeholder replacement
+    # For mcts_style, use "history" as the output filename for comparability
+    critique_filename = "history" if args.critique_type == "mcts_style" else args.critique_type
+    target_location_critique = (
+        main_folder_early
+        + "/length"
+        + len_idx_target_idx_early
+        + "/target_multisource_critique_"
+        + critique_filename
+        + ".csv"
+    )
+
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
 
     with open(prompt_file, mode="r") as f:
         query = f.read()
+
+    # Replace CSV output path placeholder
+    query = query.replace("$CSV_SAVE_PATH$", target_location_critique)
 
     if args.static_hints:
         query = query.replace("$STATIC_HINTS$", get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered"))
@@ -171,6 +193,9 @@ def critique(
         query = query.replace("$PAST_ITERATION_CONTEXT$", past_context_str)
     else:
         query = query.replace("$PAST_ITERATION_CONTEXT$", "")
+
+    # Replace CSV output path placeholder (for mcts_style and other critique types)
+    query = query.replace("$CSV_SAVE_PATH$", target_location_critique)
 
     if judge_reason:
         judge_reason_block = (
@@ -320,7 +345,7 @@ def critique(
         df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
         df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
         query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
-        if args.critique_type == "history":
+        if args.critique_type in ("history", "mcts_style"):
             query = replace_history_info(query, operation_history)
             result_path = get_result_path(args, main_folder, len_idx_target_idx)
             query = replace_result_info(query, num_target_samples, result_path)
@@ -571,32 +596,42 @@ def critique(
     cost = token_tracker.cost_summary()
     logger.info(cost)
 
-    try:
-        with open(
-            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
-            mode="r",
-        ) as f:
-            python_code = f.read()
-    except Exception as e:
-        python_code = ""
-    target_location_critique = (
-        main_folder
-        + "/length"
-        + len_idx_target_idx
-        + "/target_multisource_critique_"
-        + args.critique_type
-        + ".csv"
-    )
-    query_generator = """Based on the LLM response, can you refine the python code."""
-    if args.static_hints:
-        query_generator += "\n\n" + get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered") + "\n"
-    query_generator += """
+    # For mcts_style critique, skip the refinement step to match MCTS behavior (single LLM call)
+    if args.critique_type == "mcts_style":
+        # Extract and execute the script from the first critique response directly
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res[0])
+        if match:
+            script = match.group(1).strip()
+            if script:
+                with open(
+                    f"{main_folder}/length{length}_{id_}/python_recovered.py",
+                    "w",
+                ) as file:
+                    file.write(script)
+        else:
+            script = ""
+        res_gen = res
+    else:
+        # Original multi-step behavior: run refinement step
+        try:
+            with open(
+                main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
+                mode="r",
+            ) as f:
+                python_code = f.read()
+        except Exception as e:
+            python_code = ""
+        query_generator = """Based on the LLM response, can you refine the python code."""
+        if args.static_hints:
+            query_generator += "\n\n" + get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered") + "\n"
+        query_generator += """
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
     - Please keep the final output columns the same as it was in the python script given. [Strictly do not add prefix or suffix to the column names]
     - You just need to apply the fix according to the criticizer response.
     - Do not use assignment operation for any column.
-    Python Code : ```Python 
+    Python Code : ```Python
     {python_code}
     ```
 
@@ -604,27 +639,28 @@ def critique(
     {res}
     ```
     """.format(
-        python_code=python_code,
-        target_location_critique=target_location_critique,
-        res=res,
-    )
+            python_code=python_code,
+            target_location_critique=target_location_critique,
+            res=res,
+        )
 
-    res_gen = llm_client.gpt(query_generator)
+        res_gen = llm_client.gpt(query_generator)
 
-    pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
-    match = pattern.search(res_gen[0])
-    script = match.group(1).strip()
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res_gen[0])
+        script = match.group(1).strip()
 
-    if script:
-        with open(
-            f"{main_folder}/length{length}_{id_}/python_recovered.py",
-            "w",
-        ) as file:
-            file.write(script)
+        if script:
+            with open(
+                f"{main_folder}/length{length}_{id_}/python_recovered.py",
+                "w",
+            ) as file:
+                file.write(script)
 
-    logger.info(query_generator)
-    logger.info(res_gen[0])
-    logger.info(token_tracker.cost_summary())
+        logger.info(query_generator)
+        logger.info(res_gen[0])
+        logger.info(token_tracker.cost_summary())
+
     cost = token_tracker.cost_summary()
     end_time = time.time()
     time_elapsed = end_time - start_time

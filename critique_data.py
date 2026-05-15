@@ -5,7 +5,8 @@ import json
 import csv
 import pdb
 import shutil
-import pandas as pd 
+import time
+import pandas as pd
 import multiprocessing
 
 # from methods.precursor import precursor
@@ -15,27 +16,43 @@ from methods.critique import critique
 from log_util.log_util import setup_logging, create_logger
 from judges import judge, build_nl_score_interpretation
 from eval_score.score import relative_csv_score
+from validation.fuzzy_match import compare_tables_fuzzy
 from llm.llm_models import LLMClient, TokenUsageTracker
 
 
-def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=None):
-    """Return (nl_score, generated_samples) for a given attempt.
+def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=None, reward_mode="score"):
+    """Return (nl_score, generated_samples, score, timing_dict) for a given attempt.
 
     If precomputed=(df_gen, fd_f1, col_ratio, true_combined_score, debug_dict) is
     provided, the CSV and relative_csv_score are not re-run — avoiding duplicate
     get_column_map calls when the caller already has these values.
+
+    reward_mode determines which score to return:
+    - "score" (default): returns true_combined_score
+    - "partial": returns fuzzy column-match ratio (matched_cols / total_target_cols) via compare_tables_fuzzy
+
+    Returns timing_dict with keys: 'csv_load_ms', 'relative_score_ms', 'fuzzy_match_ms', 'total_ms'
     """
     nl_score = ""
     generated_samples = ""
+    score = 0.0
+    timing = {'csv_load_ms': 0, 'relative_score_ms': 0, 'fuzzy_match_ms': 0, 'total_ms': 0}
+    context_start = time.time()
+
     try:
         if precomputed is not None:
             df_gen, fd_f1, col_ratio, true_combined_score, debug_dict = precomputed
         else:
+            t0 = time.time()
             df_gen = pd.read_csv(generated_path, low_memory=False)
             df_gt = pd.read_csv(gt_path, low_memory=False)
             df_gt.drop(columns=df_gt.columns[0], axis=1, inplace=True)
+            timing['csv_load_ms'] = (time.time() - t0) * 1000
+
+            t0 = time.time()
             _, col_ratio, _, fd_f1, true_combined_score, debug_dict = \
                 relative_csv_score(df_gen, df_gt)
+            timing['relative_score_ms'] = (time.time() - t0) * 1000
 
         nl_score = build_nl_score_interpretation(fd_f1, col_ratio, true_combined_score, debug_dict)
 
@@ -46,9 +63,27 @@ def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=Non
                 f"Number of Tuples: {len(df_gen)}\n"
                 f"Examples:\n{sample.to_string(index=False)}"
             )
+
+        # Compute score based on reward_mode
+        if reward_mode == "partial":
+            # Load df_gt if not already loaded (for precomputed case)
+            if precomputed is not None:
+                t0 = time.time()
+                df_gt = pd.read_csv(gt_path, low_memory=False)
+                df_gt.drop(columns=df_gt.columns[0], axis=1, inplace=True)
+                timing['csv_load_ms'] = (time.time() - t0) * 1000
+
+            # Use fuzzy column-match ratio: matched_cols / total_target_cols
+            t0 = time.time()
+            score, _ = compare_tables_fuzzy(df_gen, df_gt)
+            timing['fuzzy_match_ms'] = (time.time() - t0) * 1000
+        else:
+            score = true_combined_score
     except Exception:
         pass
-    return nl_score, generated_samples
+
+    timing['total_ms'] = (time.time() - context_start) * 1000
+    return nl_score, generated_samples, score, timing
 
 
 def format_past_attempts(past_attempts):
@@ -179,15 +214,15 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
     generated_path = f"{main_folder}/length{length}_{id_}/target_multisource.csv"
     gt_path = f"{main_folder}/length{length}_{id_}/target.csv"
 
-    def _snapshot(crit_type, crit_result, extras):
+    def _snapshot(crit_type, crit_result, extras, reward_mode="score"):
         code = ""
         try:
             with open(code_path) as f:
                 code = f.read()
         except Exception:
             pass
-        nl_score, generated_samples = _compute_attempt_context(
-            generated_path, gt_path, args.target_length, precomputed=extras
+        nl_score, generated_samples, _, score_timing = _compute_attempt_context(
+            generated_path, gt_path, args.target_length, precomputed=extras, reward_mode=reward_mode
         )
         generated_csv_head = ""
         if extras is not None:
@@ -207,9 +242,34 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
             "generated_samples": generated_samples,
             "code": code,
             "generated_csv_head": generated_csv_head,
+            "score_calculation_time_ms": score_timing,
         })
 
     print("CRITIQUE FINAL RESULTS:")
+    reward_mode = getattr(args, "reward", "score")
+
+    # For mcts_style, run only one unified critique (fd variant) to match MCTS behavior
+    if args.critique_type == "mcts_style":
+        if args.few_shot:
+            fd_flags = [1, 0, 0, 1]
+        else:
+            fd_flags = [1, 0, 0, 0]
+
+        abl_a, a_extras = critique(
+            args, length, id_, args.log_directory, fd_flags, 0, operation_history,
+            past_context_str=past_context_str, judge_reason=judge_reason
+        )
+
+        with open(critique_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow((f"{length}_{id_}", "mcts_style") + abl_a)
+
+        _snapshot("mcts_style", abl_a, a_extras, reward_mode=reward_mode)
+        print("Success!" if abl_a[0] else "Failed!")
+        print(abl_a)
+        return abl_a, attempts
+
+    # Original multi-variant behavior for other critique types
     if "fd" in args.critique_setting:
         # The last flag corresponds to the few shot case.
         # 1 → we use few shot
@@ -228,7 +288,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id_}", "fd") + abl_a)
 
-        _snapshot("fd", abl_a, a_extras)
+        _snapshot("fd", abl_a, a_extras, reward_mode=reward_mode)
         if abl_a[0] == True:
             print("Success!")
             print(abl_a)
@@ -253,7 +313,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         with open(critique_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id_}", "metadata") + abl_ab)
-        _snapshot("metadata", abl_ab, ab_extras)
+        _snapshot("metadata", abl_ab, ab_extras, reward_mode=reward_mode)
         if abl_ab[0] == True:
             print("Success!")
             print(abl_ab)
@@ -284,7 +344,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         with open(critique_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id_}", "annonymization") + abl_abc)
-        _snapshot("anonymization", abl_abc, abc_extras)
+        _snapshot("anonymization", abl_abc, abc_extras, reward_mode=reward_mode)
         if abl_abc[0] == True:
             print("Success!")
         else:
@@ -421,8 +481,9 @@ def get_parser():
         "--critique_type",
         type=str,
         default="history",
-        choices=["hard", "soft", "history"],
-        help="Type of critique to perform, the actual effect is to load prompt file from prompts/{critique_type}_critique.txt",
+        choices=["hard", "soft", "history", "mcts_style"],
+        help="Type of critique to perform, the actual effect is to load prompt file from prompts/{critique_type}_critique.txt. "
+             "'mcts_style': MCTS-compatible critique for apple-to-apple comparison with MCTS approach",
     )
 
     # Other parameters
@@ -577,6 +638,24 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--plain",
+        action="store_true",
+        default=False,
+        help="Disable past run context injection in iterative experiments. "
+             "When enabled, each iteration runs independently without context from previous iterations.",
+    )
+
+    parser.add_argument(
+        "--reward",
+        type=str,
+        default="score",
+        choices=["score", "partial"],
+        help="Reward mechanism for scoring past iterations. "
+             "'score' uses full eval_score (default). "
+             "'partial' counts matched columns against ground truth.",
+    )
+
+    parser.add_argument(
         "--early-stopping",
         dest="early_stopping",
         type=int,
@@ -646,6 +725,20 @@ def _critique_case_worker(args, length, case, result_queue):
         no_improve_count = 0
         NO_IMPROVE_LIMIT = getattr(args, "early_stopping", 5)
 
+        # Clean up artifacts from previous runs of this case to ensure clean slate
+        files_to_clean = [
+            f"{main_folder_base}/length{case_path}/python_recovered.py",
+            f"{main_folder_base}/length{case_path}/target_multisource.csv",
+            f"{main_folder_base}/length{case_path}/target_multisource_cot.csv",
+            f"{main_folder_base}/length{case_path}/target_multisource_critique_history.csv",
+        ]
+        for file_path in files_to_clean:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"[CLEANUP] Warning: Could not remove {file_path}: {e}")
+
         # Create llm_client here (subprocess cannot share the parent's client)
         _token_tracker = TokenUsageTracker()
         _case_logger = create_logger("JUDGE", args.log_directory, length, case, case)
@@ -654,9 +747,11 @@ def _critique_case_worker(args, length, case, result_queue):
         for iter_num in range(1, num_iterations + 1):
             past_context_str = format_past_attempts(past_attempts)
 
+            ms_start_time = time.time()
             ms_info, operation_history, ms_extras = ms(
                 args, length, case, args.log_directory, args.experiment_name, past_context_str
             )
+            ms_execution_time_ms = (time.time() - ms_start_time) * 1000
             result = (case_path,) + ms_info
 
             # Precompute CSV head for ms attempt (used in both early-success and critique paths)
@@ -705,11 +800,13 @@ def _critique_case_worker(args, length, case, result_queue):
                 succeeded = True
                 # Record MS-only iteration (no critiques ran)
                 ms_score = ms_info[6] if len(ms_info) > 6 else 0.0
-                ms_nl_score, ms_generated_samples = _compute_attempt_context(
+                reward_mode = getattr(args, "reward", "score")
+                ms_nl_score, ms_generated_samples, _, ms_score_timing = _compute_attempt_context(
                     f"{main_folder_base}/length{case_path}/target_multisource.csv",
                     f"{main_folder_base}/length{case_path}/target.csv",
                     args.target_length,
                     precomputed=ms_extras,
+                    reward_mode=reward_mode,
                 )
                 case_record["iterations"].append({
                     "iteration": iter_num,
@@ -722,8 +819,13 @@ def _critique_case_worker(args, length, case, result_queue):
                         "generated_samples": ms_generated_samples,
                         "code": code,
                         "generated_csv_head": ms_csv_head,
+                        "score_calculation_time_ms": ms_score_timing,
                     },
                     "critiques": [],
+                    "execution_timing_ms": {
+                        "multi_step": ms_execution_time_ms,
+                        "critique": 0.0,
+                    },
                 })
                 _flush_json(case_record, json_path)
                 if ms_score > best_score_so_far:
@@ -734,7 +836,8 @@ def _critique_case_worker(args, length, case, result_queue):
                     if no_improve_count >= NO_IMPROVE_LIMIT:
                         print(f"Early stopping: score did not improve for {NO_IMPROVE_LIMIT} iterations.")
                         break
-                if iter_num < num_iterations:
+                # Add to past_attempts only if plain mode is disabled
+                if iter_num < num_iterations and not getattr(args, "plain", False):
                     past_attempts.append({
                         "iteration": iter_num,
                         "operation_history": str(operation_history),
@@ -758,7 +861,9 @@ def _critique_case_worker(args, length, case, result_queue):
                 except Exception:
                     pass
 
+            crit_start_time = time.time()
             crit_info, crit_attempts = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason)
+            crit_execution_time_ms = (time.time() - crit_start_time) * 1000
 
             average_crit_path = f"{args.result_directory}/final_critique.csv"
             with open(average_crit_path, "a", newline="") as f:
@@ -770,13 +875,14 @@ def _critique_case_worker(args, length, case, result_queue):
                 succeeded = True
 
             # Compute MS context once — reused for both JSON and past_attempts
-
+            reward_mode = getattr(args, "reward", "score")
             ms_score = ms_info[6] if len(ms_info) > 6 else 0.0
-            ms_nl_score, ms_generated_samples = _compute_attempt_context(
+            ms_nl_score, ms_generated_samples, _, ms_score_timing = _compute_attempt_context(
                 f"{main_folder_base}/length{case_path}/target_multisource.csv",
                 f"{main_folder_base}/length{case_path}/target.csv",
                 args.target_length,
                 precomputed=ms_extras,
+                reward_mode=reward_mode,
             )
 
             # Record this iteration in the case JSON
@@ -791,6 +897,7 @@ def _critique_case_worker(args, length, case, result_queue):
                     "generated_samples": ms_generated_samples,
                     "code": code,
                     "generated_csv_head": ms_csv_head,
+                    "score_calculation_time_ms": ms_score_timing,
                 },
                 "critiques": [
                     {
@@ -802,15 +909,20 @@ def _critique_case_worker(args, length, case, result_queue):
                         "nl_score": a.get("nl_score", ""),
                         "generated_samples": a.get("generated_samples", ""),
                         "code": a["code"],
+                        "score_calculation_time_ms": a.get("score_calculation_time_ms", {}),
                     }
                     for a in crit_attempts
                 ],
+                "execution_timing_ms": {
+                    "multi_step": ms_execution_time_ms,
+                    "critique": crit_execution_time_ms,
+                },
             })
 
             _flush_json(case_record, json_path)
 
-            # Accumulate past attempt context for the next iteration (if any remain)
-            if iter_num < num_iterations:
+            # Accumulate past attempt context for the next iteration (if any remain and plain mode is disabled)
+            if iter_num < num_iterations and not getattr(args, "plain", False):
                 ms_attempt = {
                     "code": code,
                     "score": ms_score,

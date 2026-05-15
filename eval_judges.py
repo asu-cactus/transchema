@@ -61,6 +61,10 @@ def get_parser():
                         help="Benchmark dataset (used to reconstruct ground-truth path)")
     parser.add_argument("--max_iterations", type=int, default=None,
                         help="Maximum number of iterations the judge may check (default: all)")
+    parser.add_argument("--cost_threshold", type=float, default=None,
+                        help="Stop after the attempt whose cumulative total cost "
+                             "(generation + judge) first meets or exceeds this value "
+                             "(default: no cost limit)")
     parser.add_argument("--judges", nargs="+", default=None,
                         choices=["gt", "det_score", "det_score_value", "llm", "llm_score", "llm_score_hybrid"],
                         help="Which judge types to run (default: all)")
@@ -218,7 +222,7 @@ def _execute_code_and_read_df(code: str, case_id: str, benchmark: str,
 def simulate_judge(attempts: list, judge_type: str, df_gt: pd.DataFrame,
                    llm_client: LLMClient, logger: logging.Logger,
                    case_id: str = "", benchmark: str = "github",
-                   score_source: str = "score") -> dict:
+                   score_source: str = "score", cost_threshold: float = None) -> dict:
     """
     Iterate through attempts in order, asking the judge after each one.
     Returns a dict with the result fields.
@@ -306,6 +310,15 @@ def simulate_judge(attempts: list, judge_type: str, df_gt: pd.DataFrame,
                 f"[{judge_type}] {label}: verdict={verdict}, reason={reason!r}, "
                 f"call_cost={call_cost:.6f}, call_latency={call_latency:.2f}s"
             )
+
+        if cost_threshold is not None and (generation_cost + judge_cost) >= cost_threshold:
+            logger.info(
+                f"[{judge_type}] {label}: cost threshold {cost_threshold:.6f} reached "
+                f"(total={generation_cost + judge_cost:.6f}), stopping"
+            )
+            stopped_at = label
+            stopped_correct = attempt["is_correct"]
+            break
 
         if verdict:
             stopped_at = label
@@ -439,7 +452,8 @@ def main():
                 capped = [a for a in attempts if a["iteration"] <= args.max_iterations] if args.max_iterations else attempts
                 result = simulate_judge(capped, judge_type, df_gt, llm_client, logger,
                                         case_id=case_id, benchmark=args.benchmark,
-                                        score_source=args.score_source)
+                                        score_source=args.score_source,
+                                        cost_threshold=args.cost_threshold)
             except Exception as e:
                 logger.error(f"Judge simulation failed: {e}", exc_info=True)
                 result = {

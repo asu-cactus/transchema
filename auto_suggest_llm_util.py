@@ -556,6 +556,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -584,6 +585,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
 
     elif prompt_type == "mcts_simulate":
@@ -617,6 +619,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -644,6 +647,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
 
     else:

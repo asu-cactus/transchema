@@ -45,7 +45,7 @@ _EVAL_SCORE = os.path.join(_ROOT, "eval_score")
 if _EVAL_SCORE not in sys.path:
     sys.path.insert(0, _EVAL_SCORE)
 
-from judges import judge as llm_judge_fn
+from judges import judge as llm_judge_fn, build_nl_score_interpretation
 
 from auto_suggest_llm_util import (
     get_mcts_candidates,
@@ -56,7 +56,7 @@ from auto_suggest_llm_util import (
     query_gpt,
 )
 from eval_score.score import relative_csv_score
-from eval_score_value_based import value_based_relative_csv_score
+from eval_score_value_based import value_based_relative_csv_score, value_based_relative_csv_score_timed
 from mcts_node import MCTSNode, OPERATOR_TYPES
 from state import MCTSGraphState
 from util.utils import execute_python
@@ -196,6 +196,50 @@ def _score_and_validate_output(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Critique helpers for path tree traversal/creation
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _parse_op_type(step: str) -> str:
+    """
+    Extract operator type from a configured step string.
+    E.g. "JOIN : [[T0, T1]] columns=..." → "JOIN"
+         "GROUP_BY/AGGREGATE : ..." → "GROUP_BY/AGGREGATE"
+         "NO_MORE_OPERATION" → "NO_MORE_OPERATION"
+    """
+    if step == "NO_MORE_OPERATION":
+        return "NO_MORE_OPERATION"
+    # Extract first token before the colon
+    return step.split(":")[0].strip()
+
+
+def _find_or_create_path(root: MCTSNode, critique_history: List[str]) -> List[MCTSNode]:
+    """
+    Walk the tree from root, reusing existing child nodes where the step string
+    matches, and creating new MCTSNode children where it doesn't. Returns the
+    full path [root, ..., leaf].
+
+    Args:
+        root: MCTSNode root
+        critique_history: List of configured step strings from critique
+
+    Returns:
+        List[MCTSNode]: path from root to the leaf node representing critique_history
+    """
+    path = [root]
+    node = root
+    for i, step in enumerate(critique_history):
+        child_history = critique_history[: i + 1]
+        if step in node.children:
+            node = node.children[step]
+        else:
+            op_type = _parse_op_type(step)
+            node = node.add_child(step, child_history, operator_type=op_type)
+        path.append(node)
+    return path
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Simulation helpers (shared by pipeline-level and operator-level simulate)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -204,6 +248,10 @@ def _simulate_get_python(
     operation_history: List[str],
     target_file_location: str,
     state: "MCTSGraphState",
+    csv_save_path: str = None,
+    nth_intermediate_step: int = 0,
+    intermediate_scores: dict = None,
+    is_final: bool = False,
 ) -> tuple:
     """
     Generate a Python script from a finalized operation_history using the
@@ -214,6 +262,7 @@ def _simulate_get_python(
     last error string.
     """
     config = state["config"]
+    save_path = csv_save_path if csv_save_path is not None else target_file_location
     error_str = ""
     script = ""
     response = ""
@@ -240,10 +289,13 @@ def _simulate_get_python(
                 target_length=config.target_length,
                 source_length=config.source_length,
                 error_string=error_str,
-                csv_save_path=target_file_location,
+                csv_save_path=save_path,
                 hint_source=config.hint_source,
                 static_hints=getattr(config, "static_hints", True),
                 fd_flag=int(config.fd_flag),
+                nth_intermediate_step=nth_intermediate_step,
+                intermediate_scores=intermediate_scores or {},
+                is_final=is_final,
             )
         except Exception:
             config.logger.warning(
@@ -306,6 +358,10 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
     aggregate_hints_truncate: List[float] = state.get("aggregate_hints_truncate", [])
     few_shot: int = state.get("few_shot", 0)
 
+    intermediate_materialization: bool = state.get("intermediate_materialization", False)
+    intermediate_scores: dict = {}
+    ground_truth_location: str = state["ground_truth_location"]
+
     # Terminal re-simulation: rollout_history already ends with NO_MORE_OPERATION;
     # skip the operator loop and go straight to code generation.
     is_already_terminal = (
@@ -348,6 +404,8 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                     few_shot=few_shot,
                     fd_flag=int(config.fd_flag),
                     static_hints=getattr(config, "static_hints", True),
+                    nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                    intermediate_scores=intermediate_scores,
                 )
             except Exception:
                 config.logger.warning(
@@ -406,6 +464,8 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         few_shot=few_shot,
                         fd_flag=int(config.fd_flag),
                         static_hints=getattr(config, "static_hints", True),
+                        nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                        intermediate_scores=intermediate_scores,
                     )
                 except Exception:
                     config.logger.warning(
@@ -449,6 +509,8 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         few_shot=few_shot,
                         fd_flag=int(config.fd_flag),
                         static_hints=getattr(config, "static_hints", True),
+                        nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                        intermediate_scores=intermediate_scores,
                     )
                 except Exception:
                     config.logger.warning(
@@ -490,6 +552,8 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         few_shot=few_shot,
                         fd_flag=int(config.fd_flag),
                         static_hints=getattr(config, "static_hints", True),
+                        nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                        intermediate_scores=intermediate_scores,
                     )
                 except Exception:
                     config.logger.warning(
@@ -525,13 +589,52 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
             )
             step += 1
 
+            # ── Intermediate materialization ──────────────────────────────
+            if intermediate_materialization:
+                interm_csv = (
+                    f"{config.directory}/length{config.len_idx_target_idx}"
+                    f"/intermediate_step{step}.csv"
+                )
+                _simulate_get_python(
+                    sim_history, target_file_location, state,
+                    csv_save_path=interm_csv,
+                    nth_intermediate_step=step,
+                    intermediate_scores=intermediate_scores,
+                    is_final=False,
+                )
+                if os.path.exists(interm_csv):
+                    try:
+                        df_interm = pd.read_csv(interm_csv, low_memory=False)
+                        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+                        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                        _, col_ratio_s, _, fd_f1_s, true_combined_s, debug_dict_s = \
+                            value_based_relative_csv_score_timed(df_interm, df_gt)
+                        nl_score_s = build_nl_score_interpretation(
+                            fd_f1_s, col_ratio_s, true_combined_s, debug_dict_s
+                        )
+                        intermediate_scores[step] = (true_combined_s, nl_score_s)
+                        config.logger.info(
+                            f"[simulate/op] Intermediate score at step {step}: "
+                            f"{true_combined_s:.4f}"
+                        )
+                    except Exception:
+                        config.logger.warning(
+                            f"[simulate/op] Intermediate scoring failed at step {step}: "
+                            f"{traceback.format_exc()}"
+                        )
+
         else:
             config.logger.warning(
                 f"[simulate/op] Iter {state['iteration']}: "
                 f"hit step limit ({_MAX_SIMULATE_STEPS}) without NO_MORE_OPERATION"
             )
 
-    script, response = _simulate_get_python(sim_history, target_file_location, state)
+    script, response = _simulate_get_python(
+        sim_history, target_file_location, state,
+        nth_intermediate_step=len(sim_history),
+        intermediate_scores=intermediate_scores,
+        is_final=True,
+    )
     return script, response, sim_history
 
 
@@ -980,6 +1083,7 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
     return {
         "current_score": reward,
+        "pre_critique_score": reward,
         "validation_passed": validation_passed,
         "judge_verdict": judge_verdict,
         "best_score": best_score,
@@ -1002,32 +1106,61 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
 def backpropagate(state: MCTSGraphState) -> dict:
     """
-    Walk up selection_path (from expanded node to root), updating each node's
-    visit count and total reward.
+    Dual-pass backpropagation:
+    1. Original simulated path: rewarded with pre_critique_score
+    2. Critique path (if it exists): rewarded with critique_score
 
-    Also caches best_script on the deepest node in selection_path if this
-    iteration improved the score.
+    When critique runs and generates a new operation plan, it creates a new
+    critique_selection_path in the tree. Backpropagation now rewards BOTH paths:
+    - The original simulation's path gets the pre-critique simulation score
+    - The critique's path gets the critique score
+
+    This ensures that the tree learns from both the simulated and corrected plans.
 
     Tree mutations are in-place on MCTSNode objects.
     Updates: iteration (incremented by 1).
     """
     selection_path: List[MCTSNode] = state["selection_path"]
-    reward: float = state["current_score"]
     script: str = state["current_script"]
     config = state["config"]
 
-    # Backpropagate from the expanded/terminal node up to root
-    for node in reversed(selection_path):
-        node.update(reward)  # in-place: visits += 1, total_reward += reward
+    pre_critique_score: float = state.get("pre_critique_score", state.get("current_score", 0.0))
+    critique_selection_path: List[MCTSNode] = state.get("critique_selection_path", [])
+    critique_score: float = state.get("critique_score", 0.0)
 
-    # Cache best script on the expanded node (deepest in selection path)
-    if selection_path and reward > selection_path[-1].best_score:
-        selection_path[-1].best_score = reward
+    # ── Pass 1: Backprop pre-critique score to original simulated path ──
+    config.logger.info(
+        f"[backpropagate] Iter {state['iteration']}: "
+        f"Pass 1 (simulated path): {len(selection_path)} nodes, reward={pre_critique_score:.4f}"
+    )
+    for node in reversed(selection_path):
+        node.update(pre_critique_score)  # in-place: visits += 1, total_reward += reward
+
+    # Cache best script on the deepest simulated node if improved
+    if selection_path and pre_critique_score > selection_path[-1].best_score:
+        selection_path[-1].best_score = pre_critique_score
         selection_path[-1].best_script = script
 
+    # ── Pass 2: Backprop critique score to critique path (if it exists) ──
+    if critique_selection_path:
+        config.logger.info(
+            f"[backpropagate] Iter {state['iteration']}: "
+            f"Pass 2 (critique path): {len(critique_selection_path)} nodes, reward={critique_score:.4f}"
+        )
+        for node in reversed(critique_selection_path):
+            node.update(critique_score)  # in-place: visits += 1, total_reward += reward
+
+        # Cache best script on the deepest critique node if improved
+        if critique_score > critique_selection_path[-1].best_score:
+            critique_selection_path[-1].best_score = critique_score
+            critique_selection_path[-1].best_script = script
+
+    # ── Update iteration and no-improvement counter ──
     new_iteration = state["iteration"] + 1
     prev_best = state["best_score"]
-    new_best = state["best_score"] if reward <= prev_best else reward
+    # Use max of both scores (pre-critique or critique) to check improvement
+    max_score = max(pre_critique_score, critique_score) if critique_selection_path else pre_critique_score
+    new_best = state["best_score"] if max_score <= prev_best else max_score
     if new_best > prev_best:
         no_improvement_count = 0
     else:
@@ -1035,7 +1168,8 @@ def backpropagate(state: MCTSGraphState) -> dict:
 
     config.logger.info(
         f"[backpropagate] Iter {state['iteration']} done. "
-        f"reward={reward:.4f}, path_len={len(selection_path)}, "
+        f"pre_critique_reward={pre_critique_score:.4f}, "
+        f"critique_reward={critique_score:.4f}, "
         f"root.visits={selection_path[0].visits if selection_path else 0}, "
         f"next_iter={new_iteration}, no_improvement_count={no_improvement_count}"
     )
@@ -1044,7 +1178,11 @@ def backpropagate(state: MCTSGraphState) -> dict:
         "iteration": new_iteration,
         "no_improvement_count": no_improvement_count,
         "log_messages": state["log_messages"]
-        + [f"Backprop iter {state['iteration']}: reward={reward:.4f}"],
+        + [
+            f"Backprop iter {state['iteration']}: "
+            f"pre_critique={pre_critique_score:.4f}, critique={critique_score:.4f}, "
+            f"paths=({len(selection_path)}, {len(critique_selection_path)})"
+        ],
     }
 
 
@@ -1085,7 +1223,7 @@ def extract_best(state: MCTSGraphState) -> dict:
             f"[extract_best] Running 'best' mode critique on final script "
             f"(score={best_score:.4f})"
         )
-        crit_script, crit_score, _, _ = _run_critique_llm(state, best_script)
+        crit_script, crit_score, _, _, _ = _run_critique_llm(state, best_script)
         if crit_score > best_score:
             config.logger.info(
                 f"[extract_best] Critique improved score: {best_score:.4f} → {crit_score:.4f}"
@@ -1196,8 +1334,9 @@ def _build_critique_prompt(state: MCTSGraphState, script: str) -> str:
 def _run_critique_llm(state: MCTSGraphState, script: str):
     """
     Build + send the critique prompt.
-    Returns (new_script, new_score, new_response, validation_passed).
+    Returns (new_script, new_score, new_response, validation_passed, critique_plan).
     Loads ground truth internally for scoring.
+    critique_plan is a List[str] parsed from $PLAN$...$END_PLAN$ block, or [] if not found.
     """
     config = state["config"]
     target_file_location = state["target_file_location"]
@@ -1206,7 +1345,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 
     prompt = _build_critique_prompt(state, script)
     if not prompt:
-        return script, state.get("current_score", 0.0), "Prompt build failed", False
+        return script, state.get("current_score", 0.0), "Prompt build failed", False, []
 
     res = query_gpt(
         config.llm_client,
@@ -1218,6 +1357,17 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
         config.token_tracker,
         type="MCTS Critique",
     )
+
+    # Parse $PLAN$...$END_PLAN$ block
+    critique_plan: List[str] = []
+    plan_match = re.search(r"\$PLAN\$(.*?)\$END_PLAN\$", res[0], re.DOTALL)
+    if plan_match:
+        critique_plan = [
+            line.strip()
+            for line in plan_match.group(1).strip().splitlines()
+            if line.strip()
+        ]
+        config.logger.info(f"[_run_critique_llm] Parsed critique plan: {critique_plan}")
 
     pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
     match = pattern.search(res[0])
@@ -1242,7 +1392,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
                 new_score = 0.0
                 validation_passed = False
 
-    return new_script, new_score, new_response, validation_passed
+    return new_script, new_score, new_response, validation_passed, critique_plan
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1253,8 +1403,12 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 def mcts_critique(state: MCTSGraphState) -> dict:
     """
     CRITIQUE (single LLM call): analyzes the failed/imperfect script and outputs
-    corrected Python code. Triggered when current_score < 1.0 in "simulate" mode.
+    corrected Python code + operation plan. Triggered when current_score < 1.0 in "simulate" mode.
     Re-executes and re-scores the corrected script before backpropagation.
+
+    NEW: Parses the $PLAN$...$END_PLAN$ block from critique response, walks/creates
+    the tree nodes for that plan, and returns critique_selection_path for separate
+    backpropagation.
     """
     config = state["config"]
 
@@ -1263,7 +1417,7 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"critiquing script (score={state['current_score']:.4f})"
     )
 
-    new_script, new_score, new_response, critique_validation_passed = _run_critique_llm(
+    new_script, new_score, new_response, critique_validation_passed, critique_plan = _run_critique_llm(
         state, state["current_script"]
     )
 
@@ -1271,6 +1425,20 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"[mcts_critique] Iter {state['iteration']}: "
         f"score {state['current_score']:.4f} → {new_score:.4f}"
     )
+
+    # Build critique_selection_path by walking/creating tree nodes for critique_plan
+    critique_selection_path: List[MCTSNode] = []
+    if critique_plan:
+        try:
+            critique_selection_path = _find_or_create_path(state["root"], critique_plan)
+            config.logger.info(
+                f"[mcts_critique] Critique path created: {len(critique_selection_path)} nodes, "
+                f"plan={[s[:60] for s in critique_plan[:3]]}"
+            )
+        except Exception:
+            config.logger.warning(
+                f"[mcts_critique] Failed to build critique path: {traceback.format_exc()}"
+            )
 
     # If LLM judge is active, re-run it on the critiqued output to get an updated verdict.
     judge_verdict = state.get("judge_verdict", False)
@@ -1314,6 +1482,8 @@ def mcts_critique(state: MCTSGraphState) -> dict:
     return {
         "current_script": selected_script,
         "current_score": new_score,
+        "critique_score": new_score,
+        "critique_selection_path": critique_selection_path,
         "current_response": new_response,
         "critique_attempted": True,
         "judge_verdict": judge_verdict,
@@ -1325,7 +1495,8 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         + [
             f"[CRITIQUE] iter={state['iteration']} "
             f"score_before={state['current_score']:.4f} score_after={new_score:.4f} "
-            f"judge_verdict={judge_verdict} validation_passed={validation_passed}"
+            f"judge_verdict={judge_verdict} validation_passed={validation_passed} "
+            f"critique_path_len={len(critique_selection_path)}"
         ],
     }
 

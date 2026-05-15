@@ -114,6 +114,7 @@ class Config:
     fd_hints: str             # pre-formatted FD hint string (empty if fd_flag=0)
     mcts_critique_mode: str   # "none" | "simulate" | "best"
     reward_mode: str          # "score" | "det_score_value" | "validation" | "partial"
+    intermediate_materialization: bool  # True = materialize + score at each operator step
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -168,19 +169,9 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     # ── Case path and data file selection ──────────────────────────────────
     len_id = length
     target_id = id_
-    path_to_files = f"{main_folder}/length{length}_{id_}/"
-    file_count = sum(
-        1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
-        if file.startswith("test")
-    )
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
-    task_list = get_test_cases_ids(json_file_path, len_id, len_id, target_id, target_id)
+    # Create task list based on id range (file_count will be calculated per task)
+    task_list = [f"length{length}_{i}" for i in range(id_, id_ + 1)]
 
     # ── Initialise logging and tracking ────────────────────────────────────
     logger = create_logger("MCTS", log_dir_, len_id, target_id, target_id)
@@ -206,6 +197,18 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         cost_summary.append(token_tracker.cost_summary())
         len_idx_target_idx = task[6:]  # strip "length" prefix
 
+        # ── Calculate file_count for THIS task and select appropriate JSON ────
+        path_to_files = f"{main_folder}/{task}/"
+        file_count = sum(
+            1
+            for file in os.listdir(path_to_files)
+            if file.startswith("test") and os.path.isfile(os.path.join(path_to_files, file))
+        )
+        if benchmark == "monteprep":
+            json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
+        else:
+            json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+
         # ── Load case information ─────────────────────────────────────────
         (
             target_data_name,
@@ -224,6 +227,14 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             f"{main_folder}/length{len_idx_target_idx}/target_multisource_mcts.csv"
         )
         ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
+
+        # ── Intermediate materialization setup ────────────────────────────────
+        intermediate_materialization = getattr(args, "intermediate_materialization", False)
+        interm_space_dir = None
+        if intermediate_materialization:
+            from methods.multi_step import create_intermediate_space
+            interm_space_dir = create_intermediate_space(main_folder, len_id, target_id)
+        config_directory = interm_space_dir if intermediate_materialization else main_folder
 
         # ── Critique support: pre-compute source_information and fd_hints ────
         mcts_critique_mode = getattr(args, "mcts_critique_mode", "none")
@@ -277,12 +288,13 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             token_tracker=token_tracker,
             model=model,
             token_limit=token_limit,
-            directory=main_folder,
+            directory=config_directory,
             source_information=source_information,
             static_hints=not getattr(args, "no_static_hints", False),
             fd_hints=fd_hints_str,
             mcts_critique_mode=mcts_critique_mode,
             reward_mode=reward_mode,
+            intermediate_materialization=intermediate_materialization,
         )
 
         # ── Build initial MCTS state ──────────────────────────────────────
@@ -332,9 +344,13 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "no_improvement_count": 0,
             # Critique
             "simulation_mode": getattr(args, "simulation_mode", "pipeline"),
+            "intermediate_materialization": intermediate_materialization,
             "llm_judge": llm_judge,
             "judge_verdict": False,
             "critique_attempted": False,
+            "pre_critique_score": 0.0,
+            "critique_selection_path": [],
+            "critique_score": 0.0,
             # Logging
             "log_messages": [],
         }
@@ -541,6 +557,16 @@ if __name__ == "__main__":
             "Simulation strategy: 'pipeline' = one LLM call completes the full script "
             "(default); 'operator' = multistep operator-by-operator simulation using "
             "get_next_operator + configure prompts, then python_script."
+        ),
+    )
+    parser.add_argument(
+        "--intermediate_materialization",
+        action="store_true",
+        default=False,
+        help=(
+            "Materialize and score the intermediate table after each operator step "
+            "(operator simulation mode only). Mirrors --intermediate_materialization "
+            "from critique_data.py."
         ),
     )
     parser.add_argument(
