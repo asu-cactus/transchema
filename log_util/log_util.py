@@ -42,8 +42,7 @@ from datetime import datetime
 
 def setup_logging(args, log_dir, experiment_name):
     # Check if the log directory exists, create it if it does not
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
 
     # create an experiment_date_time directory inside the log_directory
     experiment_date_time = datetime.now().strftime("%Y%m%d_%H%M%S")

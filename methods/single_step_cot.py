@@ -12,7 +12,7 @@ import os
 import traceback
 
 
-def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_context_str=""):
+def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_context_str="", token_tracker=None, budget=None):
     # Initialize required variables
     case_path = f"{length}_{id_}"
     is_correct = False
@@ -27,7 +27,8 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     cost_summary = []
     start_time = time.time()
-    token_tracker = TokenUsageTracker()
+    if token_tracker is None:
+        token_tracker = TokenUsageTracker()
     script = ""
     op_hist_ = ""
     hint_source = args.hint_source
@@ -53,11 +54,11 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
     benchmark = getattr(args, "benchmark", "github")
     main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with 'test' in this subfolder (root only, no subdirs)
     file_count = sum(
         1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
+        for file in os.listdir(path_to_files)
+        if os.path.isfile(os.path.join(path_to_files, file))
         if file.startswith("test")
     )
 
@@ -82,6 +83,9 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
     # language = 'sql' #or 'python'
 
     ################## Run for each task ##################
+
+    # For single_step_cot called with specific length/id, construct the task name directly
+    task_list = [f"Target{length}_{id_}"]
 
     for task in task_list:
 
@@ -110,9 +114,9 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
         ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
         # added anon_flag to get_test_info() call
 
-        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
+        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
 
-        
+
         config = Config(
             target_data_name=target_data_name,
             target_data_schema=target_data_schema,

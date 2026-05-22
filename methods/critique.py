@@ -123,6 +123,7 @@ def critique(
     rag_examples_base: Optional[Union[str, Path]] = None,
     past_context_str: str = "",
     judge_reason: str = "",
+    budget: float = None,
 ):
     """
     Run critique on a data-pipeline transformation using RAG few-shot examples.
@@ -254,7 +255,7 @@ def critique(
     elif getattr(args, "judge", "gt") != "gt":
         logger.info(f"JUDGE_CALL: judge={args.judge} verdict=INCORRECT reason=(none)")
 
-    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
+    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
 
     rag_db = None
     feature_rag_db = None

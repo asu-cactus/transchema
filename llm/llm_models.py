@@ -9,6 +9,11 @@ import backoff
 import tiktoken
 
 
+class CostBudgetExceeded(Exception):
+    """Raised before an LLM request when the accumulated cost has already reached the budget."""
+    pass
+
+
 class TokenUsageTracker:
     """A class to track and calculate the token usage and cost for different OpenAI models."""
 
@@ -63,10 +68,11 @@ class TokenUsageTracker:
 class LLMClient:
     """A client class for interacting with different GPT models and tracking usage."""
 
-    def __init__(self, model, tracker, logger):
+    def __init__(self, model, tracker, logger, cost_budget: float = 0.0):
         """Initializes the client with a specified model and a usage tracker."""
         self.client = openai.OpenAI(api_key=openai.api_key)
         self.model = model
+        self.cost_budget = cost_budget
         if model == "gpt-4.1-mini":
             # According to https://github.com/openai/tiktoken/issues/395
             self.encoding = tiktoken.get_encoding("o200k_base")
@@ -118,6 +124,16 @@ class LLMClient:
         self.logger.error("Giving up on request")
 
     def _request_completion(self, messages, temperature, max_tokens, stop):
+        # Pre-call budget check: do not send the request if already over budget.
+        # Output tokens of an in-flight request are allowed to exceed (can't stop mid-generation).
+        if self.cost_budget > 0.0:
+            current_cost = self.tracker.cost_summary()["total_cost"]
+            if current_cost >= self.cost_budget:
+                raise CostBudgetExceeded(
+                    f"Cost budget ${self.cost_budget:.4f} reached "
+                    f"(accumulated=${current_cost:.6f}) — request blocked."
+                )
+
         @backoff.on_exception(
             backoff.expo,
             openai._exceptions.OpenAIError,

@@ -57,6 +57,7 @@ from auto_suggest_llm_util import (
 )
 from eval_score.score import relative_csv_score
 from eval_score_value_based import value_based_relative_csv_score, value_based_relative_csv_score_timed
+from llm.llm_models import CostBudgetExceeded
 from mcts_node import MCTSNode, OPERATOR_TYPES
 from state import MCTSGraphState
 from util.utils import execute_python
@@ -850,18 +851,24 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         )
         prompt = None
 
+    _cost_budget_exhausted = False
     if prompt is not None:
-        res = query_gpt(
-            config.llm_client,
-            config.model,
-            [prompt],
-            config.q_count,
-            config.logger,
-            config.cost_summary,
-            config.token_tracker,
-            type="MCTS Expand",
-        )
-        candidates = get_mcts_candidates(res[0], OPERATOR_TYPES)
+        try:
+            res = query_gpt(
+                config.llm_client,
+                config.model,
+                [prompt],
+                config.q_count,
+                config.logger,
+                config.cost_summary,
+                config.token_tracker,
+                type="MCTS Expand",
+            )
+            candidates = get_mcts_candidates(res[0], OPERATOR_TYPES)
+        except CostBudgetExceeded as e:
+            config.logger.warning(f"[expand] {e} — stopping search.")
+            _cost_budget_exhausted = True
+            candidates = []
     else:
         candidates = []
 
@@ -934,9 +941,11 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         "selection_path": selection_path + [new_node],
         "selected_node": new_node,
         "terminal_found": state["terminal_found"] or is_terminal_expansion,
+        "cost_budget_exhausted": _cost_budget_exhausted,
         "log_messages": state["log_messages"]
         + [
             f"[EXPAND] iter={state['iteration']} op={chosen_op} configured={chosen_cfg}"
+            + (" COST_BUDGET_EXHAUSTED" if _cost_budget_exhausted else "")
         ],
     }
 
@@ -966,10 +975,21 @@ def simulate(state: MCTSGraphState) -> dict:
         f"mode={sim_mode}, history={state['rollout_history']}"
     )
 
-    if sim_mode == "operator":
-        script, response, full_history = _simulate_operator_level(state)
-    else:
-        script, response, full_history = _simulate_pipeline_level(state)
+    try:
+        if sim_mode == "operator":
+            script, response, full_history = _simulate_operator_level(state)
+        else:
+            script, response, full_history = _simulate_pipeline_level(state)
+    except CostBudgetExceeded as e:
+        config.logger.warning(f"[simulate] {e} — stopping search.")
+        return {
+            "cost_budget_exhausted": True,
+            "current_script": "",
+            "current_response": "cost_budget_exhausted",
+            "current_full_history": [],
+            "log_messages": state["log_messages"]
+            + [f"[SIMULATE] iter={state['iteration']} COST_BUDGET_EXHAUSTED — no request sent"],
+        }
 
     _result = "Success" if response == "Success" else "FAILED"
 
@@ -1000,6 +1020,12 @@ def execute_and_score(state: MCTSGraphState) -> dict:
              validation_passed.
     """
     config = state["config"]
+
+    # Short-circuit: budget was exhausted before any LLM call this iteration.
+    if state.get("cost_budget_exhausted", False):
+        config.logger.info("[execute_and_score] cost_budget_exhausted — skipping scoring.")
+        return {"current_score": 0.0, "judge_verdict": False}
+
     response = state["current_response"]
     target_file_location = state["target_file_location"]
     ground_truth_location = state["ground_truth_location"]
@@ -1412,6 +1438,11 @@ def mcts_critique(state: MCTSGraphState) -> dict:
     """
     config = state["config"]
 
+    # Should never be reached (should_critique short-circuits), but guard defensively.
+    if state.get("cost_budget_exhausted", False):
+        config.logger.info("[mcts_critique] cost_budget_exhausted — skipping critique.")
+        return {"critique_attempted": True}
+
     config.logger.info(
         f"[mcts_critique] Iter {state['iteration']}: "
         f"critiquing script (score={state['current_score']:.4f})"
@@ -1509,11 +1540,15 @@ def mcts_critique(state: MCTSGraphState) -> dict:
 def should_critique(state: MCTSGraphState) -> str:
     """
     After execute_and_score:
+    - if cost_budget_exhausted, skip critique and let backpropagate → check_budget stop the search
     - if ground-truth validation already passed this iteration, skip critique
       and proceed to backpropagate (search will stop in check_budget)
     - "simulate" mode → critique if score < 1.0 and not yet attempted this iteration
     - "none" / "best" mode → always skip to backpropagate
     """
+    if state.get("cost_budget_exhausted", False):
+        return "backpropagate"
+
     if state.get("validation_passed", False):
         return "backpropagate"
 
@@ -1547,29 +1582,70 @@ def is_selected_terminal(state: MCTSGraphState) -> str:
 
 def check_budget(state: MCTSGraphState) -> str:
     """
-    After backpropagate: stop when any of the following conditions is met:
-      1. Ground-truth validation has passed.
-      2. best_score has not improved for 5 consecutive iterations (plateau).
-      3. Hard iteration cap (max_iterations) is exhausted.
-    Continue otherwise.
+    After backpropagate: stop when any termination condition is met.
+
+    Cost-budget mode (cost_budget > 0):
+      - Always stop on validation_passed.
+      - Stop when cumulative cost >= cost_budget.
+      - If early_stopping > 0, also stop on score plateau.
+      - Iteration cap (max_iterations) is ignored.
+
+    Iteration mode (cost_budget == 0, original behavior):
+      - Always stop on validation_passed.
+      - Stop on score plateau (early_stopping iterations with no improvement).
+      - Stop on hard iteration cap (max_iterations).
     """
     config = state["config"]
+
+    # Always: stop if LLMClient blocked a request (budget reached before sending)
+    if state.get("cost_budget_exhausted", False):
+        current_cost = config.token_tracker.cost_summary()["total_cost"]
+        config.logger.warning(
+            f"[check_budget] cost_budget_exhausted flag set at iter {state['iteration']} "
+            f"(spent=${current_cost:.6f}) — stopping."
+        )
+        return "done"
+
+    # Always: stop if a correct result was validated
     if state.get("validation_passed", False):
         config.logger.info(
             f"[check_budget] Validation passed at iter {state['iteration']} — stopping."
         )
         return "done"
+
     no_improvement_count = state.get("no_improvement_count", 0)
     early_stopping = state.get("early_stopping", 5)
-    if no_improvement_count >= early_stopping:
-        config.logger.info(
-            f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
-            f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."
-        )
-        return "done"
-    if state["iteration"] >= state["max_iterations"]:
-        config.logger.warning(
-            f"[check_budget] Hard cap ({state['max_iterations']} iterations) reached — stopping."
-        )
-        return "done"
-    return "iterate"
+    cost_budget = state.get("cost_budget", 0.0)
+
+    if cost_budget > 0.0:
+        # ── Cost-budget mode ──────────────────────────────────────────────
+        current_cost = config.token_tracker.cost_summary()["total_cost"]
+        if current_cost >= cost_budget:
+            config.logger.warning(
+                f"[check_budget] Cost budget ${cost_budget:.4f} reached "
+                f"(spent=${current_cost:.6f}) at iter {state['iteration']} — stopping."
+            )
+            return "done"
+        # Plateau check is optional: early_stopping == 0 disables it
+        if early_stopping > 0 and no_improvement_count >= early_stopping:
+            config.logger.info(
+                f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
+                f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."
+            )
+            return "done"
+        return "iterate"
+
+    else:
+        # ── Iteration mode (original behavior) ───────────────────────────
+        if no_improvement_count >= early_stopping:
+            config.logger.info(
+                f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
+                f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."
+            )
+            return "done"
+        if state["iteration"] >= state["max_iterations"]:
+            config.logger.warning(
+                f"[check_budget] Hard cap ({state['max_iterations']} iterations) reached — stopping."
+            )
+            return "done"
+        return "iterate"

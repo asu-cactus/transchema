@@ -181,7 +181,7 @@ def _build_op_history_entry(granularity, summary_str, ask_prompt, ask_response,
     return "\n".join(lines)
 
 
-def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_str=""):
+def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_str="", token_tracker=None, budget=None):
     # Initialize required variables
     case_path = f"{length}_{id_}"
     is_correct = False
@@ -195,7 +195,8 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
     debug_dict_val = {}
     cost_summary = []
     start_time = time.time()
-    token_tracker = TokenUsageTracker()
+    if token_tracker is None:
+        token_tracker = TokenUsageTracker()
     script = ""
     op_hist_ = ""
     hint_source = args.hint_source
@@ -285,7 +286,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
         ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
         # added anon_flag to get_test_info() call
 
-        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
+        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
 
         target_file_location = (
             f"{main_folder}/length{len_idx_target_idx}/target_multisource.csv"

@@ -51,8 +51,10 @@ class MCTSGraphState(TypedDict):
 
     # ── MCTS iteration control ────────────────────────────────────────────────
     iteration: int                   # current iteration index (0-based, incremented by backpropagate)
-    max_iterations: int              # hard budget cap (safety limit)
-    early_stopping: int              # stop if best_score doesn't improve for this many consecutive iterations
+    max_iterations: int              # hard budget cap (safety limit; ignored when cost_budget > 0)
+    early_stopping: int              # stop if best_score doesn't improve for this many iters; 0 = disabled
+    cost_budget: float               # max USD to spend per case; 0.0 = disabled (use iteration mode)
+    cost_budget_exhausted: bool      # True once LLMClient blocked a request due to budget; triggers immediate stop
     terminal_found: bool             # True once a NO_MORE_OPERATION node has been simulated
     validation_passed: bool          # True once any iteration validates against ground truth
 

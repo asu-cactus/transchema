@@ -151,6 +151,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     fd_flag = args.fd_flag
     max_iterations = getattr(args, "mcts_iterations", 10)
     early_stopping = getattr(args, "early_stopping", 5)
+    cost_budget = getattr(args, "cost_budget", 0.0)
     validation = getattr(args, "validation", "hard_match")
     reward_mode = getattr(args, "reward", "score")
     join_flag = getattr(args, "join_flag", 0)
@@ -221,7 +222,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             source_samples_list,
         ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
 
-        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
+        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=cost_budget)
 
         target_file_location = (
             f"{main_folder}/length{len_idx_target_idx}/target_multisource_mcts.csv"
@@ -322,6 +323,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "iteration": 0,
             "max_iterations": max_iterations,
             "early_stopping": early_stopping,
+            "cost_budget": cost_budget,
+            "cost_budget_exhausted": False,
             "terminal_found": False,
             "validation_passed": False,
             # Selection phase (initialised to root)
@@ -363,9 +366,11 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         mcts_graph = build_mcts_graph()
         _checkpoint_file = f"/tmp/mcts_checkpoint_{len_idx_target_idx}.json"
         final_state: MCTSGraphState = initial_state
+        # Cost-budget mode can run far more iterations — raise the graph step limit accordingly
+        _recursion_limit = 10000 if cost_budget > 0.0 else 500
         for _step_state in mcts_graph.stream(
             initial_state,
-            config={"recursion_limit": 500},
+            config={"recursion_limit": _recursion_limit},
             stream_mode="values",
         ):
             final_state = _step_state
@@ -510,7 +515,18 @@ if __name__ == "__main__":
     parser.add_argument("--fd_flag", type=int, default=0)
     parser.add_argument("--mcts_iterations", type=int, default=5)
     parser.add_argument("--early_stopping", type=int, default=5,
-                        help="Stop if best_score does not improve for this many consecutive iterations (default: 5)")
+                        help="Stop if best_score does not improve for this many consecutive iterations (default: 5); "
+                             "set to 0 to disable plateau stopping in cost-budget mode")
+    parser.add_argument(
+        "--cost_budget",
+        type=float,
+        default=0.0,
+        help=(
+            "Max USD to spend per case (e.g. 0.05 = 5 cents). "
+            "When >0, switches to cost-budget mode: iteration cap is ignored and cost is the primary "
+            "stopping criterion. Set --early_stopping 0 to also disable the score-plateau check."
+        ),
+    )
     parser.add_argument("--join_flag", type=int, default=0)
     parser.add_argument("--aggregate_flag", type=int, default=0)
     parser.add_argument("--few_shot", type=int, default=0)
