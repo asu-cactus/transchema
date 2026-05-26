@@ -314,6 +314,9 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame):
     if df_gen is None or df_gt is None or len(df_gen) == 0 or len(df_gt) == 0:
         return 0.0, 0.0, 0.0, 0.0, 0.0, {"error": "empty or None dataframe", "jaccard_column_map": []}
 
+    df_gen = df_gen.drop(columns=[c for c in df_gen.columns if c.startswith("Unnamed:")], errors="ignore")
+    df_gt  = df_gt.drop(columns=[c for c in df_gt.columns  if c.startswith("Unnamed:")], errors="ignore")
+
     column_map = build_jaccard_column_map(df_gen, df_gt)
     df_aligned = build_aligned_dataframe(df_gen, column_map)
 
