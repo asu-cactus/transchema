@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import is_column_numerical, compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
-from util.utils import get_test_info, execute_python
+from util.utils import get_test_info, execute_python, make_test_validation_script
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import (
     get_prompt,
@@ -66,6 +66,7 @@ class Config:
     static_hints: bool
     past_context: str = ""
     intermediate_scores: dict = field(default_factory=dict)
+    data_split: str = "test"
 
 
 def get_python_response(operation_history, break_flag, csv_save_path, config: Config, intermediate_scores=None, nth_intermediate_step: int = 0, is_final: bool = False):
@@ -106,6 +107,7 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
             nth_intermediate_step=nth_intermediate_step,
             source_length=config.source_length,
             is_final=is_final,
+            data_split=getattr(config, "data_split", "test"),
         )
 
         if prompt[0] == "-1":
@@ -225,12 +227,13 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
     main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
     source_space_dir = f"{main_folder}/intermediate_space"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder (root only, no subdirs)
+    data_split = getattr(args, "data_split", "test")
+    # Counting files starting with data_split prefix in this subfolder (root only, no subdirs)
     file_count = sum(
         1
         for file in os.listdir(path_to_files)
         if os.path.isfile(os.path.join(path_to_files, file))
-        if file.startswith("test")
+        if file.startswith(data_split)
     )
 
     if args.intermediate_materialization:
@@ -283,8 +286,8 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
             source_data_name_list,
             source_data_schema_list,
             source_samples_list,
-        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
-        # added anon_flag to get_test_info() call
+        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
+        # added anon_flag and data_split to get_test_info() call
 
         llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
 
@@ -317,6 +320,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
             directory=directory,
             static_hints=static_hints,
             past_context=past_context_str,
+            data_split=data_split,
         )
 
         history_elements = []
@@ -353,6 +357,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                 static_hints=static_hints,
                 past_context=past_context_str,
                 intermediate_scores=intermediate_scores,
+                data_split=data_split,
             )
             if prompt[0] == "-1":
                 logger.info("Token Limit Exceeded")
@@ -406,6 +411,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     ),
                     static_hints=static_hints,
                     past_context=past_context_str,
+                    data_split=data_split,
                 )
 
                 if prompt[0] == "-1":
@@ -466,6 +472,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     ),
                     static_hints=static_hints,
                     past_context=past_context_str,
+                    data_split=data_split,
                 )
                 if prompt[0] == "-1":
                     logger.info("Token Limit Exceeded")
@@ -522,6 +529,7 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     ),
                     static_hints=static_hints,
                     past_context=past_context_str,
+                    data_split=data_split,
                 )
 
                 if prompt[0] == "-1":
@@ -714,16 +722,34 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     case_accuracy = 0
                     is_correct = False
                     score = 0
+        # Two-phase validation: score on training output, is_correct on test output
+        if data_split == "training" and script:
+            test_script = make_test_validation_script(script)
+            test_output = f"{main_folder}/length{len_idx_target_idx}/target_multisource_test_val.csv"
+            print("[two-phase ms] executing test-data script for is_correct validation...")
+            test_exec = execute_python(test_script)
+            if test_exec == "Success" and os.path.exists(test_output):
+                try:
+                    df_test = pd.read_csv(test_output, low_memory=False)
+                    df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
+                    df_gt_test.drop(columns=df_gt_test.columns[0], axis=1, inplace=True)
+                    _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
+                    print(f"[two-phase ms] is_correct: training={is_correct} → test={test_is_correct}")
+                    is_correct = test_is_correct
+                except Exception:
+                    print(f"[two-phase ms] test validation failed:\n{traceback.format_exc()}")
+            else:
+                print(f"[two-phase ms] test exec={test_exec}, output_exists={os.path.exists(test_output)}")
+
         op_hist_ = str(operation_history)
     end_time = time.time()
 
     # Only try to write the file if script was actually generated
     if script:
-        with open(
-            f"{main_folder}/length{length}_{id_}/python_recovered.py",
-            "w",
-        ) as file:
+        recovered_path = f"{main_folder}/length{length}_{id_}/python_recovered.py"
+        with open(recovered_path, "w") as file:
             file.write(script)
+        print(f"[multi_step] python_recovered.py written: {recovered_path}")
     case_path = f"{length}_{id_}"
     cost_data = token_tracker.cost_summary()  # This returns a dictionary
     total_cost = cost_data.get("total_cost", 0.0)  # Safely get total_cost with default

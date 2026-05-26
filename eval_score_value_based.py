@@ -1,15 +1,16 @@
 """
-Value-based column matching via Jaccard similarity.
+Value-based column matching with type-aware similarity.
 
 Algorithm:
-  1. For each column c in the target (GT) dataframe, find the column in the
-     generated dataframe with the highest Jaccard similarity on unique values.
-  2. Build aligned dataframe D: copy that gen column's data into D under the name c.
+  1. For each GT column, find the best-matching generated column:
+       - Categorical GT column → MinHash-estimated Jaccard on unique string values
+       - Numeric GT column     → 0.5 * (JS similarity + range overlap)
+  2. Build aligned dataframe D: copy matched gen column into D under GT name.
   3. Run relative_csv_score(D, df_gt) for FD and column-ratio scores.
-  4. Override the distribution score using a value_based variant:
-       - GT column NOT numeric  → skip (no distribution signal)
-       - GT column numeric, gen column NOT numeric or conversion fails → score 0.0
-       - Both numeric → full JS / range-overlap / Wasserstein calculation
+  4. Compute per-column scores using the same metric as matching:
+       - Numeric GT column    → column_score = 0.5 * (js_similarity + range_overlap)
+       - Categorical GT column → column_score = MinHash Jaccard (from alignment step)
+  5. true_combined_score = (fd_f1 + avg(column_score)) / 2
 """
 
 import sys
@@ -25,50 +26,110 @@ _ROOT = os.path.dirname(os.path.abspath(__file__))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+from datasketch import MinHash
 from eval_score.score import relative_csv_score
 
 SCORE_TIMEOUT = 60  # seconds
+MINHASH_NUM_PERM = 128  # permutations per sketch; higher = more accurate, slower
 
 
 # ---------------------------------------------------------------------------
-# Jaccard column matching
+# Type-aware column matching helpers
 # ---------------------------------------------------------------------------
 
-def _col_value_set(series: pd.Series) -> set:
-    return set(str(v) for v in series.dropna())
+def _col_minhash(series: pd.Series, num_perm: int = MINHASH_NUM_PERM) -> MinHash:
+    """Build a MinHash sketch from the unique string-normalised values of a column."""
+    m = MinHash(num_perm=num_perm)
+    for v in series.dropna():
+        m.update(str(v).encode("utf-8"))
+    return m
 
 
-def _jaccard(a: set, b: set) -> float:
-    if not a and not b:
-        return 1.0
-    if not a or not b:
-        return 0.0
-    return len(a & b) / len(a | b)
-
-
-def build_jaccard_column_map(df_gen: pd.DataFrame, df_gt: pd.DataFrame) -> list:
+def _numeric_match_score(s_gen: pd.Series, s_gt: pd.Series) -> float:
     """
-    For each GT column, find the generated column with the highest Jaccard
-    similarity on unique string-normalized values.
+    Matching score for two numeric columns: 0.5 * (js_similarity + range_overlap).
+    Returns 0.0 if either series cannot be cast to float or is empty.
+    """
+    try:
+        v_gen = s_gen.dropna().astype(float).values
+        v_gt  = s_gt.dropna().astype(float).values
+    except (ValueError, TypeError):
+        return 0.0
+
+    if len(v_gen) == 0 or len(v_gt) == 0:
+        return 0.0
+
+    # Jensen-Shannon similarity
+    n_bins = max(2, int(np.ceil(np.log2(min(len(v_gen), len(v_gt))) + 1)))
+    lo = min(v_gen.min(), v_gt.min())
+    hi = max(v_gen.max(), v_gt.max())
+    if lo == hi:
+        js_sim = 1.0
+    else:
+        pa, _ = np.histogram(v_gen, bins=n_bins, range=(lo, hi))
+        pb, _ = np.histogram(v_gt,  bins=n_bins, range=(lo, hi))
+        pa = pa.astype(float) + 1e-10
+        pb = pb.astype(float) + 1e-10
+        js_dist = float(jensenshannon(pa / pa.sum(), pb / pb.sum(), base=2))
+        js_sim = round(1.0 - js_dist, 4)
+
+    # Range overlap
+    overlap = max(0.0, min(v_gen.max(), v_gt.max()) - max(v_gen.min(), v_gt.min()))
+    union   = max(v_gen.max(), v_gt.max()) - min(v_gen.min(), v_gt.min())
+    range_overlap = round(overlap / union, 4) if union > 0 else 1.0
+
+    return round(0.5 * (js_sim + range_overlap), 4)
+
+
+def build_jaccard_column_map(df_gen: pd.DataFrame, df_gt: pd.DataFrame,
+                              num_perm: int = MINHASH_NUM_PERM) -> list:
+    """
+    For each GT column, find the best-matching generated column using a
+    type-aware similarity metric:
+      - Categorical GT column → MinHash-estimated Jaccard on unique string values
+      - Numeric GT column     → 0.5 * (JS similarity + range overlap)
+
+    A numeric gen column matched to a categorical GT column (or vice-versa)
+    scores 0.0, so the matcher naturally avoids cross-type pairings.
 
     Returns:
         list of dicts: [{"gt_col": str, "gen_col": str, "jaccard": float}, ...]
-        ordered by df_gt.columns
+        ordered by df_gt.columns  ("jaccard" holds the match score regardless of type)
     """
-    gt_sets = {col: _col_value_set(df_gt[col]) for col in df_gt.columns}
-    gen_sets = {col: _col_value_set(df_gen[col]) for col in df_gen.columns}
+    # Pre-build MinHash only for categorical columns (numeric matching is on-the-fly)
+    gt_numeric  = {col: np.issubdtype(df_gt[col].dtype,  np.number) for col in df_gt.columns}
+    gen_numeric = {col: np.issubdtype(df_gen[col].dtype, np.number) for col in df_gen.columns}
+
+    gt_minhashes  = {col: _col_minhash(df_gt[col],  num_perm)
+                     for col in df_gt.columns  if not gt_numeric[col]}
+    gen_minhashes = {col: _col_minhash(df_gen[col], num_perm)
+                     for col in df_gen.columns if not gen_numeric[col]}
 
     mapping = []
     for gt_col in df_gt.columns:
         best_gen_col = None
-        best_score = -1.0
+        best_score   = -1.0
+
         for gen_col in df_gen.columns:
-            j = _jaccard(gt_sets[gt_col], gen_sets[gen_col])
-            if j > best_score:
-                best_score = j
+            if gt_numeric[gt_col]:
+                # Numeric GT: only consider numeric gen columns
+                if not gen_numeric[gen_col]:
+                    score = 0.0
+                else:
+                    score = _numeric_match_score(df_gen[gen_col], df_gt[gt_col])
+            else:
+                # Categorical GT: only consider categorical gen columns via MinHash
+                if gen_numeric[gen_col]:
+                    score = 0.0
+                else:
+                    score = gt_minhashes[gt_col].jaccard(gen_minhashes[gen_col])
+
+            if score > best_score:
+                best_score   = score
                 best_gen_col = gen_col
+
         mapping.append({
-            "gt_col": gt_col,
+            "gt_col":  gt_col,
             "gen_col": best_gen_col,
             "jaccard": round(best_score, 4),
         })
@@ -93,45 +154,62 @@ def build_aligned_dataframe(df_gen: pd.DataFrame, column_map: list) -> pd.DataFr
 
 
 # ---------------------------------------------------------------------------
-# Value-based distribution scoring
+# Per-column scoring
 # ---------------------------------------------------------------------------
 
-def _compute_distribution_scores_value_based(df_a: pd.DataFrame, df_b: pd.DataFrame,
-                                              pairs: list) -> dict:
+def _compute_column_scores(df_aligned: pd.DataFrame, df_gt: pd.DataFrame,
+                            pairs: list, column_map: list) -> dict:
     """
-    Distribution scoring with GT-dtype-driven rules:
-      - GT column NOT numeric  → skip column (no distribution signal)
-      - GT column numeric, gen NOT numeric or conversion fails → record 0.0
-      - Both numeric → full JS divergence / range-overlap / Wasserstein calculation
+    Compute a score for every GT column:
+      - Numeric GT column   → column_score = 0.5 * (js_similarity + range_overlap)
+      - Categorical GT column → column_score = Jaccard similarity (from column_map)
 
-    pairs: list of (gen_col, gt_col) name tuples
+    pairs: list of (gen_col, gt_col) name tuples (aligned names — gen_col == gt_col)
+    column_map: output of build_jaccard_column_map (for categorical Jaccard lookup)
+
+    Returns:
+        dict with keys:
+          "per_column"      → {gt_col: {...details...}}
+          "avg_column_score"→ float | None
+          "avg_js_similarity"    → float | None  (numeric cols only, for debug)
+          "avg_range_overlap"    → float | None  (numeric cols only, for debug)
     """
+    jaccard_lookup = {entry["gt_col"]: entry["jaccard"] for entry in column_map}
+
     per_column = {}
 
     for gen_col, gt_col in pairs:
-        if gen_col not in df_a.columns or gt_col not in df_b.columns:
+        if gen_col not in df_aligned.columns or gt_col not in df_gt.columns:
             continue
 
-        gen_series = df_a[gen_col]
-        gt_series  = df_b[gt_col]
+        gen_series = df_aligned[gen_col]
+        gt_series  = df_gt[gt_col]
+        gt_numeric = np.issubdtype(gt_series.dtype, np.number)
 
-        gt_numeric  = np.issubdtype(gt_series.dtype, np.number)
-        gen_numeric = np.issubdtype(gen_series.dtype, np.number)
-
+        # ── Categorical ───────────────────────────────────────────────────────
         if not gt_numeric:
-            continue  # non-numeric GT columns carry no distribution signal
+            jaccard = jaccard_lookup.get(gt_col, 0.0)
+            per_column[gt_col] = {
+                "type":         "categorical",
+                "gen_col":      gen_col,
+                "column_score": round(float(jaccard), 4),
+                "jaccard":      round(float(jaccard), 4),
+            }
+            continue
 
+        # ── Numeric ───────────────────────────────────────────────────────────
         _zero = {
-            "gen_col": gen_col,
-            "distribution_similarity": 0.0,
+            "type":                    "numeric",
+            "gen_col":                 gen_col,
+            "column_score":            0.0,
             "js_similarity":           0.0,
             "range_overlap":           0.0,
             "wasserstein_normalized":  None,
-            "gen_stats": None,
-            "gt_stats":  None,
+            "gen_stats":               None,
+            "gt_stats":                None,
         }
 
-        if not gen_numeric:
+        if not np.issubdtype(gen_series.dtype, np.number):
             per_column[gt_col] = _zero
             continue
 
@@ -146,62 +224,72 @@ def _compute_distribution_scores_value_based(df_a: pd.DataFrame, df_b: pd.DataFr
             per_column[gt_col] = _zero
             continue
 
-        w = wasserstein_distance(gen_vals, gt_vals)
-        gen_range = float(gen_vals.max() - gen_vals.min())
-        gt_range  = float(gt_vals.max()  - gt_vals.min())
-        r = max(gen_range, gt_range, 1e-10)
-        w_norm = w / r
-        similarity = max(0.0, 1.0 - min(w_norm, 1.0))
-
+        # Jensen-Shannon similarity
         n_bins = max(2, int(np.ceil(np.log2(min(len(gen_vals), len(gt_vals))) + 1)))
         lo = min(gen_vals.min(), gt_vals.min())
         hi = max(gen_vals.max(), gt_vals.max())
         if lo == hi:
             js_similarity = 1.0
         else:
-            pa, _ = np.histogram(gen_vals.astype(float), bins=n_bins, range=(lo, hi))
-            pb, _ = np.histogram(gt_vals.astype(float),  bins=n_bins, range=(lo, hi))
+            pa, _ = np.histogram(gen_vals, bins=n_bins, range=(lo, hi))
+            pb, _ = np.histogram(gt_vals,  bins=n_bins, range=(lo, hi))
             pa = pa.astype(float) + 1e-10
             pb = pb.astype(float) + 1e-10
             js_dist = float(jensenshannon(pa / pa.sum(), pb / pb.sum(), base=2))
             js_similarity = round(1.0 - js_dist, 4)
 
+        # Range overlap
         gen_min, gen_max = float(gen_vals.min()), float(gen_vals.max())
         gt_min,  gt_max  = float(gt_vals.min()),  float(gt_vals.max())
         overlap = max(0.0, min(gen_max, gt_max) - max(gen_min, gt_min))
         union   = max(gen_max, gt_max) - min(gen_min, gt_min)
         range_overlap = round(overlap / union, 4) if union > 0 else 1.0
 
+        # Wasserstein (debug only)
+        w = wasserstein_distance(gen_vals, gt_vals)
+        r = max(float(gen_vals.max() - gen_vals.min()),
+                float(gt_vals.max()  - gt_vals.min()), 1e-10)
+        w_norm = w / r
+
+        column_score = round(0.5 * (js_similarity + range_overlap), 4)
+
         per_column[gt_col] = {
-            "gen_col":  gen_col,
-            "distribution_similarity": round(similarity, 4),
-            "js_similarity":           js_similarity,
-            "range_overlap":           range_overlap,
-            "wasserstein_normalized":  round(w_norm, 4),
+            "type":                   "numeric",
+            "gen_col":                gen_col,
+            "column_score":           column_score,
+            "js_similarity":          js_similarity,
+            "range_overlap":          range_overlap,
+            "wasserstein_normalized": round(w_norm, 4),
             "gen_stats": {
-                "min":  round(gen_min,  4),
-                "max":  round(gen_max,  4),
+                "min":  round(gen_min, 4),
+                "max":  round(gen_max, 4),
                 "mean": round(float(gen_vals.mean()), 4),
             },
             "gt_stats": {
-                "min":  round(gt_min,  4),
-                "max":  round(gt_max,  4),
+                "min":  round(gt_min, 4),
+                "max":  round(gt_max, 4),
                 "mean": round(float(gt_vals.mean()), 4),
             },
         }
 
     if per_column:
-        avg_sim          = round(sum(v["distribution_similarity"] for v in per_column.values()) / len(per_column), 4)
-        avg_js_sim       = round(sum(v["js_similarity"]           for v in per_column.values()) / len(per_column), 4)
-        avg_range_overlap = round(sum(v["range_overlap"]          for v in per_column.values()) / len(per_column), 4)
+        avg_column_score = round(
+            sum(v["column_score"] for v in per_column.values()) / len(per_column), 4
+        )
+        numeric_cols = [v for v in per_column.values() if v["type"] == "numeric"]
+        if numeric_cols:
+            avg_js_sim       = round(sum(v["js_similarity"]  for v in numeric_cols) / len(numeric_cols), 4)
+            avg_range_overlap = round(sum(v["range_overlap"] for v in numeric_cols) / len(numeric_cols), 4)
+        else:
+            avg_js_sim = avg_range_overlap = None
     else:
-        avg_sim = avg_js_sim = avg_range_overlap = None
+        avg_column_score = avg_js_sim = avg_range_overlap = None
 
     return {
-        "per_column":               per_column,
-        "avg_distribution_similarity": avg_sim,
-        "avg_js_similarity":           avg_js_sim,
-        "avg_range_overlap":           avg_range_overlap,
+        "per_column":          per_column,
+        "avg_column_score":    avg_column_score,
+        "avg_js_similarity":   avg_js_sim,
+        "avg_range_overlap":   avg_range_overlap,
     }
 
 
@@ -213,12 +301,12 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame):
     """
     Drop-in replacement for relative_csv_score.
 
-    1. Align df_gen columns to df_gt via Jaccard similarity.
+    1. Align df_gen columns to df_gt via Jaccard similarity on unique values.
     2. Call relative_csv_score(D, df_gt) for FD and column-ratio scores.
-    3. Override distribution with _compute_distribution_scores_value_based,
-       which assigns 0.0 when the gen column dtype doesn't match the GT's
-       numeric expectation instead of silently skipping.
-    4. Recompute true_combined_score = (fd_f1 + range_overlap + js_sim) / 3.
+    3. Compute per-column scores:
+         numeric   → 0.5 * (js_similarity + range_overlap)
+         categorical → Jaccard similarity (from alignment step)
+    4. true_combined_score = (fd_f1 + avg(column_score)) / 2
 
     Returns the same 6-tuple as relative_csv_score:
         (fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict)
@@ -229,28 +317,20 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame):
     column_map = build_jaccard_column_map(df_gen, df_gt)
     df_aligned = build_aligned_dataframe(df_gen, column_map)
 
-    # FD mining and column ratio from existing scorer (unchanged)
     fd_ratio, col_ratio, combined_score, fd_f1, _, debug_dict = \
         relative_csv_score(df_aligned, df_gt)
 
-    # Override distribution using value_based rules.
-    # df_aligned has the same column names as df_gt by construction.
     pairs = [(col, col) for col in df_gt.columns if col in df_aligned.columns]
-    dist_info = _compute_distribution_scores_value_based(df_aligned, df_gt, pairs)
+    col_scores = _compute_column_scores(df_aligned, df_gt, pairs, column_map)
 
-    js_sim        = dist_info.get("avg_js_similarity")
-    range_overlap = dist_info.get("avg_range_overlap")
+    avg_column_score = col_scores.get("avg_column_score")
 
-    if range_overlap is not None and js_sim is not None:
-        true_combined_score = round((fd_f1 + range_overlap + js_sim) / 3, 4)
-    elif range_overlap is not None:
-        true_combined_score = round((fd_f1 + range_overlap) / 2, 4)
-    elif js_sim is not None:
-        true_combined_score = round((fd_f1 + js_sim) / 2, 4)
+    if avg_column_score is not None:
+        true_combined_score = round((fd_f1 + avg_column_score) / 2, 4)
     else:
         true_combined_score = round(fd_f1, 4)
 
-    debug_dict["distribution"]        = dist_info
+    debug_dict["column_scores"]       = col_scores
     debug_dict["true_combined_score"] = true_combined_score
     debug_dict["jaccard_column_map"]  = column_map
 

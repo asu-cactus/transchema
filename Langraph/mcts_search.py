@@ -62,7 +62,7 @@ from auto_suggest_llm_util import get_source, get_filtered_functional_dependency
 from llm.llm_models import LLMClient, TokenUsageTracker
 from log_util.log_util import create_logger
 from test_scope import get_test_cases_ids
-from util.utils import get_test_info
+from util.utils import get_test_info, make_test_validation_script
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 
 from mcts_node import MCTSNode
@@ -115,6 +115,7 @@ class Config:
     mcts_critique_mode: str   # "none" | "simulate" | "best"
     reward_mode: str          # "score" | "det_score_value" | "validation" | "partial"
     intermediate_materialization: bool  # True = materialize + score at each operator step
+    data_split: str = "test"           # "test" or "training" — which CSV prefix to load
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -161,6 +162,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     few_shot = getattr(args, "few_shot", 0)
     llm_judge = getattr(args, "llm_judge", "none")
     benchmark = getattr(args, "benchmark", "github")
+    data_split = getattr(args, "data_split", "test")
     main_folder = (
         "autopipeline-benchmarks/monteprep-pipelines"
         if benchmark == "monteprep"
@@ -203,7 +205,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         file_count = sum(
             1
             for file in os.listdir(path_to_files)
-            if file.startswith("test") and os.path.isfile(os.path.join(path_to_files, file))
+            if file.startswith(data_split) and os.path.isfile(os.path.join(path_to_files, file))
         )
         if benchmark == "monteprep":
             json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
@@ -220,7 +222,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             source_data_name_list,
             source_data_schema_list,
             source_samples_list,
-        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
+        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
 
         llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=cost_budget)
 
@@ -252,6 +254,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         source_information = get_source(
             file_count, source_data_name_list, source_data_schema_list,
             main_folder, len_idx_target_idx, source_length, token_limit, _enc,
+            data_split=data_split,
         )
 
         fd_hints_str = ""
@@ -296,6 +299,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             mcts_critique_mode=mcts_critique_mode,
             reward_mode=reward_mode,
             intermediate_materialization=intermediate_materialization,
+            data_split=data_split,
         )
 
         # ── Build initial MCTS state ──────────────────────────────────────
@@ -445,6 +449,29 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                     f"[MCTS] Hard accuracy eval failed: {traceback.format_exc()}"
                 )
                 is_correct = False
+
+        # ── Two-phase validation: final is_correct on test data ───────────────
+        if data_split == "training" and best_script:
+            test_script = make_test_validation_script(best_script)
+            test_output = f"{main_folder}/length{len_idx_target_idx}/target_multisource_mcts_test_val.csv"
+            print("[two-phase mcts] executing test-data script for final is_correct...")
+            try:
+                from util.utils import execute_python as _exec_py
+                test_exec = _exec_py(test_script)
+            except Exception:
+                test_exec = f"Error: {traceback.format_exc()}"
+            if test_exec == "Success" and os.path.exists(test_output):
+                try:
+                    df_test = pd.read_csv(test_output, low_memory=False)
+                    df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
+                    df_gt_test = df_gt_test.drop(columns=df_gt_test.columns[0], axis=1)
+                    _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
+                    print(f"[two-phase mcts] is_correct: training={is_correct} → test={test_is_correct}")
+                    is_correct = test_is_correct
+                except Exception:
+                    print(f"[two-phase mcts] test validation failed:\n{traceback.format_exc()}")
+            else:
+                print(f"[two-phase mcts] test exec={test_exec}, output_exists={os.path.exists(test_output)}")
 
         try:
             os.remove(_checkpoint_file)
@@ -607,6 +634,13 @@ if __name__ == "__main__":
         help="Benchmark dataset: 'github' or 'monteprep'.",
     )
     parser.add_argument(
+        "--data_split",
+        type=str,
+        default="test",
+        choices=["test", "training"],
+        help="Which CSV split to use as source examples: 'test' (default) or 'training'.",
+    )
+    parser.add_argument(
         "--result_dir",
         type=str,
         default="results_langraph",
@@ -700,16 +734,32 @@ if __name__ == "__main__":
                         _gt_file = f"{_mf}/length{length}_{case_id}/target.csv"
                         from util.utils import execute_python
                         _exec_result = execute_python(_best_script)
+                        _validate_fn = (
+                            compare_tables_matching
+                            if args.validation == "autopipeline"
+                            else compare_lists_matching
+                        )
+                        _data_split = getattr(args, "data_split", "test")
                         if _exec_result == "Success":
                             _df_out = pd.read_csv(_target_file, low_memory=False)
                             _df_gt = pd.read_csv(_gt_file, low_memory=False)
                             _df_gt = _df_gt.drop(columns=_df_gt.columns[0], axis=1)
-                            _validate_fn = (
-                                compare_tables_matching
-                                if args.validation == "autopipeline"
-                                else compare_lists_matching
-                            )
                             _, _is_correct, _, _ = _validate_fn(_df_out, _df_gt)
+                            # Two-phase: override is_correct with test-data validation
+                            if _data_split == "training":
+                                _test_script = make_test_validation_script(_best_script)
+                                _test_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts_test_val.csv"
+                                _test_exec = execute_python(_test_script)
+                                if _test_exec == "Success" and os.path.exists(_test_file):
+                                    try:
+                                        _df_test = pd.read_csv(_test_file, low_memory=False)
+                                        _df_gt2 = pd.read_csv(_gt_file, low_memory=False)
+                                        _df_gt2 = _df_gt2.drop(columns=_df_gt2.columns[0], axis=1)
+                                        _, _test_is_correct, _, _ = _validate_fn(_df_test, _df_gt2)
+                                        print(f"[two-phase mcts timeout] is_correct: training={_is_correct} → test={_test_is_correct}")
+                                        _is_correct = _test_is_correct
+                                    except Exception:
+                                        print(f"[two-phase mcts timeout] test validation failed")
                             _recovered = True
                             print(
                                 f"[MCTS] Case {case_id} timeout-recovered: "

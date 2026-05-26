@@ -176,24 +176,26 @@ def _score_and_validate_output(
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
     df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
 
+    _SCORE_THRESHOLD = 0.9  # stopping threshold; binary validation only happens at the end
+
     if reward_mode == "validation":
         validate_fn = (
             compare_tables_matching if validation_mode == "autopipeline" else compare_lists_matching
         )
-        avg_similarity, is_correct, _, _ = validate_fn(df_output, df_gt)
-        return float(avg_similarity), bool(is_correct)
+        avg_similarity, _, _, _ = validate_fn(df_output, df_gt)
+        return float(avg_similarity), float(avg_similarity) >= _SCORE_THRESHOLD
 
     elif reward_mode == "partial":
         partial, _ = compare_tables_fuzzy(df_output, df_gt)
-        return float(partial), partial == 1.0
+        return float(partial), float(partial) >= _SCORE_THRESHOLD
 
     elif reward_mode == "det_score_value":
         score = _value_score_with_timeout(target_file_location, ground_truth_location)
-        return score, score >= 1.0
+        return score, score >= _SCORE_THRESHOLD
 
     else:  # "score"
         score = _score_with_timeout(target_file_location, ground_truth_location)
-        return score, score >= 1.0
+        return score, score >= _SCORE_THRESHOLD
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -297,6 +299,7 @@ def _simulate_get_python(
                 nth_intermediate_step=nth_intermediate_step,
                 intermediate_scores=intermediate_scores or {},
                 is_final=is_final,
+                data_split=getattr(config, "data_split", "test"),
             )
         except Exception:
             config.logger.warning(
@@ -407,6 +410,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                     static_hints=getattr(config, "static_hints", True),
                     nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                     intermediate_scores=intermediate_scores,
+                    data_split=getattr(config, "data_split", "test"),
                 )
             except Exception:
                 config.logger.warning(
@@ -467,6 +471,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         static_hints=getattr(config, "static_hints", True),
                         nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                         intermediate_scores=intermediate_scores,
+                        data_split=getattr(config, "data_split", "test"),
                     )
                 except Exception:
                     config.logger.warning(
@@ -512,6 +517,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         static_hints=getattr(config, "static_hints", True),
                         nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                         intermediate_scores=intermediate_scores,
+                        data_split=getattr(config, "data_split", "test"),
                     )
                 except Exception:
                     config.logger.warning(
@@ -555,6 +561,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         static_hints=getattr(config, "static_hints", True),
                         nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                         intermediate_scores=intermediate_scores,
+                        data_split=getattr(config, "data_split", "test"),
                     )
                 except Exception:
                     config.logger.warning(
@@ -680,6 +687,7 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
                 error_string=error_str,
                 csv_save_path=target_file_location,
                 hint_source=config.hint_source,
+                data_split=getattr(config, "data_split", "test"),
             )
         except Exception:
             config.logger.warning(
@@ -844,6 +852,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             hint_source=config.hint_source,
             fd_flag=int(config.fd_flag),
             mcts_expand_k=k,
+            data_split=getattr(config, "data_split", "test"),
         )
     except Exception:
         config.logger.warning(

@@ -15,7 +15,7 @@ from methods.single_step_cot import single_step_cot
 from methods.critique import critique
 from log_util.log_util import setup_logging, create_logger
 from judges import judge, build_nl_score_interpretation
-from eval_score.score import relative_csv_score
+from eval_score_value_based import value_based_relative_csv_score_timed
 from validation.fuzzy_match import compare_tables_fuzzy
 from llm.llm_models import LLMClient, TokenUsageTracker, CostBudgetExceeded
 
@@ -51,7 +51,7 @@ def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=Non
 
             t0 = time.time()
             _, col_ratio, _, fd_f1, true_combined_score, debug_dict = \
-                relative_csv_score(df_gen, df_gt)
+                value_based_relative_csv_score_timed(df_gen, df_gt)
             timing['relative_score_ms'] = (time.time() - t0) * 1000
 
         nl_score = build_nl_score_interpretation(fd_f1, col_ratio, true_combined_score, debug_dict)
@@ -221,7 +221,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
                 code = f.read()
         except Exception:
             pass
-        nl_score, generated_samples, _, score_timing = _compute_attempt_context(
+        nl_score, generated_samples, reward_score, score_timing = _compute_attempt_context(
             generated_path, gt_path, args.target_length, precomputed=extras, reward_mode=reward_mode
         )
         generated_csv_head = ""
@@ -235,7 +235,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         attempts.append({
             "type": crit_type,
             "is_correct": crit_result[0],
-            "score": crit_result[3],
+            "score": reward_score,
             "cost": crit_result[1],
             "latency": crit_result[2],
             "nl_score": nl_score,
@@ -625,6 +625,13 @@ def get_parser():
         help="Benchmark dataset: 'github' or 'monteprep'.",
     )
     parser.add_argument(
+        "--data_split",
+        type=str,
+        default="test",
+        choices=["test", "training"],
+        help="Which CSV split to use as source examples: 'test' (default) or 'training'.",
+    )
+    parser.add_argument(
         "--single_step_cot",
         action="store_true",
         help="Use Single Step CoT instead of Multi Step",
@@ -767,10 +774,14 @@ def _critique_case_worker(args, length, case, result_queue):
             f"{main_folder_base}/length{case_path}/target_multisource_cot.csv",
             f"{main_folder_base}/length{case_path}/target_multisource_critique_history.csv",
         ]
+        print(f"[CLEANUP] case={case_path} — removing stale artifacts before first iteration")
         for file_path in files_to_clean:
             try:
                 if os.path.exists(file_path):
                     os.remove(file_path)
+                    print(f"[CLEANUP]   deleted: {file_path}")
+                else:
+                    print(f"[CLEANUP]   not found (ok): {file_path}")
             except Exception as e:
                 print(f"[CLEANUP] Warning: Could not remove {file_path}: {e}")
 
@@ -847,9 +858,8 @@ def _critique_case_worker(args, length, case, result_queue):
                     print("Success!")
                     succeeded = True
                     # Record MS-only iteration (no critiques ran)
-                    ms_score = ms_info[6] if len(ms_info) > 6 else 0.0
                     reward_mode = getattr(args, "reward", "score")
-                    ms_nl_score, ms_generated_samples, _, ms_score_timing = _compute_attempt_context(
+                    ms_nl_score, ms_generated_samples, ms_score, ms_score_timing = _compute_attempt_context(
                         f"{main_folder_base}/length{case_path}/target_multisource.csv",
                         f"{main_folder_base}/length{case_path}/target.csv",
                         args.target_length,
@@ -877,9 +887,9 @@ def _critique_case_worker(args, length, case, result_queue):
                     })
                     _flush_json(case_record, json_path)
 
-                    # Stopping criterion 3: Reward True (Hard Match successful)
-                    if ms_info[0]:  # ms_info[0] is Hard Match result
-                        print(f"[iter {iter_num}] Stopping: Hard Match successful (reward=True).")
+                    # Stopping criterion 3: Score threshold reached
+                    if ms_score >= 0.9:
+                        print(f"[iter {iter_num}] Stopping: score {ms_score:.4f} >= 0.9 threshold.")
                         break
 
                     # Stopping criterion 2: Early stopping (no improvement plateau)
@@ -953,8 +963,7 @@ def _critique_case_worker(args, length, case, result_queue):
 
                 # Compute MS context once — reused for both JSON and past_attempts
                 reward_mode = getattr(args, "reward", "score")
-                ms_score = ms_info[6] if len(ms_info) > 6 else 0.0
-                ms_nl_score, ms_generated_samples, _, ms_score_timing = _compute_attempt_context(
+                ms_nl_score, ms_generated_samples, ms_score, ms_score_timing = _compute_attempt_context(
                     f"{main_folder_base}/length{case_path}/target_multisource.csv",
                     f"{main_folder_base}/length{case_path}/target.csv",
                     args.target_length,
@@ -1024,12 +1033,9 @@ def _critique_case_worker(args, length, case, result_queue):
 
                 iter_best_score = max([ms_score] + [a["score"] for a in crit_attempts])
 
-                # Check if the best attempt this iteration has Hard Match = True
-                iter_best_is_correct = ms_info[0] or any(a["is_correct"] for a in crit_attempts)
-
-                # Stopping criterion 3: Reward True (Hard Match successful)
-                if iter_best_is_correct:
-                    print(f"[iter {iter_num}] Stopping: Hard Match successful (reward=True).")
+                # Stopping criterion 3: Score threshold reached
+                if iter_best_score >= 0.9:
+                    print(f"[iter {iter_num}] Stopping: score {iter_best_score:.4f} >= 0.9 threshold.")
                     break
 
                 # Stopping criterion 2: Early stopping (no improvement plateau)

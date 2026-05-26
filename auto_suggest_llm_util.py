@@ -72,6 +72,7 @@ def get_prompt(
     past_context="",
     intermediate_scores: dict = None,
     is_final: bool = False,
+    data_split="test",
 ):
     """
     Args:
@@ -119,6 +120,7 @@ def get_prompt(
         source_length,
         max_tokens,
         encoding,
+        data_split=data_split,
     )
 
     # print("source_information: "+source_information)
@@ -447,6 +449,7 @@ def get_prompt(
             len_idx_target_idx,
             max_tokens,
             encoding,
+            data_split=data_split,
         )
 
         prompt = (
@@ -475,6 +478,7 @@ def get_prompt(
             len_idx_target_idx,
             max_tokens,
             encoding,
+            data_split=data_split,
         )
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
         # print(error_string)
@@ -602,6 +606,7 @@ def get_prompt(
             len_idx_target_idx,
             max_tokens,
             encoding,
+            data_split=data_split,
         )
 
         static_prompt = get_mcts_simulate_prompt(
@@ -750,6 +755,7 @@ def get_source(
     sample_length,
     num_tokens,
     encoding,
+    data_split="test",
 ):
     ss = "\n"
     for i in range(file_count):
@@ -761,23 +767,23 @@ def get_source(
             i=i, source_data_schema_list=source_data_schema_list[i]
         )
         source_samples = get_source_samples(
-            directory, len_idx_target_idx, i, sample_length, num_tokens, encoding
+            directory, len_idx_target_idx, i, sample_length, num_tokens, encoding, data_split=data_split
         )
         ss += "\tSource {i} Examples: {source_samples_list}\n".format(
             i=i, source_samples_list=source_samples
         )
-        ss += "\tSource {i} File Location: {directory}/length{len_idx_target_idx}/test_{i}.csv\n".format(
-            i=i, directory=directory, len_idx_target_idx=len_idx_target_idx
+        ss += "\tSource {i} File Location: {directory}/length{len_idx_target_idx}/{data_split}_{i}.csv\n".format(
+            i=i, directory=directory, len_idx_target_idx=len_idx_target_idx, data_split=data_split
         )
     return ss
 
 
 def get_source_samples(
-    directory, len_idx_target_idx, i, sample_length, num_tokens, encoding
+    directory, len_idx_target_idx, i, sample_length, num_tokens, encoding, data_split="test"
 ):
     # print(directory,len_idx_target_idx)
-    filename = "{main_directory}/length{len_idx_target_idx}/test_{i}.csv".format(
-        main_directory=directory, len_idx_target_idx=len_idx_target_idx, i=i
+    filename = "{main_directory}/length{len_idx_target_idx}/{data_split}_{i}.csv".format(
+        main_directory=directory, len_idx_target_idx=len_idx_target_idx, i=i, data_split=data_split
     )
     # print(filename)
     # sys.exit()
@@ -807,6 +813,7 @@ def get_source_with_location(
     len_idx_target_idx,
     num_tokens,
     encoding,
+    data_split="test",
 ):
     ss = ""
     for i in range(file_count):
@@ -818,13 +825,13 @@ def get_source_with_location(
             i=i, source_data_schema_list=source_data_schema_list[i]
         )
         source_samples_list = get_source_samples(
-            main_directory, len_idx_target_idx, i, source_length, num_tokens, encoding
+            main_directory, len_idx_target_idx, i, source_length, num_tokens, encoding, data_split=data_split
         )
         ss += "\tSource {i} Examples: {source_samples_list}\n".format(
             i=i, source_samples_list=source_samples_list
         )
-        ss += "\tSource {i} File Location: {main_directory}/length{len_idx_target_idx}/test_{i}.csv\n".format(
-            i=i, main_directory=main_directory, len_idx_target_idx=len_idx_target_idx
+        ss += "\tSource {i} File Location: {main_directory}/length{len_idx_target_idx}/{data_split}_{i}.csv\n".format(
+            i=i, main_directory=main_directory, len_idx_target_idx=len_idx_target_idx, data_split=data_split
         )
     return ss
 

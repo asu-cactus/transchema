@@ -14,8 +14,8 @@ from auto_suggest_llm_util import (
     get_target_samples,
     get_filtered_functional_dependency,
 )
-from eval_score.score import relative_csv_score
-from util.utils import execute_python, get_test_info
+from eval_score_value_based import value_based_relative_csv_score_timed
+from util.utils import execute_python, get_test_info, make_test_validation_script
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
@@ -212,13 +212,14 @@ def critique(
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
+    data_split = getattr(args, "data_split", "test")
     main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with data_split prefix in this subfolder
     file_count = sum(
         1
         for file in os.listdir(path_to_files)
-        if file.startswith("test") and os.path.isfile(os.path.join(path_to_files, file))
+        if file.startswith(data_split) and os.path.isfile(os.path.join(path_to_files, file))
     )
 
     ##print(file_count)
@@ -289,7 +290,7 @@ def critique(
         source_data_name_list,
         source_data_schema_list,
         source_samples_list,
-    ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
+    ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
 
     # get model encoding
     if args.model == "gpt-4.1-mini":
@@ -333,6 +334,7 @@ def critique(
         num_source_samples,
         num_tokens,
         encoding,
+        data_split=data_split,
     )
 
     query = query.replace("$SRC_INFO$", source_information)
@@ -738,15 +740,34 @@ def critique(
                 similarity_scores,
                 shared_columns,
             ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
-            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(sorted_df_critique, sorted_df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(sorted_df_critique, sorted_df_ground_truth)
         else:
-            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(df_critique, df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(df_critique, df_ground_truth)
         logger.info(is_correct)
 
     except Exception as e:
         is_correct = False
         score = 0
         print("".join(traceback.format_exc()))
+
+    # Two-phase validation: score on training output, is_correct on test output
+    if data_split == "training" and script:
+        test_script = make_test_validation_script(script)
+        test_output = target_location_critique.replace(".csv", "_test_val.csv")
+        print("[two-phase crit] executing test-data script for is_correct validation...")
+        test_exec = execute_python(test_script)
+        if test_exec == "Success" and os.path.exists(test_output):
+            try:
+                df_test = pd.read_csv(test_output, low_memory=False)
+                df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
+                df_gt_test.drop(columns=df_gt_test.columns[0], axis=1, inplace=True)
+                _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
+                print(f"[two-phase crit] is_correct: training={is_correct} → test={test_is_correct}")
+                is_correct = test_is_correct
+            except Exception:
+                print(f"[two-phase crit] test validation failed:\n{traceback.format_exc()}")
+        else:
+            print(f"[two-phase crit] test exec={test_exec}, output_exists={os.path.exists(test_output)}")
 
     crit_info = (
         is_correct,

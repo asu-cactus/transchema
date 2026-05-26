@@ -362,14 +362,15 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
+    data_split = getattr(args, "data_split", "test")
     main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with data_split prefix in this subfolder
     file_count = sum(
         1
         for _, _, files in os.walk(path_to_files)
         for file in files
-        if file.startswith("test")
+        if file.startswith(data_split)
     )
 
     # print(file_count)
@@ -413,6 +414,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         len_idx_target_idx,
         main_folder,
         anon_flag=0,
+        data_split=data_split,
     )
 
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)

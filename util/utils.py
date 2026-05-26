@@ -136,6 +136,18 @@ def execute_python(gpt_response):
         return f"Error: {e}"
 
 
+def make_test_validation_script(script: str) -> str:
+    """Swap training_X.csv → test_X.csv and redirect output to a _test_val variant.
+
+    The output redirect preserves the training-data CSV so scoring (reward) still
+    reads the training output while is_correct is computed on test output.
+    Covers all target_multisource* variants: plain, _cot, _critique_history, etc.
+    """
+    swapped = re.sub(r'training_(\d+)\.csv', r'test_\1.csv', script)
+    swapped = re.sub(r'(target_multisource[^.]*?)\.csv', r'\1_test_val.csv', swapped)
+    return swapped
+
+
 # def create_table(conn, create_statement):
 #     #print(create_statement)
 #     cursor = conn.cursor()
@@ -288,7 +300,7 @@ def anonymize_target_data_schema(target_data_schema):
     strigifiedschema = ",".join(anonymized_schema)
     return strigifiedschema
 
-def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag):
+def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag, data_split="test"):
 
     # Read the JSON file once
     with open(json_file_path, "r") as file:
@@ -304,11 +316,11 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
     main_folder_name = os.path.abspath(main_folder_path)
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
 
-    # Counting files starting with 'test' in this subfolder (root only, no subdirs)
+    # Counting files starting with data_split prefix in this subfolder (root only, no subdirs)
     file_count = sum(
         1
         for file in os.listdir(sub_folder_path)
-        if file.startswith("test") and os.path.isfile(os.path.join(sub_folder_path, file))
+        if file.startswith(data_split) and os.path.isfile(os.path.join(sub_folder_path, file))
     )
 
 
