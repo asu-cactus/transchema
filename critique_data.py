@@ -835,30 +835,11 @@ def _critique_case_worker(args, length, case, result_queue):
 
                 # Determine whether to enact critique using the configured judge
                 judge_reason = ""
-                enact_critique = not result[1]
-                if args.judge != "gt":
-                    df_generated_path = f"{main_folder_base}/length{case_path}/target_multisource.csv"
-                    df_ground_truth_path = f"{main_folder_base}/length{case_path}/target.csv"
-                    try:
-                        df_generated = pd.read_csv(df_generated_path, low_memory=False)
-                        df_ground_truth = pd.read_csv(df_ground_truth_path, low_memory=False)
-                        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
-                        is_correct, judge_reason = judge(df_generated, df_ground_truth, args.judge, _llm_client, logger=_case_logger)
-                        enact_critique = not is_correct
-                    except CostBudgetExceeded as e:
-                        print(f"[iter {iter_num}] Stopping: {e}")
-                        _flush_json(case_record, json_path)
-                        raise
-                    except Exception as e:
-                        print(f"Judge failed for {case_path}, falling back to gt: {e}")
-                        enact_critique = not result[1]
+                reward_mode = getattr(args, "reward", "score")
+                _SCORE_THRESHOLD = 0.9
 
-                if not enact_critique:  # output judged as correct
-                    shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_successful.py")
-                    print("Success!")
-                    succeeded = True
-                    # Record MS-only iteration (no critiques ran)
-                    reward_mode = getattr(args, "reward", "score")
+                # Always compute score upfront; used to gate critique when reward="score"
+                try:
                     ms_nl_score, ms_generated_samples, ms_score, ms_score_timing = _compute_attempt_context(
                         f"{main_folder_base}/length{case_path}/target_multisource.csv",
                         f"{main_folder_base}/length{case_path}/target.csv",
@@ -866,10 +847,41 @@ def _critique_case_worker(args, length, case, result_queue):
                         precomputed=ms_extras,
                         reward_mode=reward_mode,
                     )
+                except Exception:
+                    ms_nl_score, ms_generated_samples, ms_score, ms_score_timing = "", [], 0.0, {}
+
+                if reward_mode == "score":
+                    enact_critique = ms_score < _SCORE_THRESHOLD
+                    print(f"[iter {iter_num}] ms_score={ms_score:.4f} — {'running critique' if enact_critique else 'skipping critique (score >= 0.9)'}")
+                else:
+                    enact_critique = not result[1]
+                    if args.judge != "gt":
+                        df_generated_path = f"{main_folder_base}/length{case_path}/target_multisource.csv"
+                        df_ground_truth_path = f"{main_folder_base}/length{case_path}/target.csv"
+                        try:
+                            df_generated = pd.read_csv(df_generated_path, low_memory=False)
+                            df_ground_truth = pd.read_csv(df_ground_truth_path, low_memory=False)
+                            df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+                            is_correct, judge_reason = judge(df_generated, df_ground_truth, args.judge, _llm_client, logger=_case_logger)
+                            enact_critique = not is_correct
+                        except CostBudgetExceeded as e:
+                            print(f"[iter {iter_num}] Stopping: {e}")
+                            _flush_json(case_record, json_path)
+                            raise
+                        except Exception as e:
+                            print(f"Judge failed for {case_path}, falling back to gt: {e}")
+                            enact_critique = not result[1]
+
+                if not enact_critique:  # output judged as correct or score >= threshold
+                    shutil.copy2(code_path, f"{main_folder_base}/length{case_path}/python_recovered_successful.py")
+                    print("Success!")
+                    succeeded = True
+                    # Record MS-only iteration (no critiques ran)
+                    # ms_nl_score, ms_score, etc. already computed above
                     case_record["iterations"].append({
                         "iteration": iter_num,
                         "ms": {
-                            "is_correct": True,
+                            "is_correct": bool(ms_info[0]),
                             "score": ms_score,
                             "cost": ms_info[4] if len(ms_info) > 4 else 0.0,
                             "latency": ms_info[5] if len(ms_info) > 5 else 0.0,
@@ -961,17 +973,8 @@ def _critique_case_worker(args, length, case, result_queue):
                     print("Success!")
                     succeeded = True
 
-                # Compute MS context once — reused for both JSON and past_attempts
-                reward_mode = getattr(args, "reward", "score")
-                ms_nl_score, ms_generated_samples, ms_score, ms_score_timing = _compute_attempt_context(
-                    f"{main_folder_base}/length{case_path}/target_multisource.csv",
-                    f"{main_folder_base}/length{case_path}/target.csv",
-                    args.target_length,
-                    precomputed=ms_extras,
-                    reward_mode=reward_mode,
-                )
-
                 # Record this iteration in the case JSON
+                # (reward_mode, ms_nl_score, ms_score, ms_score_timing already computed above)
                 case_record["iterations"].append({
                     "iteration": iter_num,
                     "ms": {

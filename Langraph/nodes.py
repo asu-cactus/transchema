@@ -1569,7 +1569,7 @@ def should_critique(state: MCTSGraphState) -> str:
         if llm_judge != "none":
             needs_critique = not state.get("judge_verdict", False)
         else:
-            critique_threshold = 0.85 if reward_mode in ("score", "det_score_value") else 1.0
+            critique_threshold = 0.9 if reward_mode in ("score", "det_score_value") else 1.0
             needs_critique = state["current_score"] < critique_threshold
         if needs_critique:
             return "critique"
