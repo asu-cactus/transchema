@@ -198,7 +198,7 @@ def ms(args, length, id, log_dir, experiment_name, past_context_str="", token_tr
     return avged_tup + avged_tup_, ms_info[-1], ms_extras
 
 
-def crit(args, length, id_, operation_history, past_context_str="", judge_reason="", budget=None):
+def crit(args, length, id_, operation_history, past_context_str="", judge_reason="", budget=None, token_tracker=None):
     critique_path = f"{args.result_directory}/critique.csv"
 
     benchmark = getattr(args, "benchmark", "github")
@@ -257,7 +257,8 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
 
         abl_a, a_extras = critique(
             args, length, id_, args.log_directory, fd_flags, 0, operation_history,
-            past_context_str=past_context_str, judge_reason=judge_reason, budget=budget
+            past_context_str=past_context_str, judge_reason=judge_reason, budget=budget,
+            token_tracker=token_tracker
         )
 
         with open(critique_path, "a", newline="") as f:
@@ -281,7 +282,8 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
 
         abl_a, a_extras = critique(
             args, length, id_, args.log_directory, fd_flags, 0, operation_history,
-            past_context_str=past_context_str, judge_reason=judge_reason, budget=budget
+            past_context_str=past_context_str, judge_reason=judge_reason, budget=budget,
+            token_tracker=token_tracker
         )
 
         with open(critique_path, "a", newline="") as f:
@@ -307,7 +309,8 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
 
         abl_ab, ab_extras = critique(
             args, length, id_, args.log_directory, metadata_flags, 0, operation_history,
-            past_context_str=past_context_str, judge_reason=judge_reason, budget=budget
+            past_context_str=past_context_str, judge_reason=judge_reason, budget=budget,
+            token_tracker=token_tracker
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -340,6 +343,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
             past_context_str=past_context_str,
             judge_reason=judge_reason,
             budget=budget,
+            token_tracker=token_tracker,
         )
         # Add critique_type when logging
         with open(critique_path, "a", newline="") as f:
@@ -789,18 +793,19 @@ def _critique_case_worker(args, length, case, result_queue):
         _token_tracker = TokenUsageTracker()
         _case_logger = create_logger("JUDGE", args.log_directory, length, case, case)
         _llm_client = LLMClient(model=args.model, tracker=_token_tracker, logger=_case_logger, cost_budget=budget if budget is not None else 0.0)
+        is_local_model = _llm_client._uses_ollama
+        tracker_to_pass = _token_tracker if is_local_model else None
 
         try:
             for iter_num in range(1, num_iterations + 1):
                 past_context_str = format_past_attempts(past_attempts)
 
                 ms_start_time = time.time()
-                # Pass None to ms() so each iteration gets fresh trackers for MS step
-                # (to keep per-iteration costs correct in JSON)
+                # Pass fresh tracker or shared tracker depending on model type
                 # Pass budget so that LLMClient in multi_step/single_step_cot can enforce pre-call checks
                 try:
                     ms_info, operation_history, ms_extras = ms(
-                        args, length, case, args.log_directory, args.experiment_name, past_context_str, token_tracker=None, budget=budget
+                        args, length, case, args.log_directory, args.experiment_name, past_context_str, token_tracker=tracker_to_pass, budget=budget
                     )
                 except CostBudgetExceeded as e:
                     print(f"[iter {iter_num}] Stopping: {e}")
@@ -908,15 +913,21 @@ def _critique_case_worker(args, length, case, result_queue):
                             best_score_so_far = ms_score
 
                     # Stopping criterion 4: Per-case cost budget exceeded
-                    # ms_info[4] NOW contains ACTUAL total cost spent (not averaged)
                     if budget is not None:
-                        ms_cost_this_iteration = ms_info[4] if len(ms_info) > 4 else 0.0
-                        cumulative_ms_cost += ms_cost_this_iteration
-                        judge_cost = _token_tracker.cost_summary().get("total_cost", 0.0)
-                        cumulative_case_cost = cumulative_ms_cost + cumulative_crit_cost + judge_cost
-                        if cumulative_case_cost >= budget:
-                            print(f"[iter {iter_num}] Stopping: budget ${cumulative_case_cost:.4f} >= ${budget:.4f}.")
-                            break
+                        if is_local_model:
+                            token_budget = int(budget / 0.00052 * 1000)
+                            cumulative_tokens = _token_tracker.total_tokens()
+                            if cumulative_tokens >= token_budget:
+                                print(f"[iter {iter_num}] Stopping: token budget {cumulative_tokens} >= {token_budget}.")
+                                break
+                        else:
+                            ms_cost_this_iteration = ms_info[4] if len(ms_info) > 4 else 0.0
+                            cumulative_ms_cost += ms_cost_this_iteration
+                            judge_cost = _token_tracker.cost_summary().get("total_cost", 0.0)
+                            cumulative_case_cost = cumulative_ms_cost + cumulative_crit_cost + judge_cost
+                            if cumulative_case_cost >= budget:
+                                print(f"[iter {iter_num}] Stopping: budget ${cumulative_case_cost:.4f} >= ${budget:.4f}.")
+                                break
 
                     # Add to past_attempts only if plain mode is disabled
                     if iter_num < num_iterations and not getattr(args, "plain", False):
@@ -945,7 +956,7 @@ def _critique_case_worker(args, length, case, result_queue):
 
                 crit_start_time = time.time()
                 try:
-                    crit_info, crit_attempts = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason, budget=budget)
+                    crit_info, crit_attempts = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason, budget=budget, token_tracker=tracker_to_pass)
                 except CostBudgetExceeded as e:
                     print(f"[iter {iter_num}] Stopping: {e}")
                     _flush_json(case_record, json_path)
@@ -1054,18 +1065,23 @@ def _critique_case_worker(args, length, case, result_queue):
                         best_score_so_far = iter_best_score
 
                 # Stopping criterion 4: Per-case cost budget exceeded
-                # ms_info[4] NOW contains ACTUAL total cost spent (not averaged)
-                # crit_info[1] contains the critique cost for this iteration
                 if budget is not None:
-                    ms_cost_this_iteration = ms_info[4] if len(ms_info) > 4 else 0.0
-                    crit_cost_this_iteration = crit_info[1] if len(crit_info) > 1 else 0.0
-                    cumulative_ms_cost += ms_cost_this_iteration
-                    cumulative_crit_cost += crit_cost_this_iteration
-                    judge_cost = _token_tracker.cost_summary().get("total_cost", 0.0)
-                    cumulative_case_cost = cumulative_ms_cost + cumulative_crit_cost + judge_cost
-                    if cumulative_case_cost >= budget:
-                        print(f"[iter {iter_num}] Stopping: budget ${cumulative_case_cost:.4f} >= ${budget:.4f}.")
-                        break
+                    if is_local_model:
+                        token_budget = int(budget / 0.00052 * 1000)
+                        cumulative_tokens = _token_tracker.total_tokens()
+                        if cumulative_tokens >= token_budget:
+                            print(f"[iter {iter_num}] Stopping: token budget {cumulative_tokens} >= {token_budget}.")
+                            break
+                    else:
+                        ms_cost_this_iteration = ms_info[4] if len(ms_info) > 4 else 0.0
+                        crit_cost_this_iteration = crit_info[1] if len(crit_info) > 1 else 0.0
+                        cumulative_ms_cost += ms_cost_this_iteration
+                        cumulative_crit_cost += crit_cost_this_iteration
+                        judge_cost = _token_tracker.cost_summary().get("total_cost", 0.0)
+                        cumulative_case_cost = cumulative_ms_cost + cumulative_crit_cost + judge_cost
+                        if cumulative_case_cost >= budget:
+                            print(f"[iter {iter_num}] Stopping: budget ${cumulative_case_cost:.4f} >= ${budget:.4f}.")
+                            break
 
         except CostBudgetExceeded as e:
             print(f"Cost budget exceeded: {e}")

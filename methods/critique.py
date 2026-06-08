@@ -128,6 +128,7 @@ def critique(
     past_context_str: str = "",
     judge_reason: str = "",
     budget: float = None,
+    token_tracker: Optional[TokenUsageTracker] = None,
 ):
     """
     Run critique on a data-pipeline transformation using RAG few-shot examples.
@@ -244,7 +245,8 @@ def critique(
 
     len_idx_target_idx = str(len_id) + "_" + str(target_id)
 
-    token_tracker = TokenUsageTracker()
+    if token_tracker is None:
+        token_tracker = TokenUsageTracker()
 
     start_time = time.time()
 
