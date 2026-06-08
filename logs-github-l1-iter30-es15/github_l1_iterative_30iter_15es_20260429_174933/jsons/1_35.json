@@ -1,0 +1,240 @@
+{
+  "case": "1_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4356,
+        "cost": 0.001616,
+        "latency": 6.4489827156066895,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (0.000 + 0.628 + 0.679) / 3 = 0.436 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode, Counts}.\nKeys present in ground truth but absent in generated: {Source Zipcode}.\nSpurious keys in generated not present in ground truth: {Source Zipcode, Counts}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Source Zipcode'] \u2192 Counts.\nDistribution Analysis (numerical columns with issues):\n  Column 'Source Zipcode': range overlap=1.000, JS similarity=0.762\n    Generated    \u2014 min: 90230.0, max: 94120.0, mean: 94015.8311\n    Ground Truth \u2014 min: 90230.0, max: 94120.0, mean: 93537.5091\n  Column 'Counts': range overlap=0.255, JS similarity=0.597\n    Generated    \u2014 min: 1.0, max: 1973.0, mean: 191.406\n    Ground Truth \u2014 min: 1.0, max: 7721.0, mean: 1277.2",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 367\nExamples:\n Source Zipcode  Counts\n          94106       2\n          94115      55\n          94119       3",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The target schema is ['Source Zipcode': integer, 'Counts': integer]\n# Source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n# We only need to select 'Source Zipcode' and 'Counts' columns and convert types accordingly.\n\n# Extract relevant columns and convert types\ndf_transformed = source_dfs[0][['Source Zipcode', 'Counts']].copy()\ndf_transformed['Source Zipcode'] = df_transformed['Source Zipcode'].astype(int)\ndf_transformed['Counts'] = df_transformed['Counts'].astype(int)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\ndf_transformed.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0027700000000000003,
+          "latency": 13.215204238891602,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+          "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94105    4173\n          94112    3270\n          94118    4594",
+          "code": "import pandas as pd\n\n# Load source data\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\", index_col=0)\n\n# Since only one source table is given, and the target schema is ['Source Zipcode', 'Counts']\n# The target key is 'Source Zipcode' and 'Counts' is dependent on it.\n# The failed script output 367 rows (same as source), but target has 55 rows with aggregated counts.\n# So we need to group by 'Source Zipcode' and sum the 'Counts' to match the target aggregation.\n\n# Group by 'Source Zipcode' and sum 'Counts'\nresult = source1.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the schema and types match target\nresult['Source Zipcode'] = result['Source Zipcode'].astype(int)\nresult['Counts'] = result['Counts'].astype(int)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource_critique_history.csv\"\nresult.to_csv(output_path, index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019736000000000003,
+        "latency": 5.464499235153198,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94025       2\n          91104       1\n          94104    3675",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource_df = pd.read_csv(source_path, index_col=0)\n\n# The target schema is ['Source Zipcode', 'Counts'] with integer types\n# Source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n# We only need 'Source Zipcode' and 'Counts' columns\n\n# Group by 'Source Zipcode' and sum the 'Counts' to aggregate counts per zipcode\nresult_df = source_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023348,
+        "latency": 5.495786428451538,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94116    2482\n          94044       2\n          92626       1",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource_df = pd.read_csv(source_path, index_col=0)\n\n# The target schema is ['Source Zipcode', 'Counts'] with integer types\n# Source schema: ['Source Zipcode', 'NAICS Code Description', 'Counts']\n# We only need 'Source Zipcode' and 'Counts' columns\n\n# Group by 'Source Zipcode' and sum the 'Counts' to aggregate counts per zipcode\nresult_df = source_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027608000000000003,
+        "latency": 8.19321346282959,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94044       2\n          91112       1\n          93644       1",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize an empty list to hold dataframes\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Since all source tables share the same schema and target schema is the same,\n# concatenate (union) all source dataframes\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0031400000000000004,
+        "latency": 6.9561848640441895,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          92104       1\n          94100       2\n          94116    2482",
+        "code": "import pandas as pd\n\n# List all source file paths (only one source file given)\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035284,
+        "latency": 7.005600452423096,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94113       8\n          94118    4594\n          94066       4",
+        "code": "import pandas as pd\n\n# List all source file paths (only one source file given)\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0039144,
+        "latency": 6.504676342010498,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94120       2\n          94112    3270\n          91458       1",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.004302,
+        "latency": 8.431759357452393,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94114    4275\n          94102    4830\n          94044       2",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.004690000000000001,
+        "latency": 5.178769111633301,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          91403       1\n          91104       1\n          94100       2",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0050768,
+        "latency": 7.030836582183838,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          91112       1\n          94021       2\n          94110    7721",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0054636,
+        "latency": 6.957093238830566,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94117    4262\n          94017       8\n          94080       4",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 12,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0058508,
+        "latency": 5.0068933963775635,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          91408       1\n          94019       4\n          94028       1",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 13,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0062376,
+        "latency": 6.472572565078735,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94116    2482\n          94030       1\n          94002       1",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 14,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0066248,
+        "latency": 8.31822156906128,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94086       1\n          94021       2\n          94107    5874",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 15,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.007011600000000001,
+        "latency": 7.099167823791504,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          94115    3943\n          90230       1\n          94065       1",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 16,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.007399200000000001,
+        "latency": 11.283954620361328,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 55\nExamples:\n Source Zipcode  Counts\n          90715       1\n          94014       9\n          94116    2482",
+        "code": "import pandas as pd\n\n# List all source file paths as given in the source information\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_35/test_0.csv\"\n]\n\n# Initialize a list to hold dataframes from all sources\ndfs = []\n\n# Load each source file, ignoring the first numerical index column (index_col=0)\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target schema\n    df = df[['Source Zipcode', 'Counts']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (union operation)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'Source Zipcode' and sum 'Counts' to aggregate counts per zipcode\nresult_df = combined_df.groupby('Source Zipcode', as_index=False)['Counts'].sum()\n\n# Ensure the data types match the target schema (integers)\nresult_df['Source Zipcode'] = result_df['Source Zipcode'].astype(int)\nresult_df['Counts'] = result_df['Counts'].astype(int)\n\n# Output path for the transformed target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\n\n# Save the result to CSV without the index column\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n90230,1\n90715,1\n91104,1\n91112,1\n91403,1\n91408,1\n91458,1\n91789,1\n92104,1\n92117,1\n"
+      },
+      "critiques": []
+    }
+  ]
+}

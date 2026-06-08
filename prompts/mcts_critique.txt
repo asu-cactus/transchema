@@ -36,13 +36,27 @@ $CURRENT_SCRIPT$
 
 $STATIC_HINTS$
 
-Now produce the corrected Python script. The script must:
+Now produce the corrected pipeline. First, state the corrected sequence of operations in the EXACT SAME FORMAT as shown in the input operations above, then output the corrected Python script. The script must:
 - Read ONLY the CSV file paths given in Source Data Information.
 - Write its final output to: $CSV_SAVE_PATH$
 - Keep column names exactly as in the target schema (no added prefixes/suffixes).
 - NOT use assignment operation for any column.
 
-Reason briefly about what is wrong, then output ONLY the corrected code in a Python code block:
+**IMPORTANT:** The operation sequence in $PLAN$ must use EXACT format (copy-paste style):
+- JOIN: "JOIN : [[Table1, Table2]] columns=[[Table1.col, Table2.col]]"
+- UNION: "UNION : [Table1, Table2, ...]"
+- GROUP_BY/AGGREGATE: 'GROUP_BY/AGGREGATE : "group_by" = [col1, col2], "aggregations" = [AGG_FUNC(col), ...]'
+- End with: "NO_MORE_OPERATION"
+
+Reason briefly about what is wrong. Then output the corrected operation sequence:
+
+$PLAN$
+JOIN : [[Source_table1, Source_table2]] columns=[[Source_table1.key, Source_table2.key]]
+GROUP_BY/AGGREGATE : "group_by" = [col1], "aggregations" = [COUNT(col2)]
+NO_MORE_OPERATION
+$END_PLAN$
+
+Then output the corrected Python script in a code block:
 
 ```python
 <corrected code here>

@@ -16,8 +16,8 @@ from auto_suggest_llm_util import (
     get_filtered_functional_dependency,
     encode_text,
 )
-from eval_score.score import relative_csv_score
-from util.utils import execute_python, get_test_info
+from eval_score_value_based import value_based_relative_csv_score_timed
+from util.utils import execute_python, get_test_info, make_test_validation_script
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
@@ -127,6 +127,7 @@ def critique(
     rag_examples_base: Optional[Union[str, Path]] = None,
     past_context_str: str = "",
     judge_reason: str = "",
+    budget: float = None,
 ):
     """
     Run critique on a data-pipeline transformation using RAG few-shot examples.
@@ -161,10 +162,32 @@ def critique(
         ...                   rag_examples_base="/path/to/rag-examples-w-pipeline")
     """
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
+    # Benchmark selector: github | monteprep (need this early for target_location_critique)
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder_early = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    len_id_early = length
+    target_id_early = id_
+    len_idx_target_idx_early = str(len_id_early) + "_" + str(target_id_early)
+
+    # Pre-calculate target_location_critique for placeholder replacement
+    # For mcts_style, use "history" as the output filename for comparability
+    critique_filename = "history" if args.critique_type == "mcts_style" else args.critique_type
+    target_location_critique = (
+        main_folder_early
+        + "/length"
+        + len_idx_target_idx_early
+        + "/target_multisource_critique_"
+        + critique_filename
+        + ".csv"
+    )
+
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
 
     with open(prompt_file, mode="r") as f:
         query = f.read()
+
+    # Replace CSV output path placeholder
+    query = query.replace("$CSV_SAVE_PATH$", target_location_critique)
 
     if args.static_hints:
         query = query.replace("$STATIC_HINTS$", get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered"))
@@ -175,6 +198,9 @@ def critique(
         query = query.replace("$PAST_ITERATION_CONTEXT$", past_context_str)
     else:
         query = query.replace("$PAST_ITERATION_CONTEXT$", "")
+
+    # Replace CSV output path placeholder (for mcts_style and other critique types)
+    query = query.replace("$CSV_SAVE_PATH$", target_location_critique)
 
     if judge_reason:
         judge_reason_block = (
@@ -190,14 +216,14 @@ def critique(
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
+    data_split = getattr(args, "data_split", "test")
     main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with data_split prefix in this subfolder
     file_count = sum(
         1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
-        if file.startswith("test")
+        for file in os.listdir(path_to_files)
+        if file.startswith(data_split) and os.path.isfile(os.path.join(path_to_files, file))
     )
 
     ##print(file_count)
@@ -234,7 +260,7 @@ def critique(
     elif getattr(args, "judge", "gt") != "gt":
         logger.info(f"JUDGE_CALL: judge={args.judge} verdict=INCORRECT reason=(none)")
 
-    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
+    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
 
     rag_db = None
     feature_rag_db = None
@@ -268,7 +294,7 @@ def critique(
         source_data_name_list,
         source_data_schema_list,
         source_samples_list,
-    ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
+    ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
 
     # get model encoding
     model_str = str(args.model).lower() if args.model else ""
@@ -343,6 +369,7 @@ def critique(
         num_tokens,
         encoding,
         tokenizer,
+        data_split=data_split,
     )
 
     query = query.replace("$SRC_INFO$", source_information)
@@ -356,7 +383,7 @@ def critique(
         df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
         df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
         query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
-        if args.critique_type == "history":
+        if args.critique_type in ("history", "mcts_style"):
             query = replace_history_info(query, operation_history)
             result_path = get_result_path(args, main_folder, len_idx_target_idx)
             query = replace_result_info(query, num_target_samples, result_path)
@@ -607,32 +634,42 @@ def critique(
     cost = token_tracker.cost_summary()
     logger.info(cost)
 
-    try:
-        with open(
-            main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
-            mode="r",
-        ) as f:
-            python_code = f.read()
-    except Exception as e:
-        python_code = ""
-    target_location_critique = (
-        main_folder
-        + "/length"
-        + len_idx_target_idx
-        + "/target_multisource_critique_"
-        + args.critique_type
-        + ".csv"
-    )
-    query_generator = """Based on the LLM response, can you refine the python code."""
-    if args.static_hints:
-        query_generator += "\n\n" + get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered") + "\n"
-    query_generator += """
+    # For mcts_style critique, skip the refinement step to match MCTS behavior (single LLM call)
+    if args.critique_type == "mcts_style":
+        # Extract and execute the script from the first critique response directly
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res[0])
+        if match:
+            script = match.group(1).strip()
+            if script:
+                with open(
+                    f"{main_folder}/length{length}_{id_}/python_recovered.py",
+                    "w",
+                ) as file:
+                    file.write(script)
+        else:
+            script = ""
+        res_gen = res
+    else:
+        # Original multi-step behavior: run refinement step
+        try:
+            with open(
+                main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
+                mode="r",
+            ) as f:
+                python_code = f.read()
+        except Exception as e:
+            python_code = ""
+        query_generator = """Based on the LLM response, can you refine the python code."""
+        if args.static_hints:
+            query_generator += "\n\n" + get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered") + "\n"
+        query_generator += """
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
     - Please keep the final output columns the same as it was in the python script given. [Strictly do not add prefix or suffix to the column names]
     - You just need to apply the fix according to the criticizer response.
     - Do not use assignment operation for any column.
-    Python Code : ```Python 
+    Python Code : ```Python
     {python_code}
     ```
 
@@ -640,27 +677,28 @@ def critique(
     {res}
     ```
     """.format(
-        python_code=python_code,
-        target_location_critique=target_location_critique,
-        res=res,
-    )
+            python_code=python_code,
+            target_location_critique=target_location_critique,
+            res=res,
+        )
 
-    res_gen = llm_client.gpt(query_generator)
+        res_gen = llm_client.gpt(query_generator)
 
-    pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
-    match = pattern.search(res_gen[0])
-    script = match.group(1).strip()
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res_gen[0])
+        script = match.group(1).strip()
 
-    if script:
-        with open(
-            f"{main_folder}/length{length}_{id_}/python_recovered.py",
-            "w",
-        ) as file:
-            file.write(script)
+        if script:
+            with open(
+                f"{main_folder}/length{length}_{id_}/python_recovered.py",
+                "w",
+            ) as file:
+                file.write(script)
 
-    logger.info(query_generator)
-    logger.info(res_gen[0])
-    logger.info(token_tracker.cost_summary())
+        logger.info(query_generator)
+        logger.info(res_gen[0])
+        logger.info(token_tracker.cost_summary())
+
     cost = token_tracker.cost_summary()
     end_time = time.time()
     time_elapsed = end_time - start_time
@@ -737,15 +775,34 @@ def critique(
                 similarity_scores,
                 shared_columns,
             ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
-            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(sorted_df_critique, sorted_df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(sorted_df_critique, sorted_df_ground_truth)
         else:
-            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = relative_csv_score(df_critique, df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(df_critique, df_ground_truth)
         logger.info(is_correct)
 
     except Exception as e:
         is_correct = False
         score = 0
         print("".join(traceback.format_exc()))
+
+    # Two-phase validation: score on training output, is_correct on test output
+    if data_split == "training" and script:
+        test_script = make_test_validation_script(script)
+        test_output = target_location_critique.replace(".csv", "_test_val.csv")
+        print("[two-phase crit] executing test-data script for is_correct validation...")
+        test_exec = execute_python(test_script)
+        if test_exec == "Success" and os.path.exists(test_output):
+            try:
+                df_test = pd.read_csv(test_output, low_memory=False)
+                df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
+                df_gt_test.drop(columns=df_gt_test.columns[0], axis=1, inplace=True)
+                _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
+                print(f"[two-phase crit] is_correct: training={is_correct} → test={test_is_correct}")
+                is_correct = test_is_correct
+            except Exception:
+                print(f"[two-phase crit] test validation failed:\n{traceback.format_exc()}")
+        else:
+            print(f"[two-phase crit] test exec={test_exec}, output_exists={os.path.exists(test_output)}")
 
     crit_info = (
         is_correct,
@@ -883,13 +940,16 @@ def build_column_distribution_section(
 def get_result_path(args, main_folder, len_idx_target_idx):
 
     if args.intermediate_materialization:
-        result_path = f"{main_folder}/source_space/length{len_idx_target_idx}/"
-        # Iterate through the intermediate files in the source_space folder and get their names
+        result_path = f"{main_folder}/intermediate_space/length{len_idx_target_idx}/"
+        # Find the highest-numbered intermediate_step{n}.csv in the folder
         max_step = 0
         for f in os.listdir(result_path):
-            if f.startswith("intermediate"):
-                step = f.lstrip("intermediate_step").rstrip(".csv")
-                max_step = max(max_step, int(step))
+            if f.startswith("intermediate_step") and f.endswith(".csv"):
+                try:
+                    step = int(f[len("intermediate_step"):-len(".csv")])
+                    max_step = max(max_step, step)
+                except ValueError:
+                    pass
         result_path += f"intermediate_step{max_step}.csv"
     elif getattr(args, "single_step_cot", False):
         result_path = f"{main_folder}/length{len_idx_target_idx}/target_multisource_cot.csv"

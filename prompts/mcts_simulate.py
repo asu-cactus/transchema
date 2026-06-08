@@ -37,6 +37,7 @@ def get_mcts_simulate_prompt(
     directory="",
     len_idx_target_idx="",
     raw_target_schema="",
+    static_hints=True,
 ):
     """
     MCTS Simulation prompt.
@@ -86,7 +87,7 @@ def get_mcts_simulate_prompt(
             data_specific_hints = "\n".join(hint_parts)
 
     if operation_history:
-        history_section = f"""Partial Operation Plan (treat this as a STARTING GUIDE, not a fixed sequence):
+        history_section = f"""Partial Operation Plan:
     {operation_history}
 
 Use the operations above as a hint for the first transformation step(s), then reason
@@ -96,6 +97,8 @@ about what additional steps are required to produce the correct target schema.
         history_section = (
             "No prior operations selected. Reason freely about the full pipeline.\n"
         )
+
+    script_hints = get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet") if static_hints else ""
 
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should be immediately executable in a correct way, which means it should NOT contain any placeholder for brevity. For example, even if there exist hundreds of source tables, these data need to be loaded completely one by one or in a programmable way.
 
@@ -142,7 +145,7 @@ Please quote the Python script between one single "```Python" and "```".
 ══════════════════════════════════════════════════════
 Hints for Python code generation
 ══════════════════════════════════════════════════════
-{get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
+{script_hints}
 {data_specific_hints}
 
 Errors in previous attempts: {error_string}

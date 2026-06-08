@@ -21,7 +21,23 @@ def get_python_script(
     directory="",
     len_idx_target_idx="",
     raw_target_schema="",
+    intermediate_scores: dict = {},
+    is_final: bool = False,
 ):
+    if all_intermediate_results and is_final:
+        return get_python_script_final_with_materialization(
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            target_samples,
+            source_information_with_location,
+            csv_save_path,
+            error_string,
+            all_intermediate_results,
+            static_hints=static_hints,
+            past_context=past_context,
+            intermediate_scores=intermediate_scores,
+        )
     if all_intermediate_results:
         return get_python_script_with_intermediate_materialization(
             operation_history,
@@ -32,7 +48,9 @@ def get_python_script(
             csv_save_path,
             error_string,
             all_intermediate_results,
+            static_hints=static_hints,
             past_context=past_context,
+            intermediate_scores=intermediate_scores,
         )
     elif not operation_history:
         return get_python_script_for_single_step_cot(
@@ -197,6 +215,7 @@ def get_python_script_with_intermediate_materialization(
     all_intermediate_results,
     static_hints=False,
     past_context="",
+    intermediate_scores: dict = {},
 ):
     # assert len(all_intermediate_results) + 1 == len(
     #   operation_history
@@ -219,13 +238,19 @@ Next Operation : {next_operation}{past_context_section}
 
 The intermediate results of the past operations are as follows:
 
+Important: when reading any intermediate table listed above (for example, intermediate_step*.csv), do NOT use index_col=0 and do NOT drop the first column, because those columns may be real data columns.
+
 """
-    subprompts_middle = [
-        f"After the {i}st/nd/rd/th operation {op}, the intermediate table 'intermediate_step{i}' is stored in {interm.file_path}.\nThe intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}"
-        for i, (interm, op) in enumerate(
-            zip(all_intermediate_results, operation_history), start=1
+    subprompts_middle = []
+    for i, interm in all_intermediate_results.items():
+        op = operation_history[i - 1] if i - 1 < len(operation_history) else ""
+        score_text = ""
+        if i in intermediate_scores:
+            score_val, nl_score = intermediate_scores[i]
+            score_text = f"\nScore against ground truth: {score_val:.3f}\n{nl_score}"
+        subprompts_middle.append(
+            f"After the {i}st/nd/rd/th operation {op}, the intermediate table 'intermediate_step{i}' is stored in {interm.file_path}.\nThe intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}{score_text}"
         )
-    ]
     prompt_middle = "\n".join(subprompts_middle)
     prompt_last = ""
     if static_hints:
@@ -233,6 +258,60 @@ The intermediate results of the past operations are as follows:
 
     Hints to be considered for Python code generation:
  - Please write python code to execute the next operation {next_operation}.
+{get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
+"""
+    prompt_last += f"""
+  Errors in previous Attempts : {error_string}
+    """
+    return [f"{prompt_start}{prompt_middle}{prompt_last}"]
+
+
+def get_python_script_final_with_materialization(
+    operation_history,
+    target_data_name,
+    target_data_schema,
+    target_samples,
+    source_information_with_location,
+    csv_save_path,
+    error_string,
+    all_intermediate_results,
+    static_hints=False,
+    past_context="",
+    intermediate_scores: dict = {},
+):
+    past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
+    prompt_start = f"""
+You are writing executable Python code at runtime. The overall goal is to convert multiple source tables to the format of the target table. All operations have been decided and their intermediate results are available — you need to write the complete final script that produces the target output.
+The code should be immediately executable and must NOT contain any placeholders.
+    1. Target Table Name: {target_data_name}
+    2. Target Schema: {target_data_schema}
+    3. Target Examples: {target_samples}
+    4. Source Information: {source_information_with_location}
+    5. Write the result to this path {csv_save_path}
+
+Operation History (all operations in order): {operation_history}{past_context_section}
+
+All intermediate results are as follows:
+
+Important: when reading any intermediate table listed above (for example, intermediate_step*.csv), do NOT use index_col=0 and do NOT drop the first column, because those columns may be real data columns.
+"""
+    subprompts_middle = []
+    for i, interm in all_intermediate_results.items():
+        op = operation_history[i - 1] if i - 1 < len(operation_history) else ""
+        score_text = ""
+        if i in intermediate_scores:
+            score_val, nl_score = intermediate_scores[i]
+            score_text = f"\nScore against ground truth: {score_val:.3f}\n{nl_score}"
+        subprompts_middle.append(
+            f"After the {i}st/nd/rd/th operation {op}, the intermediate table 'intermediate_step{i}' is stored in {interm.file_path}.\nThe intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}{score_text}"
+        )
+    prompt_middle = "\n".join(subprompts_middle)
+
+    prompt_last = ""
+    if static_hints:
+        prompt_last += f"""
+
+Hints to be considered for Python code generation:
 {get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
 """
     prompt_last += f"""

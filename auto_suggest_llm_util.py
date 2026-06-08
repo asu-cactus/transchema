@@ -79,6 +79,9 @@ def get_prompt(
     mcts_expand_k=3,
     static_hints=False,
     past_context="",
+    intermediate_scores: dict = None,
+    is_final: bool = False,
+    data_split="test",
 ):
     """
     Args:
@@ -158,6 +161,7 @@ def get_prompt(
         max_tokens,
         encoding,
         tokenizer,
+        data_split=data_split,
     )
 
     # print("source_information: "+source_information)
@@ -296,6 +300,7 @@ def get_prompt(
                 all_intermediate_results,
                 static_hints,
                 past_context=past_context,
+                intermediate_scores=intermediate_scores or {},
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -491,6 +496,7 @@ def get_prompt(
             max_tokens,
             encoding,
             tokenizer,
+            data_split=data_split,
         )
 
         prompt = (
@@ -520,6 +526,7 @@ def get_prompt(
             max_tokens,
             encoding,
             tokenizer,
+            data_split=data_split,
         )
         # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
         # print(error_string)
@@ -543,6 +550,8 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            intermediate_scores=intermediate_scores or {},
+            is_final=is_final,
         )[0]
         static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
@@ -576,6 +585,8 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            intermediate_scores=intermediate_scores or {},
+            is_final=is_final,
         )[0]
     elif prompt_type == "mcts_expand":
         raw_target_schema = target_data_schema
@@ -598,6 +609,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
         static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
@@ -627,6 +639,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
 
     elif prompt_type == "mcts_simulate":
@@ -644,6 +657,7 @@ def get_prompt(
             max_tokens,
             encoding,
             tokenizer,
+            data_split=data_split,
         )
 
         static_prompt = get_mcts_simulate_prompt(
@@ -661,6 +675,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
         static_prompt_length = len(encode_text(static_prompt, encoding, tokenizer))
         target_samples = get_target_samples(
@@ -689,6 +704,7 @@ def get_prompt(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            static_hints=static_hints,
         )[0]
 
     else:
@@ -793,6 +809,7 @@ def get_source(
     num_tokens,
     encoding,
     tokenizer=None,
+    data_split="test",
 ):
     ss = "\n"
     for i in range(file_count):
@@ -804,23 +821,23 @@ def get_source(
             i=i, source_data_schema_list=source_data_schema_list[i]
         )
         source_samples = get_source_samples(
-            directory, len_idx_target_idx, i, sample_length, num_tokens, encoding
+            directory, len_idx_target_idx, i, sample_length, num_tokens, encoding, data_split=data_split
         )
         ss += "\tSource {i} Examples: {source_samples_list}\n".format(
             i=i, source_samples_list=source_samples
         )
-        ss += "\tSource {i} File Location: {directory}/length{len_idx_target_idx}/test_{i}.csv\n".format(
-            i=i, directory=directory, len_idx_target_idx=len_idx_target_idx
+        ss += "\tSource {i} File Location: {directory}/length{len_idx_target_idx}/{data_split}_{i}.csv\n".format(
+            i=i, directory=directory, len_idx_target_idx=len_idx_target_idx, data_split=data_split
         )
     return ss
 
 
 def get_source_samples(
-    directory, len_idx_target_idx, i, sample_length, num_tokens, encoding
+    directory, len_idx_target_idx, i, sample_length, num_tokens, encoding, data_split="test"
 ):
     # print(directory,len_idx_target_idx)
-    filename = "{main_directory}/length{len_idx_target_idx}/test_{i}.csv".format(
-        main_directory=directory, len_idx_target_idx=len_idx_target_idx, i=i
+    filename = "{main_directory}/length{len_idx_target_idx}/{data_split}_{i}.csv".format(
+        main_directory=directory, len_idx_target_idx=len_idx_target_idx, i=i, data_split=data_split
     )
     # print(filename)
     # sys.exit()
@@ -851,6 +868,7 @@ def get_source_with_location(
     num_tokens,
     encoding,
     tokenizer=None,
+    data_split="test",
 ):
     ss = ""
     for i in range(file_count):
@@ -862,13 +880,13 @@ def get_source_with_location(
             i=i, source_data_schema_list=source_data_schema_list[i]
         )
         source_samples_list = get_source_samples(
-            main_directory, len_idx_target_idx, i, source_length, num_tokens, encoding
+            main_directory, len_idx_target_idx, i, source_length, num_tokens, encoding, data_split=data_split
         )
         ss += "\tSource {i} Examples: {source_samples_list}\n".format(
             i=i, source_samples_list=source_samples_list
         )
-        ss += "\tSource {i} File Location: {main_directory}/length{len_idx_target_idx}/test_{i}.csv\n".format(
-            i=i, main_directory=main_directory, len_idx_target_idx=len_idx_target_idx
+        ss += "\tSource {i} File Location: {main_directory}/length{len_idx_target_idx}/{data_split}_{i}.csv\n".format(
+            i=i, main_directory=main_directory, len_idx_target_idx=len_idx_target_idx, data_split=data_split
         )
     return ss
 

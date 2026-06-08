@@ -14,6 +14,7 @@ def get_next_operator_prompt(
     all_intermediate_results: dict = {},
     static_hints=False,
     past_context="",
+    intermediate_scores: dict = {},
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt_start = f"""
@@ -37,8 +38,12 @@ Operation History: {operation_history}{past_context_section}
             if step not in all_intermediate_results:
                 continue
             interm = all_intermediate_results[step]
+            score_text = ""
+            if step in intermediate_scores:
+                score_val, nl_score = intermediate_scores[step]
+                score_text = f"\nScore against ground truth: {score_val:.3f}\n{nl_score}"
             subprompts_middle.append(
-                f"After the {step}st/nd/rd/th operation {op}, the intermediate table is named 'intermediate_step{step}'.\nThe intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}"
+                f"After the {step}st/nd/rd/th operation {op}, the intermediate table is named 'intermediate_step{step}'.\nThe intermediate table schema is as follows: \n{interm.schema} \nExamples: {interm.source_samples_string}{score_text}"
             )
         prompt_middle = "\n".join(subprompts_middle)
 

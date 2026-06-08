@@ -33,6 +33,7 @@ for p in (_ROOT, _EVAL_SCORE):
         sys.path.insert(0, p)
 
 from eval_score.score import relative_csv_score, summarize_score
+from eval_score_value_based import value_based_relative_csv_score, build_jaccard_column_map
 from validation.hard_match import compare_tables_matching, compare_lists_matching
 from validation.autopipeline_match import compare_series
 
@@ -136,6 +137,8 @@ def main():
     parser.add_argument("--validation", choices=["autopipeline", "hard_match", "none"], default="autopipeline",
                         help="Validation mode: 'autopipeline' (default), 'hard_match', or 'none'")
     parser.add_argument("--json", action="store_true", help="Print full debug JSON instead of summary")
+    parser.add_argument("--score-mode", choices=["original", "value_based"], default="original",
+                        help="Scoring mode: 'original' (default) or 'value_based' (Jaccard-aligned columns)")
     # Batch mode
     parser.add_argument("--batch", action="store_true",
                         help="Batch mode: scan cases for autopipeline column-name mismatches")
@@ -163,47 +166,62 @@ def main():
     print(f"Ground truth shape: {df_gt.shape}  columns: {list(df_gt.columns)}")
     print()
 
-    fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = relative_csv_score(df_gen, df_gt)
+    if args.score_mode == "value_based":
+        _, col_ratio, _, fd_f1, true_combined_score, debug_dict = value_based_relative_csv_score(df_gen, df_gt)
 
-    # This is exactly the score the MCTS pipeline uses
-    pipeline_score = (fd_f1 + col_ratio) / 2
+        jaccard_map = debug_dict.get("jaccard_column_map", [])
 
-    summary = summarize_score(debug_dict, pipeline_score, fd_f1, col_ratio)
+        print("=" * 60)
+        print("  SCORE MODE: value_based (Jaccard-aligned columns)")
+        print(f"  True combined score                      : {true_combined_score:.4f}")
+        print(f"  FD F1  (on aligned df)                   : {fd_f1:.4f}")
+        print(f"  Column ratio (on aligned df)             : {col_ratio:.4f}")
+        print("=" * 60)
+        print()
+        print("Jaccard column alignment (GT col → best matching generated col):")
+        for entry in jaccard_map:
+            marker = "  ***LOW***" if entry["jaccard"] < 0.3 else ""
+            print(f"  {entry['gt_col']!r:40s} → {entry['gen_col']!r:40s}  jaccard={entry['jaccard']:.4f}{marker}")
+        print()
+    else:
+        _, col_ratio, _, fd_f1, true_combined_score, debug_dict = relative_csv_score(df_gen, df_gt)
+        pipeline_score = (fd_f1 + col_ratio) / 2
+        summary = summarize_score(debug_dict, pipeline_score, fd_f1, col_ratio)
 
-    print("=" * 60)
-    print(f"  Pipeline score (fd_f1 + col_ratio) / 2  : {pipeline_score:.4f}")
-    print(f"  FD F1                                    : {fd_f1:.4f}")
-    print(f"  Column ratio                             : {col_ratio:.4f}")
-    print(f"  True combined (fd_f1 + col + dist) / 3  : {true_combined_score:.4f}")
-    print("=" * 60)
-    print()
-
-    dist = debug_dict.get("distribution", {})
-    dist_sim = dist.get("avg_distribution_similarity")
-    if dist_sim is not None:
-        print(f"  Avg distribution similarity (Wasserstein): {dist_sim:.4f}")
-        for col, info in dist.get("per_column", {}).items():
-            print(f"    {col}: similarity={info['distribution_similarity']:.4f}  "
-                  f"gen_mean={info['gen_stats']['mean']}  gt_mean={info['gt_stats']['mean']}")
+        print("=" * 60)
+        print(f"  Pipeline score (fd_f1 + col_ratio) / 2  : {pipeline_score:.4f}")
+        print(f"  FD F1                                    : {fd_f1:.4f}")
+        print(f"  Column ratio                             : {col_ratio:.4f}")
+        print(f"  True combined (fd_f1 + col + dist) / 3  : {true_combined_score:.4f}")
+        print("=" * 60)
         print()
 
-    print("Column mapping:")
-    print(f"  Matched {summary['column_mappings']['matched_count']} / "
-          f"{summary['column_mappings']['total_target_columns']} ground-truth columns")
-    if summary["column_mappings"]["missed_target_columns"]:
-        print(f"  Missed columns: {summary['column_mappings']['missed_target_columns']}")
-    print()
+        dist = debug_dict.get("distribution", {})
+        dist_sim = dist.get("avg_distribution_similarity")
+        if dist_sim is not None:
+            print(f"  Avg distribution similarity (Wasserstein): {dist_sim:.4f}")
+            for col, info in dist.get("per_column", {}).items():
+                print(f"    {col}: similarity={info['distribution_similarity']:.4f}  "
+                      f"gen_mean={info['gen_stats']['mean']}  gt_mean={info['gt_stats']['mean']}")
+            print()
 
-    print("Functional dependencies:")
-    print(f"  Ground truth FD count : {summary['functional_dependencies']['ground_truth_count']}")
-    print(f"  Generated FD count    : {summary['functional_dependencies']['output_count']}")
-    if summary["functional_dependencies"]["missed"]:
-        print(f"  Missed FDs : {summary['functional_dependencies']['missed']}")
-    if summary["functional_dependencies"]["unexpected"]:
-        print(f"  Extra FDs  : {summary['functional_dependencies']['unexpected']}")
-    print()
+        print("Column mapping:")
+        print(f"  Matched {summary['column_mappings']['matched_count']} / "
+              f"{summary['column_mappings']['total_target_columns']} ground-truth columns")
+        if summary["column_mappings"]["missed_target_columns"]:
+            print(f"  Missed columns: {summary['column_mappings']['missed_target_columns']}")
+        print()
 
-    if args.validation != "none":
+        print("Functional dependencies:")
+        print(f"  Ground truth FD count : {summary['functional_dependencies']['ground_truth_count']}")
+        print(f"  Generated FD count    : {summary['functional_dependencies']['output_count']}")
+        if summary["functional_dependencies"]["missed"]:
+            print(f"  Missed FDs : {summary['functional_dependencies']['missed']}")
+        if summary["functional_dependencies"]["unexpected"]:
+            print(f"  Extra FDs  : {summary['functional_dependencies']['unexpected']}")
+        print()
+
+    if args.validation != "none" and args.score_mode != "value_based":
         validate_fn = compare_tables_matching if args.validation == "autopipeline" else compare_lists_matching
         avg_sim, is_correct, col_sims, matched_cols = validate_fn(df_gen, df_gt)
         print("=" * 60)

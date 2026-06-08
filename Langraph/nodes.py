@@ -45,6 +45,8 @@ _EVAL_SCORE = os.path.join(_ROOT, "eval_score")
 if _EVAL_SCORE not in sys.path:
     sys.path.insert(0, _EVAL_SCORE)
 
+from judges import judge as llm_judge_fn, build_nl_score_interpretation
+
 from auto_suggest_llm_util import (
     get_mcts_candidates,
     get_operation,
@@ -54,6 +56,8 @@ from auto_suggest_llm_util import (
     query_gpt,
 )
 from eval_score.score import relative_csv_score
+from eval_score_value_based import value_based_relative_csv_score, value_based_relative_csv_score_timed
+from llm.llm_models import CostBudgetExceeded
 from mcts_node import MCTSNode, OPERATOR_TYPES
 from state import MCTSGraphState
 from util.utils import execute_python
@@ -79,8 +83,8 @@ def _score_worker(target_file_location: str, ground_truth_location: str, result_
         df_output = pd.read_csv(target_file_location, low_memory=False)
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
         df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-        _, col_ratio, _, fd_f1, _, _ = relative_csv_score(df_output, df_gt)
-        result_queue.put((fd_f1 + col_ratio) / 2)
+        _, _, _, _, true_combined_score, _ = relative_csv_score(df_output, df_gt)
+        result_queue.put(true_combined_score)
     except Exception:
         result_queue.put(0.0)
 
@@ -112,6 +116,47 @@ def _score_with_timeout(target_file_location: str, ground_truth_location: str) -
         return 0.0
 
 
+def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue):
+    """Subprocess worker: load CSVs and compute value_based score, put result in queue.
+
+    Uses Jaccard-aligned column matching + value-based distribution scoring
+    instead of the standard relative_csv_score.
+    """
+    try:
+        df_output = pd.read_csv(target_file_location, low_memory=False)
+        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        _, _, _, _, true_combined_score, _ = value_based_relative_csv_score(df_output, df_gt)
+        result_queue.put(true_combined_score)
+    except Exception:
+        result_queue.put(0.0)
+
+
+def _value_score_with_timeout(target_file_location: str, ground_truth_location: str) -> float:
+    """Run value_based scoring in a child process with a hard timeout.
+
+    Identical process-isolation pattern to _score_with_timeout but calls
+    value_based_relative_csv_score (Jaccard-aligned columns + value-based
+    distribution). Returns 0.0 on timeout or error.
+    """
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(
+        target=_value_score_worker,
+        args=(target_file_location, ground_truth_location, q),
+        daemon=True,
+    )
+    p.start()
+    p.join(timeout=_SCORE_TIMEOUT)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return 0.0
+    try:
+        return q.get_nowait()
+    except Exception:
+        return 0.0
+
+
 def _score_and_validate_output(
     target_file_location: str,
     ground_truth_location: str,
@@ -120,9 +165,10 @@ def _score_and_validate_output(
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
-      - "score"      : relative_csv_score (FD + column map + distribution)
-      - "validation" : avg_similarity from compare_lists/tables_matching (per-col × per-row)
-      - "partial"    : fuzzy column-match ratio from compare_tables_fuzzy
+      - "score"           : relative_csv_score (FD + column map + distribution)
+      - "det_score_value" : value_based_relative_csv_score (Jaccard-aligned columns + value-based distribution)
+      - "validation"      : avg_similarity from compare_lists/tables_matching (per-col × per-row)
+      - "partial"         : fuzzy column-match ratio from compare_tables_fuzzy
 
     Returns (reward, is_correct) where is_correct is derived from reward == 1.0.
     """
@@ -130,20 +176,70 @@ def _score_and_validate_output(
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
     df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
 
+    _SCORE_THRESHOLD = 0.9  # stopping threshold; binary validation only happens at the end
+
     if reward_mode == "validation":
         validate_fn = (
             compare_tables_matching if validation_mode == "autopipeline" else compare_lists_matching
         )
-        avg_similarity, is_correct, _, _ = validate_fn(df_output, df_gt)
-        return float(avg_similarity), bool(is_correct)
+        avg_similarity, _, _, _ = validate_fn(df_output, df_gt)
+        return float(avg_similarity), float(avg_similarity) >= _SCORE_THRESHOLD
 
     elif reward_mode == "partial":
         partial, _ = compare_tables_fuzzy(df_output, df_gt)
-        return float(partial), partial == 1.0
+        return float(partial), float(partial) >= _SCORE_THRESHOLD
+
+    elif reward_mode == "det_score_value":
+        score = _value_score_with_timeout(target_file_location, ground_truth_location)
+        return score, score >= _SCORE_THRESHOLD
 
     else:  # "score"
         score = _score_with_timeout(target_file_location, ground_truth_location)
-        return score, score >= 1.0
+        return score, score >= _SCORE_THRESHOLD
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Critique helpers for path tree traversal/creation
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _parse_op_type(step: str) -> str:
+    """
+    Extract operator type from a configured step string.
+    E.g. "JOIN : [[T0, T1]] columns=..." → "JOIN"
+         "GROUP_BY/AGGREGATE : ..." → "GROUP_BY/AGGREGATE"
+         "NO_MORE_OPERATION" → "NO_MORE_OPERATION"
+    """
+    if step == "NO_MORE_OPERATION":
+        return "NO_MORE_OPERATION"
+    # Extract first token before the colon
+    return step.split(":")[0].strip()
+
+
+def _find_or_create_path(root: MCTSNode, critique_history: List[str]) -> List[MCTSNode]:
+    """
+    Walk the tree from root, reusing existing child nodes where the step string
+    matches, and creating new MCTSNode children where it doesn't. Returns the
+    full path [root, ..., leaf].
+
+    Args:
+        root: MCTSNode root
+        critique_history: List of configured step strings from critique
+
+    Returns:
+        List[MCTSNode]: path from root to the leaf node representing critique_history
+    """
+    path = [root]
+    node = root
+    for i, step in enumerate(critique_history):
+        child_history = critique_history[: i + 1]
+        if step in node.children:
+            node = node.children[step]
+        else:
+            op_type = _parse_op_type(step)
+            node = node.add_child(step, child_history, operator_type=op_type)
+        path.append(node)
+    return path
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -155,6 +251,10 @@ def _simulate_get_python(
     operation_history: List[str],
     target_file_location: str,
     state: "MCTSGraphState",
+    csv_save_path: str = None,
+    nth_intermediate_step: int = 0,
+    intermediate_scores: dict = None,
+    is_final: bool = False,
 ) -> tuple:
     """
     Generate a Python script from a finalized operation_history using the
@@ -165,6 +265,7 @@ def _simulate_get_python(
     last error string.
     """
     config = state["config"]
+    save_path = csv_save_path if csv_save_path is not None else target_file_location
     error_str = ""
     script = ""
     response = ""
@@ -191,10 +292,14 @@ def _simulate_get_python(
                 target_length=config.target_length,
                 source_length=config.source_length,
                 error_string=error_str,
-                csv_save_path=target_file_location,
+                csv_save_path=save_path,
                 hint_source=config.hint_source,
                 static_hints=getattr(config, "static_hints", True),
                 fd_flag=int(config.fd_flag),
+                nth_intermediate_step=nth_intermediate_step,
+                intermediate_scores=intermediate_scores or {},
+                is_final=is_final,
+                data_split=getattr(config, "data_split", "test"),
             )
         except Exception:
             config.logger.warning(
@@ -257,6 +362,10 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
     aggregate_hints_truncate: List[float] = state.get("aggregate_hints_truncate", [])
     few_shot: int = state.get("few_shot", 0)
 
+    intermediate_materialization: bool = state.get("intermediate_materialization", False)
+    intermediate_scores: dict = {}
+    ground_truth_location: str = state["ground_truth_location"]
+
     # Terminal re-simulation: rollout_history already ends with NO_MORE_OPERATION;
     # skip the operator loop and go straight to code generation.
     is_already_terminal = (
@@ -299,6 +408,9 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                     few_shot=few_shot,
                     fd_flag=int(config.fd_flag),
                     static_hints=getattr(config, "static_hints", True),
+                    nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                    intermediate_scores=intermediate_scores,
+                    data_split=getattr(config, "data_split", "test"),
                 )
             except Exception:
                 config.logger.warning(
@@ -357,6 +469,9 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         few_shot=few_shot,
                         fd_flag=int(config.fd_flag),
                         static_hints=getattr(config, "static_hints", True),
+                        nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                        intermediate_scores=intermediate_scores,
+                        data_split=getattr(config, "data_split", "test"),
                     )
                 except Exception:
                     config.logger.warning(
@@ -400,6 +515,9 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         few_shot=few_shot,
                         fd_flag=int(config.fd_flag),
                         static_hints=getattr(config, "static_hints", True),
+                        nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                        intermediate_scores=intermediate_scores,
+                        data_split=getattr(config, "data_split", "test"),
                     )
                 except Exception:
                     config.logger.warning(
@@ -441,6 +559,9 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         few_shot=few_shot,
                         fd_flag=int(config.fd_flag),
                         static_hints=getattr(config, "static_hints", True),
+                        nth_intermediate_step=step + 1 if intermediate_materialization else 0,
+                        intermediate_scores=intermediate_scores,
+                        data_split=getattr(config, "data_split", "test"),
                     )
                 except Exception:
                     config.logger.warning(
@@ -476,13 +597,52 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
             )
             step += 1
 
+            # ── Intermediate materialization ──────────────────────────────
+            if intermediate_materialization:
+                interm_csv = (
+                    f"{config.directory}/length{config.len_idx_target_idx}"
+                    f"/intermediate_step{step}.csv"
+                )
+                _simulate_get_python(
+                    sim_history, target_file_location, state,
+                    csv_save_path=interm_csv,
+                    nth_intermediate_step=step,
+                    intermediate_scores=intermediate_scores,
+                    is_final=False,
+                )
+                if os.path.exists(interm_csv):
+                    try:
+                        df_interm = pd.read_csv(interm_csv, low_memory=False)
+                        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+                        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                        _, col_ratio_s, _, fd_f1_s, true_combined_s, debug_dict_s = \
+                            value_based_relative_csv_score_timed(df_interm, df_gt)
+                        nl_score_s = build_nl_score_interpretation(
+                            fd_f1_s, col_ratio_s, true_combined_s, debug_dict_s
+                        )
+                        intermediate_scores[step] = (true_combined_s, nl_score_s)
+                        config.logger.info(
+                            f"[simulate/op] Intermediate score at step {step}: "
+                            f"{true_combined_s:.4f}"
+                        )
+                    except Exception:
+                        config.logger.warning(
+                            f"[simulate/op] Intermediate scoring failed at step {step}: "
+                            f"{traceback.format_exc()}"
+                        )
+
         else:
             config.logger.warning(
                 f"[simulate/op] Iter {state['iteration']}: "
                 f"hit step limit ({_MAX_SIMULATE_STEPS}) without NO_MORE_OPERATION"
             )
 
-    script, response = _simulate_get_python(sim_history, target_file_location, state)
+    script, response = _simulate_get_python(
+        sim_history, target_file_location, state,
+        nth_intermediate_step=len(sim_history),
+        intermediate_scores=intermediate_scores,
+        is_final=True,
+    )
     return script, response, sim_history
 
 
@@ -527,6 +687,7 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
                 error_string=error_str,
                 csv_save_path=target_file_location,
                 hint_source=config.hint_source,
+                data_split=getattr(config, "data_split", "test"),
             )
         except Exception:
             config.logger.warning(
@@ -691,6 +852,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             hint_source=config.hint_source,
             fd_flag=int(config.fd_flag),
             mcts_expand_k=k,
+            data_split=getattr(config, "data_split", "test"),
         )
     except Exception:
         config.logger.warning(
@@ -698,18 +860,24 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         )
         prompt = None
 
+    _cost_budget_exhausted = False
     if prompt is not None:
-        res = query_gpt(
-            config.llm_client,
-            config.model,
-            [prompt],
-            config.q_count,
-            config.logger,
-            config.cost_summary,
-            config.token_tracker,
-            type="MCTS Expand",
-        )
-        candidates = get_mcts_candidates(res[0], OPERATOR_TYPES)
+        try:
+            res = query_gpt(
+                config.llm_client,
+                config.model,
+                [prompt],
+                config.q_count,
+                config.logger,
+                config.cost_summary,
+                config.token_tracker,
+                type="MCTS Expand",
+            )
+            candidates = get_mcts_candidates(res[0], OPERATOR_TYPES)
+        except CostBudgetExceeded as e:
+            config.logger.warning(f"[expand] {e} — stopping search.")
+            _cost_budget_exhausted = True
+            candidates = []
     else:
         candidates = []
 
@@ -782,9 +950,11 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         "selection_path": selection_path + [new_node],
         "selected_node": new_node,
         "terminal_found": state["terminal_found"] or is_terminal_expansion,
+        "cost_budget_exhausted": _cost_budget_exhausted,
         "log_messages": state["log_messages"]
         + [
             f"[EXPAND] iter={state['iteration']} op={chosen_op} configured={chosen_cfg}"
+            + (" COST_BUDGET_EXHAUSTED" if _cost_budget_exhausted else "")
         ],
     }
 
@@ -814,10 +984,21 @@ def simulate(state: MCTSGraphState) -> dict:
         f"mode={sim_mode}, history={state['rollout_history']}"
     )
 
-    if sim_mode == "operator":
-        script, response, full_history = _simulate_operator_level(state)
-    else:
-        script, response, full_history = _simulate_pipeline_level(state)
+    try:
+        if sim_mode == "operator":
+            script, response, full_history = _simulate_operator_level(state)
+        else:
+            script, response, full_history = _simulate_pipeline_level(state)
+    except CostBudgetExceeded as e:
+        config.logger.warning(f"[simulate] {e} — stopping search.")
+        return {
+            "cost_budget_exhausted": True,
+            "current_script": "",
+            "current_response": "cost_budget_exhausted",
+            "current_full_history": [],
+            "log_messages": state["log_messages"]
+            + [f"[SIMULATE] iter={state['iteration']} COST_BUDGET_EXHAUSTED — no request sent"],
+        }
 
     _result = "Success" if response == "Success" else "FAILED"
 
@@ -848,6 +1029,12 @@ def execute_and_score(state: MCTSGraphState) -> dict:
              validation_passed.
     """
     config = state["config"]
+
+    # Short-circuit: budget was exhausted before any LLM call this iteration.
+    if state.get("cost_budget_exhausted", False):
+        config.logger.info("[execute_and_score] cost_budget_exhausted — skipping scoring.")
+        return {"current_score": 0.0, "judge_verdict": False}
+
     response = state["current_response"]
     target_file_location = state["target_file_location"]
     ground_truth_location = state["ground_truth_location"]
@@ -856,7 +1043,10 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
     reward = 0.0
     iteration_validation_passed = False
+    judge_verdict = False
     reward_mode = state.get("reward_mode", "score")
+    llm_judge = state.get("llm_judge", "none")
+
     if response == "Success":
         try:
             reward, iteration_validation_passed = _score_and_validate_output(
@@ -869,6 +1059,26 @@ def execute_and_score(state: MCTSGraphState) -> dict:
             config.logger.warning(
                 f"[execute_and_score] Scoring/validation failed: {traceback.format_exc()}"
             )
+
+        if llm_judge != "none":
+            try:
+                df_output = pd.read_csv(target_file_location, low_memory=False)
+                df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+                df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                judge_verdict, _ = llm_judge_fn(
+                    df_output, df_gt,
+                    judge_type=llm_judge,
+                    llm_client=config.llm_client,
+                    logger=config.logger,
+                )
+                iteration_validation_passed = judge_verdict
+                config.logger.info(
+                    f"[execute_and_score] LLM judge ({llm_judge}): verdict={judge_verdict}"
+                )
+            except Exception:
+                config.logger.warning(
+                    f"[execute_and_score] LLM judge failed: {traceback.format_exc()}"
+                )
 
     validation_passed = state.get("validation_passed", False) or iteration_validation_passed
 
@@ -908,7 +1118,9 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
     return {
         "current_score": reward,
+        "pre_critique_score": reward,
         "validation_passed": validation_passed,
+        "judge_verdict": judge_verdict,
         "best_score": best_score,
         "best_script": best_script,
         "best_operation_history": best_op_hist,
@@ -916,7 +1128,8 @@ def execute_and_score(state: MCTSGraphState) -> dict:
         + [
             f"Iter {state['iteration']}: "
             f"reward={reward:.4f} (mode={reward_mode}) "
-            f"validation_passed={validation_passed} history={rollout_history}"
+            f"validation_passed={validation_passed} "
+            f"judge_verdict={judge_verdict} history={rollout_history}"
         ],
     }
 
@@ -928,32 +1141,61 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
 def backpropagate(state: MCTSGraphState) -> dict:
     """
-    Walk up selection_path (from expanded node to root), updating each node's
-    visit count and total reward.
+    Dual-pass backpropagation:
+    1. Original simulated path: rewarded with pre_critique_score
+    2. Critique path (if it exists): rewarded with critique_score
 
-    Also caches best_script on the deepest node in selection_path if this
-    iteration improved the score.
+    When critique runs and generates a new operation plan, it creates a new
+    critique_selection_path in the tree. Backpropagation now rewards BOTH paths:
+    - The original simulation's path gets the pre-critique simulation score
+    - The critique's path gets the critique score
+
+    This ensures that the tree learns from both the simulated and corrected plans.
 
     Tree mutations are in-place on MCTSNode objects.
     Updates: iteration (incremented by 1).
     """
     selection_path: List[MCTSNode] = state["selection_path"]
-    reward: float = state["current_score"]
     script: str = state["current_script"]
     config = state["config"]
 
-    # Backpropagate from the expanded/terminal node up to root
-    for node in reversed(selection_path):
-        node.update(reward)  # in-place: visits += 1, total_reward += reward
+    pre_critique_score: float = state.get("pre_critique_score", state.get("current_score", 0.0))
+    critique_selection_path: List[MCTSNode] = state.get("critique_selection_path", [])
+    critique_score: float = state.get("critique_score", 0.0)
 
-    # Cache best script on the expanded node (deepest in selection path)
-    if selection_path and reward > selection_path[-1].best_score:
-        selection_path[-1].best_score = reward
+    # ── Pass 1: Backprop pre-critique score to original simulated path ──
+    config.logger.info(
+        f"[backpropagate] Iter {state['iteration']}: "
+        f"Pass 1 (simulated path): {len(selection_path)} nodes, reward={pre_critique_score:.4f}"
+    )
+    for node in reversed(selection_path):
+        node.update(pre_critique_score)  # in-place: visits += 1, total_reward += reward
+
+    # Cache best script on the deepest simulated node if improved
+    if selection_path and pre_critique_score > selection_path[-1].best_score:
+        selection_path[-1].best_score = pre_critique_score
         selection_path[-1].best_script = script
 
+    # ── Pass 2: Backprop critique score to critique path (if it exists) ──
+    if critique_selection_path:
+        config.logger.info(
+            f"[backpropagate] Iter {state['iteration']}: "
+            f"Pass 2 (critique path): {len(critique_selection_path)} nodes, reward={critique_score:.4f}"
+        )
+        for node in reversed(critique_selection_path):
+            node.update(critique_score)  # in-place: visits += 1, total_reward += reward
+
+        # Cache best script on the deepest critique node if improved
+        if critique_score > critique_selection_path[-1].best_score:
+            critique_selection_path[-1].best_score = critique_score
+            critique_selection_path[-1].best_script = script
+
+    # ── Update iteration and no-improvement counter ──
     new_iteration = state["iteration"] + 1
     prev_best = state["best_score"]
-    new_best = state["best_score"] if reward <= prev_best else reward
+    # Use max of both scores (pre-critique or critique) to check improvement
+    max_score = max(pre_critique_score, critique_score) if critique_selection_path else pre_critique_score
+    new_best = state["best_score"] if max_score <= prev_best else max_score
     if new_best > prev_best:
         no_improvement_count = 0
     else:
@@ -961,7 +1203,8 @@ def backpropagate(state: MCTSGraphState) -> dict:
 
     config.logger.info(
         f"[backpropagate] Iter {state['iteration']} done. "
-        f"reward={reward:.4f}, path_len={len(selection_path)}, "
+        f"pre_critique_reward={pre_critique_score:.4f}, "
+        f"critique_reward={critique_score:.4f}, "
         f"root.visits={selection_path[0].visits if selection_path else 0}, "
         f"next_iter={new_iteration}, no_improvement_count={no_improvement_count}"
     )
@@ -970,7 +1213,11 @@ def backpropagate(state: MCTSGraphState) -> dict:
         "iteration": new_iteration,
         "no_improvement_count": no_improvement_count,
         "log_messages": state["log_messages"]
-        + [f"Backprop iter {state['iteration']}: reward={reward:.4f}"],
+        + [
+            f"Backprop iter {state['iteration']}: "
+            f"pre_critique={pre_critique_score:.4f}, critique={critique_score:.4f}, "
+            f"paths=({len(selection_path)}, {len(critique_selection_path)})"
+        ],
     }
 
 
@@ -1011,7 +1258,7 @@ def extract_best(state: MCTSGraphState) -> dict:
             f"[extract_best] Running 'best' mode critique on final script "
             f"(score={best_score:.4f})"
         )
-        crit_script, crit_score, _, _ = _run_critique_llm(state, best_script)
+        crit_script, crit_score, _, _, _ = _run_critique_llm(state, best_script)
         if crit_score > best_score:
             config.logger.info(
                 f"[extract_best] Critique improved score: {best_score:.4f} → {crit_score:.4f}"
@@ -1122,8 +1369,9 @@ def _build_critique_prompt(state: MCTSGraphState, script: str) -> str:
 def _run_critique_llm(state: MCTSGraphState, script: str):
     """
     Build + send the critique prompt.
-    Returns (new_script, new_score, new_response, validation_passed).
+    Returns (new_script, new_score, new_response, validation_passed, critique_plan).
     Loads ground truth internally for scoring.
+    critique_plan is a List[str] parsed from $PLAN$...$END_PLAN$ block, or [] if not found.
     """
     config = state["config"]
     target_file_location = state["target_file_location"]
@@ -1132,7 +1380,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 
     prompt = _build_critique_prompt(state, script)
     if not prompt:
-        return script, state.get("current_score", 0.0), "Prompt build failed", False
+        return script, state.get("current_score", 0.0), "Prompt build failed", False, []
 
     res = query_gpt(
         config.llm_client,
@@ -1144,6 +1392,17 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
         config.token_tracker,
         type="MCTS Critique",
     )
+
+    # Parse $PLAN$...$END_PLAN$ block
+    critique_plan: List[str] = []
+    plan_match = re.search(r"\$PLAN\$(.*?)\$END_PLAN\$", res[0], re.DOTALL)
+    if plan_match:
+        critique_plan = [
+            line.strip()
+            for line in plan_match.group(1).strip().splitlines()
+            if line.strip()
+        ]
+        config.logger.info(f"[_run_critique_llm] Parsed critique plan: {critique_plan}")
 
     pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
     match = pattern.search(res[0])
@@ -1168,7 +1427,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
                 new_score = 0.0
                 validation_passed = False
 
-    return new_script, new_score, new_response, validation_passed
+    return new_script, new_score, new_response, validation_passed, critique_plan
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1179,17 +1438,26 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 def mcts_critique(state: MCTSGraphState) -> dict:
     """
     CRITIQUE (single LLM call): analyzes the failed/imperfect script and outputs
-    corrected Python code. Triggered when current_score < 1.0 in "simulate" mode.
+    corrected Python code + operation plan. Triggered when current_score < 1.0 in "simulate" mode.
     Re-executes and re-scores the corrected script before backpropagation.
+
+    NEW: Parses the $PLAN$...$END_PLAN$ block from critique response, walks/creates
+    the tree nodes for that plan, and returns critique_selection_path for separate
+    backpropagation.
     """
     config = state["config"]
+
+    # Should never be reached (should_critique short-circuits), but guard defensively.
+    if state.get("cost_budget_exhausted", False):
+        config.logger.info("[mcts_critique] cost_budget_exhausted — skipping critique.")
+        return {"critique_attempted": True}
 
     config.logger.info(
         f"[mcts_critique] Iter {state['iteration']}: "
         f"critiquing script (score={state['current_score']:.4f})"
     )
 
-    new_script, new_score, new_response, critique_validation_passed = _run_critique_llm(
+    new_script, new_score, new_response, critique_validation_passed, critique_plan = _run_critique_llm(
         state, state["current_script"]
     )
 
@@ -1197,6 +1465,43 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"[mcts_critique] Iter {state['iteration']}: "
         f"score {state['current_score']:.4f} → {new_score:.4f}"
     )
+
+    # Build critique_selection_path by walking/creating tree nodes for critique_plan
+    critique_selection_path: List[MCTSNode] = []
+    if critique_plan:
+        try:
+            critique_selection_path = _find_or_create_path(state["root"], critique_plan)
+            config.logger.info(
+                f"[mcts_critique] Critique path created: {len(critique_selection_path)} nodes, "
+                f"plan={[s[:60] for s in critique_plan[:3]]}"
+            )
+        except Exception:
+            config.logger.warning(
+                f"[mcts_critique] Failed to build critique path: {traceback.format_exc()}"
+            )
+
+    # If LLM judge is active, re-run it on the critiqued output to get an updated verdict.
+    judge_verdict = state.get("judge_verdict", False)
+    llm_judge = state.get("llm_judge", "none")
+    if llm_judge != "none" and new_script and new_response == "Success":
+        try:
+            df_output = pd.read_csv(state["target_file_location"], low_memory=False)
+            df_gt = pd.read_csv(state["ground_truth_location"], low_memory=False)
+            df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+            judge_verdict, _ = llm_judge_fn(
+                df_output, df_gt,
+                judge_type=llm_judge,
+                llm_client=config.llm_client,
+                logger=config.logger,
+            )
+            critique_validation_passed = judge_verdict
+            config.logger.info(
+                f"[mcts_critique] LLM judge ({llm_judge}) after critique: verdict={judge_verdict}"
+            )
+        except Exception:
+            config.logger.warning(
+                f"[mcts_critique] LLM judge failed after critique: {traceback.format_exc()}"
+            )
 
     best_score = state["best_score"]
     best_script = state["best_script"]
@@ -1217,8 +1522,11 @@ def mcts_critique(state: MCTSGraphState) -> dict:
     return {
         "current_script": selected_script,
         "current_score": new_score,
+        "critique_score": new_score,
+        "critique_selection_path": critique_selection_path,
         "current_response": new_response,
         "critique_attempted": True,
+        "judge_verdict": judge_verdict,
         "validation_passed": validation_passed,
         "best_score": best_score,
         "best_script": best_script,
@@ -1227,7 +1535,8 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         + [
             f"[CRITIQUE] iter={state['iteration']} "
             f"score_before={state['current_score']:.4f} score_after={new_score:.4f} "
-            f"validation_passed={validation_passed}"
+            f"judge_verdict={judge_verdict} validation_passed={validation_passed} "
+            f"critique_path_len={len(critique_selection_path)}"
         ],
     }
 
@@ -1240,23 +1549,30 @@ def mcts_critique(state: MCTSGraphState) -> dict:
 def should_critique(state: MCTSGraphState) -> str:
     """
     After execute_and_score:
+    - if cost_budget_exhausted, skip critique and let backpropagate → check_budget stop the search
     - if ground-truth validation already passed this iteration, skip critique
       and proceed to backpropagate (search will stop in check_budget)
     - "simulate" mode → critique if score < 1.0 and not yet attempted this iteration
     - "none" / "best" mode → always skip to backpropagate
     """
+    if state.get("cost_budget_exhausted", False):
+        return "backpropagate"
+
     if state.get("validation_passed", False):
         return "backpropagate"
 
     mode = getattr(state["config"], "mcts_critique_mode", "none")
+    llm_judge = state.get("llm_judge", "none")
     reward_mode = state.get("reward_mode", "score")
-    critique_threshold = 0.85 if reward_mode == "score" else 1.0
-    if (
-        mode == "simulate"
-        and state["current_score"] < critique_threshold
-        and not state.get("critique_attempted", False)
-    ):
-        return "critique"
+
+    if mode == "simulate" and not state.get("critique_attempted", False):
+        if llm_judge != "none":
+            needs_critique = not state.get("judge_verdict", False)
+        else:
+            critique_threshold = 0.85 if reward_mode in ("score", "det_score_value") else 1.0
+            needs_critique = state["current_score"] < critique_threshold
+        if needs_critique:
+            return "critique"
     return "backpropagate"
 
 
@@ -1275,29 +1591,88 @@ def is_selected_terminal(state: MCTSGraphState) -> str:
 
 def check_budget(state: MCTSGraphState) -> str:
     """
-    After backpropagate: stop when any of the following conditions is met:
-      1. Ground-truth validation has passed.
-      2. best_score has not improved for 5 consecutive iterations (plateau).
-      3. Hard iteration cap (max_iterations) is exhausted.
-    Continue otherwise.
+    After backpropagate: stop when any termination condition is met.
+
+    Cost-budget mode (cost_budget > 0):
+      - Always stop on validation_passed.
+      - Stop when cumulative cost >= cost_budget.
+      - If early_stopping > 0, also stop on score plateau.
+      - Iteration cap (max_iterations) is ignored.
+
+    Iteration mode (cost_budget == 0, original behavior):
+      - Always stop on validation_passed.
+      - Stop on score plateau (early_stopping iterations with no improvement).
+      - Stop on hard iteration cap (max_iterations).
     """
     config = state["config"]
+
+    # Always: stop if LLMClient blocked a request (budget reached before sending)
+    if state.get("cost_budget_exhausted", False):
+        if getattr(config.llm_client, "_uses_ollama", False):
+            token_budget = int(cost_budget / 0.00052 * 1000)
+            current_tokens = config.token_tracker.total_tokens()
+            config.logger.warning(
+                f"[check_budget] cost_budget_exhausted flag set at iter {state['iteration']} "
+                f"(spent={current_tokens}/{token_budget} tokens) — stopping."
+            )
+        else:
+            current_cost = config.token_tracker.cost_summary()["total_cost"]
+            config.logger.warning(
+                f"[check_budget] cost_budget_exhausted flag set at iter {state['iteration']} "
+                f"(spent=${current_cost:.6f}) — stopping."
+            )
+        return "done"
+
+    # Always: stop if a correct result was validated
     if state.get("validation_passed", False):
         config.logger.info(
             f"[check_budget] Validation passed at iter {state['iteration']} — stopping."
         )
         return "done"
+
     no_improvement_count = state.get("no_improvement_count", 0)
     early_stopping = state.get("early_stopping", 5)
-    if no_improvement_count >= early_stopping:
-        config.logger.info(
-            f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
-            f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."
-        )
-        return "done"
-    if state["iteration"] >= state["max_iterations"]:
-        config.logger.warning(
-            f"[check_budget] Hard cap ({state['max_iterations']} iterations) reached — stopping."
-        )
-        return "done"
-    return "iterate"
+    cost_budget = state.get("cost_budget", 0.0)
+
+    if cost_budget > 0.0:
+        # ── Cost-budget mode / Token-budget mode ──────────────────────────────────────────────
+        if getattr(config.llm_client, "_uses_ollama", False):
+            token_budget = int(cost_budget / 0.00052 * 1000)
+            current_tokens = config.token_tracker.total_tokens()
+            if current_tokens >= token_budget:
+                config.logger.warning(
+                    f"[check_budget] Token budget {token_budget} reached "
+                    f"(spent={current_tokens} tokens) at iter {state['iteration']} — stopping."
+                )
+                return "done"
+        else:
+            current_cost = config.token_tracker.cost_summary()["total_cost"]
+            if current_cost >= cost_budget:
+                config.logger.warning(
+                    f"[check_budget] Cost budget ${cost_budget:.4f} reached "
+                    f"(spent=${current_cost:.6f}) at iter {state['iteration']} — stopping."
+                )
+                return "done"
+        # Plateau check is optional: early_stopping == 0 disables it
+        if early_stopping > 0 and no_improvement_count >= early_stopping:
+            config.logger.info(
+                f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
+                f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."
+            )
+            return "done"
+        return "iterate"
+
+    else:
+        # ── Iteration mode (original behavior) ───────────────────────────
+        if no_improvement_count >= early_stopping:
+            config.logger.info(
+                f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
+                f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."
+            )
+            return "done"
+        if state["iteration"] >= state["max_iterations"]:
+            config.logger.warning(
+                f"[check_budget] Hard cap ({state['max_iterations']} iterations) reached — stopping."
+            )
+            return "done"
+        return "iterate"

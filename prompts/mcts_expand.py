@@ -56,6 +56,7 @@ def get_mcts_expand_prompt(
     directory="",
     len_idx_target_idx="",
     raw_target_schema="",
+    static_hints=True,
 ):
     """
     MCTS Expansion prompt.
@@ -101,6 +102,10 @@ def get_mcts_expand_prompt(
         if operator_h and operator_h[0]:
             operator_data_hints = "\nData-specific table matching:\n" + operator_h[0]
 
+    join_hints = get_hints_section(JOIN_HINT_IDS, fmt="bullet") if static_hints else ""
+    groupby_hints = get_hints_section(GROUPBY_AGG_HINT_IDS, fmt="bullet") if static_hints else ""
+    selection_hints = get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet") if static_hints else ""
+
     prompt = f"""You are generating a data-pipeline to transform multiple source tables to the target table and you need to answer "what operation should be performed next?". Take this decision based on "Operation History", the schema of the source, target tables, and examples in the target table.
 
 Your task: propose up to {k} ALTERNATIVE candidates for the SINGLE NEXT operation step, ranked from most to least promising.
@@ -127,7 +132,7 @@ CONFIGURATION RULES — one section per operator type
 ══════════════════════════════════════════════════════
 
 JOIN — join two tables on shared columns
-{get_hints_section(JOIN_HINT_IDS, fmt="bullet")}
+{join_hints}
   • You should only use columns that actually exist in the source tables.
   Format:
     TABLES: [[table1, table2]]
@@ -141,7 +146,7 @@ UNION — stack tables that have IDENTICAL schemas
     TABLES: [table1, table2, table3, ...]
 
 GROUP_BY/AGGREGATE — group rows and apply aggregate functions
-{get_hints_section(GROUPBY_AGG_HINT_IDS, fmt="bullet")}
+{groupby_hints}
   Format:
     GROUP_BY: [table.col1, table.col2, ...]
     AGGREGATIONS: [COUNT(table.col), SUM(table.col2), AVG(table.col3), ...]
@@ -155,7 +160,7 @@ NO_MORE_OPERATION — the pipeline is complete
 ══════════════════════════════════════════════════════
 SELECTION GUIDANCE (apply these rules when ranking candidates)
 ══════════════════════════════════════════════════════
-{get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet")}
+{selection_hints}
 {operator_data_hints}
 - If the operation history already covers all needed transformations → propose NO_MORE_OPERATION.
 - Do NOT repeat an operation+configuration already present in the operation history.

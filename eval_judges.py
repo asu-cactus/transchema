@@ -30,6 +30,8 @@ import csv
 import json
 import logging
 import os
+import subprocess
+import tempfile
 import time
 from glob import glob
 from io import StringIO
@@ -38,6 +40,7 @@ import pandas as pd
 
 from judges import score_judge, llm_judge, llm_score_judge, llm_nl_score_judge, EPS
 from llm.llm_models import LLMClient, TokenUsageTracker
+from eval_score_value_based import value_based_relative_csv_score_timed
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +59,18 @@ def get_parser():
                         help="Directory for per-judge log files (default: <jsons_dir>/../logs_eval)")
     parser.add_argument("--benchmark", type=str, default="github", choices=["github", "monteprep"],
                         help="Benchmark dataset (used to reconstruct ground-truth path)")
+    parser.add_argument("--max_iterations", type=int, default=None,
+                        help="Maximum number of iterations the judge may check (default: all)")
+    parser.add_argument("--cost_threshold", type=float, default=None,
+                        help="Stop after the attempt whose cumulative total cost "
+                             "(generation + judge) first meets or exceeds this value "
+                             "(default: no cost limit)")
+    parser.add_argument("--judges", nargs="+", default=None,
+                        choices=["gt", "det_score", "det_score_value", "llm", "llm_score", "llm_score_hybrid"],
+                        help="Which judge types to run (default: all)")
+    parser.add_argument("--score_source", type=str, default="score", choices=["score", "det_score"],
+                        help="Which score to pass to llm_score and llm_score_hybrid judges: "
+                             "'score' uses the stored score field, 'det_score' uses the value-based value_score field")
     return parser
 
 
@@ -63,7 +78,7 @@ def get_parser():
 # Helpers
 # ---------------------------------------------------------------------------
 
-JUDGE_TYPES = ["gt", "det_score", "llm", "llm_score", "llm_score_hybrid"]
+JUDGE_TYPES = ["gt", "det_score", "det_score_value", "llm", "llm_score", "llm_score_hybrid"]
 
 OUTPUT_HEADER = [
     "case", "judge_type", "stopped_at", "stopped_correct",
@@ -114,10 +129,12 @@ def flatten_attempts(case_data: dict) -> list:
             "attempt_type": "ms",
             "is_correct": ms.get("is_correct", False),
             "score": ms.get("score", 0.0),
+            "value_score": ms.get("value_score"),
             "cost": ms.get("cost", 0.0),
             "latency": ms.get("latency", 0.0),
             "nl_score": ms.get("nl_score", ""),
             "generated_csv_head": ms.get("generated_csv_head", ""),
+            "code": ms.get("code", ""),
         })
         for crit in iter_record.get("critiques", []):
             attempts.append({
@@ -126,10 +143,12 @@ def flatten_attempts(case_data: dict) -> list:
                 "attempt_type": crit["type"],
                 "is_correct": crit.get("is_correct", False),
                 "score": crit.get("score", 0.0),
+                "value_score": crit.get("value_score"),
                 "cost": crit.get("cost", 0.0),
                 "latency": crit.get("latency", 0.0),
                 "nl_score": crit.get("nl_score", ""),
                 "generated_csv_head": crit.get("generated_csv_head", ""),
+                "code": crit.get("code", ""),
             })
     return attempts
 
@@ -148,12 +167,62 @@ def _make_logger(log_dir: str, case_id: str, judge_type: str) -> logging.Logger:
     return logger
 
 
+def _execute_code_and_read_df(code: str, case_id: str, benchmark: str,
+                               attempt_type: str = "ms",
+                               timeout: int = 60) -> pd.DataFrame:
+    """
+    Write generated code to a temp file, execute it from the project root
+    (so relative CSV paths resolve correctly), then read back the output CSV.
+    - ms attempts write to target_multisource.csv
+    - critique attempts (fd, metadata, …) write to target_multisource_critique_history.csv
+    Returns None on timeout or any execution error.
+    """
+    if not code:
+        return None
+
+    folder = (
+        "autopipeline-benchmarks/monteprep-pipelines"
+        if benchmark == "monteprep"
+        else "autopipeline-benchmarks/github-pipelines"
+    )
+    output_filename = (
+        "target_multisource.csv" if attempt_type == "ms"
+        else "target_multisource_critique_history.csv"
+    )
+    output_path = os.path.join(folder, f"length{case_id}", output_filename)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        f.write(code)
+        tmp_path = f.name
+
+    try:
+        result = subprocess.run(
+            ["python3", tmp_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        if result.returncode != 0:
+            return None
+        if not os.path.exists(output_path):
+            return None
+        return pd.read_csv(output_path, low_memory=False)
+    except subprocess.TimeoutExpired:
+        return None
+    except Exception:
+        return None
+    finally:
+        os.unlink(tmp_path)
+
+
 # ---------------------------------------------------------------------------
 # Per-judge simulation
 # ---------------------------------------------------------------------------
 
 def simulate_judge(attempts: list, judge_type: str, df_gt: pd.DataFrame,
-                   llm_client: LLMClient, logger: logging.Logger) -> dict:
+                   llm_client: LLMClient, logger: logging.Logger,
+                   case_id: str = "", benchmark: str = "github",
+                   score_source: str = "score", cost_threshold: float = None) -> dict:
     """
     Iterate through attempts in order, asking the judge after each one.
     Returns a dict with the result fields.
@@ -180,6 +249,17 @@ def simulate_judge(attempts: list, judge_type: str, df_gt: pd.DataFrame,
                 f"threshold={1.0 - EPS:.4f}, verdict={verdict}"
             )
 
+        elif judge_type == "det_score_value":
+            value_score = attempt.get("value_score")
+            if value_score is None:
+                logger.warning(f"[det_score_value] {label}: value_score not available, skipping")
+                continue
+            verdict = value_score >= (1.0 - EPS)
+            logger.info(
+                f"[det_score_value] {label}: value_score={value_score:.4f}, "
+                f"threshold={1.0 - EPS:.4f}, verdict={verdict}"
+            )
+
         else:  # LLM-based judges need the generated DataFrame
             csv_head = attempt.get("generated_csv_head", "")
             if not csv_head:
@@ -200,14 +280,23 @@ def simulate_judge(attempts: list, judge_type: str, df_gt: pd.DataFrame,
             if judge_type == "llm":
                 verdict, reason = llm_judge(df_gen, df_gt, llm_client, logger=logger)
             elif judge_type == "llm_score":
+                precomputed = (
+                    attempt.get("value_score") if score_source == "det_score"
+                    else attempt.get("score")
+                )
                 verdict, reason = llm_score_judge(
                     df_gen, df_gt, llm_client, logger=logger,
-                    precomputed_score=attempt.get("score"),
+                    precomputed_score=precomputed,
                 )
             elif judge_type == "llm_score_hybrid":
+                if score_source == "det_score":
+                    vs = attempt.get("value_score")
+                    precomputed_nl = str(round(vs, 4)) if vs is not None else None
+                else:
+                    precomputed_nl = attempt.get("nl_score") or None
                 verdict, reason = llm_nl_score_judge(
                     df_gen, df_gt, llm_client, logger=logger,
-                    precomputed_nl_score=attempt.get("nl_score") or None,
+                    precomputed_nl_score=precomputed_nl,
                 )
             else:
                 verdict, reason = False, ""
@@ -221,6 +310,15 @@ def simulate_judge(attempts: list, judge_type: str, df_gt: pd.DataFrame,
                 f"[{judge_type}] {label}: verdict={verdict}, reason={reason!r}, "
                 f"call_cost={call_cost:.6f}, call_latency={call_latency:.2f}s"
             )
+
+        if cost_threshold is not None and (generation_cost + judge_cost) >= cost_threshold:
+            logger.info(
+                f"[{judge_type}] {label}: cost threshold {cost_threshold:.6f} reached "
+                f"(total={generation_cost + judge_cost:.6f}), stopping"
+            )
+            stopped_at = label
+            stopped_correct = attempt["is_correct"]
+            break
 
         if verdict:
             stopped_at = label
@@ -242,6 +340,50 @@ def simulate_judge(attempts: list, judge_type: str, df_gt: pd.DataFrame,
         "total_cost": generation_cost + judge_cost,
         "total_latency": generation_latency + judge_latency,
     }
+
+
+# ---------------------------------------------------------------------------
+# Value-score pre-pass
+# ---------------------------------------------------------------------------
+
+def _patch_missing_value_scores(case_data: dict, df_gt: pd.DataFrame,
+                                  case_id: str, benchmark: str, json_path: str) -> None:
+    """
+    For each attempt that lacks a 'value_score' key, execute its code, compute
+    value_based_relative_csv_score_timed, and write 'value_score' back into
+    case_data in place. Saves the JSON file to disk if any entries were added.
+    """
+    patched = 0
+    for iter_record in case_data.get("iterations", []):
+        entries = [("ms", iter_record["ms"])] + [
+            (c.get("type", f"critique_{i}"), c)
+            for i, c in enumerate(iter_record.get("critiques", []))
+        ]
+        for attempt_type, entry in entries:
+            if "value_score" in entry:
+                continue
+            code = entry.get("code", "")
+            if not code:
+                entry["value_score"] = None
+                patched += 1
+                continue
+            df_gen = _execute_code_and_read_df(code, case_id, benchmark,
+                                               attempt_type=attempt_type)
+            if df_gen is None or len(df_gen) == 0:
+                entry["value_score"] = None
+                patched += 1
+                continue
+            try:
+                _, _, _, _, true_combined_score, _ = value_based_relative_csv_score_timed(df_gen, df_gt)
+                entry["value_score"] = true_combined_score
+            except TimeoutError:
+                entry["value_score"] = None
+            patched += 1
+
+    if patched:
+        with open(json_path, "w") as f:
+            json.dump(case_data, f, indent=2)
+        print(f"  Saved {patched} value_score entries to {os.path.basename(json_path)}")
 
 
 # ---------------------------------------------------------------------------
@@ -281,19 +423,24 @@ def main():
         case_id = case_data.get("case", basename)
         print(f"Processing case: {case_id}")
 
-        attempts = flatten_attempts(case_data)
-        if not attempts:
-            print(f"  No attempts found, skipping.")
-            continue
-
-        # Load ground truth once per case (reused across LLM judges)
+        # Load ground truth once per case (reused across judges and pre-pass)
         df_gt = None
         try:
             df_gt = _load_gt(case_id, args.benchmark)
         except Exception as e:
             print(f"  Warning: could not load ground truth for {case_id}: {e}")
 
-        for judge_type in JUDGE_TYPES:
+        active_judges = args.judges if args.judges else JUDGE_TYPES
+
+        # Pre-pass: compute and cache value_score for any attempt that lacks it
+        if "det_score_value" in active_judges and df_gt is not None:
+            _patch_missing_value_scores(case_data, df_gt, case_id, args.benchmark, json_path)
+
+        attempts = flatten_attempts(case_data)
+        if not attempts:
+            print(f"  No attempts found, skipping.")
+            continue
+        for judge_type in active_judges:
             logger = _make_logger(log_dir, case_id, judge_type)
             logger.info(f"=== Evaluating case {case_id} with judge {judge_type} ===")
 
@@ -302,7 +449,11 @@ def main():
             llm_client = LLMClient(model=args.model, tracker=tracker, logger=logger)
 
             try:
-                result = simulate_judge(attempts, judge_type, df_gt, llm_client, logger)
+                capped = [a for a in attempts if a["iteration"] <= args.max_iterations] if args.max_iterations else attempts
+                result = simulate_judge(capped, judge_type, df_gt, llm_client, logger,
+                                        case_id=case_id, benchmark=args.benchmark,
+                                        score_source=args.score_source,
+                                        cost_threshold=args.cost_threshold)
             except Exception as e:
                 logger.error(f"Judge simulation failed: {e}", exc_info=True)
                 result = {

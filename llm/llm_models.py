@@ -46,6 +46,11 @@ def _load_hf_tokenizer(logger, repo_id: str):
     return tok
 
 
+class CostBudgetExceeded(Exception):
+    """Raised before an LLM request when the accumulated cost has already reached the budget."""
+    pass
+
+
 class TokenUsageTracker:
     """A class to track and calculate the token usage and cost for different OpenAI models."""
 
@@ -58,6 +63,13 @@ class TokenUsageTracker:
             self.usage[model] = {"completion_tokens": 0, "prompt_tokens": 0}
         self.usage[model]["completion_tokens"] += completion
         self.usage[model]["prompt_tokens"] += prompt
+
+    def total_tokens(self):
+        """Returns the total number of prompt and completion tokens tracked."""
+        total = 0
+        for usage in self.usage.values():
+            total += usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
+        return total
 
     def _calculate_cost(self, model):
         """
@@ -98,9 +110,10 @@ class TokenUsageTracker:
 class LLMClient:
     """A client class for interacting with different GPT models and tracking usage."""
 
-    def __init__(self, model, tracker, logger):
+    def __init__(self, model, tracker, logger, cost_budget: float = 0.0):
         """Initializes the client with a specified model and a usage tracker."""
         self.model = model
+        self.cost_budget = cost_budget
         self.tracker = tracker
         self.logger = logger
         self.logger.info("LLMClient init: model=%r", model)
@@ -184,6 +197,24 @@ class LLMClient:
         self.logger.error("Giving up on request")
 
     def _request_completion(self, messages, temperature, max_tokens, stop):
+        # Pre-call budget check: do not send the request if already over budget.
+        if self.cost_budget > 0.0:
+            if self._uses_ollama:
+                token_budget = int(self.cost_budget / 0.00052 * 1000)
+                current_tokens = self.tracker.total_tokens()
+                if current_tokens >= token_budget:
+                    raise CostBudgetExceeded(
+                        f"Token budget {token_budget} reached "
+                        f"(accumulated={current_tokens}) — request blocked."
+                    )
+            else:
+                current_cost = self.tracker.cost_summary()["total_cost"]
+                if current_cost >= self.cost_budget:
+                    raise CostBudgetExceeded(
+                        f"Cost budget ${self.cost_budget:.4f} reached "
+                        f"(accumulated=${current_cost:.6f}) — request blocked."
+                    )
+
         combined = "\n".join(
             str(m.get("content", "")) for m in messages if isinstance(m, dict)
         )

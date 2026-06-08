@@ -14,10 +14,10 @@
 import json
 import logging
 import pandas as pd
-from eval_score.score import relative_csv_score
+from eval_score_value_based import value_based_relative_csv_score_timed
 from llm.llm_models import LLMClient, TokenUsageTracker
 
-EPS = 1e-2  # true_combined_score must exceed 1 - EPS to be considered correct
+EPS = 0.002  # true_combined_score must equal exactly 1.0 to be considered correct
 
 
 def judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, judge_type: str, llm_client: LLMClient, logger: logging.Logger = None) -> tuple:
@@ -37,9 +37,9 @@ def judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, judge_type:
 
 
 def _score_tuple(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame):
-    """Run relative_csv_score, return the full 6-tuple. Callers pick what they need."""
+    """Run value_based_relative_csv_score_timed, return the full 6-tuple. Callers pick what they need."""
     fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
-        relative_csv_score(df_generated, df_ground_truth)
+        value_based_relative_csv_score_timed(df_generated, df_ground_truth)
     return fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict
 
 
@@ -76,7 +76,8 @@ def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_cli
     {_df_to_prompt_str(df_generated)}
 
     Assess whether the generated table is a correct transformation of the ground truth.
-    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Consider: schema match (column names, data types), column count, key structure (candidate keys), functional dependency structure, value range plausibility, and overall structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected. Focus on structural and schema-level properties, not exact value matches.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
@@ -101,7 +102,7 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
         _, _, _, _, true_combined_score, _ = _score_tuple(df_generated, df_ground_truth)
 
     score_summary = {
-            "Match score based on functional dependencies and column mapping:": round(true_combined_score, 4),
+            "Match score (Functional Dependency F1 + Jensen-Shannon Divergence similarity + Value Range Overlap) / 3:": round(true_combined_score, 4),
     }
 
     prompt = f"""You are evaluating whether a generated data table matches a ground truth table for a schema transformation task.
@@ -114,6 +115,10 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
 
     Similarity Metrics:
     {json.dumps(score_summary, indent=2)}
+
+    Assess whether the generated table is a correct transformation of the ground truth.
+    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected.
 
     Use the tables AND the score together to assess correctness.
     Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
@@ -156,6 +161,10 @@ def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame
     Automated Scoring Analysis:
     {nl_interpretation}
 
+    Assess whether the generated table is a correct transformation of the ground truth.
+    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected.
+
     Use the tables AND the scoring analysis together to make a final correctness judgement.
     Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
 
@@ -190,21 +199,52 @@ def build_nl_score_interpretation(
     else:
         lines.append("Overall: the generated table has significant structural differences from ground truth.")
 
+    col_scores_info = debug_dict.get("column_scores", {})
     dist_info = debug_dict.get("distribution", {})
-    js_sim_val    = dist_info.get("avg_js_similarity")
-    range_ovlp    = dist_info.get("avg_range_overlap")
-    if js_sim_val is not None and range_ovlp is not None:
-        formula = (
-            f"(fd_f1 + range_overlap + js_similarity) / 3 = "
-            f"({fd_f1:.3f} + {range_ovlp:.3f} + {js_sim_val:.3f}) / 3"
-        )
-    elif range_ovlp is not None:
-        formula = f"(fd_f1 + range_overlap) / 2 = ({fd_f1:.3f} + {range_ovlp:.3f}) / 2"
-    elif js_sim_val is not None:
-        formula = f"(fd_f1 + js_similarity) / 2 = ({fd_f1:.3f} + {js_sim_val:.3f}) / 2"
+
+    if col_scores_info:
+        # New value-based scorer: true_combined_score = (fd_f1 + avg_column_score) / 2
+        # avg_column_score = mean of per-column scores:
+        #   numeric   → 0.5 * (js_similarity + range_overlap)
+        #   categorical → MinHash Jaccard
+        avg_col_score = col_scores_info.get("avg_column_score")
+        avg_js = col_scores_info.get("avg_js_similarity")
+        avg_ro = col_scores_info.get("avg_range_overlap")
+        if avg_col_score is not None:
+            formula = (
+                f"(fd_f1 + avg_column_score) / 2 = "
+                f"({fd_f1:.3f} + {avg_col_score:.3f}) / 2"
+            )
+            col_score_note = (
+                "avg_column_score = mean of per-column scores "
+                "(numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard)."
+            )
+            if avg_js is not None and avg_ro is not None:
+                col_score_note += (
+                    f" Numeric averages: JS similarity={avg_js:.3f}, range overlap={avg_ro:.3f}."
+                )
+        else:
+            formula = f"fd_f1 = {fd_f1:.3f}"
+            col_score_note = None
+        lines.append(f"Combined score = {formula} = {true_combined_score:.3f} (1.0 is perfect).")
+        if col_score_note:
+            lines.append(col_score_note)
     else:
-        formula = f"fd_f1 = {fd_f1:.3f}"
-    lines.append(f"Combined score = {formula} = {true_combined_score:.3f} (1.0 is perfect).")
+        # Legacy scorer path
+        js_sim_val = dist_info.get("avg_js_similarity")
+        range_ovlp = dist_info.get("avg_range_overlap")
+        if js_sim_val is not None and range_ovlp is not None:
+            formula = (
+                f"(fd_f1 + range_overlap + js_similarity) / 3 = "
+                f"({fd_f1:.3f} + {range_ovlp:.3f} + {js_sim_val:.3f}) / 3"
+            )
+        elif range_ovlp is not None:
+            formula = f"(fd_f1 + range_overlap) / 2 = ({fd_f1:.3f} + {range_ovlp:.3f}) / 2"
+        elif js_sim_val is not None:
+            formula = f"(fd_f1 + js_similarity) / 2 = ({fd_f1:.3f} + {js_sim_val:.3f}) / 2"
+        else:
+            formula = f"fd_f1 = {fd_f1:.3f}"
+        lines.append(f"Combined score = {formula} = {true_combined_score:.3f} (1.0 is perfect).")
 
     # --- Key structure comparison ---
     fd_info = debug_dict.get("fd", {})
@@ -291,45 +331,72 @@ def build_nl_score_interpretation(
             f"recall={fd_info.get('recall', float('nan')):.3f})."
         )
         if fd_fp:
-            fp_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fp[:5]]
+            fp_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fp[:5] if fd is not None]
             overflow = f" (and {len(fd_fp) - 5} more)" if len(fd_fp) > 5 else ""
             lines.append(f"Spurious FDs in generated (not in ground truth): {'; '.join(fp_strs)}{overflow}.")
         if fd_fn:
-            fn_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fn[:5]]
+            fn_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fn[:5] if fd is not None]
             overflow = f" (and {len(fd_fn) - 5} more)" if len(fd_fn) > 5 else ""
             lines.append(f"Missing FDs from ground truth: {'; '.join(fn_strs)}{overflow}.")
 
-    # --- Distribution analysis ---
+    # --- Distribution / column-score analysis ---
     _DIST_THRESHOLD = 0.95
-    per_col = debug_dict.get("distribution", {}).get("per_column", {})
+    # New value-based scorer stores per-column data under "column_scores"
+    per_col = (
+        debug_dict.get("column_scores", {}).get("per_column", {})
+        or debug_dict.get("distribution", {}).get("per_column", {})
+    )
     if not per_col:
-        lines.append("No numerical columns found — distribution comparison not applicable.")
+        lines.append("No column data found — distribution comparison not applicable.")
     else:
-        problem_cols = {
-            gt_col: info for gt_col, info in per_col.items()
-            if info.get("range_overlap", 1.0) < _DIST_THRESHOLD
-            or info.get("js_similarity", 1.0) < _DIST_THRESHOLD
-        }
-        if not problem_cols:
-            lines.append("All numerical columns show complete value range overlap and matching distributions.")
+        # Separate numeric problem cols from categorical low-score cols
+        numeric_problem_cols = {}
+        categorical_low_cols = {}
+        for gt_col, info in per_col.items():
+            col_type = info.get("type", "numeric")
+            if col_type == "numeric":
+                if (info.get("range_overlap", 1.0) < _DIST_THRESHOLD
+                        or info.get("js_similarity", 1.0) < _DIST_THRESHOLD) \
+                        and info.get("gen_stats") is not None:
+                    numeric_problem_cols[gt_col] = info
+            else:
+                if info.get("column_score", 1.0) < _DIST_THRESHOLD:
+                    categorical_low_cols[gt_col] = info
+
+        if not numeric_problem_cols and not categorical_low_cols:
+            lines.append("All columns show good value overlap and matching distributions.")
         else:
-            lines.append("Distribution Analysis (numerical columns with issues):")
-            for gt_col, info in problem_cols.items():
-                gen_col       = info["gen_col"]
-                range_overlap = info.get("range_overlap", float("nan"))
-                js_sim_val    = info.get("js_similarity", float("nan"))
-                gs            = info["gen_stats"]
-                ts            = info["gt_stats"]
-                col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
-                lines.append(
-                    f"  Column '{col_label}': range overlap={range_overlap:.3f}, JS similarity={js_sim_val:.3f}"
-                )
-                lines.append(
-                    f"    Generated    — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}"
-                )
-                lines.append(
-                    f"    Ground Truth — min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}"
-                )
+            if numeric_problem_cols:
+                lines.append("Distribution Analysis (numerical columns with issues):")
+                for gt_col, info in numeric_problem_cols.items():
+                    gen_col       = info["gen_col"]
+                    range_overlap = info.get("range_overlap", float("nan"))
+                    js_sim_val    = info.get("js_similarity", float("nan"))
+                    gs            = info.get("gen_stats")
+                    ts            = info.get("gt_stats")
+                    col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
+                    lines.append(
+                        f"  Column '{col_label}': range overlap={range_overlap:.3f}, JS similarity={js_sim_val:.3f}"
+                    )
+                    if gs is not None:
+                        lines.append(
+                            f"    Generated    — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}"
+                        )
+                    else:
+                        lines.append("    Generated    — stats not available")
+                    if ts is not None:
+                        lines.append(
+                            f"    Ground Truth — min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}"
+                        )
+                    else:
+                        lines.append("    Ground Truth — stats not available")
+            if categorical_low_cols:
+                lines.append("Categorical Column Match Analysis (low Jaccard similarity):")
+                for gt_col, info in categorical_low_cols.items():
+                    gen_col = info["gen_col"]
+                    jaccard = info.get("column_score", float("nan"))
+                    col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
+                    lines.append(f"  Column '{col_label}': Jaccard={jaccard:.3f}")
 
     return "\n".join(lines)
 

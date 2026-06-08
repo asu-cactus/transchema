@@ -1,0 +1,170 @@
+{
+  "case": "1_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0027716,
+        "latency": 12.335523128509521,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (0.000 + 0.000 + 0.000) / 3 = 0.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type, capacity}.\nKeys present in ground truth but absent in generated: {fac_type}; {capacity}.\nSpurious keys in generated not present in ground truth: {fac_type, capacity}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['fac_type'] \u2192 capacity; ['capacity'] \u2192 fac_type.\nDistribution Analysis (numerical columns with issues):\n  Column 'capacity': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 5.0, max: 214.0, mean: 57.3031\n    Ground Truth \u2014 min: 7136.0, max: 11201.0, mean: 9168.5",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 320\nExamples:\nfac_type  capacity\n     RCF        88\n      NF        54\n      NF        47",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # Inspect relevant columns for target: 'fac_type' (string), 'capacity' (integer)\n    # According to source schema, these columns exist in source0:\n    # 'fac_type' (string), 'capacity' (float with possible NaNs)\n\n    # Clean and transform:\n    # 1. Drop rows where 'fac_type' or 'capacity' is missing (NaN)\n    df0_clean = df0[['fac_type', 'capacity']].dropna(subset=['fac_type', 'capacity']).copy()\n\n    # 2. Convert 'capacity' to integer safely (round or floor)\n    # Since capacity in source is float, convert by rounding to nearest int\n    df0_clean['capacity'] = df0_clean['capacity'].round().astype(int)\n\n    # The target schema is ['fac_type': string, 'capacity': integer]\n    # The target examples show fac_type values like 'RCF', 'NF' and capacity as integer\n\n    # Since only one source table is given, the target is just this cleaned data\n\n    # Save to CSV without the index column\n    df0_clean.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,96\nNF,159\nNF,128\nNF,98\nNF,91\nNF,127\nNF,84\nNF,83\nNF,99\nNF,83\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0029284000000000003,
+          "latency": 11.588479042053223,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+          "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+          "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_critique_history.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0015467999999999999,
+        "latency": 3.7343246936798096,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0017576,
+        "latency": 3.862795829772949,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019652000000000003,
+        "latency": 4.3630921840667725,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.002176,
+        "latency": 4.365227460861206,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024412,
+        "latency": 4.2771313190460205,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Step 4: Sort by 'fac_type' to match example order (optional)\n    result = result.sort_values(by='fac_type').reset_index(drop=True)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026644,
+        "latency": 4.630044937133789,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Step 4: Sort by 'fac_type' to match example order (optional)\n    result = result.sort_values(by='fac_type').reset_index(drop=True)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028860000000000005,
+        "latency": 4.198551177978516,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Step 4: Sort by 'fac_type' to match example order (optional)\n    result = result.sort_values(by='fac_type').reset_index(drop=True)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0031124000000000004,
+        "latency": 3.324056386947632,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path(s)\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Step 4: Sort by 'fac_type' to match example order (optional)\n    result = result.sort_values(by='fac_type').reset_index(drop=True)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033344000000000004,
+        "latency": 4.354229211807251,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path(s)\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Step 4: Sort by 'fac_type' to match example order (optional)\n    result = result.sort_values(by='fac_type').reset_index(drop=True)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035596000000000004,
+        "latency": 5.100445032119751,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path(s)\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n    # Target output path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\"\n\n    # Load source data with index_col=0 to ignore the first numerical index column\n    df0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema and examples:\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Target keys: ['fac_type']\n    # Target functional dependency: fac_type -> capacity\n    # Target examples show capacity is aggregated (sum) over fac_type.\n\n    # Step 1: Drop rows with missing 'fac_type' or 'capacity'\n    df0_clean = df0.dropna(subset=['fac_type', 'capacity'])\n\n    # Step 2: Group by 'fac_type' and sum 'capacity'\n    result = df0_clean.groupby('fac_type', as_index=False)['capacity'].sum()\n\n    # Step 3: Convert 'capacity' to integer type as in target\n    result['capacity'] = result['capacity'].astype(int)\n\n    # Step 4: Sort by 'fac_type' to match example order (optional)\n    result = result.sort_values(by='fac_type').reset_index(drop=True)\n\n    # Save to CSV without the index column\n    result.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -38,6 +38,8 @@ Key args fields
     args.few_shot           int     few-shot examples flag (default 0)
 """
 
+import json
+import json
 import os
 import sys
 import time
@@ -58,7 +60,7 @@ from auto_suggest_llm_util import get_source, get_filtered_functional_dependency
 from llm.llm_models import LLMClient, TokenUsageTracker
 from log_util.log_util import create_logger
 from test_scope import get_test_cases_ids
-from util.utils import get_test_info
+from util.utils import get_test_info, make_test_validation_script
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 
 from mcts_node import MCTSNode
@@ -109,7 +111,9 @@ class Config:
     static_hints: bool        # True (default) = inject static hints; False = suppress (--no_static_hints)
     fd_hints: str             # pre-formatted FD hint string (empty if fd_flag=0)
     mcts_critique_mode: str   # "none" | "simulate" | "best"
-    reward_mode: str          # "score" | "validation" | "partial"
+    reward_mode: str          # "score" | "det_score_value" | "validation" | "partial"
+    intermediate_materialization: bool  # True = materialize + score at each operator step
+    data_split: str = "test"           # "test" or "training" — which CSV prefix to load
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -146,6 +150,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     fd_flag = args.fd_flag
     max_iterations = getattr(args, "mcts_iterations", 10)
     early_stopping = getattr(args, "early_stopping", 5)
+    cost_budget = getattr(args, "cost_budget", 0.0)
     validation = getattr(args, "validation", "hard_match")
     reward_mode = getattr(args, "reward", "score")
     join_flag = getattr(args, "join_flag", 0)
@@ -153,7 +158,9 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
     aggregate_hints_truncate = getattr(args, "aggregate_hints_truncate", [])
     few_shot = getattr(args, "few_shot", 0)
+    llm_judge = getattr(args, "llm_judge", "none")
     benchmark = getattr(args, "benchmark", "github")
+    data_split = getattr(args, "data_split", "test")
     main_folder = (
         "autopipeline-benchmarks/monteprep-pipelines"
         if benchmark == "monteprep"
@@ -163,19 +170,9 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     # ── Case path and data file selection ──────────────────────────────────
     len_id = length
     target_id = id_
-    path_to_files = f"{main_folder}/length{length}_{id_}/"
-    file_count = sum(
-        1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
-        if file.startswith("test")
-    )
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
-    task_list = get_test_cases_ids(json_file_path, len_id, len_id, target_id, target_id)
+    # Create task list based on id range (file_count will be calculated per task)
+    task_list = [f"length{length}_{i}" for i in range(id_, id_ + 1)]
 
     # ── Initialise logging and tracking ────────────────────────────────────
     logger = create_logger("MCTS", log_dir_, len_id, target_id, target_id)
@@ -201,6 +198,18 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         cost_summary.append(token_tracker.cost_summary())
         len_idx_target_idx = task[6:]  # strip "length" prefix
 
+        # ── Calculate file_count for THIS task and select appropriate JSON ────
+        path_to_files = f"{main_folder}/{task}/"
+        file_count = sum(
+            1
+            for file in os.listdir(path_to_files)
+            if file.startswith(data_split) and os.path.isfile(os.path.join(path_to_files, file))
+        )
+        if benchmark == "monteprep":
+            json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
+        else:
+            json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+
         # ── Load case information ─────────────────────────────────────────
         (
             target_data_name,
@@ -211,14 +220,22 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             source_data_name_list,
             source_data_schema_list,
             source_samples_list,
-        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
+        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
 
-        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
+        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=cost_budget)
 
         target_file_location = (
             f"{main_folder}/length{len_idx_target_idx}/target_multisource_mcts.csv"
         )
         ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
+
+        # ── Intermediate materialization setup ────────────────────────────────
+        intermediate_materialization = getattr(args, "intermediate_materialization", False)
+        interm_space_dir = None
+        if intermediate_materialization:
+            from methods.multi_step import create_intermediate_space
+            interm_space_dir = create_intermediate_space(main_folder, len_id, target_id)
+        config_directory = interm_space_dir if intermediate_materialization else main_folder
 
         # ── Critique support: pre-compute source_information and fd_hints ────
         mcts_critique_mode = getattr(args, "mcts_critique_mode", "none")
@@ -228,6 +245,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         source_information = get_source(
             file_count, source_data_name_list, source_data_schema_list,
             main_folder, len_idx_target_idx, source_length, token_limit, _enc,
+            data_split=data_split,
         )
 
         fd_hints_str = ""
@@ -265,12 +283,14 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             token_tracker=token_tracker,
             model=model,
             token_limit=token_limit,
-            directory=main_folder,
+            directory=config_directory,
             source_information=source_information,
             static_hints=not getattr(args, "no_static_hints", False),
             fd_hints=fd_hints_str,
             mcts_critique_mode=mcts_critique_mode,
             reward_mode=reward_mode,
+            intermediate_materialization=intermediate_materialization,
+            data_split=data_split,
         )
 
         # ── Build initial MCTS state ──────────────────────────────────────
@@ -298,6 +318,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "iteration": 0,
             "max_iterations": max_iterations,
             "early_stopping": early_stopping,
+            "cost_budget": cost_budget,
+            "cost_budget_exhausted": False,
             "terminal_found": False,
             "validation_passed": False,
             # Selection phase (initialised to root)
@@ -320,7 +342,13 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "no_improvement_count": 0,
             # Critique
             "simulation_mode": getattr(args, "simulation_mode", "pipeline"),
+            "intermediate_materialization": intermediate_materialization,
+            "llm_judge": llm_judge,
+            "judge_verdict": False,
             "critique_attempted": False,
+            "pre_critique_score": 0.0,
+            "critique_selection_path": [],
+            "critique_score": 0.0,
             # Logging
             "log_messages": [],
         }
@@ -331,11 +359,28 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             f"case={len_idx_target_idx}"
         )
         mcts_graph = build_mcts_graph()
-        final_state: MCTSGraphState = mcts_graph.invoke(
+        _checkpoint_file = f"/tmp/mcts_checkpoint_{len_idx_target_idx}.json"
+        final_state: MCTSGraphState = initial_state
+        # Cost-budget mode can run far more iterations — raise the graph step limit accordingly
+        _recursion_limit = 10000 if cost_budget > 0.0 else 500
+        for _step_state in mcts_graph.stream(
             initial_state,
-            # Increase recursion limit for deep rollout loops
-            config={"recursion_limit": 500},
-        )
+            config={"recursion_limit": _recursion_limit},
+            stream_mode="values",
+        ):
+            final_state = _step_state
+            if _step_state.get("best_script"):
+                try:
+                    with open(_checkpoint_file, "w") as _cf:
+                        json.dump({
+                            "best_script": _step_state["best_script"],
+                            "best_score": _step_state.get("best_score", 0.0),
+                            "best_operation_history": str(
+                                _step_state.get("best_operation_history", [])
+                            ),
+                        }, _cf)
+                except Exception:
+                    pass
 
         # ── Extract results from final state ──────────────────────────────
         best_script = final_state["best_script"]
@@ -367,12 +412,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         logger.info(f"[MCTS] Tree viz     → {tree_path}")
 
         # ── Hard accuracy evaluation on best script ────────────────────────
-        # If MCTS already validated the best script during the search, trust that
-        # result and skip the re-validation entirely (avoids hanging on large outputs).
-        if final_state.get("validation_passed", False):
-            is_correct = True
-            logger.info("[MCTS] Skipping final re-validation: already validated during search.")
-        elif best_script:
+        if best_script:
             # Re-execute best script so target_file_location reflects the best result,
             # then validate. Only reached when MCTS never found a validated result.
             try:
@@ -400,6 +440,34 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                     f"[MCTS] Hard accuracy eval failed: {traceback.format_exc()}"
                 )
                 is_correct = False
+
+        # ── Two-phase validation: final is_correct on test data ───────────────
+        if data_split == "training" and best_script:
+            test_script = make_test_validation_script(best_script)
+            test_output = f"{main_folder}/length{len_idx_target_idx}/target_multisource_mcts_test_val.csv"
+            print("[two-phase mcts] executing test-data script for final is_correct...")
+            try:
+                from util.utils import execute_python as _exec_py
+                test_exec = _exec_py(test_script)
+            except Exception:
+                test_exec = f"Error: {traceback.format_exc()}"
+            if test_exec == "Success" and os.path.exists(test_output):
+                try:
+                    df_test = pd.read_csv(test_output, low_memory=False)
+                    df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
+                    df_gt_test = df_gt_test.drop(columns=df_gt_test.columns[0], axis=1)
+                    _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
+                    print(f"[two-phase mcts] is_correct: training={is_correct} → test={test_is_correct}")
+                    is_correct = test_is_correct
+                except Exception:
+                    print(f"[two-phase mcts] test validation failed:\n{traceback.format_exc()}")
+            else:
+                print(f"[two-phase mcts] test exec={test_exec}, output_exists={os.path.exists(test_output)}")
+
+        try:
+            os.remove(_checkpoint_file)
+        except OSError:
+            pass
 
         logger.info(f"[MCTS] Total queries: {q_count['total']}")
 
@@ -463,7 +531,18 @@ if __name__ == "__main__":
     parser.add_argument("--fd_flag", type=int, default=0)
     parser.add_argument("--mcts_iterations", type=int, default=5)
     parser.add_argument("--early_stopping", type=int, default=5,
-                        help="Stop if best_score does not improve for this many consecutive iterations (default: 5)")
+                        help="Stop if best_score does not improve for this many consecutive iterations (default: 5); "
+                             "set to 0 to disable plateau stopping in cost-budget mode")
+    parser.add_argument(
+        "--cost_budget",
+        type=float,
+        default=0.0,
+        help=(
+            "Max USD to spend per case (e.g. 0.05 = 5 cents). "
+            "When >0, switches to cost-budget mode: iteration cap is ignored and cost is the primary "
+            "stopping criterion. Set --early_stopping 0 to also disable the score-plateau check."
+        ),
+    )
     parser.add_argument("--join_flag", type=int, default=0)
     parser.add_argument("--aggregate_flag", type=int, default=0)
     parser.add_argument("--few_shot", type=int, default=0)
@@ -491,10 +570,11 @@ if __name__ == "__main__":
         "--reward",
         type=str,
         default="score",
-        choices=["score", "validation", "partial"],
+        choices=["score", "det_score_value", "validation", "partial"],
         help=(
             "MCTS reward signal used for backpropagation: "
             "'score' = continuous relative_csv_score (FD + column map + distribution), "
+            "'det_score_value' = value_based_relative_csv_score (Jaccard-aligned columns + value-based distribution), "
             "'validation' = binary 1.0 if hard-match validation passes else 0.0, "
             "'partial' = fuzzy column-match ratio (matched target cols / total target cols)"
         ),
@@ -512,11 +592,42 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
+        "--intermediate_materialization",
+        action="store_true",
+        default=False,
+        help=(
+            "Materialize and score the intermediate table after each operator step "
+            "(operator simulation mode only). Mirrors --intermediate_materialization "
+            "from critique_data.py."
+        ),
+    )
+    parser.add_argument(
+        "--llm_judge",
+        type=str,
+        default="none",
+        choices=["none", "det_score", "llm", "llm_score", "llm_score_hybrid"],
+        help=(
+            "LLM judge used as stopping criterion: "
+            "'none'=disabled (score/validation-based stopping), "
+            "'det_score'=deterministic score threshold, "
+            "'llm'=LLM table comparison, "
+            "'llm_score'=LLM + numeric score, "
+            "'llm_score_hybrid'=LLM + NL score interpretation."
+        ),
+    )
+    parser.add_argument(
         "--benchmark",
         type=str,
         default="github",
         choices=["github", "monteprep"],
         help="Benchmark dataset: 'github' or 'monteprep'.",
+    )
+    parser.add_argument(
+        "--data_split",
+        type=str,
+        default="test",
+        choices=["test", "training"],
+        help="Which CSV split to use as source examples: 'test' (default) or 'training'.",
     )
     parser.add_argument(
         "--result_dir",
@@ -600,17 +711,90 @@ if __name__ == "__main__":
             _proc.terminate()
             _proc.join()
             results[case_id] = None
-            _row = {
-                "case_id": case_label,
-                "is_correct": False,
-                "cost": "N/A",
-                "latency_seconds": args.case_timeout,
-                "best_score": "N/A",
-                "operation_history": "",
-                "timestamp": _ts,
-                "status": "timeout",
-                "error": f"Timed out after {args.case_timeout}s",
-            }
+        if _proc.is_alive():
+            print(f"[MCTS] Case {case_id} TIMED OUT after {args.case_timeout}s — killing")
+            _proc.terminate()
+            _proc.join()
+            results[case_id] = None
+
+            # Attempt to recover the best script written during the run
+            _checkpoint_file = f"/tmp/mcts_checkpoint_{length}_{case_id}.json"
+            _recovered = False
+            if os.path.exists(_checkpoint_file):
+                try:
+                    with open(_checkpoint_file) as _cf:
+                        _ckpt = json.load(_cf)
+                    _best_script = _ckpt.get("best_script", "")
+                    _best_score = _ckpt.get("best_score", 0.0)
+                    _best_op_hist = _ckpt.get("best_operation_history", "")
+                    if _best_script:
+                        _mf = (
+                            "autopipeline-benchmarks/monteprep-pipelines"
+                            if args.benchmark == "monteprep"
+                            else "autopipeline-benchmarks/github-pipelines"
+                        )
+                        _target_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts.csv"
+                        _gt_file = f"{_mf}/length{length}_{case_id}/target.csv"
+                        from util.utils import execute_python
+                        _exec_result = execute_python(_best_script)
+                        _validate_fn = (
+                            compare_tables_matching
+                            if args.validation == "autopipeline"
+                            else compare_lists_matching
+                        )
+                        _data_split = getattr(args, "data_split", "test")
+                        if _exec_result == "Success":
+                            _df_out = pd.read_csv(_target_file, low_memory=False)
+                            _df_gt = pd.read_csv(_gt_file, low_memory=False)
+                            _df_gt = _df_gt.drop(columns=_df_gt.columns[0], axis=1)
+                            _, _is_correct, _, _ = _validate_fn(_df_out, _df_gt)
+                            # Two-phase: override is_correct with test-data validation
+                            if _data_split == "training":
+                                _test_script = make_test_validation_script(_best_script)
+                                _test_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts_test_val.csv"
+                                _test_exec = execute_python(_test_script)
+                                if _test_exec == "Success" and os.path.exists(_test_file):
+                                    try:
+                                        _df_test = pd.read_csv(_test_file, low_memory=False)
+                                        _df_gt2 = pd.read_csv(_gt_file, low_memory=False)
+                                        _df_gt2 = _df_gt2.drop(columns=_df_gt2.columns[0], axis=1)
+                                        _, _test_is_correct, _, _ = _validate_fn(_df_test, _df_gt2)
+                                        print(f"[two-phase mcts timeout] is_correct: training={_is_correct} → test={_test_is_correct}")
+                                        _is_correct = _test_is_correct
+                                    except Exception:
+                                        print(f"[two-phase mcts timeout] test validation failed")
+                            _recovered = True
+                            print(
+                                f"[MCTS] Case {case_id} timeout-recovered: "
+                                f"is_correct={_is_correct}, best_score={_best_score:.4f}"
+                            )
+                            _row = {
+                                "case_id": case_label,
+                                "is_correct": _is_correct,
+                                "cost": "N/A",
+                                "latency_seconds": args.case_timeout,
+                                "best_score": round(_best_score, 4),
+                                "operation_history": _best_op_hist,
+                                "timestamp": _ts,
+                                "status": "timeout_recovered",
+                                "error": f"Timed out after {args.case_timeout}s; best script validated",
+                            }
+                    os.remove(_checkpoint_file)
+                except Exception as _e:
+                    print(f"[MCTS] Case {case_id} timeout recovery failed: {_e}")
+
+            if not _recovered:
+                _row = {
+                    "case_id": case_label,
+                    "is_correct": False,
+                    "cost": "N/A",
+                    "latency_seconds": args.case_timeout,
+                    "best_score": "N/A",
+                    "operation_history": "",
+                    "timestamp": _ts,
+                    "status": "timeout",
+                    "error": f"Timed out after {args.case_timeout}s",
+                }
         elif not _result_queue.empty():
             _status, _payload = _result_queue.get()
             if _status == "ok":
