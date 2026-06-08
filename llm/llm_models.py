@@ -28,6 +28,24 @@ def _ollama_openai_client():
     )
 
 
+def _console(msg: str) -> None:
+    """Stdout progress (MCTS logger is file-only; users watch the terminal)."""
+    print(msg, flush=True)
+
+
+def _load_hf_tokenizer(logger, repo_id: str):
+    """Load tokenizer with visible progress; first run may download from the Hub."""
+    _console(
+        f"[LLMClient] Loading Hugging Face tokenizer {repo_id!r} … "
+        "(first run downloads from the Hub; set HF_TOKEN if you see rate limits)"
+    )
+    logger.info("Loading Hugging Face tokenizer: %s", repo_id)
+    tok = AutoTokenizer.from_pretrained(repo_id)
+    _console(f"[LLMClient] Tokenizer ready: {repo_id!r}")
+    logger.info("Tokenizer ready: %s", repo_id)
+    return tok
+
+
 class TokenUsageTracker:
     """A class to track and calculate the token usage and cost for different OpenAI models."""
 
@@ -85,36 +103,44 @@ class LLMClient:
         self.model = model
         self.tracker = tracker
         self.logger = logger
-        
+        self.logger.info("LLMClient init: model=%r", model)
+
         if "qwen2.5" in model.lower():
+            _console("[LLMClient] Ollama OpenAI-compatible client (localhost:11434)")
             self.client = _ollama_openai_client()
             if "32b" in model.lower():
-                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-32B-Instruct")
+                self.encoding = _load_hf_tokenizer(logger, "Qwen/Qwen2.5-32B-Instruct")
             else:
-                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+                self.encoding = _load_hf_tokenizer(logger, "Qwen/Qwen2.5-7B-Instruct")
         elif "qwen3" in model.lower():
+            _console("[LLMClient] Ollama OpenAI-compatible client (localhost:11434)")
             self.client = _ollama_openai_client()
             ml = model.lower()
             if "32b" in ml or "30b" in ml:
-                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+                self.encoding = _load_hf_tokenizer(logger, "Qwen/Qwen3-32B")
             else:
-                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+                self.encoding = _load_hf_tokenizer(logger, "Qwen/Qwen3-8B")
         elif "deepseek-r1" in model.lower():
+            _console("[LLMClient] Ollama OpenAI-compatible client (localhost:11434)")
             self.client = _ollama_openai_client()
-            # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
-            self.encoding = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
+            self.encoding = _load_hf_tokenizer(logger, "deepseek-ai/DeepSeek-V3")
         elif "mixtral" in model.lower():
+            _console("[LLMClient] Ollama OpenAI-compatible client (localhost:11434)")
             self.client = _ollama_openai_client()
-            # Mixtral uses the Mistral tokenizer
-            self.encoding = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+            self.encoding = _load_hf_tokenizer(
+                logger, "mistralai/Mixtral-8x7B-Instruct-v0.1"
+            )
         else:
             self.client = openai.OpenAI(api_key=openai.api_key)
             if model == "gpt-4.1-mini":
                 # According to https://github.com/openai/tiktoken/issues/395
+                _console("[LLMClient] tiktoken encoding o200k_base")
                 self.encoding = tiktoken.get_encoding("o200k_base")
             elif model == "o4-mini" or model == "o3":
+                _console("[LLMClient] tiktoken encoding cl100k_base")
                 self.encoding = tiktoken.get_encoding("cl100k_base")
             else:
+                _console(f"[LLMClient] tiktoken encoding_for_model({model!r})")
                 self.encoding = tiktoken.encoding_for_model(model)
 
         _base = str(getattr(self.client, "base_url", "") or "")
@@ -168,6 +194,12 @@ class LLMClient:
             est_tokens = -1
 
         if self._uses_ollama:
+            msg = (
+                f"[LLMClient] Ollama request → model={self.model!r} "
+                f"prompt_chars={prompt_chars} est_tokens={est_tokens} "
+                f"max_tokens={max_tokens} (waiting on server…)"
+            )
+            _console(msg)
             self.logger.info(
                 "Ollama: sending chat.completions to %s model=%r "
                 "prompt_chars=%s est_tokens=%s max_tokens=%s temp=%s (waiting on server…)",
@@ -221,6 +253,10 @@ class LLMClient:
             pt = getattr(response, "usage", None)
             pt_in = getattr(pt, "prompt_tokens", None) if pt else None
             pt_out = getattr(pt, "completion_tokens", None) if pt else None
+            _console(
+                f"[LLMClient] Ollama reply ← model={self.model!r} response_chars={len(text)} "
+                f"usage in/out={pt_in}/{pt_out}"
+            )
             self.logger.info(
                 "Ollama: reply received model=%r response_chars=%s "
                 "usage_prompt_tokens=%s usage_completion_tokens=%s",
