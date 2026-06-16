@@ -69,6 +69,7 @@ from mcts_node import MCTSNode
 from state import MCTSGraphState
 from graph import build_mcts_graph
 from viz import write_action_trace, write_tree_viz
+from rag_pipeline.local_rag_db import build_upper_bound_db
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -302,6 +303,31 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             data_split=data_split,
         )
 
+        # ── Auto-build upper-bound RAG DB from ground-truth CSV ──────────
+        _rag_mode = getattr(args, "rag", "")
+        _local_rag_db = getattr(args, "local_rag_db", "")
+        if _rag_mode == "upper_bound" and not _local_rag_db:
+            _gt_csv = getattr(args, "gt_csv", "ground_truth_pipelines.csv")
+            _auto_db_path = f"/tmp/rag_upper_bound_{len_idx_target_idx}.db"
+            _case_folder = os.path.join(main_folder, f"length{len_idx_target_idx}")
+            _ok = build_upper_bound_db(
+                case_id=len_idx_target_idx,
+                case_folder=_case_folder,
+                gt_csv_path=_gt_csv,
+                db_path=_auto_db_path,
+            )
+            if _ok:
+                logger.info(
+                    f"[RAG] upper_bound DB built at {_auto_db_path} "
+                    f"for case {len_idx_target_idx}"
+                )
+                _local_rag_db = _auto_db_path
+            else:
+                logger.warning(
+                    f"[RAG] upper_bound: case {len_idx_target_idx} not found in "
+                    f"ground_truth_pipelines.csv — RAG disabled for this case."
+                )
+
         # ── Build initial MCTS state ──────────────────────────────────────
         root = MCTSNode(operation_history=[], parent=None, operator_type=None)
 
@@ -358,6 +384,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "pre_critique_score": 0.0,
             "critique_selection_path": [],
             "critique_score": 0.0,
+            # RAG support — only active when --rag upper_bound is explicitly requested
+            "local_rag_db_path": _local_rag_db if _rag_mode == "upper_bound" else "",
             # Logging
             "log_messages": [],
         }
@@ -653,6 +681,35 @@ if __name__ == "__main__":
         default=None,
         help="Explicit list of case IDs to run, e.g. --cases 1_41 4_18 9_70. "
              "Overrides --length / --id_start / --id_end.",
+    )
+    parser.add_argument(
+        "--local_rag_db",
+        type=str,
+        default="",
+        help=(
+            "Path to a pre-built per-case SQLite RAG database "
+            "(created by rag_pipeline/local_rag_db.py).  "
+            "Required when --rag upper_bound is set."
+        ),
+    )
+    parser.add_argument(
+        "--gt_csv",
+        type=str,
+        default="ground_truth_pipelines.csv",
+        help="Path to ground_truth_pipelines.csv used to build the upper-bound RAG DB.",
+    )
+    parser.add_argument(
+        "--rag",
+        type=str,
+        default="",
+        choices=["upper_bound", "realistic"],
+        help=(
+            "Enable RAG-augmented prompts.  "
+            "'upper_bound' injects hints from a pre-built local SQLite DB "
+            "(supply the path via --local_rag_db).  "
+            "'realistic' will use global retrieval (not yet implemented).  "
+            "Omit to disable RAG entirely."
+        ),
     )
     args = parser.parse_args()
     args.join_hints_truncate = []

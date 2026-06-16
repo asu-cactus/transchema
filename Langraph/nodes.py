@@ -46,6 +46,7 @@ if _EVAL_SCORE not in sys.path:
     sys.path.insert(0, _EVAL_SCORE)
 
 from judges import judge as llm_judge_fn, build_nl_score_interpretation
+from rag_pipeline.local_rag_db import get_rag_hints
 
 from auto_suggest_llm_util import (
     get_mcts_candidates,
@@ -266,6 +267,19 @@ def _simulate_get_python(
     """
     config = state["config"]
     save_path = csv_save_path if csv_save_path is not None else target_file_location
+
+    # Strip NO_MORE_OPERATION so the prefix length = structural ops only;
+    # otherwise depth == len(abstract) and the "has next step" guard always fails.
+    _rag_op_history = [op for op in operation_history if op != "NO_MORE_OPERATION"]
+    rag_hints = get_rag_hints(
+        state.get("local_rag_db_path", ""),
+        _rag_op_history,
+    )
+    if rag_hints:
+        config.logger.info(
+            f"[simulate/python] RAG hints retrieved for history depth={len(_rag_op_history)}"
+        )
+
     error_str = ""
     script = ""
     response = ""
@@ -300,6 +314,7 @@ def _simulate_get_python(
                 intermediate_scores=intermediate_scores or {},
                 is_final=is_final,
                 data_split=getattr(config, "data_split", "test"),
+                rag_hints=rag_hints,
             )
         except Exception:
             config.logger.warning(
@@ -384,6 +399,15 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
 
         while step < _MAX_SIMULATE_STEPS:
             # ── Ask: what is the next operator? ──────────────────────────
+            rag_hints_step = get_rag_hints(
+                state.get("local_rag_db_path", ""),
+                sim_history,
+            )
+            if rag_hints_step:
+                config.logger.info(
+                    f"[simulate/op] RAG hints retrieved at step {step} "
+                    f"(prefix depth={len(sim_history)})"
+                )
             try:
                 next_op_prompt = get_prompt(
                     prompt_type="get_next_operator",
@@ -411,6 +435,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                     nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                     intermediate_scores=intermediate_scores,
                     data_split=getattr(config, "data_split", "test"),
+                    rag_hints=rag_hints_step,
                 )
             except Exception:
                 config.logger.warning(
@@ -444,6 +469,11 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
 
             if operation == "JOIN":
                 try:
+                    if rag_hints_step:
+                        config.logger.info(
+                            f"[simulate/op] RAG hints retrieved for configure_join at step {step} "
+                            f"(prefix depth={len(sim_history)})"
+                        )
                     cfg_prompt = get_prompt(
                         prompt_type="join",
                         max_tokens=config.token_limit,
@@ -472,6 +502,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                         intermediate_scores=intermediate_scores,
                         data_split=getattr(config, "data_split", "test"),
+                        rag_hints=rag_hints_step,
                     )
                 except Exception:
                     config.logger.warning(
@@ -490,6 +521,11 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
 
             elif operation == "GROUP_BY/AGGREGATE":
                 try:
+                    if rag_hints_step:
+                        config.logger.info(
+                            f"[simulate/op] RAG hints retrieved for configure_groupby at step {step} "
+                            f"(prefix depth={len(sim_history)})"
+                        )
                     cfg_prompt = get_prompt(
                         prompt_type="group_by_aggregate",
                         max_tokens=config.token_limit,
@@ -518,6 +554,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                         intermediate_scores=intermediate_scores,
                         data_split=getattr(config, "data_split", "test"),
+                        rag_hints=rag_hints_step,
                     )
                 except Exception:
                     config.logger.warning(
@@ -536,6 +573,11 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
 
             elif operation == "UNION":
                 try:
+                    if rag_hints_step:
+                        config.logger.info(
+                            f"[simulate/op] RAG hints retrieved for configure_union at step {step} "
+                            f"(prefix depth={len(sim_history)})"
+                        )
                     cfg_prompt = get_prompt(
                         prompt_type="union",
                         max_tokens=config.token_limit,
@@ -562,6 +604,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                         nth_intermediate_step=step + 1 if intermediate_materialization else 0,
                         intermediate_scores=intermediate_scores,
                         data_split=getattr(config, "data_split", "test"),
+                        rag_hints=rag_hints_step,
                     )
                 except Exception:
                     config.logger.warning(
@@ -658,6 +701,15 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
     rollout_history: List[str] = state["rollout_history"]
     target_file_location: str = state["target_file_location"]
 
+    rag_hints = get_rag_hints(
+        state.get("local_rag_db_path", ""),
+        rollout_history,
+    )
+    if rag_hints:
+        config.logger.info(
+            f"[simulate/pipeline] RAG hints retrieved for prefix depth={len(rollout_history)}"
+        )
+
     error_str = ""
     script = ""
     response = ""
@@ -687,7 +739,9 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
                 error_string=error_str,
                 csv_save_path=target_file_location,
                 hint_source=config.hint_source,
+                static_hints=getattr(config, "static_hints", True),
                 data_split=getattr(config, "data_split", "test"),
+                rag_hints=rag_hints,
             )
         except Exception:
             config.logger.warning(
@@ -828,6 +882,22 @@ def next_operator_step(state: MCTSGraphState) -> dict:
     # Always ask for MAX_CHILDREN candidates so we can fill all tree slots at once.
     k = MCTSNode.MAX_CHILDREN
 
+    # ── RAG: fetch similar-case hints for the current pipeline prefix ─────
+    # Skip at depth 0: no operation history to query on, and all operators are
+    # candidates anyway — RAG hints would be uninformative noise.
+    rag_hints = []
+    if rollout_history:
+        rag_hints = get_rag_hints(
+            state.get("local_rag_db_path", ""),
+            rollout_history,
+        )
+    if rag_hints:
+        config.logger.info(
+            f"[expand] RAG hints retrieved for prefix depth={len(rollout_history)}"
+        )
+    elif not rollout_history:
+        config.logger.info("[expand] depth=0 — RAG skipped")
+
     # ── Single LLM call: get k ranked candidates with configurations ──────
     try:
         prompt = get_prompt(
@@ -853,6 +923,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             fd_flag=int(config.fd_flag),
             mcts_expand_k=k,
             data_split=getattr(config, "data_split", "test"),
+            rag_hints=rag_hints,
         )
     except Exception:
         config.logger.warning(
@@ -1142,15 +1213,14 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 def backpropagate(state: MCTSGraphState) -> dict:
     """
     Dual-pass backpropagation:
-    1. Original simulated path: rewarded with pre_critique_score
-    2. Critique path (if it exists): rewarded with critique_score
+    1. Simulate's actual path (capped at expanded node's depth): rewarded with pre_critique_score
+    2. Critique path (capped at expanded node's depth): rewarded with critique_score
 
-    When critique runs and generates a new operation plan, it creates a new
-    critique_selection_path in the tree. Backpropagation now rewards BOTH paths:
-    - The original simulation's path gets the pre-critique simulation score
-    - The critique's path gets the critique score
-
-    This ensures that the tree learns from both the simulated and corrected plans.
+    Pass 1 uses the LLM's $PLAN$ (current_full_history) truncated to the expanded
+    node's depth, so reward is credited to the path the LLM actually chose rather
+    than the expansion candidate path.  Nodes are walked/created in the tree as
+    needed via _find_or_create_path; the depth cap prevents simulation from growing
+    the tree beyond the current expansion frontier.
 
     Tree mutations are in-place on MCTSNode objects.
     Updates: iteration (incremented by 1).
@@ -1158,25 +1228,51 @@ def backpropagate(state: MCTSGraphState) -> dict:
     selection_path: List[MCTSNode] = state["selection_path"]
     script: str = state["current_script"]
     config = state["config"]
+    root: MCTSNode = state["root"]
 
     pre_critique_score: float = state.get("pre_critique_score", state.get("current_score", 0.0))
     critique_selection_path: List[MCTSNode] = state.get("critique_selection_path", [])
     critique_score: float = state.get("critique_score", 0.0)
 
-    # ── Pass 1: Backprop pre-critique score to original simulated path ──
+    # ── Resolve the path that simulation actually walked ──────────────────────
+    # current_full_history is the LLM's $PLAN$ (may differ from rollout_history).
+    # We cap it at the expanded node's depth so simulation never grows the tree
+    # beyond the expansion frontier.
+    full_history: List[str] = state.get("current_full_history", [])
+    expanded_depth: int = len(state.get("rollout_history", []))  # = depth of expanded node
+
+    sim_backprop_path: List[MCTSNode] = selection_path  # default: fall back to expand path
+    if full_history and expanded_depth > 0:
+        truncated_sim = full_history[:expanded_depth]
+        try:
+            sim_backprop_path = _find_or_create_path(root, truncated_sim)
+            if truncated_sim != list(state.get("rollout_history", [])):
+                config.logger.info(
+                    f"[backpropagate] Iter {state['iteration']}: "
+                    f"sim path diverged from expand path — crediting simulate's path "
+                    f"(depth={len(truncated_sim)}, first_op={truncated_sim[0][:60] if truncated_sim else ''})"
+                )
+        except Exception:
+            config.logger.warning(
+                f"[backpropagate] Iter {state['iteration']}: "
+                f"failed to build sim_backprop_path — falling back to selection_path: {traceback.format_exc()}"
+            )
+            sim_backprop_path = selection_path
+
+    # ── Pass 1: Backprop pre-critique score to simulate's actual path ────────
     config.logger.info(
         f"[backpropagate] Iter {state['iteration']}: "
-        f"Pass 1 (simulated path): {len(selection_path)} nodes, reward={pre_critique_score:.4f}"
+        f"Pass 1 (simulate path): {len(sim_backprop_path)} nodes, reward={pre_critique_score:.4f}"
     )
-    for node in reversed(selection_path):
+    for node in reversed(sim_backprop_path):
         node.update(pre_critique_score)  # in-place: visits += 1, total_reward += reward
 
     # Cache best script on the deepest simulated node if improved
-    if selection_path and pre_critique_score > selection_path[-1].best_score:
-        selection_path[-1].best_score = pre_critique_score
-        selection_path[-1].best_script = script
+    if sim_backprop_path and pre_critique_score > sim_backprop_path[-1].best_score:
+        sim_backprop_path[-1].best_score = pre_critique_score
+        sim_backprop_path[-1].best_script = script
 
-    # ── Pass 2: Backprop critique score to critique path (if it exists) ──
+    # ── Pass 2: Backprop critique score to critique path (if it exists) ──────
     if critique_selection_path:
         config.logger.info(
             f"[backpropagate] Iter {state['iteration']}: "
@@ -1205,7 +1301,7 @@ def backpropagate(state: MCTSGraphState) -> dict:
         f"[backpropagate] Iter {state['iteration']} done. "
         f"pre_critique_reward={pre_critique_score:.4f}, "
         f"critique_reward={critique_score:.4f}, "
-        f"root.visits={selection_path[0].visits if selection_path else 0}, "
+        f"root.visits={sim_backprop_path[0].visits if sim_backprop_path else 0}, "
         f"next_iter={new_iteration}, no_improvement_count={no_improvement_count}"
     )
 
@@ -1216,7 +1312,7 @@ def backpropagate(state: MCTSGraphState) -> dict:
         + [
             f"Backprop iter {state['iteration']}: "
             f"pre_critique={pre_critique_score:.4f}, critique={critique_score:.4f}, "
-            f"paths=({len(selection_path)}, {len(critique_selection_path)})"
+            f"paths=({len(sim_backprop_path)}, {len(critique_selection_path)})"
         ],
     }
 
@@ -1297,7 +1393,7 @@ def extract_best(state: MCTSGraphState) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _build_critique_prompt(state: MCTSGraphState, script: str) -> str:
+def _build_critique_prompt(state: MCTSGraphState, script: str, rag_hints: str = "") -> str:
     """
     Build the single-call critique prompt by filling in all $PLACEHOLDERS$.
     Uses config fields populated in mcts_search.py (source_information, fd_hints, etc.).
@@ -1363,6 +1459,9 @@ def _build_critique_prompt(state: MCTSGraphState, script: str) -> str:
     else:
         prompt = prompt.replace("$STATIC_HINTS$", "")
 
+    if rag_hints:
+        prompt += f"\n{rag_hints.rstrip()}\n"
+
     return prompt
 
 
@@ -1378,7 +1477,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
     ground_truth_location = state["ground_truth_location"]
     validation_mode = state.get("validation_mode", "hard_match")
 
-    prompt = _build_critique_prompt(state, script)
+    prompt = _build_critique_prompt(state, script, rag_hints="")
     if not prompt:
         return script, state.get("current_score", 0.0), "Prompt build failed", False, []
 
@@ -1466,14 +1565,20 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"score {state['current_score']:.4f} → {new_score:.4f}"
     )
 
-    # Build critique_selection_path by walking/creating tree nodes for critique_plan
+    # Build critique_selection_path by walking/creating tree nodes for critique_plan,
+    # capped at the expanded node's depth so critique never grows the tree beyond
+    # the current expansion frontier.
+    expanded_depth: int = len(state.get("rollout_history", []))
     critique_selection_path: List[MCTSNode] = []
     if critique_plan:
+        truncated_critique_plan = critique_plan[:expanded_depth] if expanded_depth > 0 else []
         try:
-            critique_selection_path = _find_or_create_path(state["root"], critique_plan)
+            if truncated_critique_plan:
+                critique_selection_path = _find_or_create_path(state["root"], truncated_critique_plan)
             config.logger.info(
-                f"[mcts_critique] Critique path created: {len(critique_selection_path)} nodes, "
-                f"plan={[s[:60] for s in critique_plan[:3]]}"
+                f"[mcts_critique] Critique path created: {len(critique_selection_path)} nodes "
+                f"(plan_len={len(critique_plan)} → capped at depth={expanded_depth}), "
+                f"plan={[s[:60] for s in truncated_critique_plan[:3]]}"
             )
         except Exception:
             config.logger.warning(
@@ -1646,7 +1751,7 @@ def check_budget(state: MCTSGraphState) -> str:
 
     else:
         # ── Iteration mode (original behavior) ───────────────────────────
-        if no_improvement_count >= early_stopping:
+        if early_stopping > 0 and no_improvement_count >= early_stopping:
             config.logger.info(
                 f"[check_budget] No improvement for {no_improvement_count} consecutive iterations "
                 f"(best_score={state['best_score']:.4f}, early_stopping={early_stopping}) — stopping early."

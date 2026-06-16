@@ -24,6 +24,7 @@ from log_util.log_util import create_logger
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
+from rag_pipeline.local_rag_db import build_upper_bound_db, get_rag_hints
 from rag_pipeline.feature_extractor import (
     compute_from_data,
     load_norm_stats,
@@ -207,6 +208,24 @@ def critique(
         query = query.replace("$JUDGE_REASON$", judge_reason_block)
     else:
         query = query.replace("$JUDGE_REASON$", "")
+
+    # Local upper_bound RAG hints
+    rag_hint_block = ""
+    if getattr(args, "rag", "none") == "upper_bound":
+        gt_csv = getattr(args, "gt_csv", "ground_truth_pipelines.csv")
+        db_path = f"/tmp/rag_upper_bound_{length}_{id_}.db"
+        try:
+            benchmark_folder = "autopipeline-benchmarks/monteprep-pipelines" if getattr(args, "benchmark", "github") == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+            build_upper_bound_db(
+                    case_id=f"{length}_{id_}",
+                    case_folder=os.path.join(benchmark_folder, f"length{length}_{id_}"),
+                    gt_csv_path=gt_csv,
+                    db_path=db_path,
+                )
+            rag_hint_block = get_rag_hints(db_path, [])
+        except Exception:
+            pass
+    query = query.replace("$RAG_HINTS$", rag_hint_block)
 
     log_dir = log_dir_
 

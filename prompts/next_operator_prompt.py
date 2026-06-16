@@ -15,6 +15,7 @@ def get_next_operator_prompt(
     static_hints=False,
     past_context="",
     intermediate_scores: dict = {},
+    rag_hints="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt_start = f"""
@@ -60,6 +61,8 @@ Operation History: {operation_history}{past_context_section}
             + get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet")
             + "\n"
         )
+    if rag_hints:
+        prompt_last += f"\n{rag_hints.rstrip()}\n"
     prompt_last += """- If you feel no more operation is needed further, please return 'NO_MORE_OPERATION'.
 - You should only answer from allowed operations.
 - Try not to repeat operation and it's configuration from the operation history.

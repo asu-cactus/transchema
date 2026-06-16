@@ -638,6 +638,22 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--rag",
+        type=str,
+        default="none",
+        choices=["none", "upper_bound"],
+        help="RAG mode: 'none' (default) or 'upper_bound' (local SQLite DB from gt_csv).",
+    )
+
+    parser.add_argument(
+        "--gt_csv",
+        type=str,
+        default="ground_truth_pipelines.csv",
+        help="Path to ground-truth CSV used to build the upper_bound RAG DB. "
+             "Defaults to ground_truth_pipelines.csv.",
+    )
+
+    parser.add_argument(
         "--iterative",
         type=int,
         default=None,

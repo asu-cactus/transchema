@@ -23,6 +23,7 @@ def get_python_script(
     raw_target_schema="",
     intermediate_scores: dict = {},
     is_final: bool = False,
+    rag_hints="",
 ):
     if all_intermediate_results and is_final:
         return get_python_script_final_with_materialization(
@@ -69,6 +70,7 @@ def get_python_script(
             directory=directory,
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
+            rag_hints=rag_hints,
         )
     else:
         return get_python_script_simple(
@@ -81,6 +83,7 @@ def get_python_script(
             error_string,
             static_hints,
             past_context=past_context,
+            rag_hints=rag_hints,
         )
 
 
@@ -94,6 +97,7 @@ def get_python_script_simple(
     error_string,
     static_hints=False,
     past_context="",
+    rag_hints="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = f"""
@@ -118,6 +122,8 @@ def get_python_script_simple(
     Hints to be considered for Python code generation:
 {get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
  Please quote the Python script between one single "```Python" and "```"."""
+    if rag_hints:
+        prompt += f"\n{rag_hints.rstrip()}\n"
     prompt += f"""
  Errors in previous Attempts : {error_string}
 
@@ -142,6 +148,7 @@ def get_python_script_for_single_step_cot(
     directory="",
     len_idx_target_idx="",
     raw_target_schema="",
+    rag_hints="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. Before generating the code, please think step by step about the transformation plan to convert the source tables to the target table.
@@ -197,6 +204,10 @@ Data-specific hints (join conditions, group-by columns, union candidates):
 {dynamic_hints}
 
 """
+
+    if rag_hints:
+        prompt += f"""
+\n{rag_hints}\n"""
 
     prompt += f"""
 Errors in previous Attempts : {error_string}

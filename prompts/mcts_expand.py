@@ -57,6 +57,7 @@ def get_mcts_expand_prompt(
     len_idx_target_idx="",
     raw_target_schema="",
     static_hints=True,
+    rag_hints="",
 ):
     """
     MCTS Expansion prompt.
@@ -105,6 +106,8 @@ def get_mcts_expand_prompt(
     join_hints = get_hints_section(JOIN_HINT_IDS, fmt="bullet") if static_hints else ""
     groupby_hints = get_hints_section(GROUPBY_AGG_HINT_IDS, fmt="bullet") if static_hints else ""
     selection_hints = get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet") if static_hints else ""
+
+    rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
 
     prompt = f"""You are generating a data-pipeline to transform multiple source tables to the target table and you need to answer "what operation should be performed next?". Take this decision based on "Operation History", the schema of the source, target tables, and examples in the target table.
 
@@ -165,7 +168,7 @@ SELECTION GUIDANCE (apply these rules when ranking candidates)
 - If the operation history already covers all needed transformations → propose NO_MORE_OPERATION.
 - Do NOT repeat an operation+configuration already present in the operation history.
 
-══════════════════════════════════════════════════════
+{rag_hints_section}══════════════════════════════════════════════════════
 OUTPUT FORMAT  (follow exactly)
 ══════════════════════════════════════════════════════
 List up to {k} candidates ranked most-to-least promising using the markers below.

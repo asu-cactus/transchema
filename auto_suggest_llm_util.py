@@ -68,8 +68,9 @@ def get_prompt(
     no_thinking=False,
     few_shot=False,
     mcts_expand_k=3,
-    static_hints=False,
+    static_hints=True,
     past_context="",
+    rag_hints="",
     intermediate_scores: dict = None,
     is_final: bool = False,
     data_split="test",
@@ -216,6 +217,7 @@ def get_prompt(
                 hints,
                 static_hints=static_hints,
                 past_context=past_context,
+                rag_hints=rag_hints,
             )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -259,6 +261,7 @@ def get_prompt(
                 static_hints,
                 past_context=past_context,
                 intermediate_scores=intermediate_scores or {},
+                rag_hints=rag_hints,
             )[0]
 
         # print(prompt,static_prompt_length)
@@ -299,6 +302,7 @@ def get_prompt(
             fd_hints,
             static_hints,
             past_context=past_context,
+            rag_hints=rag_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -323,6 +327,7 @@ def get_prompt(
             fd_hints,
             static_hints,
             past_context=past_context,
+            rag_hints=rag_hints,
         )[0]
 
     elif prompt_type == "group_by_aggregate":
@@ -355,6 +360,7 @@ def get_prompt(
             fd_hints,
             static_hints,
             past_context=past_context,
+            rag_hints=rag_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -379,6 +385,7 @@ def get_prompt(
             fd_hints,
             static_hints,
             past_context=past_context,
+            rag_hints=rag_hints,
         )[0]
 
     elif prompt_type == "union":
@@ -397,6 +404,7 @@ def get_prompt(
             source_information,
             static_hints,
             past_context=past_context,
+            rag_hints=rag_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -419,6 +427,7 @@ def get_prompt(
             source_information,
             static_hints,
             past_context=past_context,
+            rag_hints=rag_hints,
         )[0]
 
     elif prompt_type == "get_case_info":
@@ -504,6 +513,7 @@ def get_prompt(
             raw_target_schema=raw_target_schema,
             intermediate_scores=intermediate_scores or {},
             is_final=is_final,
+            rag_hints=rag_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -538,6 +548,7 @@ def get_prompt(
             raw_target_schema=raw_target_schema,
             intermediate_scores=intermediate_scores or {},
             is_final=is_final,
+            rag_hints=rag_hints,
         )[0]
     elif prompt_type == "mcts_expand":
         raw_target_schema = target_data_schema
@@ -561,6 +572,7 @@ def get_prompt(
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
             static_hints=static_hints,
+            rag_hints=rag_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -590,6 +602,7 @@ def get_prompt(
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
             static_hints=static_hints,
+            rag_hints=rag_hints,
         )[0]
 
     elif prompt_type == "mcts_simulate":
@@ -625,6 +638,7 @@ def get_prompt(
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
             static_hints=static_hints,
+            rag_hints=rag_hints,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -653,6 +667,7 @@ def get_prompt(
             len_idx_target_idx=len_idx_target_idx,
             raw_target_schema=raw_target_schema,
             static_hints=static_hints,
+            rag_hints=rag_hints,
         )[0]
 
     else:

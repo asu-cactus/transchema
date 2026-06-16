@@ -65,6 +65,7 @@ class Config:
     token_limit: int
     static_hints: bool
     past_context: str = ""
+    rag_hints: str = ""
     intermediate_scores: dict = field(default_factory=dict)
     data_split: str = "test"
 
@@ -103,6 +104,7 @@ def get_python_response(operation_history, break_flag, csv_save_path, config: Co
             hint_source=config.hint_source,
             static_hints=config.static_hints,
             past_context=past_context,
+            rag_hints=getattr(config, "rag_hints", ""),
             intermediate_scores=intermediate_scores,
             nth_intermediate_step=nth_intermediate_step,
             source_length=config.source_length,

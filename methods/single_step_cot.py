@@ -7,6 +7,7 @@ from methods.multi_step import Config, get_python_response
 
 from log_util.log_util import create_logger
 from eval_score_value_based import value_based_relative_csv_score_timed
+from rag_pipeline.local_rag_db import build_upper_bound_db, get_rag_hints
 import pandas as pd
 import os
 import traceback
@@ -117,6 +118,26 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
 
         llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
 
+        # Build local RAG DB and retrieve hints (upper_bound mode)
+        rag_mode = getattr(args, "rag", "none")
+        sscot_rag_hints = ""
+        if rag_mode == "upper_bound":
+            gt_csv = getattr(args, "gt_csv", "ground_truth_pipelines.csv")
+            db_path = f"/tmp/rag_upper_bound_{length}_{id_}.db"
+            try:
+                build_upper_bound_db(
+                    case_id=f"{length}_{id_}",
+                    case_folder=os.path.join(main_folder, f"length{length}_{id_}"),
+                    gt_csv_path=gt_csv,
+                    db_path=db_path,
+                )
+                sscot_rag_hints = get_rag_hints(db_path, [])
+                if sscot_rag_hints:
+                    logger.info(f"[sscot RAG] hints retrieved for {length}_{id_}")
+                else:
+                    logger.info(f"[sscot RAG] no matching hints for {length}_{id_}")
+            except Exception:
+                logger.warning(f"[sscot RAG] failed to build/query RAG DB:\n{traceback.format_exc()}")
 
         config = Config(
             target_data_name=target_data_name,
@@ -143,6 +164,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
             directory=directory,
             static_hints=getattr(args, "static_hints", True),
             past_context=past_context_str,
+            rag_hints=sscot_rag_hints,
             data_split=data_split,
         )
 

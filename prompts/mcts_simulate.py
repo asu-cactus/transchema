@@ -38,6 +38,7 @@ def get_mcts_simulate_prompt(
     len_idx_target_idx="",
     raw_target_schema="",
     static_hints=True,
+    rag_hints="",
 ):
     """
     MCTS Simulation prompt.
@@ -99,6 +100,7 @@ about what additional steps are required to produce the correct target schema.
         )
 
     script_hints = get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet") if static_hints else ""
+    rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
 
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should be immediately executable in a correct way, which means it should NOT contain any placeholder for brevity. For example, even if there exist hundreds of source tables, these data need to be loaded completely one by one or in a programmable way.
 
@@ -142,7 +144,7 @@ Keep the code brief: no inline comments, no docstrings, no explanatory print sta
 
 Please quote the Python script between one single "```Python" and "```".
 
-══════════════════════════════════════════════════════
+{rag_hints_section}══════════════════════════════════════════════════════
 Hints for Python code generation
 ══════════════════════════════════════════════════════
 {script_hints}

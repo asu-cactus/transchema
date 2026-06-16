@@ -13,6 +13,7 @@ def get_join_prompt(
     fd_hints,
     static_hints=False,
     past_context="",
+    rag_hints="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = """
@@ -58,6 +59,8 @@ Hint : {hints}
 - i.e. [ [table1, table2], [table1.join_column1,table2.join_column1], [table1.join_column2,table2.join_column2],...]
 - The final answer list should be within $ quotes strictly. [i.e. $ Final Answer List $]
     """
+    if rag_hints:
+        prompt += f"\n{rag_hints.rstrip()}\n"
     return [prompt]
 
 
@@ -73,6 +76,7 @@ def get_group_by_aggregate_prompt(
     fd_hints,
     static_hints=False,
     past_context="",
+    rag_hints="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = """
@@ -112,6 +116,8 @@ Hint : {hints}
 - The final answer should be in the following format. lists where first list should be group by columns, next list should cover aggregation function and on which columns aggregations should be performed.
 - Example : "group_by" = [table_name.group_by_column1, table_name.group_by_column_2, ...], "aggregations" = [aggregation_function1(table_name.aggregation_column), aggregation_function2(table_name.aggregation_column), ...]
     """
+    if rag_hints:
+        prompt += f"\n{rag_hints.rstrip()}\n"
     return [prompt]
 
 
@@ -125,6 +131,7 @@ def get_union_prompt(
     source_information,
     static_hints=False,
     past_context="",
+    rag_hints="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = """
@@ -155,4 +162,6 @@ Allowed Operations: {allowed_operation_list}.
         source_information=source_information,
         past_context_section=past_context_section,
     )
+    if rag_hints:
+        prompt += f"\n{rag_hints.rstrip()}\n"
     return [prompt]
