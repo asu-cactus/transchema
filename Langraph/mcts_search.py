@@ -69,7 +69,7 @@ from mcts_node import MCTSNode
 from state import MCTSGraphState
 from graph import build_mcts_graph
 from viz import write_action_trace, write_tree_viz
-from rag_pipeline.local_rag_db import build_upper_bound_db
+from rag_pipeline.local_rag_db import build_upper_bound_db, populate_from_global_results
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -328,6 +328,50 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                     f"ground_truth_pipelines.csv — RAG disabled for this case."
                 )
 
+        # ── Global schema-embedding RAG: retrieve top-50 → populate local DB ─
+        if _rag_mode == "global":
+            _global_db_path = getattr(args, "global_rag_db", "")
+            if not _global_db_path:
+                logger.warning("[RAG] --rag global requires --global_rag_db — RAG disabled.")
+            else:
+                try:
+                    from rag_pipeline.global_rag_db import GlobalSchemaDB
+                    # model_id auto-read from <db>.meta.json written at ingestion time;
+                    # --global_rag_model overrides only if explicitly passed
+                    _explicit_model = getattr(args, "global_rag_model", "") or None
+                    _gdb = GlobalSchemaDB(
+                        db_path=_global_db_path,
+                        model_id=_explicit_model,
+                        device=getattr(args, "global_rag_device", "auto"),
+                    )
+                    logger.info(f"[RAG] global: using embedding model {_gdb._model_id}")
+                    _global_top_k = getattr(args, "global_rag_top_k", 50)
+                    logger.info(
+                        f"[RAG] global: querying top {_global_top_k} from {_global_db_path} "
+                        f"for case {len_idx_target_idx}"
+                    )
+                    _global_results = _gdb.search(
+                        target_schema=config.target_data_schema,
+                        source_schemas=config.source_data_schema_list,
+                        top_k=_global_top_k,
+                    )
+                    logger.info(
+                        f"[RAG] global: retrieved {len(_global_results)} candidates"
+                    )
+                    _auto_db_path = f"/tmp/rag_global_{len_idx_target_idx}.db"
+                    _n_inserted = populate_from_global_results(_auto_db_path, _global_results)
+                    logger.info(
+                        f"[RAG] global: populated local SQLite with {_n_inserted} examples "
+                        f"at {_auto_db_path}"
+                    )
+                    _local_rag_db = _auto_db_path
+                except Exception:
+                    import traceback as _tb
+                    logger.warning(
+                        f"[RAG] global retrieval failed — RAG disabled for this case.\n"
+                        f"{_tb.format_exc()}"
+                    )
+
         # ── Build initial MCTS state ──────────────────────────────────────
         root = MCTSNode(operation_history=[], parent=None, operator_type=None)
 
@@ -384,8 +428,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "pre_critique_score": 0.0,
             "critique_selection_path": [],
             "critique_score": 0.0,
-            # RAG support — only active when --rag upper_bound is explicitly requested
-            "local_rag_db_path": _local_rag_db if _rag_mode == "upper_bound" else "",
+            # RAG support — active for upper_bound and global modes
+            "local_rag_db_path": _local_rag_db if _rag_mode in ("upper_bound", "global") else "",
             # Logging
             "log_messages": [],
         }
@@ -702,14 +746,47 @@ if __name__ == "__main__":
         "--rag",
         type=str,
         default="",
-        choices=["upper_bound", "realistic"],
+        choices=["upper_bound", "global"],
         help=(
             "Enable RAG-augmented prompts.  "
             "'upper_bound' injects hints from a pre-built local SQLite DB "
             "(supply the path via --local_rag_db).  "
-            "'realistic' will use global retrieval (not yet implemented).  "
+            "'global' uses schema-embedding retrieval from a global Milvus DB "
+            "(supply the path via --global_rag_db).  "
             "Omit to disable RAG entirely."
         ),
+    )
+    parser.add_argument(
+        "--global_rag_db",
+        type=str,
+        default="",
+        help=(
+            "Path to the global Milvus schema DB built by "
+            "rag_pipeline/ingest_global_db.py.  Required when --rag global."
+        ),
+    )
+    parser.add_argument(
+        "--global_rag_top_k",
+        type=int,
+        default=50,
+        help="Number of candidates to retrieve from the global DB (default: 50).",
+    )
+    parser.add_argument(
+        "--global_rag_model",
+        type=str,
+        default="",
+        help=(
+            "Embedding model for the global schema DB. "
+            "Auto-read from <db>.meta.json written at ingestion time — "
+            "only pass this to override."
+        ),
+    )
+    parser.add_argument(
+        "--global_rag_device",
+        type=str,
+        default="auto",
+        choices=["auto", "cuda", "cpu", "mps"],
+        help="Device for the global RAG embedding model (default: auto).",
     )
     args = parser.parse_args()
     args.join_hints_truncate = []
