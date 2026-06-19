@@ -28,7 +28,7 @@ from prompts.configuration_prompts import (
     get_union_prompt,
 )
 from prompts.code_generation_prompt import get_python_script
-from prompts.mcts_expand import get_mcts_expand_prompt
+from prompts.mcts_expand import get_mcts_expand_prompt, get_mcts_expand_aggregate_prompt
 from prompts.mcts_simulate import get_mcts_simulate_prompt
 
 # from prompts.next_operator_prompt_with_intermediate_materialization import (
@@ -74,6 +74,7 @@ def get_prompt(
     intermediate_scores: dict = None,
     is_final: bool = False,
     data_split="test",
+    explored_steps=None,
 ):
     """
     Args:
@@ -573,6 +574,7 @@ def get_prompt(
             raw_target_schema=raw_target_schema,
             static_hints=static_hints,
             rag_hints=rag_hints,
+            explored_steps=explored_steps,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -603,6 +605,53 @@ def get_prompt(
             raw_target_schema=raw_target_schema,
             static_hints=static_hints,
             rag_hints=rag_hints,
+            explored_steps=explored_steps,
+        )[0]
+
+    elif prompt_type == "mcts_expand_aggregate":
+        # Aggregation expansion: called when the selected tree node is GROUP_BY.
+        # Token-budget logic mirrors mcts_expand: compute sample budget on a static
+        # (no-sample) prompt first, then re-call with the capped samples.
+        # fd_hints and source_information are already computed above.
+        if target_data_schema_with_types:
+            target_data_schema = target_data_schema_with_types
+
+        static_prompt = get_mcts_expand_aggregate_prompt(
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            "",
+            file_count,
+            source_information,
+            fd_hints,
+            k=mcts_expand_k,
+            static_hints=static_hints,
+            rag_hints=rag_hints,
+            explored_steps=explored_steps,
+        )[0]
+        static_prompt_length = len(encoding.encode(static_prompt))
+        target_samples = get_target_samples(
+            directory,
+            len_idx_target_idx,
+            target_perc,
+            is_perc,
+            target_length,
+            max_tokens,
+            static_prompt_length,
+            encoding,
+        )
+        prompt = get_mcts_expand_aggregate_prompt(
+            operation_history,
+            target_data_name,
+            target_data_schema,
+            target_samples,
+            file_count,
+            source_information,
+            fd_hints,
+            k=mcts_expand_k,
+            static_hints=static_hints,
+            rag_hints=rag_hints,
+            explored_steps=explored_steps,
         )[0]
 
     elif prompt_type == "mcts_simulate":
@@ -962,6 +1011,15 @@ def get_mcts_candidates(response: str, operator_types: list) -> list:
             configured_op = (
                 f'GROUP_BY/AGGREGATE : "group_by" = {group_by}, "aggregations" = {aggs}'
             )
+        elif op_type == "GROUP_BY":
+            # Separate GROUP_BY expand step — stores only the group-by columns.
+            # The next expansion step (AGGREGATE) stores the aggregation functions.
+            columns = cfg.get("COLUMNS", "")
+            configured_op = f"GROUP_BY : {columns}"
+        elif op_type == "AGGREGATE":
+            # Separate AGGREGATE expand step — always follows a GROUP_BY node.
+            aggs = cfg.get("AGGREGATIONS", "")
+            configured_op = f"AGGREGATE : {aggs}"
         else:
             configured_op = op_type
 

@@ -59,7 +59,13 @@ from auto_suggest_llm_util import (
 from eval_score.score import relative_csv_score
 from eval_score_value_based import value_based_relative_csv_score, value_based_relative_csv_score_timed
 from llm.llm_models import CostBudgetExceeded
-from mcts_node import MCTSNode, OPERATOR_TYPES
+from mcts_node import (
+    MCTSNode,
+    OPERATOR_TYPES,
+    EXPAND_OPERATOR_TYPES,
+    STRUCTURAL_EXPAND_OPS,
+    AGGREGATE_MAX_CHILDREN,
+)
 from state import MCTSGraphState
 from util.utils import execute_python
 from validation.hard_match import compare_lists_matching, compare_tables_matching
@@ -67,6 +73,8 @@ from validation.fuzzy_match import compare_tables_fuzzy
 
 # Maximum tree selection depth (used in mcts_select only)
 _MAX_SELECT_DEPTH = 15
+# Minimum reward needed on a GROUP_BY subtree to trigger reaggregation_needed
+_REAGGREGATION_REWARD_THRESHOLD = 0.5
 # Maximum code-generation retries inside simulate
 _MAX_CODE_TRIALS = 5
 # Maximum operator steps in one operator-level simulation rollout
@@ -209,12 +217,91 @@ def _parse_op_type(step: str) -> str:
     Extract operator type from a configured step string.
     E.g. "JOIN : [[T0, T1]] columns=..." → "JOIN"
          "GROUP_BY/AGGREGATE : ..." → "GROUP_BY/AGGREGATE"
-         "NO_MORE_OPERATION" → "NO_MORE_OPERATION"
+         "GROUP_BY : [col1, col2]"  → "GROUP_BY"
+         "AGGREGATE : [COUNT(col)]" → "AGGREGATE"
+         "NO_MORE_OPERATION"        → "NO_MORE_OPERATION"
     """
     if step == "NO_MORE_OPERATION":
         return "NO_MORE_OPERATION"
-    # Extract first token before the colon
+    if step.startswith("GROUP_BY/AGGREGATE"):
+        return "GROUP_BY/AGGREGATE"
+    if step.startswith("GROUP_BY :"):
+        return "GROUP_BY"
+    if step.startswith("AGGREGATE :"):
+        return "AGGREGATE"
     return step.split(":")[0].strip()
+
+
+def _split_groupby_aggregate(history: List[str]) -> List[str]:
+    """Reverse of _merge_groupby_aggregate.
+
+    Splits any GROUP_BY/AGGREGATE step from simulation or critique output back
+    into separate GROUP_BY and AGGREGATE steps so the tree stays consistent with
+    the expand-layer structure.
+
+    Handles two formats produced by different prompts:
+      Format 1 (configure):  GROUP_BY/AGGREGATE : "group_by" = [...], "aggregations" = [...]
+      Format 2 (simulate):   GROUP_BY/AGGREGATE : group_by=[...] aggregations=[...]
+
+    Steps that cannot be parsed are passed through unchanged.
+    """
+    result: List[str] = []
+    for step in history:
+        if "GROUP_BY/AGGREGATE" not in step:
+            result.append(step)
+            continue
+
+        after_colon = step.split(":", 1)[1].strip() if ":" in step else step
+
+        # Format 1: "group_by" = [...], "aggregations" = [...]
+        m_gb = re.search(r'"group_by"\s*=\s*(\[.*?\])', after_colon)
+        m_agg = re.search(r'"aggregations"\s*=\s*(\[.*\])\s*$', after_colon, re.DOTALL)
+        if m_gb and m_agg:
+            result.append(f"GROUP_BY : {m_gb.group(1)}")
+            result.append(f"AGGREGATE : {m_agg.group(1).strip()}")
+            continue
+
+        # Format 2: group_by=[...] aggregations=[...]
+        m_gb2 = re.search(r'\bgroup_by=(\[.*?\])', after_colon, re.IGNORECASE)
+        m_agg2 = re.search(r'\baggregations=(\[.*\])\s*$', after_colon, re.IGNORECASE | re.DOTALL)
+        if m_gb2 and m_agg2:
+            result.append(f"GROUP_BY : {m_gb2.group(1)}")
+            result.append(f"AGGREGATE : {m_agg2.group(1).strip()}")
+            continue
+
+        result.append(step)  # unparseable — keep as-is
+    return result
+
+
+def _merge_groupby_aggregate(history: List[str]) -> List[str]:
+    """Collapse consecutive GROUP_BY + AGGREGATE tree steps into the single
+    GROUP_BY/AGGREGATE string that simulation and code-gen understand.
+
+    "GROUP_BY : [col1]"      }
+    "AGGREGATE : [COUNT(c)]" }  →  'GROUP_BY/AGGREGATE : "group_by" = [col1], "aggregations" = [COUNT(c)]'
+
+    Any GROUP_BY not immediately followed by AGGREGATE is passed through unchanged
+    (shouldn't happen in normal flow, but safe to handle).
+    """
+    merged: List[str] = []
+    i = 0
+    while i < len(history):
+        step = history[i]
+        if (
+            step.startswith("GROUP_BY :")
+            and i + 1 < len(history)
+            and history[i + 1].startswith("AGGREGATE :")
+        ):
+            gb_cols = step[len("GROUP_BY :"):].strip()
+            agg_fns = history[i + 1][len("AGGREGATE :"):].strip()
+            merged.append(
+                f'GROUP_BY/AGGREGATE : "group_by" = {gb_cols}, "aggregations" = {agg_fns}'
+            )
+            i += 2
+        else:
+            merged.append(step)
+            i += 1
+    return merged
 
 
 def _find_or_create_path(root: MCTSNode, critique_history: List[str]) -> List[MCTSNode]:
@@ -223,17 +310,16 @@ def _find_or_create_path(root: MCTSNode, critique_history: List[str]) -> List[MC
     matches, and creating new MCTSNode children where it doesn't. Returns the
     full path [root, ..., leaf].
 
-    Args:
-        root: MCTSNode root
-        critique_history: List of configured step strings from critique
-
-    Returns:
-        List[MCTSNode]: path from root to the leaf node representing critique_history
+    NO_MORE_OPERATION steps are stripped before walking — terminal markers from
+    simulation output must never become tree nodes.
     """
+    # Strip terminal markers — they are simulation artifacts, not tree structure.
+    steps = [s for s in critique_history if s != "NO_MORE_OPERATION"]
+
     path = [root]
     node = root
-    for i, step in enumerate(critique_history):
-        child_history = critique_history[: i + 1]
+    for i, step in enumerate(steps):
+        child_history = steps[: i + 1]
         if step in node.children:
             node = node.children[step]
         else:
@@ -826,13 +912,28 @@ def mcts_select(state: MCTSGraphState) -> dict:
         and node.children  # safety: has at least one child
         and len(path) <= _MAX_SELECT_DEPTH
     ):
+        # A promising GROUP_BY node may have reaggregation_needed set by backprop.
+        # Stop here to add more AGGREGATE variants instead of descending.
+        if (
+            node.operator_type == "GROUP_BY"
+            and node.reaggregation_needed
+            and len(node.children) < AGGREGATE_MAX_CHILDREN
+        ):
+            node.reaggregation_needed = False
+            config.logger.info(
+                f"[MCTS Select] Iter {state['iteration']}: "
+                f"GROUP_BY reaggregation triggered at depth={len(path)-1} "
+                f"({len(node.children)}/{AGGREGATE_MAX_CHILDREN} AGGREGATE children) — "
+                f"stopping to expand more variants"
+            )
+            break
         node = node.best_child()
         path.append(node)
 
     config.logger.info(
         f"[MCTS Select] Iter {state['iteration']}: "
         f"selected depth={len(path) - 1}, op={node.operator_type}, "
-        f"visits={node.visits}, children={len(node.children)}/{MCTSNode.MAX_CHILDREN}"
+        f"visits={node.visits}, children={len(node.children)}"
     )
 
     return {
@@ -869,10 +970,13 @@ def next_operator_step(state: MCTSGraphState) -> dict:
     Logic
     -----
     1. Ask the LLM for MAX_CHILDREN candidates (always, to fill all slots).
+       NO_MORE_OPERATION is excluded from the allowed operators here so expansion
+       always grows the tree — only simulation and critique may terminate a plan.
     2. Add every candidate whose configured_step is not already a child.
     3. If no new configs were added, mark node saturated.
     4. Simulate only candidates[0] (top priority), whether it is new or existing.
     5. Ultimate fallback (empty/unparseable response): NO_MORE_OPERATION + saturated.
+       This is the only path by which expansion can create a terminal leaf.
     """
     config = state["config"]
     rollout_history: List[str] = state["rollout_history"]
@@ -881,6 +985,27 @@ def next_operator_step(state: MCTSGraphState) -> dict:
 
     # Always ask for MAX_CHILDREN candidates so we can fill all tree slots at once.
     k = MCTSNode.MAX_CHILDREN
+
+    # Determine whether this is a forced AGGREGATE expansion (parent is GROUP_BY)
+    # or a standard structural expansion.
+    # • GROUP_BY parent  → only AGGREGATE is valid next; use aggregation expand prompt.
+    # • All other nodes  → propose only structural op types not yet covered as children,
+    #                       so each type gets exactly one attempt before the node is
+    #                       considered fully expanded.
+    is_groupby_expansion = (selected_node.operator_type == "GROUP_BY")
+    explored_steps = list(selected_node.children.keys())  # configs already in tree
+
+    if is_groupby_expansion:
+        expand_prompt_type = "mcts_expand_aggregate"
+        expand_ops = ["AGGREGATE"]
+    else:
+        expand_prompt_type = "mcts_expand"
+        covered_op_types = {c.operator_type for c in selected_node.children.values()}
+        expand_ops = [op for op in STRUCTURAL_EXPAND_OPS if op not in covered_op_types]
+        if not expand_ops:
+            # Safety guard: all types already covered — shouldn't reach here in
+            # normal flow since is_fully_expanded() would have been True.
+            expand_ops = list(STRUCTURAL_EXPAND_OPS)
 
     # ── RAG: fetch similar-case hints for the current pipeline prefix ─────
     # Skip at depth 0: no operation history to query on, and all operators are
@@ -901,10 +1026,10 @@ def next_operator_step(state: MCTSGraphState) -> dict:
     # ── Single LLM call: get k ranked candidates with configurations ──────
     try:
         prompt = get_prompt(
-            prompt_type="mcts_expand",
+            prompt_type=expand_prompt_type,
             max_tokens=config.token_limit,
             model=config.model,
-            allowed_operation_list=OPERATOR_TYPES,
+            allowed_operation_list=expand_ops,
             operation_history=rollout_history,
             target_data_name=config.target_data_name,
             target_data_schema=config.target_data_schema,
@@ -924,6 +1049,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             mcts_expand_k=k,
             data_split=getattr(config, "data_split", "test"),
             rag_hints=rag_hints,
+            explored_steps=explored_steps,
         )
     except Exception:
         config.logger.warning(
@@ -944,7 +1070,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
                 config.token_tracker,
                 type="MCTS Expand",
             )
-            candidates = get_mcts_candidates(res[0], OPERATOR_TYPES)
+            candidates = get_mcts_candidates(res[0], expand_ops)
         except CostBudgetExceeded as e:
             config.logger.warning(f"[expand] {e} — stopping search.")
             _cost_budget_exhausted = True
@@ -954,6 +1080,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
 
     config.logger.info(
         f"[expand] Iter {state['iteration']}: "
+        f"mode={'aggregate' if is_groupby_expansion else 'standard'} "
         f"candidates={[(op, cfg[:50]) for op, cfg in candidates]}"
     )
 
@@ -971,7 +1098,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             config.logger.info(
                 f"[expand] Iter {state['iteration']}: added child op={op_type} "
                 f"cfg={cfg[:60]} "
-                f"(tree now has {len(selected_node.children)}/{MCTSNode.MAX_CHILDREN} children)"
+                f"(tree now has {len(selected_node.children)} children)"
             )
 
     # Saturation: LLM returned no new configs — mark so selection descends past this node
@@ -985,33 +1112,33 @@ def next_operator_step(state: MCTSGraphState) -> dict:
     # ── Simulation target: always the LLM's #1 priority candidate ─────────
     if candidates:
         chosen_op, chosen_cfg = candidates[0]
+        new_history = rollout_history + [chosen_cfg]
+
+        # Navigate to the top-priority child (guaranteed to exist after batch-add above)
+        if chosen_cfg not in selected_node.children:
+            new_node = selected_node.add_child(
+                chosen_cfg, new_history, operator_type=chosen_op
+            )
+        else:
+            new_node = selected_node.children[chosen_cfg]
+
+        config.logger.info(
+            f"[expand] Iter {state['iteration']}: simulating top-priority op={chosen_op} "
+            f"| cfg={chosen_cfg[:80]} "
+            f"({len(new_configs_added)} new child(ren) added this iteration)"
+        )
     else:
-        # Ultimate fallback: no parseable candidates at all
-        chosen_op = "NO_MORE_OPERATION"
-        chosen_cfg = "NO_MORE_OPERATION"
+        # Ultimate fallback: no parseable candidates at all.
+        # Saturate the node silently — NO_MORE_OPERATION is never added to the tree.
+        # Simulate from the existing prefix; simulation/critique decide termination.
         selected_node.saturated = True
+        new_node = selected_node
+        new_history = rollout_history
+        chosen_op = selected_node.operator_type or ""
         config.logger.warning(
             f"[expand] Iter {state['iteration']}: no valid candidates parsed, "
-            f"node marked saturated, falling back to NO_MORE_OPERATION"
+            f"node marked saturated — re-simulating from existing prefix"
         )
-
-    config.logger.info(
-        f"[expand] Iter {state['iteration']}: simulating top-priority op={chosen_op} "
-        f"| cfg={chosen_cfg[:80]} "
-        f"({len(new_configs_added)} new child(ren) added this iteration)"
-    )
-
-    new_history = rollout_history + [chosen_cfg]
-
-    # Navigate to the top-priority child (guaranteed to exist after batch-add above)
-    if chosen_cfg not in selected_node.children:
-        new_node = selected_node.add_child(
-            chosen_cfg, new_history, operator_type=chosen_op
-        )
-    else:
-        new_node = selected_node.children[chosen_cfg]
-
-    is_terminal_expansion = chosen_op == "NO_MORE_OPERATION"
 
     return {
         "rollout_history": new_history,
@@ -1020,11 +1147,11 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         "in_rollout": True,
         "selection_path": selection_path + [new_node],
         "selected_node": new_node,
-        "terminal_found": state["terminal_found"] or is_terminal_expansion,
+        "terminal_found": state["terminal_found"],
         "cost_budget_exhausted": _cost_budget_exhausted,
         "log_messages": state["log_messages"]
         + [
-            f"[EXPAND] iter={state['iteration']} op={chosen_op} configured={chosen_cfg}"
+            f"[EXPAND] iter={state['iteration']} op={chosen_op} configured={chosen_cfg if candidates else '(fallback)'}"
             + (" COST_BUDGET_EXHAUSTED" if _cost_budget_exhausted else "")
         ],
     }
@@ -1049,6 +1176,17 @@ def simulate(state: MCTSGraphState) -> dict:
     """
     config = state["config"]
     sim_mode = state.get("simulation_mode", "pipeline")
+
+    # Merge any consecutive GROUP_BY + AGGREGATE tree steps into the single
+    # GROUP_BY/AGGREGATE format that simulation and code-gen prompts understand.
+    merged_history = _merge_groupby_aggregate(state["rollout_history"])
+    if merged_history != state["rollout_history"]:
+        config.logger.info(
+            f"[simulate] Iter {state['iteration']}: "
+            f"merged GROUP_BY+AGGREGATE in rollout_history "
+            f"({len(state['rollout_history'])} → {len(merged_history)} steps)"
+        )
+        state = {**state, "rollout_history": merged_history}
 
     config.logger.info(
         f"[simulate] Iter {state['iteration']}: "
@@ -1241,6 +1379,10 @@ def backpropagate(state: MCTSGraphState) -> dict:
     full_history: List[str] = state.get("current_full_history", [])
     expanded_depth: int = len(state.get("rollout_history", []))  # = depth of expanded node
 
+    # Split any merged GROUP_BY/AGGREGATE steps back into separate GROUP_BY + AGGREGATE
+    # nodes so the tree stays consistent with the expand-layer structure.
+    full_history = _split_groupby_aggregate(full_history)
+
     sim_backprop_path: List[MCTSNode] = selection_path  # default: fall back to expand path
     if full_history and expanded_depth > 0:
         truncated_sim = full_history[:expanded_depth]
@@ -1266,6 +1408,18 @@ def backpropagate(state: MCTSGraphState) -> dict:
     )
     for node in reversed(sim_backprop_path):
         node.update(pre_critique_score)  # in-place: visits += 1, total_reward += reward
+        if (
+            node.operator_type == "GROUP_BY"
+            and pre_critique_score >= _REAGGREGATION_REWARD_THRESHOLD
+            and len(node.children) < AGGREGATE_MAX_CHILDREN
+        ):
+            node.reaggregation_needed = True
+            config.logger.info(
+                f"[backpropagate] Iter {state['iteration']}: "
+                f"GROUP_BY reaggregation flagged "
+                f"(score={pre_critique_score:.4f}, "
+                f"children={len(node.children)}/{AGGREGATE_MAX_CHILDREN})"
+            )
 
     # Cache best script on the deepest simulated node if improved
     if sim_backprop_path and pre_critique_score > sim_backprop_path[-1].best_score:
@@ -1280,6 +1434,12 @@ def backpropagate(state: MCTSGraphState) -> dict:
         )
         for node in reversed(critique_selection_path):
             node.update(critique_score)  # in-place: visits += 1, total_reward += reward
+            if (
+                node.operator_type == "GROUP_BY"
+                and critique_score >= _REAGGREGATION_REWARD_THRESHOLD
+                and len(node.children) < AGGREGATE_MAX_CHILDREN
+            ):
+                node.reaggregation_needed = True
 
         # Cache best script on the deepest critique node if improved
         if critique_score > critique_selection_path[-1].best_score:
@@ -1568,9 +1728,11 @@ def mcts_critique(state: MCTSGraphState) -> dict:
     # Build critique_selection_path by walking/creating tree nodes for critique_plan,
     # capped at the expanded node's depth so critique never grows the tree beyond
     # the current expansion frontier.
+    # Split merged GROUP_BY/AGGREGATE steps so tree nodes match expand-layer structure.
     expanded_depth: int = len(state.get("rollout_history", []))
     critique_selection_path: List[MCTSNode] = []
     if critique_plan:
+        critique_plan = _split_groupby_aggregate(critique_plan)
         truncated_critique_plan = critique_plan[:expanded_depth] if expanded_depth > 0 else []
         try:
             if truncated_critique_plan:

@@ -22,7 +22,8 @@ mcts_select descends past it using UCB1 to explore deeper plans.
 import math
 from typing import Dict, List, Optional
 
-# All operators the LLM can choose from (same as multi_step.py)
+# All operators the LLM can choose from (same as multi_step.py).
+# Used by simulation, critique, and code-gen — GROUP_BY/AGGREGATE is a single step there.
 OPERATOR_TYPES: List[str] = [
     "JOIN",
     "UNION",
@@ -31,6 +32,41 @@ OPERATOR_TYPES: List[str] = [
     "UNPIVOT",
     "NO_MORE_OPERATION",
 ]
+
+# Operators used exclusively in the MCTS expansion layer.
+# GROUP_BY and AGGREGATE are split into separate tree nodes so the MCTS can
+# explore different aggregation variants independently under each GROUP_BY node.
+# AGGREGATE may only appear as a child of a GROUP_BY node (enforced in next_operator_step).
+EXPAND_OPERATOR_TYPES: List[str] = [
+    "JOIN",
+    "UNION",
+    "GROUP_BY",
+    "AGGREGATE",
+    "PIVOT",
+    "UNPIVOT",
+    "NO_MORE_OPERATION",
+]
+
+# Structural operator types that standard nodes can have as children.
+# A standard node is "fully expanded" once all of these types appear at least
+# once among its children.
+STRUCTURAL_EXPAND_OPS: List[str] = [
+    "JOIN", "UNION", "GROUP_BY", "PIVOT", "UNPIVOT"
+]
+
+# Operator types required for an AGGREGATE node to be considered fully expanded.
+# GROUP_BY is intentionally excluded: any operator (including GROUP_BY) is allowed
+# after AGGREGATE, but the system must not MANDATE a GROUP_BY child — that would
+# force unbounded GROUP_BY→AGGREGATE→GROUP_BY→... chains.
+# The LLM may still freely propose GROUP_BY after AGGREGATE when it's appropriate.
+POST_AGGREGATE_EXPAND_OPS: List[str] = [
+    "JOIN", "UNION", "PIVOT", "UNPIVOT"
+]
+
+
+# Maximum number of AGGREGATE children a single GROUP_BY node may accumulate.
+# Re-expansion beyond the initial batch is gated by the reaggregation_needed flag.
+AGGREGATE_MAX_CHILDREN: int = 9
 
 # Default UCB1 exploration constant (sqrt(2) ≈ 1.414)
 DEFAULT_EXPLORATION_WEIGHT: float = 0.5
@@ -96,6 +132,12 @@ class MCTSNode:
         # is_fully_expanded() returns True so selection can descend past this node.
         self.saturated: bool = False
 
+        # Set by backpropagate when this GROUP_BY node's subtree scores above the
+        # reaggregation threshold AND there is still room for more AGGREGATE children.
+        # mcts_select will pause descent here to trigger another expansion call,
+        # then clears the flag.
+        self.reaggregation_needed: bool = False
+
     # ──────────────────────────────────────────────────────────────────────────
     # UCB1 / selection helpers
     # ──────────────────────────────────────────────────────────────────────────
@@ -126,11 +168,31 @@ class MCTSNode:
 
     def is_fully_expanded(self) -> bool:
         """
-        True when MAX_CHILDREN distinct configured steps have been tried,
-        OR when the LLM has been unable to suggest any new configs (saturated).
-        Saturated nodes are treated as fully explored so selection descends past them.
+        Criterion depends on this node's operator type:
+
+        GROUP_BY: fully expanded once AGGREGATE_MAX_CHILDREN (9) AGGREGATE
+            variants have been added. Until then, selection always stops here
+            to add more aggregation candidates. The reaggregation_needed flag
+            can trigger re-expansion past this threshold if the subtree is
+            proving promising.
+
+        AGGREGATE: fully expanded once every type in POST_AGGREGATE_EXPAND_OPS
+            [JOIN, UNION, PIVOT, UNPIVOT] appears as a child. GROUP_BY is NOT
+            required — it may appear if the LLM proposes it, but it is never
+            mandated, preventing forced GROUP_BY→AGGREGATE→... chains.
+
+        All other nodes: fully expanded once every type in STRUCTURAL_EXPAND_OPS
+            appears at least once as a child's operator_type, OR when saturated.
         """
-        return len(self.children) >= self.MAX_CHILDREN or self.saturated
+        if self.saturated:
+            return True
+        if self.operator_type == "GROUP_BY":
+            return len(self.children) >= AGGREGATE_MAX_CHILDREN
+        if self.operator_type == "AGGREGATE":
+            child_op_types = {c.operator_type for c in self.children.values()}
+            return all(op in child_op_types for op in STRUCTURAL_EXPAND_OPS)
+        child_op_types = {c.operator_type for c in self.children.values()}
+        return all(op in child_op_types for op in STRUCTURAL_EXPAND_OPS)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tree mutation
@@ -185,6 +247,7 @@ class MCTSNode:
             "best_score": round(self.best_score, 4),
             "is_terminal": self.is_terminal,
             "saturated": self.saturated,
+            "reaggregation_needed": self.reaggregation_needed,
         }
         if depth < max_depth:
             # Truncate long keys for readability
@@ -208,11 +271,15 @@ class MCTSNode:
 
     def __repr__(self) -> str:
         child_ops = [v.operator_type for v in self.children.values()]
-        sat = " SATURATED" if self.saturated else ""
+        flags = ""
+        if self.saturated:
+            flags += " SATURATED"
+        if self.reaggregation_needed:
+            flags += " REAGG"
         return (
             f"MCTSNode(op={self.operator_type}, "
             f"depth={len(self.operation_history)}, "
             f"visits={self.visits}, "
             f"q={self.q_value:.3f}, "
-            f"children={len(self.children)}/{self.MAX_CHILDREN}{sat} {child_ops})"
+            f"children={len(self.children)}{flags} {child_ops})"
         )
