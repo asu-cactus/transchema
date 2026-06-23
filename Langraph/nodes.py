@@ -973,10 +973,13 @@ def next_operator_step(state: MCTSGraphState) -> dict:
        NO_MORE_OPERATION is excluded from the allowed operators here so expansion
        always grows the tree — only simulation and critique may terminate a plan.
     2. Add every candidate whose configured_step is not already a child.
-    3. If no new configs were added, mark node saturated.
-    4. Simulate only candidates[0] (top priority), whether it is new or existing.
-    5. Ultimate fallback (empty/unparseable response): NO_MORE_OPERATION + saturated.
-       This is the only path by which expansion can create a terminal leaf.
+    3. If GROUP_BY is in the uncovered operator types, also inject one deterministic
+       hint-driven GROUP_BY candidate from hints_v3 statistical checks (runs always,
+       regardless of hint_source — reads source CSVs directly, no LLM call).
+    4. If no new configs were added, mark node saturated.
+    5. Simulate only candidates[0] (top priority), whether it is new or existing.
+    6. Ultimate fallback (empty/unparseable response): saturate silently, re-simulate
+       from existing prefix.
     """
     config = state["config"]
     rollout_history: List[str] = state["rollout_history"]
@@ -1099,6 +1102,40 @@ def next_operator_step(state: MCTSGraphState) -> dict:
                 f"[expand] Iter {state['iteration']}: added child op={op_type} "
                 f"cfg={cfg[:60]} "
                 f"(tree now has {len(selected_node.children)} children)"
+            )
+
+    # ── Hint-driven GROUP_BY candidate ───────────────────────────────────────
+    # When GROUP_BY is still uncovered at this node, add one deterministic
+    # candidate built from hints_v3 statistical checks on the source data.
+    # This runs regardless of hint_source and is additive to LLM candidates.
+    # The candidate was pre-computed once at case start (30 s timeout) and
+    # cached in config.hint_groupby_v3_candidate — no inline computation here.
+    if not is_groupby_expansion and "GROUP_BY" in expand_ops:
+        hint_cfg = getattr(config, "hint_groupby_v3_candidate", None)
+        if hint_cfg and hint_cfg not in existing_configs:
+            child_history = rollout_history + [hint_cfg]
+            selected_node.add_child(hint_cfg, child_history, operator_type="GROUP_BY")
+            new_configs_added.append(hint_cfg)
+            existing_configs.add(hint_cfg)
+            config.logger.info(
+                f"[expand] Iter {state['iteration']}: added hints_v3 GROUP_BY "
+                f"cfg={hint_cfg[:100]}"
+            )
+
+    # ── FD-based GROUP BY candidate (pre-computed from target table keys) ────
+    # Also injected when GROUP_BY is uncovered. Different heuristic from the
+    # hints_v3 candidate: derived from functional-dependency analysis of the
+    # target table, so it reflects what columns uniquely identify target rows.
+    if not is_groupby_expansion and "GROUP_BY" in expand_ops:
+        fd_cfg = getattr(config, "hint_groupby_fd_candidate", None)
+        if fd_cfg and fd_cfg not in existing_configs:
+            child_history = rollout_history + [fd_cfg]
+            selected_node.add_child(fd_cfg, child_history, operator_type="GROUP_BY")
+            new_configs_added.append(fd_cfg)
+            existing_configs.add(fd_cfg)
+            config.logger.info(
+                f"[expand] Iter {state['iteration']}: added FD-based GROUP_BY "
+                f"cfg={fd_cfg[:100]}"
             )
 
     # Saturation: LLM returned no new configs — mark so selection descends past this node
@@ -1383,31 +1420,44 @@ def backpropagate(state: MCTSGraphState) -> dict:
     # nodes so the tree stays consistent with the expand-layer structure.
     full_history = _split_groupby_aggregate(full_history)
 
-    sim_backprop_path: List[MCTSNode] = selection_path  # default: fall back to expand path
+    sim_backprop_path: List[MCTSNode] = selection_path  # default: no divergence
+    sim_diverged: bool = False
+    selection_only_nodes: List[MCTSNode] = []  # nodes on selection path but not sim path
+
     if full_history and expanded_depth > 0:
         truncated_sim = full_history[:expanded_depth]
         try:
-            sim_backprop_path = _find_or_create_path(root, truncated_sim)
+            built_path = _find_or_create_path(root, truncated_sim)
             if truncated_sim != list(state.get("rollout_history", [])):
+                # Simulation chose a different route than what UCB1 selected.
+                # Credit the simulation's actual path with the real reward.
+                # The selection path nodes that simulation never visited get a
+                # virtual visit (reward=0) — just enough to make their UCB1
+                # finite so selection rotates away from them instead of returning
+                # indefinitely with UCB1=∞.  No quality signal is implied.
+                sim_backprop_path = built_path
+                sim_diverged = True
+                built_ids = {id(n) for n in built_path}
+                selection_only_nodes = [n for n in selection_path if id(n) not in built_ids]
                 config.logger.info(
-                    f"[backpropagate] Iter {state['iteration']}: "
-                    f"sim path diverged from expand path — crediting simulate's path "
-                    f"(depth={len(truncated_sim)}, first_op={truncated_sim[0][:60] if truncated_sim else ''})"
+                    f"[backpropagate] Iter {state['iteration']}: sim path diverged — "
+                    f"crediting sim path with reward={pre_critique_score:.4f}, "
+                    f"giving {len(selection_only_nodes)} selection-only nodes a virtual visit (0)"
                 )
         except Exception:
             config.logger.warning(
                 f"[backpropagate] Iter {state['iteration']}: "
-                f"failed to build sim_backprop_path — falling back to selection_path: {traceback.format_exc()}"
+                f"failed to build sim path — using selection_path: {traceback.format_exc()}"
             )
-            sim_backprop_path = selection_path
 
-    # ── Pass 1: Backprop pre-critique score to simulate's actual path ────────
+    # ── Pass 1: Backprop pre-critique score ──────────────────────────────────
     config.logger.info(
         f"[backpropagate] Iter {state['iteration']}: "
-        f"Pass 1 (simulate path): {len(sim_backprop_path)} nodes, reward={pre_critique_score:.4f}"
+        f"Pass 1 ({'sim' if sim_diverged else 'selection'} path): "
+        f"{len(sim_backprop_path)} nodes, reward={pre_critique_score:.4f}"
     )
     for node in reversed(sim_backprop_path):
-        node.update(pre_critique_score)  # in-place: visits += 1, total_reward += reward
+        node.update(pre_critique_score)
         if (
             node.operator_type == "GROUP_BY"
             and pre_critique_score >= _REAGGREGATION_REWARD_THRESHOLD
@@ -1420,6 +1470,10 @@ def backpropagate(state: MCTSGraphState) -> dict:
                 f"(score={pre_critique_score:.4f}, "
                 f"children={len(node.children)}/{AGGREGATE_MAX_CHILDREN})"
             )
+
+    # Virtual visits for selection-only nodes when simulation diverged
+    for node in reversed(selection_only_nodes):
+        node.update(0.0)  # visits += 1, total_reward += 0 → UCB1 becomes finite
 
     # Cache best script on the deepest simulated node if improved
     if sim_backprop_path and pre_critique_score > sim_backprop_path[-1].best_score:

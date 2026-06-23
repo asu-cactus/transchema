@@ -906,6 +906,89 @@ def get_groupby_aggregate_hints(
     return [hints]
 
 
+def get_groupby_hint_columns(
+    source_data_name_list,
+    directory,
+    len_idx_target_idx,
+):
+    """Return an ordered list of 'table.col' strings that pass group-by checks.
+
+    Runs the same statistical checks as get_groupby_aggregate_hints but
+    returns column identifiers directly (not a text blob) so callers can
+    build a structured GROUP_BY candidate without text parsing.
+
+    Columns are ordered by confidence tier so higher-confidence candidates
+    appear first in the GROUP_BY column list:
+      Tier 1 (highest): check6 or check5 — target-column-matched
+      Tier 2:           check1 or check2 — source-based, high confidence
+      Tier 3:           check3 or check4 — source-based, lower confidence
+
+    Returns:
+        List[str]: e.g. ["Source1_9_0.zipcode", "Source1_9_0.AGI_STUB"]
+                   Empty list if no columns qualify or data cannot be loaded.
+    """
+    try:
+        tables = load_tables(directory, source_data_name_list, len_idx_target_idx)
+        target_file = os.path.join(directory, f"length{len_idx_target_idx}", "target.csv")
+        target_table = pd.read_csv(target_file)
+        target_table = target_table.drop(target_table.columns[0], axis=1)
+        target_columns = target_table.columns
+    except Exception:
+        return []
+
+    tier1, tier2, tier3 = [], [], []
+    seen = set()
+
+    for table_name, table in tables.items():
+        columns = table.columns
+        total_columns = len(columns)
+        for pos, col_name in enumerate(columns):
+            key = f"{table_name}.{col_name}"
+            if key in seen:
+                continue
+            col = table[col_name]
+
+            # Tier 1: target-matched (highest confidence)
+            if col_name in target_columns:
+                try:
+                    target_col = target_table[col_name]
+                    if group_by_check6(col, target_col, table_name, col_name, pos, total_columns):
+                        tier1.append(key)
+                        seen.add(key)
+                        continue
+                    if group_by_check5(col, target_col, table_name, col_name, pos, total_columns):
+                        tier1.append(key)
+                        seen.add(key)
+                        continue
+                except Exception:
+                    pass
+
+            # Tier 2: source-based, high confidence
+            try:
+                if (
+                    group_by_check1(col, table_name, col_name, pos, total_columns)
+                    or group_by_check2(col, table_name, col_name, pos, total_columns)
+                ):
+                    tier2.append(key)
+                    seen.add(key)
+                    continue
+            except Exception:
+                pass
+
+            # Tier 3: source-based, lower confidence
+            try:
+                if (
+                    group_by_check3(col, table_name, col_name, pos, total_columns)
+                    or group_by_check4(col, table_name, col_name, pos, total_columns)
+                ):
+                    tier3.append(key)
+                    seen.add(key)
+            except Exception:
+                pass
+
+    return tier1 + tier2 + tier3
+
+
 def get_union_hints(
     hint_source,
     file_count,

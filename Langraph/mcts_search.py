@@ -40,6 +40,7 @@ Key args fields
 
 import json
 import json
+import multiprocessing
 import os
 import sys
 import time
@@ -54,7 +55,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any, List, Optional
 
 import tiktoken
 
@@ -117,6 +118,164 @@ class Config:
     reward_mode: str          # "score" | "det_score_value" | "validation" | "partial"
     intermediate_materialization: bool  # True = materialize + score at each operator step
     data_split: str = "test"           # "test" or "training" — which CSV prefix to load
+    hint_groupby_fd_candidate: Optional[str] = None   # FD-derived GROUP BY step, pre-computed once
+    hint_groupby_v3_candidate: Optional[str] = None   # hints_v3-derived GROUP BY step, pre-computed once
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FD-based GROUP BY candidate — computed once per case with a hard timeout
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _fd_groupby_worker(
+    target_file: str,
+    source_name_list: List[str],
+    source_schema_list: List[str],
+    result_queue: "multiprocessing.Queue",
+) -> None:
+    """Subprocess worker: run FD analysis on target table and return a configured
+    GROUP_BY step string, or None if no keys are found / an error occurs."""
+    try:
+        import os, sys
+        _here = os.path.dirname(os.path.abspath(__file__))
+        _root = os.path.dirname(_here)
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+
+        import pandas as pd
+        from auto_suggest_llm_util import get_filtered_functional_dependency
+
+        df = pd.read_csv(target_file, low_memory=False)
+        df = df.drop(df.columns[0], axis=1)
+
+        keys, _fds = get_filtered_functional_dependency(df)
+        if not keys:
+            result_queue.put(None)
+            return
+
+        # Resolve each key column to its source table (table.col format).
+        # Falls back to bare column name if not found in any source schema.
+        def _find_source_table(col: str) -> Optional[str]:
+            for tname, schema in zip(source_name_list, source_schema_list):
+                col_names = [p.strip().split()[0] for p in schema.split(",") if p.strip()]
+                if col in col_names:
+                    return tname
+            return None
+
+        qualified = []
+        for col in keys:
+            tbl = _find_source_table(col)
+            qualified.append(f"{tbl}.{col}" if tbl else col)
+
+        result_queue.put(f"GROUP_BY : [{', '.join(qualified)}]")
+    except Exception:
+        result_queue.put(None)
+
+
+def _compute_fd_groupby_candidate(
+    target_file: str,
+    source_name_list: List[str],
+    source_schema_list: List[str],
+    logger,
+    timeout: int = 60,
+) -> Optional[str]:
+    """Run FD analysis on the target table to derive GROUP BY key columns.
+
+    Executes in a subprocess with a hard *timeout* (default 60 s) to guard
+    against cases where the FD algorithm takes very long on wide/large tables.
+    The result is returned as a fully configured MCTS step string, e.g.:
+        "GROUP_BY : [Source1_9_0.zipcode, Source1_9_0.AGI_STUB]"
+    Returns None if analysis times out, finds no keys, or errors.
+    """
+    result_queue: multiprocessing.Queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_fd_groupby_worker,
+        args=(target_file, source_name_list, source_schema_list, result_queue),
+    )
+    proc.start()
+    proc.join(timeout=timeout)
+
+    if proc.is_alive():
+        logger.warning(
+            f"[FD GROUP BY] Timed out after {timeout}s — skipping FD candidate"
+        )
+        proc.terminate()
+        proc.join()
+        return None
+
+    if not result_queue.empty():
+        result = result_queue.get()
+        if result:
+            logger.info(f"[FD GROUP BY] Candidate computed: {result[:120]}")
+        return result
+    return None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# hints_v3 GROUP BY candidate — computed once per case with a hard timeout
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _hints_v3_groupby_worker(
+    source_name_list: List[str],
+    directory: str,
+    len_idx_target_idx: str,
+    result_queue: "multiprocessing.Queue",
+) -> None:
+    """Subprocess worker: run hints_v3 statistical checks and return a configured
+    GROUP_BY step string, or None if no columns qualify / an error occurs."""
+    try:
+        import os, sys
+        _here = os.path.dirname(os.path.abspath(__file__))
+        _root = os.path.dirname(_here)
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+
+        import hints.hint_v3 as _h3
+        cols = _h3.get_groupby_hint_columns(source_name_list, directory, len_idx_target_idx)
+        if cols:
+            result_queue.put(f"GROUP_BY : [{', '.join(cols)}]")
+        else:
+            result_queue.put(None)
+    except Exception:
+        result_queue.put(None)
+
+
+def _compute_hints_v3_groupby_candidate(
+    source_name_list: List[str],
+    directory: str,
+    len_idx_target_idx: str,
+    logger,
+    timeout: int = 30,
+) -> Optional[str]:
+    """Run hints_v3 statistical GROUP BY checks with a hard *timeout* (default 30 s).
+
+    hints_v3 reads CSV files and evaluates column-level statistical properties;
+    this can be slow on large tables.  The subprocess is hard-killed if it
+    exceeds the timeout so it never delays MCTS operations.
+    """
+    result_queue: multiprocessing.Queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_hints_v3_groupby_worker,
+        args=(source_name_list, directory, len_idx_target_idx, result_queue),
+    )
+    proc.start()
+    proc.join(timeout=timeout)
+
+    if proc.is_alive():
+        logger.warning(
+            f"[hints_v3 GROUP BY] Timed out after {timeout}s — skipping v3 candidate"
+        )
+        proc.terminate()
+        proc.join()
+        return None
+
+    if not result_queue.empty():
+        result = result_queue.get()
+        if result:
+            logger.info(f"[hints_v3 GROUP BY] Candidate computed: {result[:120]}")
+        return result
+    return None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -301,6 +460,28 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             reward_mode=reward_mode,
             intermediate_materialization=intermediate_materialization,
             data_split=data_split,
+        )
+
+        # ── Heuristic GROUP BY candidates (computed once, cached in config) ────
+        # Both run regardless of fd_flag / hint_source.  Hard timeouts prevent
+        # slow tables from eating into the MCTS iteration budget.
+
+        # FD-based: keys from target table functional-dependency analysis (60 s)
+        config.hint_groupby_fd_candidate = _compute_fd_groupby_candidate(
+            target_file=ground_truth_location,
+            source_name_list=source_data_name_list,
+            source_schema_list=source_data_schema_list,
+            logger=logger,
+            timeout=60,
+        )
+
+        # hints_v3-based: statistical column checks on source tables (30 s)
+        config.hint_groupby_v3_candidate = _compute_hints_v3_groupby_candidate(
+            source_name_list=source_data_name_list,
+            directory=config_directory,
+            len_idx_target_idx=len_idx_target_idx,
+            logger=logger,
+            timeout=30,
         )
 
         # ── Auto-build upper-bound RAG DB from ground-truth CSV ──────────
@@ -719,6 +900,12 @@ if __name__ == "__main__":
         help="Base directory for results (a timestamped subdirectory is created inside)",
     )
     parser.add_argument(
+        "--log_dir",
+        type=str,
+        default="",
+        help="Override per-case log directory (default: logs_langraph/{experiment_name})",
+    )
+    parser.add_argument(
         "--cases",
         type=str,
         nargs="+",
@@ -796,7 +983,7 @@ if __name__ == "__main__":
     os.chdir(_ROOT)
 
     # All logs for this run go under a single experiment directory
-    log_dir_ = os.path.join("logs_langraph", args.experiment_name)
+    log_dir_ = args.log_dir if args.log_dir else os.path.join("logs_langraph", args.experiment_name)
     os.makedirs(log_dir_, exist_ok=True)
 
     # Results directory and CSV

@@ -20,6 +20,7 @@ mcts_select descends past it using UCB1 to explore deeper plans.
 """
 
 import math
+import random
 from typing import Dict, List, Optional
 
 # All operators the LLM can choose from (same as multi_step.py).
@@ -163,8 +164,18 @@ class MCTSNode:
     def best_child(
         self, exploration_weight: float = DEFAULT_EXPLORATION_WEIGHT
     ) -> "MCTSNode":
-        """Return the child with the highest UCB1 score."""
-        return max(self.children.values(), key=lambda c: c.ucb1(exploration_weight))
+        """Return the child with the highest UCB1 score.
+
+        When multiple children are unvisited (UCB1=∞), one is chosen uniformly
+        at random rather than always picking the first insertion-order winner.
+        This prevents the search from drilling into the same first-inserted
+        subtree while equally-unexplored siblings wait indefinitely.
+        """
+        children = list(self.children.values())
+        unvisited = [c for c in children if c.visits == 0]
+        if unvisited:
+            return random.choice(unvisited)
+        return max(children, key=lambda c: c.ucb1(exploration_weight))
 
     def is_fully_expanded(self) -> bool:
         """
