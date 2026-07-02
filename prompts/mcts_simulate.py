@@ -92,7 +92,7 @@ def get_mcts_simulate_prompt(
     {operation_history}
 
 Use the operations above as a hint for the first transformation step(s), then reason
-about what additional steps are required to produce the correct target schema.
+about what additional steps are required to produce the correct target schema, if any. If no more operators are needed, simply add No More Operator to the given partial operation plan and then generate the corresponding code.
 """
     else:
         history_section = (

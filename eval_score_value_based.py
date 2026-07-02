@@ -169,9 +169,32 @@ def build_jaccard_column_map(df_gen: pd.DataFrame, df_gt: pd.DataFrame,
     """
     For each GT column, find the best-matching generated column using a
     type-aware similarity metric:
-      - Categorical GT column → property-based score (lowercase_frac, uppercase_frac,
-                                avg_len, len_std, digit_frac)
+      - ID GT column ("id" in column name) → exact name match against a
+                                same-named, same-type gen column, when one
+                                exists. Falls back to the type-appropriate
+                                fuzzy search below only when no same-named
+                                column is present.
+      - Categorical GT column → exact name match against a same-named
+                                categorical gen column, when one exists.
+                                Falls back to property-based score
+                                (lowercase_frac, uppercase_frac, avg_len,
+                                len_std, digit_frac) only when no same-named
+                                column is present.
       - Numeric GT column     → 0.5 * (JS similarity + range overlap)
+                                (value-based matching, unchanged — numeric
+                                columns are frequently renamed with suffixes
+                                like _x/_y so name matching isn't reliable
+                                for them).
+
+    Name-matching (ID and categorical) exists because the value-based
+    fuzzy scores are small-sample-noisy heuristics: on small tables — or for
+    ID columns, where several small-range integer ID columns (e.g. RegionID,
+    ProvinciaID, ComunaID) can look statistically similar to each other via
+    JS-similarity/range-overlap regardless of table size — they can
+    confidently mismatch two unrelated columns just because their values
+    happen to look similar, corrupting every downstream metric that depends
+    on df_aligned. Exact name matches sidestep that risk entirely when the
+    generated script preserved the column's own name.
 
     A numeric gen column matched to a categorical GT column (or vice-versa)
     scores 0.0, so the matcher naturally avoids cross-type pairings.
@@ -197,6 +220,36 @@ def build_jaccard_column_map(df_gen: pd.DataFrame, df_gt: pd.DataFrame,
 
     mapping = []
     for gt_col in df_gt.columns:
+        # ID column (by name) with a same-named, same-type gen column: trust
+        # the exact name match, skip the fuzzy value-based search entirely.
+        # Checked before the categorical/numeric branches since ID columns
+        # can be either dtype.
+        if (
+            "id" in gt_col.lower()
+            and gt_col in df_gen.columns
+            and gen_numeric[gt_col] == gt_numeric[gt_col]
+        ):
+            mapping.append({
+                "gt_col":  gt_col,
+                "gen_col": gt_col,
+                "jaccard": 1.0,
+            })
+            continue
+
+        # Categorical GT column with a same-named categorical gen column:
+        # trust the exact name match, skip the fuzzy property-score search.
+        if (
+            not gt_numeric[gt_col]
+            and gt_col in df_gen.columns
+            and not gen_numeric[gt_col]
+        ):
+            mapping.append({
+                "gt_col":  gt_col,
+                "gen_col": gt_col,
+                "jaccard": 1.0,
+            })
+            continue
+
         best_gen_col = None
         best_score   = -1.0
 
@@ -529,20 +582,50 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     row_ratio  = (min(n_gen_complete, n_gt_full) / max(n_gen_complete, n_gt_full)
                   if max(n_gen_complete, n_gt_full) > 0 else 1.0)
 
-    # score_1: lightweight structural score = (fd_f1 + avg_col_score_1) / 2
+    # Row-count score: unlike row_ratio (which discounts incomplete rows before
+    # comparing, so it's blind to total row-count blowups), this compares RAW
+    # row counts directly. Catches e.g. a reversed merge direction that keeps
+    # every row of the wrong ("larger") source table instead of the correct one,
+    # inflating row count while row_ratio stays unchanged because the extra rows
+    # are mostly NaN and get filtered out of both sides of that ratio.
+    row_count_score = (min(n_gen_full, n_gt_full) / max(n_gen_full, n_gt_full)
+                        if max(n_gen_full, n_gt_full) > 0 else 1.0)
+
+    # Max-missing score: compares the WORST-missing column between gen and gt,
+    # rather than the average missing fraction across all columns. A join that
+    # force-fits a small table onto a larger one leaves a few specific columns
+    # (the ones only in the small table) mostly-NaN; averaging across all
+    # columns dilutes that signal away when most other columns are fully
+    # populated. Taking the max isolates exactly the columns that broke.
+    _gen_max_missing = float(df_gen.isna().mean().max()) if df_gen.shape[1] > 0 else 0.0
+    _gt_max_missing  = float(df_gt.isna().mean().max())  if df_gt.shape[1]  > 0 else 0.0
+    max_missing_score = 1 - abs(_gen_max_missing - _gt_max_missing)
+
+    # score_1: lightweight structural score =
+    #   (fd_f1 + avg_col_score_1 + row_count_score + max_missing_score) / 4
     #   per-column contribution:
-    #     numeric (float/int) → range_overlap only  (no JS, no nunique/missing)
+    #     numeric (float/int) → min(range_overlap, js_similarity) — pessimistic
+    #                           ("AND") ensemble: a column only scores well if
+    #                           BOTH signals agree. range_overlap alone can be
+    #                           fooled by envelope-matching tricks like
+    #                           (min+max)/2 that compress toward GT's endpoints
+    #                           without matching its true distribution — JS
+    #                           similarity catches that even when range_overlap
+    #                           doesn't, so min() lets JS veto a range_overlap
+    #                           false positive instead of being averaged away.
     #     categorical         → cat_score (Jaccard-based min-hash property score)
     #     id column           → nunique_sim
     #     date                → column_score (unchanged)
-    # No row_ratio penalty. Robust when row-count or JS penalties drag score_2 down.
+    # row_count_score / max_missing_score catch row-count blowups (e.g. reversed
+    # merge direction) that row_ratio misses. No row_ratio penalty otherwise —
+    # robust when row-count or JS penalties drag score_2 down.
     _per_col = col_scores.get("per_column") or {}
     if _per_col:
         _s1_vals = []
         for _cd in _per_col.values():
             _ct = _cd.get("type", "")
             if _ct == "numeric":
-                _s1_vals.append(_cd.get("range_overlap") or 0.0)
+                _s1_vals.append(min(_cd.get("range_overlap") or 0.0, _cd.get("js_similarity") or 0.0))
             elif _ct == "id":
                 _s1_vals.append(_cd.get("nunique_sim") or 0.0)
             elif _ct == "categorical":
@@ -550,10 +633,10 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
             else:  # date_as_numeric, date_mismatch
                 _s1_vals.append(_cd.get("column_score", 0.0))
         _avg_col_score_1 = round(sum(_s1_vals) / len(_s1_vals), 4)
-        score_1 = round((fd_f1 + _avg_col_score_1) / 2, 4)
+        score_1 = round((fd_f1 + _avg_col_score_1 + row_count_score + max_missing_score) / 4, 4)
     else:
         _avg_col_score_1 = None
-        score_1 = round(fd_f1, 4)
+        score_1 = round((fd_f1 + row_count_score + max_missing_score) / 3, 4)
 
     # score_2: full value-based score = (fd_f1 + avg_column_score + row_ratio) / 3.
     # Includes JS similarity, nunique/missing similarity, and row-count penalty.
@@ -562,10 +645,18 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     else:
         score_2 = round((fd_f1 + row_ratio) / 2, 4)
 
-    true_combined_score = max(score_1, score_2)
+    # true_combined_score = max(score_1, score_2)  # old: dual-score, max of both
+    # New: score_1 alone drives search/reward on this branch. score_2/row_ratio
+    # are still computed above and kept in debug_dict for comparison, but the
+    # max() escape hatch that let row-count-inflating scripts win via score_2
+    # (even after score_1 was fixed with row_count_score/max_missing_score) is
+    # removed.
+    true_combined_score = score_1
 
     debug_dict["column_scores"]        = col_scores
     debug_dict["row_ratio"]            = round(row_ratio, 4)
+    debug_dict["row_count_score"]      = round(row_count_score, 4)
+    debug_dict["max_missing_score"]    = round(max_missing_score, 4)
     debug_dict["n_gen_full"]           = n_gen_full
     debug_dict["n_gen_complete"]       = n_gen_complete
     debug_dict["avg_col_score_1"]      = _avg_col_score_1

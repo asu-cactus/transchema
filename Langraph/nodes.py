@@ -1104,11 +1104,12 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             # Safety guard: all types already covered — shouldn't reach here in
             # normal flow since is_fully_expanded() would have been True.
             expand_ops = list(STRUCTURAL_EXPAND_OPS)
-        # Allow the LLM to propose NO_MORE_OPERATION when the current prefix
-        # is already a valid stopping point.  It is never required (not in
-        # STRUCTURAL_EXPAND_OPS) so it does not affect is_fully_expanded().
-        if "NO_MORE_OPERATION" not in covered_op_types:
-            expand_ops.append("NO_MORE_OPERATION")
+        # NO_MORE_OPERATION is intentionally NOT offered here — expansion should
+        # always grow the tree; only simulation/critique may terminate a plan
+        # (the simulate prompt explicitly handles "no more steps needed").
+        # Offering it here just added redundant candidates that either sit at
+        # 0 visits forever (never selected) or pick up phantom virtual visits
+        # with q=0.000 from backpropagate()'s divergence bookkeeping.
 
     # ── RAG: fetch similar-case hints for the current pipeline prefix ─────
     # Skip at depth 0: no operation history to query on, and all operators are
@@ -1675,12 +1676,15 @@ def backpropagate(state: MCTSGraphState) -> dict:
 
 def extract_best(state: MCTSGraphState) -> dict:
     """
-    MCTS search complete. Determine the final script by walking the
-    best-reward path (greedy descent by total_reward, visit-independent)
-    from the root to a leaf, then taking that leaf's cached script.
+    MCTS search complete. Determine the final script as the GLOBAL best-scoring
+    script seen anywhere during the search (tracked incrementally in
+    state["best_score"]/state["best_script"] by execute_and_score() and
+    mcts_critique() — "Method A" / max-score selection), rather than walking
+    root.best_reward_path() (greedy descent by accumulated total_reward) and
+    taking that leaf's locally-cached script.
 
-    Any leaf with total_reward > 0 must have been simulated at least once,
-    so its best_script is guaranteed to be set.
+    Tree exploration (UCB1 selection, dual-pass critique backprop) is
+    unchanged — only which script gets extracted as the final answer changes.
     """
     config = state["config"]
     main_folder = state["main_folder"]
@@ -1688,26 +1692,26 @@ def extract_best(state: MCTSGraphState) -> dict:
     case_id = state["case_id"]
     root: MCTSNode = state["root"]
 
-    # ── Walk best-reward path ─────────────────────────────────────────────────
-    reward_path = root.best_reward_path()
-    leaf = reward_path[-1]
+    best_script = state["best_script"]
+    best_score = state["best_score"]
+    best_op_history = state["best_operation_history"]
 
-    if not leaf.best_script:
+    if not best_script:
         config.logger.warning(
-            f"[extract_best] Best-reward-path leaf has no cached script "
-            f"(depth={leaf.depth}, op={leaf.operator_type}, "
-            f"total_reward={leaf.total_reward:.4f}, visits={leaf.visits}). "
-            f"This should not happen — every visited node must have been simulated."
+            f"[extract_best] Global best_script is empty "
+            f"(best_score={best_score:.4f}). "
+            f"This should not happen if any iteration executed successfully."
         )
 
-    best_script = leaf.best_script
-    best_score = leaf.best_score
-    best_op_history = leaf.operation_history
-
+    # Diagnostic only: log how the accumulated-reward path would have differed,
+    # to make divergence between the two selection strategies visible in logs.
+    reward_path = root.best_reward_path()
+    reward_leaf = reward_path[-1]
     config.logger.info(
-        f"[MCTS Complete] best-reward path: depth={leaf.depth}, "
-        f"ops={best_op_history}, "
-        f"leaf_total_reward={leaf.total_reward:.4f}, leaf_best_score={best_score:.4f}, "
+        f"[MCTS Complete] global best_score={best_score:.4f}, ops={best_op_history} | "
+        f"(for comparison) best-reward-path leaf: depth={reward_leaf.depth}, "
+        f"leaf_total_reward={reward_leaf.total_reward:.4f}, "
+        f"leaf_best_score={reward_leaf.best_score:.4f}, "
         f"total_root_visits={root.visits}, "
         f"tree_depth_explored={len(root.best_path())}"
     )
@@ -1755,7 +1759,7 @@ def extract_best(state: MCTSGraphState) -> dict:
         "log_messages": state["log_messages"]
         + [
             f"MCTS complete after {state['iteration']} iterations. "
-            f"Best-reward-path score={best_score:.4f}, depth={leaf.depth}"
+            f"Global best_score={best_score:.4f}, ops={best_op_history}"
         ],
     }
 

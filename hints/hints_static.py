@@ -145,10 +145,17 @@ HINTS = {
         "values such as 5 5 4 5 4 in each row, it indicates that a COUNT DISTINCT is used."
     ),
     22: (
-        "When computing an average aggregation, always use the simple mean function "
-        "(e.g., .mean() or AGG('mean')). NEVER approximate the average as "
-        "(min + max) / 2 — this is mathematically incorrect. NEVER use a weighted "
-        "average (e.g., sum(value * weight) / sum(weight))."
+        "For ANY average/mean aggregation, you MUST use the plain, unweighted "
+        "mean (.mean() or AGG('mean')) — this is not optional. It is STRICTLY "
+        "FORBIDDEN to approximate the average as (min + max) / 2, or to compute "
+        "a weighted average by multiplying the value column by any other column "
+        "(a count, total, or size column) and dividing by that column's sum — "
+        "e.g. sum(value * weight) / sum(weight) or "
+        "(df['Median'] * df['Total']).sum() / df['Total'].sum() are BOTH WRONG, "
+        "even if a plausible weighting column (like 'Total' or 'Count') exists "
+        "in the source data. Using any of these approximations instead of the "
+        "simple mean WILL produce an incorrect result, no matter how close the "
+        "numbers look."
     ),
 
     # --- Row Debugging ---
@@ -220,6 +227,10 @@ HINTS = {
         "Leave them as NaN/empty. If you must fill a missing value, use 0 — never "
         "invent some other constant."
     ),
+    36: (
+        "NEVER join using left_index=True/right_index=True. If a named key/ID "
+        "column exists, join on it directly by name (on=, left_on=/right_on=)."
+    ),
 }
 
 # ---------------------------------------------------------------------------
@@ -227,16 +238,16 @@ HINTS = {
 # ---------------------------------------------------------------------------
 
 NEXT_OPERATOR_HINT_IDS = [1, 2, 3, 4, 5, 6, 9, 11, 16]
-JOIN_HINT_IDS = [7, 8, 9, 35]
+JOIN_HINT_IDS = [7, 8, 9, 35, 36]
 GROUPBY_AGG_HINT_IDS = [10, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22]
 GROUPBY_HINT_IDS = [10, 11, 12, 13, 14]          # group-by column selection only
 AGGREGATE_HINT_IDS = [14, 16, 17, 18, 19, 20, 21, 22]  # aggregation function selection only
-PYTHON_SCRIPT_HINT_IDS = [1, 2, 3, 4, 5, 10, 11, 16, 17, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
-CRITIQUE_HINT_IDS = [4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 34, 35]
+PYTHON_SCRIPT_HINT_IDS = [1, 2, 3, 4, 5, 10, 11, 16, 17, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
+CRITIQUE_HINT_IDS = [4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 34, 35, 36]
 # Pipeline-level: combined design + code generation (single_step_cot / Create_New_Pipeline)
 PIPELINE_HINT_IDS = [
     1, 2, 3, 4, 5, 6,          # Operator selection (UNION vs JOIN, all tables used)
-    7, 8, 9, 35,                 # Join config (PK/FK, dimension tables, different-name joins, no fillna padding)
+    7, 8, 9, 35, 36,             # Join config (PK/FK, dimension tables, different-name joins, no fillna padding, no left_index/right_index)
     10, 11, 12, 13,             # GroupBy rules (no float keys, no duplicate keys, never all cols)
     16, 17, 18, 19, 20, 21, 22, # Aggregation patterns (incl. always use mean, not min+max/2)
     25, 26, 27, 28,             # Data format (type/name match, string conv, constants)

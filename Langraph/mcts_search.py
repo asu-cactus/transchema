@@ -929,19 +929,14 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                         pass
                 _prev_iter = _curr_iter
 
-            # Checkpoint the best-reward-path leaf script after every graph step so
-            # timeout/OOM recovery uses the same path-based selection as extract_best.
+            # Checkpoint the GLOBAL best script after every graph step so
+            # timeout/OOM recovery uses the same max-score selection as extract_best
+            # (state["best_score"]/["best_script"], tracked by execute_and_score()/
+            # mcts_critique() — not the accumulated-reward best_reward_path() leaf).
             try:
-                _ckpt_root = _step_state.get("root")
-                if _ckpt_root is not None and _ckpt_root.visits > 0:
-                    _ckpt_leaf = _ckpt_root.best_reward_path()[-1]
-                    _ckpt_script = _ckpt_leaf.best_script
-                    _ckpt_score = _ckpt_leaf.best_score
-                    _ckpt_history = str(_ckpt_leaf.operation_history)
-                else:
-                    _ckpt_script = _step_state.get("best_script") or _step_state.get("latest_script", "")
-                    _ckpt_score = _step_state.get("best_score", 0.0)
-                    _ckpt_history = str(_step_state.get("best_operation_history", []))
+                _ckpt_script = _step_state.get("best_script") or _step_state.get("latest_script", "")
+                _ckpt_score = _step_state.get("best_score", 0.0)
+                _ckpt_history = str(_step_state.get("best_operation_history", []))
                 if _ckpt_script:
                     with open(_checkpoint_file, "w") as _cf:
                         json.dump({
@@ -1074,7 +1069,7 @@ if __name__ == "__main__":
     import multiprocessing
     from datetime import datetime
 
-    _CASE_TIMEOUT = 300  # 5 minutes per case
+    _CASE_TIMEOUT = 600  # 10 minutes per case
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
