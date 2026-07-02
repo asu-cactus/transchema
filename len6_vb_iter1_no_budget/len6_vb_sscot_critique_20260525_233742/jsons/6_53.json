@@ -1,0 +1,29 @@
+{
+  "case": "6_53",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9278,
+        "cost": 0.0020572000000000003,
+        "latency": 7.056711673736572,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.856) / 2 = 0.928 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=1.000.\nGround truth candidate keys: {nombre, a\u00f1o}.\nGenerated table candidate keys: {nombre, a\u00f1o}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'n_aprobados': range overlap=1.000, JS similarity=0.942\n    Generated    \u2014 min: 0.0, max: 152.0, mean: 11.6943\n    Ground Truth \u2014 min: 0.0, max: 152.0, mean: 13.8868\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'nombre': Jaccard=0.469",
+        "generated_samples": "Schema: ['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']\nNumber of Tuples: 265\nExamples:\n            nombre  n_concursados  n_aprobados  a\u00f1o\nUNIV. DEL PACIFICO              2            0 2016\nUNIV. DE LOS ANDES             26            9 2014\n UNIV. SANTO TOMAS              6            1 2015",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length6_53/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_53/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_53/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_53/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_53/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_53/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_53/training_6.csv\"\n]\n\n# Read all source CSV files into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Ensure columns are exactly as target schema and types are consistent\n    # Target schema: ['nombre': string, 'n_concursados': int, 'n_aprobados': int, 'a\u00f1o': int]\n    # Convert columns to correct types explicitly\n    df = df[['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']].copy()\n    df['nombre'] = df['nombre'].astype(str)\n    df['n_concursados'] = pd.to_numeric(df['n_concursados'], errors='coerce').fillna(0).astype(int)\n    df['n_aprobados'] = pd.to_numeric(df['n_aprobados'], errors='coerce').fillna(0).astype(int)\n    df['a\u00f1o'] = pd.to_numeric(df['a\u00f1o'], errors='coerce').fillna(0).astype(int)\n    dfs.append(df)\n\n# Since all source tables have the exact same schema as the target,\n# we can concatenate (union) all source DataFrames directly.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target examples show no aggregation or grouping is needed,\n# just a union of all source rows.\n\n# Save the final target DataFrame to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_53/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "nombre,n_concursados,n_aprobados,a\u00f1o\nUNIVERSIDAD ARTURO PRAT,4,3,2013\nUNIVERSIDAD ACADEMIA DE HUMANISMO CRISTIANO,5,2,2013\nUNIVERSIDAD DE LA SERENA,4,2,2013\nUNIVERSIDAD METROPOLITANA DE CIENCIAS DE LA EDUCACIO\u0301N,3,2,2013\nUNIVERSIDAD ARTES Y CIENCIAS SOCIALES,8,1,2013\nUNIVERSIDAD CATO\u0301LICA DE TEMUCO,8,1,2013\nUNIVERSIDAD CATO\u0301LICA CARDENAL SILVA HENRIQUEZ,3,1,2013\nUNIVERSIDAD DE MAGALLANES,3,1,2013\nUNIVERSIDAD AUTO\u0301NOMA DE CHILE,1,1,2013\nUNIVERSIDAD BERNARDO O'HIGGINS,1,1,2013\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0387897491455078
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 7123.507022857666,
+        "critique": 0.0
+      }
+    }
+  ]
+}

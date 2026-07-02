@@ -1,0 +1,46 @@
+{
+  "case": "1_67",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.2848,
+        "cost": 0.0018116,
+        "latency": 8.48114800453186,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.570) / 2 = 0.285 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.570, range overlap=0.569.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id, sad}; {user_id, stressed}.\nKeys present in ground truth but absent in generated: {user_id}.\nSpurious keys in generated not present in ground truth: {stressed, user_id}; {sad, user_id}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['stressed'] \u2192 sad; ['sad'] \u2192 stressed; ['sad', 'user_id'] \u2192 stressed.\nMissing FDs from ground truth: ['user_id'] \u2192 stressed; ['user_id'] \u2192 sad.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.170\n    Generated    \u2014 min: 0.0, max: 0.3333, mean: 0.0503\n    Ground Truth \u2014 min: 2.0, max: 46.0, mean: 25.2286\n  Column 'sad': range overlap=0.750, JS similarity=0.768\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.75, mean: 0.1185\n  Column 'stressed': range overlap=0.958, JS similarity=0.771\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.9583, mean: 0.2193",
+        "generated_samples": "Schema: ['user_id', 'sad', 'stressed']\nNumber of Tuples: 31\nExamples:\n user_id      sad  stressed\n      78 0.049383       0.0\n      69 0.000000       0.0\n      76 0.155556       0.6",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_67/training_0.csv\"\n]\n\n# List to hold transformed DataFrames from each source\ntransformed_dfs = []\n\nfor file_path in source_files:\n    # Load source data with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # The target schema is: ['user_id': int, 'sad': float, 'stressed': float]\n    # Source schema: ['user_id', 'time', 'sore.throat.cough', 'runnynose.congestion.sneezing', 'fever',\n    # 'nausea.vomiting.diarrhea', 'sad.depressed', 'open.stressed']\n    #\n    # Mapping:\n    # user_id -> user_id (int)\n    # sad -> sad.depressed (float)\n    # stressed -> open.stressed (float)\n    #\n    # We need to aggregate by user_id because source has multiple rows per user_id (different times).\n    # The target examples show one row per user_id.\n    #\n    # Aggregation: average (mean) of sad.depressed and open.stressed per user_id.\n    \n    # Select relevant columns\n    df_sub = df[['user_id', 'sad.depressed', 'open.stressed']].copy()\n    \n    # Convert sad.depressed and open.stressed to float (in case they are int)\n    df_sub['sad.depressed'] = df_sub['sad.depressed'].astype(float)\n    df_sub['open.stressed'] = df_sub['open.stressed'].astype(float)\n    \n    # Aggregate by user_id with mean\n    df_agg = df_sub.groupby('user_id', as_index=False).mean()\n    \n    # Rename columns to target schema\n    df_agg.rename(columns={\n        'sad.depressed': 'sad',\n        'open.stressed': 'stressed'\n    }, inplace=True)\n    \n    # Ensure user_id is integer type\n    df_agg['user_id'] = df_agg['user_id'].astype(int)\n    \n    # Append to list\n    transformed_dfs.append(df_agg)\n\n# Since there is only one source table, no union or join needed.\n# If there were multiple source tables with the same schema, we would union them here.\n\n# Concatenate all transformed dfs (only one here)\nresult_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Sort by user_id to have consistent ordering (optional)\nresult_df.sort_values('user_id', inplace=True)\n\n# Write to target CSV file without the index column\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_67/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "user_id,sad,stressed\n46,0.0,0.0\n47,0.0975609756097561,0.4756097560975609\n48,0.0714285714285714,0.3214285714285714\n49,0.2894736842105263,0.5\n51,0.0,0.0\n52,0.1162790697674418,0.1162790697674418\n54,0.0,0.0\n55,0.0,0.0344827586206896\n56,0.0,0.0714285714285714\n57,0.0,0.03125\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5063285827636719
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.2848,
+          "cost": 0.0016408,
+          "latency": 7.0254600048065186,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.570) / 2 = 0.285 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.570, range overlap=0.569.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id, sad}; {user_id, stressed}.\nKeys present in ground truth but absent in generated: {user_id}.\nSpurious keys in generated not present in ground truth: {stressed, user_id}; {sad, user_id}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['stressed'] \u2192 sad; ['sad'] \u2192 stressed; ['sad', 'user_id'] \u2192 stressed.\nMissing FDs from ground truth: ['user_id'] \u2192 stressed; ['user_id'] \u2192 sad.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.170\n    Generated    \u2014 min: 0.0, max: 0.3333, mean: 0.0503\n    Ground Truth \u2014 min: 2.0, max: 46.0, mean: 25.2286\n  Column 'sad': range overlap=0.750, JS similarity=0.768\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.75, mean: 0.1185\n  Column 'stressed': range overlap=0.958, JS similarity=0.771\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.9583, mean: 0.2193",
+          "generated_samples": "Schema: ['user_id', 'sad', 'stressed']\nNumber of Tuples: 31\nExamples:\n user_id      sad  stressed\n      70 0.008403  0.008403\n      80 0.000000  0.033333\n      58 0.000000  0.000000",
+          "code": "import pandas as pd\n\n# Read source data\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_67/training_0.csv\", index_col=0)\n\n# Rename columns to match target schema\n# sad.depressed -> sad\n# open.stressed -> stressed\ndf = source0.rename(columns={\n    'sad.depressed': 'sad',\n    'open.stressed': 'stressed'\n})[['user_id', 'sad', 'stressed']]\n\n# Group by user_id and aggregate by mean for sad and stressed\nresult = df.groupby('user_id', as_index=False).agg({\n    'sad': 'mean',\n    'stressed': 'mean'\n})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_67/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.111745834350586
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8483.63995552063,
+        "critique": 7072.7527141571045
+      }
+    }
+  ]
+}

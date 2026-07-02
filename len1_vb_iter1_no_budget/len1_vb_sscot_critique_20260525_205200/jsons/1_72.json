@@ -1,0 +1,29 @@
+{
+  "case": "1_72",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9115,
+        "cost": 0.0013188000000000002,
+        "latency": 4.129741907119751,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.823) / 2 = 0.911 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.646.\nGround truth candidate keys: {0}; {condition}.\nGenerated table candidate keys: {0}; {condition}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=0.292, JS similarity=1.000\n    Generated    \u2014 min: 238.0, max: 262.0, mean: 250.0\n    Ground Truth \u2014 min: 246.0, max: 253.0, mean: 249.5",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition   0\n         1 262\n         0 238",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_72/training_0.csv\"\n]\n\n# Load all source tables\n# According to the prompt, only one source table is given.\n# Read with index_col=0 to ignore the numerical index column.\ndf_source0 = pd.read_csv(source_paths[0], index_col=0)\n\n# Transformation plan:\n# Target schema: ['condition': integer, '0': integer]\n# Source schema: ['condition', 'click']\n# Target examples show that the '0' column corresponds to counts of rows per condition.\n# The source table has 'click' column with values 0 or 1.\n# The target table has two rows: condition=0 with 253, condition=1 with 246.\n# The sum of 253+246=499, source has 500 rows, so likely one row is excluded or rounding.\n# The target '0' column is likely the count of rows per condition.\n# So we group by 'condition' and count rows.\n\n# Group by 'condition' and count rows\ndf_target = df_source0.groupby('condition').size().reset_index(name='0')\n\n# Ensure the data types match target schema: both columns integer\ndf_target['condition'] = df_target['condition'].astype(int)\ndf_target['0'] = df_target['0'].astype(int)\n\n# Save the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_72/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "condition,0\n0,238\n1,262\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2409687042236328
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 4132.140398025513,
+        "critique": 0.0
+      }
+    }
+  ]
+}

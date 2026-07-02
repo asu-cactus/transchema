@@ -1,0 +1,46 @@
+{
+  "case": "9_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.006998800000000001,
+        "latency": 24.34087824821472,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {purpose}.\nGenerated table candidate keys: {purpose}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'purpose': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 39751.0, max: 39751.0, mean: 39751.0\n    Ground Truth \u2014 min: 2.0, max: 1590.0, mean: 217.8557",
+        "generated_samples": "Schema: ['purpose']\nNumber of Tuples: 1\nExamples:\n purpose\n   39751",
+        "code": "import pandas as pd\n\n# List of source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_14.csv\"\n]\n\n# Step 1: Load all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'purpose' is integer type as per target schema\n    df['purpose'] = df['purpose'].astype(int)\n    dfs.append(df)\n\n# Step 2: UNION all source tables (concatenate vertically)\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# Step 3: Aggregate by summing the 'purpose' column across all source tables\n# Since the operation_history specifies no group_by columns, sum all 'purpose' values\ntotal_purpose_sum = union_df['purpose'].sum()\n\n# Step 4: Create the target DataFrame with the aggregated sum as a single-row DataFrame\ntarget_df = pd.DataFrame({'purpose': [total_purpose_sum]})\n\n# Step 5: Write the result to the specified target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_46/target_multisource.csv\", index=False)",
+        "generated_csv_head": "purpose\n39751\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8509159088134766
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.9844,
+          "cost": 0.002418,
+          "latency": 6.665048360824585,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.969) / 2 = 0.984 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.947, range overlap=0.991.\nGround truth candidate keys: {purpose}.\nGenerated table candidate keys: {purpose}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'purpose': range overlap=0.991, JS similarity=0.947\n    Generated    \u2014 min: 2.0, max: 1575.0, mean: 203.8513\n    Ground Truth \u2014 min: 2.0, max: 1590.0, mean: 217.8557",
+          "generated_samples": "Schema: ['purpose']\nNumber of Tuples: 195\nExamples:\n purpose\n     450\n      48\n      31",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\npaths = [\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_46/training_14.csv\"\n]\n\ndfs = [pd.read_csv(p, index_col=0) for p in paths]\n\n# UNION all source tables (concatenate rows)\nresult = pd.concat(dfs, ignore_index=True)\n\n# The target schema is ['purpose'] integer, so ensure dtype matches\nresult = result.astype({'purpose': 'int64'})\n\n# Write the final output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_46/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8802413940429688
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 24403.266429901123,
+        "critique": 6716.211318969727
+      }
+    }
+  ]
+}

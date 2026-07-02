@@ -1,0 +1,29 @@
+{
+  "case": "2_71",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9929,
+        "cost": 0.0065824,
+        "latency": 19.6594340801239,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.986) / 2 = 0.993 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.943.\nGround truth candidate keys: {type}; {reading_score}.\nGenerated table candidate keys: {type}; {reading_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'reading_score': range overlap=0.943, JS similarity=1.000\n    Generated    \u2014 min: 80.9008, max: 83.9245, mean: 82.4127\n    Ground Truth \u2014 min: 81.037, max: 83.8886, mean: 82.4628",
+        "generated_samples": "Schema: ['type', 'reading_score']\nNumber of Tuples: 2\nExamples:\n    type  reading_score\nDistrict      80.900820\n Charter      83.924544",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_71/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_71/training_1.csv\", index_col=0)\n\n# Join on 'school_name'\njoined = pd.merge(source0, source1, on=\"school_name\", how=\"inner\")\n\n# Group by 'type' from source0 and aggregate average reading_score from source1\nresult = joined.groupby(\"type\", as_index=False)[\"reading_score\"].mean()\n\n# Ensure the reading_score column is float type (it should be by default)\nresult[\"reading_score\"] = result[\"reading_score\"].astype(float)\n\n# Sort by 'type' to match target example order (optional but good for consistency)\nresult = result.sort_values(\"type\").reset_index(drop=True)\n\n# Write the final target table to the specified path without the index\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_71/target_multisource.csv\", index=False)",
+        "generated_csv_head": "type,reading_score\nCharter,83.924543946932\nDistrict,80.90081972766073\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5478134155273438
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 19744.43507194519,
+        "critique": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "4_69",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8365,
+        "cost": 0.0126548,
+        "latency": 43.432143449783325,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.909 + 0.764) / 2 = 0.837 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.074, range overlap=0.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.909 (precision=0.833, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['fav_music', 'floor', 'libcon'] \u2192 party.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.074\n    Generated    \u2014 min: 43.0, max: 84.0, mean: 63.5\n    Ground Truth \u2014 min: 1.0, max: 42.0, mean: 21.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'floor': Jaccard=0.883\n  Column 'libcon': Jaccard=0.664",
+        "generated_samples": "Schema: ['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']\nNumber of Tuples: 42\nExamples:\n user_id year_school  floor party libcon fav_music\n      51 GRT / Other f282.4 TYPEc  TYPEd     TYPEd\n      62    Freshman f290.2 TYPEa  TYPEf     TYPEa\n      43    Freshman f282.2 TYPEc  TYPEg     TYPEb",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_69/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_69/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_69/training_2.csv\", index_col=0)\n\n# First join Source0 and Source1 on 'user_id'\ndf01 = pd.merge(source0, source1, on=\"user_id\", how=\"left\")\n\n# Then join the result with Source2 on 'user_id'\ndf_final = pd.merge(df01, source2, on=\"user_id\", how=\"left\")\n\n# The target schema is:\n# ['user_id': integer, 'year_school': string, 'floor': string, 'party': string, 'libcon': string, 'fav_music': string]\n\n# Ensure correct column order and types\ndf_final = df_final[['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']]\n\n# Convert user_id to integer (if not already)\ndf_final['user_id'] = df_final['user_id'].astype(int)\n\n# Convert other columns to string type (including NaNs as strings)\nfor col in ['year_school', 'floor', 'party', 'libcon', 'fav_music']:\n    df_final[col] = df_final[col].astype(str).replace('nan', pd.NA)\n\n# Write the final dataframe to the target path\ndf_final.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/target_multisource.csv\", index=False)",
+        "generated_csv_head": "user_id,year_school,floor,party,libcon,fav_music\n43,Freshman,f282.2,TYPEc,TYPEg,TYPEb\n44,Sophomore,f282.2,TYPEa,TYPEf,TYPEa\n45,Freshman,f290.4,TYPEc,TYPEf,TYPEb\n46,Sophomore,f282.3,TYPEa,TYPEg,TYPEf\n47,Junior,f282.3,TYPEc,TYPEd,TYPEh\n48,GRT / Other,f290.2,TYPEa,TYPEf,TYPEf\n49,Senior,f290.2,,TYPEf,TYPEb\n50,GRT / Other,f290.4,TYPEc,TYPEf,TYPEa\n51,GRT / Other,f282.4,TYPEc,TYPEd,TYPEd\n52,Freshman,f282.1,TYPEa,TYPEd,TYPEb\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6641616821289062
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8372,
+          "cost": 0.0017748000000000002,
+          "latency": 40.19534993171692,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.909 + 0.765) / 2 = 0.837 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.090, range overlap=0.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.909 (precision=0.833, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['fav_music', 'floor', 'libcon'] \u2192 party.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.090\n    Generated    \u2014 min: 43.0, max: 71.0, mean: 57.2857\n    Ground Truth \u2014 min: 1.0, max: 42.0, mean: 21.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'floor': Jaccard=0.883\n  Column 'libcon': Jaccard=0.664",
+          "generated_samples": "Schema: ['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']\nNumber of Tuples: 28\nExamples:\n user_id year_school  floor party libcon fav_music\n      70    Freshman f282.2 TYPEa  TYPEf     TYPEg\n      52    Freshman f282.1 TYPEa  TYPEd     TYPEb\n      53      Junior f282.3 TYPEd  TYPEf     TYPEf",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/training_2.csv\", index_col=0)\n\n# First join Source4_69_0 and Source4_69_1 on user_id (inner join)\njoined_01 = pd.merge(source0, source1, on=\"user_id\", how=\"inner\")\n\n# Then join the result with Source4_69_2 on user_id (inner join)\nfinal_join = pd.merge(joined_01, source2, on=\"user_id\", how=\"inner\")\n\n# Group by all leftmost non-float columns that appear unique in target examples:\n# user_id (int), year_school (str), floor (str), party (str), libcon (str)\n# No aggregation columns, so just drop duplicates if any\nfinal = final_join.groupby(\n    [\"user_id\", \"year_school\", \"floor\", \"party\", \"libcon\"], as_index=False\n).first()\n\n# Write output with exact target schema column order\nfinal = final[[\"user_id\", \"year_school\", \"floor\", \"party\", \"libcon\", \"fav_music\"]]\n\nfinal.to_csv(\n    \"autopipeline-benchmarks/github-pipelines/length4_69/target_multisource_critique_history.csv\",\n    index=False,\n)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.5517940521240234
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 43504.60886955261,
+        "critique": 59734.26628112793
+      }
+    }
+  ]
+}

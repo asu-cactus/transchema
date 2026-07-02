@@ -1,0 +1,46 @@
+{
+  "case": "1_68",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8398,
+        "cost": 0.00169,
+        "latency": 5.2645885944366455,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.680) / 2 = 0.840 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'V_GENE': Jaccard=0.680",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV4\n IGHV3\n IGHV3",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_68/training_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since all source tables have the same schema ['V_CALL'] and the target schema is ['V_GENE'],\n# we need to transform the 'V_CALL' column to 'V_GENE' by extracting the gene part before the first '-'.\n# Example: \"IGHV3-30*18\" -> \"IGHV3\"\n\ndef extract_v_gene(v_call_value):\n    # Split by '-' and take the first part\n    return v_call_value.split('-')[0]\n\n# Transform each source DataFrame accordingly\ntransformed_dfs = []\nfor df in source_dfs:\n    # Extract 'V_GENE' from 'V_CALL'\n    df_transformed = pd.DataFrame()\n    df_transformed['V_GENE'] = df['V_CALL'].map(extract_v_gene)\n    transformed_dfs.append(df_transformed)\n\n# Since there is only one source table, no union needed, just take the transformed DataFrame\ntarget_df = transformed_dfs[0]\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV3\nIGHV4\nIGHV2\nIGHV1\nIGHV3\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8869171142578125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8398,
+          "cost": 0.0011944,
+          "latency": 3.3484301567077637,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.680) / 2 = 0.840 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'V_GENE': Jaccard=0.680",
+          "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV1\n IGHV4\n IGHV3",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_68/training_0.csv\", index_col=0)\n\n# Extract the V_GENE column by applying string operation: take substring before the first '*'\n# Then take substring before the first '-' to match target examples like IGHV3, IGHV1, IGHV2\nv_gene = source1['V_CALL'].str.split('*').str[0].str.split('-').str[0]\n\n# Create the target DataFrame with column name exactly as in target schema\ntarget_df = pd.DataFrame({'V_GENE': v_gene})\n\n# Write the output CSV file without the index\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7026195526123047
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5277.387619018555,
+        "critique": 3546.156644821167
+      }
+    }
+  ]
+}

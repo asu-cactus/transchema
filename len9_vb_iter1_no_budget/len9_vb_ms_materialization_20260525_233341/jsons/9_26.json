@@ -1,0 +1,46 @@
+{
+  "case": "9_26",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7734,
+        "cost": 0.0115724,
+        "latency": 17.126779556274414,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.547) / 2 = 0.773 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {CANCEL_DT}.\nGenerated table candidate keys: {CANCEL_DT}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'CANCEL_DT': Jaccard=0.547",
+        "generated_samples": "Schema: ['CANCEL_DT']\nNumber of Tuples: 27699\nExamples:\nCANCEL_DT\n      NaN\n30-OCT-16\n05-ENE-15",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource_2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_26/training_2.csv\", index_col=0)\nsource_3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_26/training_3.csv\", index_col=0)\nsource_4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_26/training_4.csv\", index_col=0)\nsource_8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_26/training_8.csv\", index_col=0)\n\n# UNION operation on sources with identical schema (Source9_26_2, 3, 4, 8)\nunion_df = pd.concat([source_2, source_3, source_4, source_8], ignore_index=True)\n\n# Select only the CANCEL_DT column as per target schema\ntarget_df = union_df[['CANCEL_DT']].copy()\n\n# The target examples show CANCEL_DT as string with some NaNs, so keep as is\n# No further transformation needed\n\n# Save the final target table\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/target_multisource.csv\", index=False)",
+        "generated_csv_head": "CANCEL_DT\n31-JUL-17\n10-JUN-17\n31-AGO-17\n16-JUL-17\n07-JUN-17\n20-AGO-17\n21-JUL-17\n31-JUL-17\n10-AGO-17\n15-JUN-17\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.049041748046875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7734,
+          "cost": 0.0031731999999999997,
+          "latency": 21.324076652526855,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.547) / 2 = 0.773 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {CANCEL_DT}.\nGenerated table candidate keys: {CANCEL_DT}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'CANCEL_DT': Jaccard=0.547",
+          "generated_samples": "Schema: ['CANCEL_DT']\nNumber of Tuples: 27699\nExamples:\nCANCEL_DT\n05-ENE-15\n26-OCT-14\n      NaN",
+          "code": "import pandas as pd\n\n# Read all source tables with index_col=0 to ignore the numerical index column\nsource_0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_0.csv\", index_col=0)\nsource_1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_1.csv\", index_col=0)\nsource_2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_2.csv\", index_col=0)\nsource_3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_3.csv\", index_col=0)\nsource_4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_4.csv\", index_col=0)\nsource_5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_5.csv\", index_col=0)\nsource_6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_6.csv\", index_col=0)\nsource_7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_7.csv\", index_col=0)\nsource_8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_8.csv\", index_col=0)\nsource_9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/training_9.csv\", index_col=0)\n\n# UNION the four sources with the same schema (dimension tables)\nunion_dim = pd.concat([source_2, source_3, source_4, source_8], ignore_index=True)\n\n# Join the unioned dimension table with all aspect tables on ROW_WID\n# Start with union_dim as base\ndf = union_dim\n\n# Join with Source0 (VISITS_NUM)\ndf = df.merge(source_0, on=\"ROW_WID\", how=\"left\")\n\n# Join with Source1 (COLLECTION_EVENTS_NUM)\ndf = df.merge(source_1, on=\"ROW_WID\", how=\"left\")\n\n# Join with Source5 (KEYWORDS_NUM)\ndf = df.merge(source_5, on=\"ROW_WID\", how=\"left\")\n\n# Join with Source6 (TECHSUPPORT_NUM)\ndf = df.merge(source_6, on=\"ROW_WID\", how=\"left\")\n\n# Join with Source7 (INBOUND_CALLS_NUM)\ndf = df.merge(source_7, on=\"ROW_WID\", how=\"left\")\n\n# Join with Source9 (INTERACTIONS_NUM)\ndf = df.merge(source_9, on=\"ROW_WID\", how=\"left\")\n\n# The target schema is only ['CANCEL_DT'], so select that column\n# Keep all rows (including NaN) as target examples contain NaN in CANCEL_DT\nresult = df[[\"CANCEL_DT\"]]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_26/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9963512420654297
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 17224.337816238403,
+        "critique": 21728.74641418457
+      }
+    }
+  ]
+}

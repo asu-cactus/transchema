@@ -1,0 +1,46 @@
+{
+  "case": "5_41",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6271,
+        "cost": 0.0065288,
+        "latency": 22.05414891242981,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.889 + 0.365) / 2 = 0.627 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.413, range overlap=0.000.\nGround truth candidate keys: {Category}; {Movie}; {Year}; {Winner}; {Nominee}.\nGenerated table candidate keys: {Category}; {Year}; {Movie}; {Nominee}.\nKeys present in ground truth but absent in generated: {Winner}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.889 (precision=1.000, recall=0.800).\nMissing FDs from ground truth: ['Winner'] \u2192 Movie; ['Winner'] \u2192 Nominee; ['Winner'] \u2192 Year; ['Winner'] \u2192 Category.\nDistribution Analysis (numerical columns with issues):\n  Column 'Year': range overlap=0.000, JS similarity=0.413\n    Generated    \u2014 min: 0.0, max: 346.0, mean: 169.5939\n    Ground Truth \u2014 min: 361.0, max: 361.0, mean: 361.0\n  Column 'Category': range overlap=0.000, JS similarity=0.413\n    Generated    \u2014 min: 0.0, max: 346.0, mean: 169.5939\n    Ground Truth \u2014 min: 361.0, max: 361.0, mean: 361.0\n  Column 'Nominee': range overlap=0.000, JS similarity=0.413\n    Generated    \u2014 min: 0.0, max: 346.0, mean: 169.5939\n    Ground Truth \u2014 min: 361.0, max: 361.0, mean: 361.0\n  Column 'Movie': range overlap=0.000, JS similarity=0.415\n    Generated    \u2014 min: 0.0, max: 346.0, mean: 169.5939\n    Ground Truth \u2014 min: 360.0, max: 360.0, mean: 360.0",
+        "generated_samples": "Schema: ['Winner', 'Year', 'Category', 'Nominee', 'Movie']\nNumber of Tuples: 362\nExamples:\nWinner  Year  Category  Nominee  Movie\n   YES     9         2      103    105\n   YES    69         3      127    127\n   YES    39         4      223    232",
+        "code": "import pandas as pd\n\n# File paths for source CSVs\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_41/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_41/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_41/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_41/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_41/training_4.csv\",\n]\n\ndfs = []\nfor file in source_files:\n    # Read each source file with index_col=0 to ignore the index column\n    df = pd.read_csv(file, index_col=0)\n    # Normalize column order to ['Winner', 'Year', 'Category', 'Nominee', 'Movie']\n    # Some sources have 'Winner' last, some first, reorder accordingly\n    df = df[['Winner', 'Year', 'Category', 'Nominee', 'Movie']]\n    dfs.append(df)\n\n# Concatenate all source dataframes (UNION)\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# The target schema is:\n# ['Winner': string, 'Year': integer, 'Category': integer, 'Nominee': integer, 'Movie': integer]\n# The source columns are currently strings with complex values, so we need to convert them to integers.\n\n# Step 1: Convert 'Winner' to uppercase string (should be 'YES' or 'NO', but examples show only 'YES')\ndf_all['Winner'] = df_all['Winner'].str.upper()\n\n# Step 2: Extract integer from 'Year' column, which looks like \"2010 (83rd)\"\n# Extract the number inside the parentheses (e.g. 83 from \"2010 (83rd)\")\ndf_all['Year'] = df_all['Year'].str.extract(r'\\((\\d+)').astype(int)\n\n# Step 3: Convert 'Category', 'Nominee', 'Movie' columns to integer IDs by factorizing (assign unique integer per unique string)\ndf_all['Category'] = pd.factorize(df_all['Category'])[0] + 1\ndf_all['Nominee'] = pd.factorize(df_all['Nominee'])[0] + 1\ndf_all['Movie'] = pd.factorize(df_all['Movie'])[0] + 1\n\n# Ensure the dtypes match target schema\ndf_all = df_all.astype({\n    'Winner': 'string',\n    'Year': 'int',\n    'Category': 'int',\n    'Nominee': 'int',\n    'Movie': 'int'\n})\n\n# Save the final dataframe to the target path\ndf_all.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_41/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Winner,Year,Category,Nominee,Movie\nYES,83,1,1,1\nYES,82,1,2,2\nYES,81,1,3,3\nYES,80,1,4,4\nYES,79,1,5,5\nYES,78,1,6,6\nYES,77,1,7,7\nYES,76,1,8,8\nYES,75,1,9,9\nYES,74,1,10,10\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0898113250732422
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.002416,
+          "latency": 10.22178840637207,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\ns0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_41/training_0.csv\", index_col=0)\ns1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_41/training_1.csv\", index_col=0)\ns2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_41/training_2.csv\", index_col=0)\ns3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_41/training_3.csv\", index_col=0)\ns4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_41/training_4.csv\", index_col=0)\n\n# Join all source tables on 'Winner' column (primary key)\ndf = s0.merge(s1, on='Winner', suffixes=('_0', '_1')) \\\n       .merge(s2, on='Winner', suffixes=('', '_2')) \\\n       .merge(s3, on='Winner', suffixes=('', '_3')) \\\n       .merge(s4, on='Winner', suffixes=('', '_4'))\n\n# Aggregate counts of non-key columns from each source table\n# Count Year columns from each source table (all have 'Year' column)\nyear_count = df[['Year_0', 'Year_1', 'Year', 'Year_3', 'Year_4']].notna().sum(axis=1)\ncategory_count = df[['Category_0', 'Category_1', 'Category', 'Category_3', 'Category_4']].notna().sum(axis=1)\nnominee_count = df[['Nominee_0', 'Nominee_1', 'Nominee', 'Nominee_3', 'Nominee_4']].notna().sum(axis=1)\nmovie_count = df[['Movie_0', 'Movie_1', 'Movie', 'Movie_3', 'Movie_4']].notna().sum(axis=1)\n\n# Construct final DataFrame with target schema and types\nresult = pd.DataFrame({\n    'Winner': df['Winner'],\n    'Year': year_count.astype(int),\n    'Category': category_count.astype(int),\n    'Nominee': nominee_count.astype(int),\n    'Movie': movie_count.astype(int)\n})\n\n# Write to target CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_41/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03266334533691406
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 22129.305839538574,
+        "critique": 45180.2179813385
+      }
+    }
+  ]
+}

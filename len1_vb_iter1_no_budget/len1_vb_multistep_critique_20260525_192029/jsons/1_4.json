@@ -1,0 +1,46 @@
+{
+  "case": "1_4",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7631,
+        "cost": 0.002442,
+        "latency": 8.57266116142273,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.526) / 2 = 0.763 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.005, range overlap=0.100.\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'count_of_obs': range overlap=0.100, JS similarity=0.005\n    Generated    \u2014 min: 1.0, max: 13.0, mean: 4.4179\n    Ground Truth \u2014 min: 8.0, max: 51.0, mean: 21.901",
+        "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4527\nExamples:\n   fname  count_of_obs\n 40_4A_5             8\n14_2A_15             7\n 19_2A_5             2",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_4/training_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Perform the transformation as per operation history:\n# group_by = [Source1_4_0.fname], aggregations = [count(Source1_4_0.fname)]\n# This means group by 'fname' and count the occurrences of 'fname'\n\ndf_target = df_source0.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Ensure target schema: ['fname': string, 'count_of_obs': integer]\ndf_target['fname'] = df_target['fname'].astype(str)\ndf_target['count_of_obs'] = df_target['count_of_obs'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "fname,count_of_obs\n01_1D_11,6\n01_1D_15,4\n01_1D_17,9\n01_1D_5,3\n01_1D_7,4\n01_1D_9,4\n01_2B_11,7\n01_2B_5,5\n01_2B_7,5\n01_2B_9,7\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9851455688476562
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7631,
+          "cost": 0.0016744000000000002,
+          "latency": 6.896737337112427,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.526) / 2 = 0.763 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.005, range overlap=0.100.\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'count_of_obs': range overlap=0.100, JS similarity=0.005\n    Generated    \u2014 min: 1.0, max: 13.0, mean: 4.4179\n    Ground Truth \u2014 min: 8.0, max: 51.0, mean: 21.901",
+          "generated_samples": "Schema: ['fname', 'count_of_obs']\nNumber of Tuples: 4527\nExamples:\n  fname  count_of_obs\n26_3B_7             5\n26_6C_9             5\n64_5B_7             6",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_4/training_0.csv\", index_col=0)\n\n# Filter out rows with missing or empty fname\nsource0 = source0[source0['fname'].notna() & (source0['fname'] != '')]\n\n# UNION operation (only one table, so just use source0)\nunion_df = source0.copy()\n\n# GROUP BY fname and count occurrences\nresult = union_df.groupby('fname', as_index=False).agg(count_of_obs=('fname', 'count'))\n\n# Write output to the specified path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_4/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1708736419677734
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8575.985431671143,
+        "critique": 7265.368223190308
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "6_60",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9278,
+        "cost": 0.0021308000000000004,
+        "latency": 7.803689002990723,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.856) / 2 = 0.928 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=1.000.\nGround truth candidate keys: {nombre, a\u00f1o}.\nGenerated table candidate keys: {nombre, a\u00f1o}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'n_aprobados': range overlap=1.000, JS similarity=0.942\n    Generated    \u2014 min: 0.0, max: 152.0, mean: 11.6943\n    Ground Truth \u2014 min: 0.0, max: 152.0, mean: 13.8868\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'nombre': Jaccard=0.469",
+        "generated_samples": "Schema: ['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']\nNumber of Tuples: 265\nExamples:\n                 nombre  n_concursados  n_aprobados  a\u00f1o\nUNIV. INTERNACIONAL SEK              5            0 2012\n     UNIV. DE LOS LAGOS             17            5 2015\n  UNIV. ALBERTO HURTADO              6            5 2012",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths as given\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length6_60/training_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length6_60/training_1.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length6_60/training_2.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length6_60/training_3.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length6_60/training_4.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length6_60/training_5.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length6_60/training_6.csv\"\n    ]\n\n    # Read all source CSV files into a list of DataFrames\n    dfs = []\n    for file_path in source_files:\n        df = pd.read_csv(file_path, index_col=0)\n        # Ensure columns are exactly as target schema and types:\n        # Target schema: ['nombre': string, 'n_concursados': integer, 'n_aprobados': integer, 'a\u00f1o': integer]\n        # Convert columns to correct types explicitly\n        df = df[['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']].copy()\n        df['nombre'] = df['nombre'].astype(str)\n        df['n_concursados'] = pd.to_numeric(df['n_concursados'], errors='coerce').fillna(0).astype(int)\n        df['n_aprobados'] = pd.to_numeric(df['n_aprobados'], errors='coerce').fillna(0).astype(int)\n        df['a\u00f1o'] = pd.to_numeric(df['a\u00f1o'], errors='coerce').fillna(0).astype(int)\n        dfs.append(df)\n\n    # Since all source tables have the exact same schema as the target,\n    # we can concatenate (union) all rows from all sources.\n    target_df = pd.concat(dfs, ignore_index=True)\n\n    # Optional: If needed, sort by 'nombre' and 'a\u00f1o' for better readability\n    target_df = target_df.sort_values(by=['nombre', 'a\u00f1o']).reset_index(drop=True)\n\n    # Write the combined DataFrame to the target CSV file\n    target_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_60/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "nombre,n_concursados,n_aprobados,a\u00f1o\nOTRAS UNIVERSIDADES,32,0,2010\nOTRAS UNIVERSIDADES,17,0,2011\nOTRAS UNIVERSIDADES,15,0,2012\nPONT. UNIV. CATOLICA DE CHILE,180,100,2010\nPONT. UNIV. CATOLICA DE CHILE,160,103,2011\nPONT. UNIV. CATOLICA DE CHILE,142,89,2012\nPONT. UNIV. CATOLICA DE CHILE,202,118,2014\nPONT. UNIV. CATOLICA DE CHILE,225,108,2015\nPONT. UNIV. CATOLICA DE CHILE,268,113,2016\nPONT. UNIV. CATOLICA DE VALPARAISO,53,13,2010\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0380744934082031
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 7873.862028121948,
+        "critique": 0.0
+      }
+    }
+  ]
+}

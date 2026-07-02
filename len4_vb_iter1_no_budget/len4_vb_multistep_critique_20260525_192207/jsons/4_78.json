@@ -1,0 +1,46 @@
+{
+  "case": "4_78",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0,
+        "cost": 0.014007600000000002,
+        "latency": 58.16069674491882,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_78/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_78/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source4_78_1 and Source4_78_0 on Source4_78_1.name == Source4_78_0.school\n# Rename Source4_78_0.school to 'name' to join on the same column name or join on left_on/right_on\n# We'll join on left: df1.name, right: df0.school\ndf_joined = pd.merge(df1, df0, left_on=\"name\", right_on=\"school\", how=\"inner\")\n\n# Operation 2: GROUP BY Source4_78_1 columns: ['School ID', 'name', 'type', 'size', 'budget']\n# Aggregations:\n# avg(Source4_78_0.Average Math Score) -> Average Math Score (float)\n# avg(Source4_78_0.Average Reading Score) -> Average Reading Score (float)\n# sum(Source4_78_0.Number Passing Math) -> Number Passing Math (int)\n# sum(Source4_78_0.Number Passing Reading) -> Number Passing Reading (int)\n# sum(Source4_78_1.size) -> School Size (int)\n\ngroup_cols = ['School ID', 'name', 'type', 'size', 'budget']\n\nagg_dict = {\n    'Average Math Score': 'mean',\n    'Average Reading Score': 'mean',\n    'Number Passing Math': 'sum',\n    'Number Passing Reading': 'sum',\n    'size': 'sum'  # from Source4_78_1, but after join it is duplicated, so we use the joined 'size'\n}\n\ngrouped = df_joined.groupby(group_cols).agg(agg_dict).reset_index()\n\n# Rename columns to match target schema exactly\n# 'size' sum aggregation -> 'School Size'\ngrouped = grouped.rename(columns={'size': 'School Size'})\n\n# Ensure correct dtypes as per target schema:\n# 'School ID': integer\ngrouped['School ID'] = grouped['School ID'].astype(int)\n# 'name': string (object)\ngrouped['name'] = grouped['name'].astype(str)\n# 'type': string (object)\ngrouped['type'] = grouped['type'].astype(str)\n# 'size': integer (original size column in group_cols)\ngrouped['size'] = grouped['size'].astype(int)\n# 'budget': integer\ngrouped['budget'] = grouped['budget'].astype(int)\n# 'Average Math Score': float\ngrouped['Average Math Score'] = grouped['Average Math Score'].astype(float)\n# 'Average Reading Score': float\ngrouped['Average Reading Score'] = grouped['Average Reading Score'].astype(float)\n# 'Number Passing Math': integer\ngrouped['Number Passing Math'] = grouped['Number Passing Math'].astype(int)\n# 'Number Passing Reading': integer\ngrouped['Number Passing Reading'] = grouped['Number Passing Reading'].astype(int)\n# 'School Size': integer\ngrouped['School Size'] = grouped['School Size'].astype(int)\n\n# Reorder columns to match target schema order exactly\ntarget_columns = ['School ID', 'name', 'type', 'size', 'budget',\n                  'Average Math Score', 'Average Reading Score',\n                  'Number Passing Math', 'Number Passing Reading', 'School Size']\n\nresult = grouped[target_columns]\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_78/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.03790855407714844
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0025859999999999998,
+          "latency": 20.16195821762085,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_78/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_78/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_78/training_2.csv\", index_col=0)\n\n# Join Source1 and Source0 on name=school\ndf_1_0 = pd.merge(source1, source0, left_on=\"name\", right_on=\"school\", how=\"inner\")\n\n# Join the above result with Source2 on name=school\ndf_all = pd.merge(df_1_0, source2, left_on=\"name\", right_on=\"school\", how=\"inner\")\n\n# Group by the primary key columns of the target: School ID, name, type, size, budget\ngroup_cols = [\"School ID\", \"name\", \"type\", \"size\", \"budget\"]\n\n# Aggregations:\n# Average Math Score: average of math_score from Source2\n# Average Reading Score: average of reading_score from Source2\n# Number Passing Math: count of students with math_score >= 70 (passing threshold)\n# Number Passing Reading: count of students with reading_score >= 70 (passing threshold)\n# School Size: sum of size from Source1 (should be same per school, but sum to match target)\n\nagg_df = df_all.groupby(group_cols).agg(\n    **{\n        \"Average Math Score\": (\"math_score\", \"mean\"),\n        \"Average Reading Score\": (\"reading_score\", \"mean\"),\n        \"Number Passing Math\": (lambda x: (x >= 70).sum(), \"math_score\"),\n        \"Number Passing Reading\": (lambda x: (x >= 70).sum(), \"reading_score\"),\n        \"School Size\": (\"size\", \"sum\"),\n    }\n)\n\n# The above agg with lambdas needs to be done carefully:\n# pandas agg does not support named aggregation with lambdas directly in this way.\n# So we do it stepwise:\n\ngrouped = df_all.groupby(group_cols)\n\naverage_math = grouped[\"math_score\"].mean()\naverage_reading = grouped[\"reading_score\"].mean()\nnumber_passing_math = grouped.apply(lambda g: (g[\"math_score\"] >= 70).sum())\nnumber_passing_reading = grouped.apply(lambda g: (g[\"reading_score\"] >= 70).sum())\nschool_size = grouped[\"size\"].sum()\n\n# Combine all into one DataFrame\nresult = pd.concat(\n    [\n        average_math.rename(\"Average Math Score\"),\n        average_reading.rename(\"Average Reading Score\"),\n        number_passing_math.rename(\"Number Passing Math\"),\n        number_passing_reading.rename(\"Number Passing Reading\"),\n        school_size.rename(\"School Size\"),\n    ],\n    axis=1,\n).reset_index()\n\n# Ensure column order matches target schema exactly\nresult = result[\n    [\n        \"School ID\",\n        \"name\",\n        \"type\",\n        \"size\",\n        \"budget\",\n        \"Average Math Score\",\n        \"Average Reading Score\",\n        \"Number Passing Math\",\n        \"Number Passing Reading\",\n        \"School Size\",\n    ]\n]\n\n# Write to output CSV\nresult.to_csv(\n    \"autopipeline-benchmarks/github-pipelines/length4_78/target_multisource_critique_history.csv\",\n    index=False,\n)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03337860107421875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 58239.912271499634,
+        "critique": 20227.66423225403
+      }
+    }
+  ]
+}

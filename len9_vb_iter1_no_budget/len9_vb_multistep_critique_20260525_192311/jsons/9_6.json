@@ -1,0 +1,29 @@
+{
+  "case": "9_6",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9857,
+        "cost": 0.005628800000000001,
+        "latency": 12.343374013900757,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.971) / 2 = 0.986 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.948, range overlap=1.000.\nGround truth candidate keys: {country, cpi}.\nGenerated table candidate keys: {country, cpi}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'cpi': range overlap=1.000, JS similarity=0.948\n    Generated    \u2014 min: 2.3, max: 10.0, mean: 5.7683\n    Ground Truth \u2014 min: 2.3, max: 10.0, mean: 5.9522",
+        "generated_samples": "Schema: ['country', 'cpi']\nNumber of Tuples: 799\nExamples:\n country  cpi\nAlbania   2.3\nDenmark  10.0\n  Norway  8.6",
+        "code": "import pandas as pd\n\n# List of source file paths corresponding to Source9_6_0 through Source9_6_16\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_14.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_15.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_16.csv\"\n]\n\n# Read all source CSV files into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure columns are exactly ['country', 'cpi'] and types are correct\n    df = df[['country', 'cpi']].copy()\n    df['country'] = df['country'].astype(str)\n    df['cpi'] = df['cpi'].astype(float)\n    dfs.append(df)\n\n# UNION operation: concatenate all DataFrames vertically\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target schema is ['country': string, 'cpi': float]\n# The data is already in this format.\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_6/target_multisource.csv\", index=False)",
+        "generated_csv_head": "country,cpi\nNew Zealand,9.43\nDenmark,9.33\nSweden,9.08\nFinland,9.05\nCanada,8.96\nNorway,8.87\nSingapore,8.8\nSwitzerland,8.76\nNetherlands,8.71\nAustralia,8.6\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9267330169677734
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 12404.199838638306,
+        "critique": 0.0
+      }
+    }
+  ]
+}

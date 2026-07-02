@@ -9,40 +9,44 @@ Graph topology
     ▼
   [mcts_select]  ── UCB1 walk → selected leaf
     │
-    ├── (terminal) ────────────────────────────────┐
-    │   re-simulate an already-expanded leaf        │
-    │                                               │
-    └── (expand)                                    │
-          │                                         │
-          ▼                                         │
-  [next_operator_step]                              │
-    one operator added to tree                      │
-          │                                         │
-          └─────────────────────────────────────────┤
-                                                    ▼
-                                              [simulate]
-                                    LLM completes full pipeline + code
-                                                    │
-                                                    ▼
-                                          [execute_and_score]
-                                        calculate_score → reward
-                                                    │
-                              score<1.0 + "simulate" mode?
-                                   yes ──► [mcts_critique]
-                                   no  ──────────┐
-                                                 │
-                                                 ▼
-                                            [backpropagate]
-                                       update visits + rewards
-                                                    │
-                                    ┌───────────────┴───────────────┐
-                                 (iterate)                        (done)
-                                    │                               │
-                                    ▼                               ▼
-                              [mcts_select]                  [extract_best]
-                          (MCTS iteration loop)                     │
-                                                                    ▼
-                                                                   END
+    ├── (terminal, visits>0) ─────────────────────────┐
+    │   NO_MORE_OPERATION already simulated            │
+    │                                                  │
+    │         [reuse_terminal_reward]                  │
+    │          reuse cached reward, no LLM call        │
+    │                                                  │
+    ├── (terminal, visits==0) ──────────────────┐      │
+    │   first visit to NO_MORE_OPERATION leaf   │      │
+    │                                           │      │
+    └── (expand)                                │      │
+          │                                     │      │
+          ▼                                     │      │
+  [next_operator_step]                          │      │
+    one operator added to tree                  │      │
+          │                                     │      │
+          └──────────────────[simulate]◄────────┘      │
+                    LLM completes full pipeline + code  │
+                                  │                     │
+                                  ▼                     │
+                        [execute_and_score]             │
+                      calculate_score → reward          │
+                                  │                     │
+                    score<1.0 + "simulate" mode?        │
+                         yes ──► [mcts_critique]        │
+                         no  ──────────┐                │
+                                       │                │
+                                       ▼                │
+                                  [backpropagate]◄──────┘
+                             update visits + rewards
+                                          │
+                          ┌───────────────┴───────────────┐
+                       (iterate)                        (done)
+                          │                               │
+                          ▼                               ▼
+                    [mcts_select]                  [extract_best]
+                (MCTS iteration loop)                     │
+                                                          ▼
+                                                         END
 """
 
 import os
@@ -65,6 +69,7 @@ from nodes import (
     mcts_critique,
     mcts_select,
     next_operator_step,
+    reuse_terminal_reward,
     should_critique,
     simulate,
 )
@@ -90,23 +95,28 @@ def build_mcts_graph():
     graph.add_node("mcts_critique", mcts_critique)
     graph.add_node("backpropagate", backpropagate)
     graph.add_node("extract_best", extract_best)
+    graph.add_node("reuse_terminal_reward", reuse_terminal_reward)
 
     # ── Entry point ───────────────────────────────────────────────────────────
     graph.add_edge(START, "mcts_select")
 
-    # ── After mcts_select: expand or re-simulate a terminal node ──────────────
+    # ── After mcts_select: expand, simulate a new terminal, or reuse cached reward
     graph.add_conditional_edges(
         "mcts_select",
         is_selected_terminal,
         {
-            "terminal": "simulate",          # re-simulate existing terminal leaf
-            "expand": "next_operator_step",  # expand one new operator
+            "terminal": "simulate",                  # first visit to terminal — simulate
+            "reuse_terminal": "reuse_terminal_reward",  # already simulated — reuse reward
+            "expand": "next_operator_step",          # non-terminal — expand one new operator
         },
     )
 
     # ── After expansion: always go straight to simulation ─────────────────────
     # No rollout loop — simulate() completes the pipeline from the expanded history
     graph.add_edge("next_operator_step", "simulate")
+
+    # ── Reused terminal: skip simulation entirely, go straight to backprop ────
+    graph.add_edge("reuse_terminal_reward", "backpropagate")
 
     # ── Simulation pipeline: score → optional critique → backpropagate ────────
     graph.add_edge("simulate", "execute_and_score")

@@ -1,0 +1,46 @@
+{
+  "case": "4_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6572,
+        "cost": 0.0024744000000000003,
+        "latency": 8.65511703491211,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.457) / 2 = 0.657 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.560, range overlap=0.355.\nGround truth candidate keys: {WarType}; {WarShortName}; {IsInternational}; {WarID}.\nGenerated table candidate keys: {WarType}; {WarShortName}; {WarID}.\nKeys present in ground truth but absent in generated: {IsInternational}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.857 (precision=1.000, recall=0.750).\nMissing FDs from ground truth: ['IsInternational'] \u2192 WarID; ['IsInternational'] \u2192 IsIntervention; ['IsInternational'] \u2192 WarType; ['IsInternational'] \u2192 WarShortName.\nDistribution Analysis (numerical columns with issues):\n  Column 'IsInternational': range overlap=1.000, JS similarity=0.604\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.0903\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.5\n  Column 'WarID': range overlap=0.258, JS similarity=0.443\n    Generated    \u2014 min: 1.0, max: 486.0, mean: 243.2813\n    Ground Truth \u2014 min: 21.0, max: 146.0, mean: 83.5\n  Column 'WarShortName': range overlap=0.258, JS similarity=0.443\n    Generated    \u2014 min: 1.0, max: 486.0, mean: 243.2813\n    Ground Truth \u2014 min: 21.0, max: 146.0, mean: 83.5\n  Column 'WarType': range overlap=0.258, JS similarity=0.443\n    Generated    \u2014 min: 1.0, max: 486.0, mean: 243.2813\n    Ground Truth \u2014 min: 21.0, max: 146.0, mean: 83.5\n  Column 'IsIntervention': range overlap=0.000, JS similarity=0.867\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.0349\n    Ground Truth \u2014 min: 0.0, max: 0.0, mean: 0.0",
+        "generated_samples": "Schema: ['IsInternational', 'WarID', 'WarShortName', 'WarType', 'IsIntervention']\nNumber of Tuples: 487\nExamples:\n IsInternational  WarID  WarShortName  WarType  IsIntervention\n               0    890           448        7               0\n               0    436           186        2               1\n               0    456           203        2               1",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_46/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_46/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_46/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_46/training_3.csv\"\n]\n\n# Load all source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_files[0], index_col=0)  # Columns: ['WarID', 'WarShortName', 'WarType']\ndf1 = pd.read_csv(source_files[1], index_col=0)  # Columns: ['WarID', 'WarShortName', 'WarType', 'IsIntervention']\ndf2 = pd.read_csv(source_files[2], index_col=0)  # Columns: ['WarID', 'WarShortName', 'WarType']\ndf3 = pd.read_csv(source_files[3], index_col=0)  # Columns: ['WarID', 'WarShortName', 'WarType', 'IsInternational']\n\n# Step 1: Harmonize columns for union where possible\n# df0 and df2 have same schema: ['WarID', 'WarShortName', 'WarType']\n# df1 has an extra column IsIntervention\n# df3 has an extra column IsInternational\n\n# For df0 and df2, add missing columns IsIntervention and IsInternational with default 0\ndf0['IsIntervention'] = 0\ndf0['IsInternational'] = 0\n\ndf2['IsIntervention'] = 0\ndf2['IsInternational'] = 0\n\n# For df1, add missing column IsInternational with default 0\ndf1['IsInternational'] = 0\n\n# For df3, add missing column IsIntervention with default 0\ndf3['IsIntervention'] = 0\n\n# Now all dfs have columns: ['WarID', 'WarShortName', 'WarType', 'IsIntervention', 'IsInternational']\n\n# Step 2: Reorder columns to match target schema order:\n# Target schema: ['IsInternational', 'WarID', 'WarShortName', 'WarType', 'IsIntervention']\n# Current dfs columns: ['WarID', 'WarShortName', 'WarType', 'IsIntervention', 'IsInternational']\n\ndef reorder_columns(df):\n    return df[['IsInternational', 'WarID', 'WarShortName', 'WarType', 'IsIntervention']]\n\ndf0 = reorder_columns(df0)\ndf1 = reorder_columns(df1)\ndf2 = reorder_columns(df2)\ndf3 = reorder_columns(df3)\n\n# Step 3: Concatenate all dataframes (union all rows)\ntarget_df = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# Step 4: Ensure data types match target schema (all integers)\n# WarShortName in sources is string, but target example shows integer values for WarShortName.\n# However, from source examples, WarShortName is clearly string (e.g. \"First Maori Tribal War\").\n# Target examples show WarShortName as integer (146, 21).\n# This suggests WarShortName in target is actually an integer code, but source has string names.\n# Since no mapping is provided, we must convert WarShortName string to integer by some method.\n# The only way is to convert WarShortName string to a consistent integer code.\n# We can do this by factorizing WarShortName column to integer codes.\n\n# Factorize WarShortName to integer codes (starting from 1)\ntarget_df['WarShortName'] = pd.factorize(target_df['WarShortName'])[0] + 1\n\n# Convert all columns to integer type explicitly\ntarget_df = target_df.astype({\n    'IsInternational': 'int64',\n    'WarID': 'int64',\n    'WarShortName': 'int64',\n    'WarType': 'int64',\n    'IsIntervention': 'int64'\n})\n\n# Step 5: Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_46/target_multisource_cot.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "IsInternational,WarID,WarShortName,WarType,IsIntervention\n0,1500,1,8,0\n0,1501,2,8,0\n0,1502,3,8,0\n0,1503,4,8,0\n0,1505,5,8,0\n0,1506,6,8,0\n0,1508,7,8,0\n0,1509,8,8,0\n0,1510,9,8,0\n0,1511,10,8,0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.8832683563232422
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.0,
+          "cost": 0.0020312,
+          "latency": 7.684257984161377,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_46/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_46/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_46/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_46/training_3.csv\", index_col=0)\n\n# Join all tables on WarID (primary key)\ndf = source0.merge(source1, on=\"WarID\", how=\"inner\", suffixes=('', '_1'))\ndf = df.merge(source2, on=\"WarID\", how=\"inner\", suffixes=('', '_2'))\ndf = df.merge(source3, on=\"WarID\", how=\"inner\", suffixes=('', '_3'))\n\n# After join, columns from source0: WarID, WarShortName, WarType\n# source1 adds IsIntervention\n# source3 adds IsInternational\n# source2 has WarShortName and WarType but these are duplicates, so we keep from source0\n\n# Select and rename columns to match target schema:\n# Target schema: ['IsInternational', 'WarID', 'WarShortName', 'WarType', 'IsIntervention']\n\n# Use IsInternational from source3, IsIntervention from source1, WarID, WarShortName, WarType from source0\nresult = df[[\"IsInternational\", \"WarID\", \"WarShortName\", \"WarType\", \"IsIntervention\"]]\n\n# Group by IsInternational (primary key) to ensure uniqueness and match target key constraint\nresult = result.groupby(\"IsInternational\", as_index=False).first()\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_46/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.0324249267578125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8718.775033950806,
+        "critique": 7721.130609512329
+      }
+    }
+  ]
+}

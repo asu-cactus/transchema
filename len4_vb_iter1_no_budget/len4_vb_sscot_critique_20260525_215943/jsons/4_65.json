@@ -1,0 +1,46 @@
+{
+  "case": "4_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.864,
+        "cost": 0.0017036,
+        "latency": 7.298656940460205,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.928) / 2 = 0.864 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Nominee}; {Nominee, Movie}.\nKeys present in ground truth but absent in generated: {Nominee, Year, Category}.\nSpurious keys in generated not present in ground truth: {Year, Nominee}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.800 (precision=0.750, recall=0.857).\nSpurious FDs in generated (not in ground truth): ['Nominee', 'Year'] \u2192 Movie; ['Nominee', 'Year'] \u2192 Category.\nMissing FDs from ground truth: ['Category', 'Nominee', 'Year'] \u2192 Movie.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.875\n  Column 'Movie': Jaccard=0.766",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 1412\nExamples:\n       Year                Category        Nominee                                       Movie Winner\n1959 (32nd) Actress -- Leading Role Audrey Hepburn             The Nun's Story {'Sister Luke'}     NO\n 1935 (8th)   Actor -- Leading Role      Paul Muni      Black Fury {'Joe Radek'} [came in 2nd]     NO\n1961 (34th) Actress -- Leading Role   Natalie Wood Splendor in the Grass {'Wilma Dean Loomis'}     NO",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_4.csv\"\n]\n\n# Target schema columns\ntarget_columns = ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file, index_col=0)\n    # Ensure columns are exactly as target schema (all sources have same schema)\n    df = df[target_columns]\n    dfs.append(df)\n\n# Since all source tables have the exact same schema as the target,\n# we can simply concatenate (union) all source DataFrames\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure data types are string for all columns as per target schema\nfor col in target_columns:\n    target_df[col] = target_df[col].astype(str)\n\n# Write the combined DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "Year,Category,Nominee,Movie,Winner\n2010 (83rd),Actress -- Supporting Role,Amy Adams,The Fighter {'Charlene Fleming'},NO\n2010 (83rd),Actress -- Supporting Role,Helena Bonham Carter,The King's Speech {'Queen Elizabeth'},NO\n2010 (83rd),Actress -- Supporting Role,Hailee Steinfeld,True Grit {'Mattie Ross'},NO\n2010 (83rd),Actress -- Supporting Role,Jacki Weaver,Animal Kingdom {'Janine 'Smurf' Cody'},NO\n2009 (82nd),Actress -- Supporting Role,Pen\u00e9lope Cruz,Nine {'Carla'},NO\n2009 (82nd),Actress -- Supporting Role,Vera Farmiga,Up in the Air {'Alex Goran'},NO\n2009 (82nd),Actress -- Supporting Role,Maggie Gyllenhaal,Crazy Heart {'Jean Craddock'},NO\n2009 (82nd),Actress -- Supporting Role,Anna Kendrick,Up in the Air {'Natalie Keener'},NO\n2008 (81st),Actress -- Supporting Role,Amy Adams,Doubt {'Sister James'},NO\n2008 (81st),Actress -- Supporting Role,Viola Davis,Doubt {'Mrs. Miller'},NO\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9795894622802734
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.864,
+          "cost": 0.0020192,
+          "latency": 6.709494113922119,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.928) / 2 = 0.864 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Nominee}; {Nominee, Movie}.\nKeys present in ground truth but absent in generated: {Nominee, Year, Category}.\nSpurious keys in generated not present in ground truth: {Year, Nominee}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.800 (precision=0.750, recall=0.857).\nSpurious FDs in generated (not in ground truth): ['Nominee', 'Year'] \u2192 Movie; ['Nominee', 'Year'] \u2192 Category.\nMissing FDs from ground truth: ['Category', 'Nominee', 'Year'] \u2192 Movie.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.875\n  Column 'Movie': Jaccard=0.766",
+          "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 1412\nExamples:\n       Year              Category              Nominee                              Movie Winner\n1974 (47th) Actor -- Leading Role       Jack Nicholson         Chinatown {'J. J. Gittes'}     NO\n1997 (70th) Actor -- Leading Role           Matt Damon Good Will Hunting {'Will Hunting'}     NO\n1999 (72nd)             Directing Being John Malkovich                        Spike Jonze     NO",
+          "code": "import pandas as pd\n\n# Read all source tables with index_col=0 as per hint 21\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_3.csv\", index_col=0)\ndf4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_4.csv\", index_col=0)\n\n# UNION all source tables\ndf = pd.concat([df0, df1, df2, df3, df4], ignore_index=True)\n\n# Drop duplicates to match target row count and uniqueness\ndf = df.drop_duplicates()\n\n# Write output with exact target schema and column names\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1446475982666016
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7361.138105392456,
+        "critique": 6966.870069503784
+      }
+    }
+  ]
+}

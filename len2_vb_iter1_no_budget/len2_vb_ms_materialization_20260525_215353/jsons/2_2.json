@@ -1,0 +1,46 @@
+{
+  "case": "2_2",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2069,
+        "cost": 0.009418000000000001,
+        "latency": 29.382326364517212,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.414) / 2 = 0.207 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.967, range overlap=0.000.\nGround truth candidate keys: {contributor_firstname, contributor_lastname, committee_position}.\nGenerated table candidate keys: {contributor_firstname, contributor_lastname, committee_position}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['committee_position', 'contributor_firstname', 'contributor_lastname'] \u2192 amount.\nMissing FDs from ground truth: ['contributor_firstname', 'contributor_lastname'] \u2192 amount.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount': range overlap=0.000, JS similarity=0.967\n    Generated    \u2014 min: -300.0, max: 28450188.0, mean: 25426.7533\n    Ground Truth \u2014 min: 0.0, max: 1148.32, mean: 290.2493\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'contributor_firstname': Jaccard=0.055\n  Column 'contributor_lastname': Jaccard=0.117",
+        "generated_samples": "Schema: ['contributor_firstname', 'contributor_lastname', 'committee_position', 'amount']\nNumber of Tuples: 12054\nExamples:\ncontributor_firstname contributor_lastname committee_position  amount\n                  NaN  MBS ENGINEERING INC            SUPPORT  3000.0\n              ULISSES               GARCIA             OPPOSE   287.0\n              WENDY G              CORRELL             OPPOSE   287.0",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_2/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_2/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Join Source2_2_0 and Source2_2_1 on 'calaccess_committee_id'\n# Both have this column, join on it\ndf_joined = pd.merge(\n    df0,\n    df1[['calaccess_committee_id', 'committee_position']],\n    on='calaccess_committee_id',\n    how='inner'\n)\n\n# Group by contributor_firstname, contributor_lastname, committee_position and sum amount\ndf_grouped = (\n    df_joined\n    .groupby(['contributor_firstname', 'contributor_lastname', 'committee_position'], dropna=False, as_index=False)\n    .agg({'amount': 'sum'})\n)\n\n# Ensure columns have correct types and names as per target schema\n# Target schema: ['contributor_firstname': string, 'contributor_lastname': string, 'committee_position': string, 'amount': float]\n\n# Convert contributor_firstname and contributor_lastname to string, fill NaN with empty string to match target style\ndf_grouped['contributor_firstname'] = df_grouped['contributor_firstname'].fillna('').astype(str)\ndf_grouped['contributor_lastname'] = df_grouped['contributor_lastname'].fillna('').astype(str)\ndf_grouped['committee_position'] = df_grouped['committee_position'].fillna('').astype(str)\ndf_grouped['amount'] = df_grouped['amount'].astype(float)\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_2/target_multisource.csv\"\ndf_grouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "contributor_firstname,contributor_lastname,committee_position,amount\nA. EASLEY,JOHNSON,SUPPORT,100.0\nA. JERROLD,PERENCHIO,OPPOSE,50000.0\nA. JERROLD,PERENCHIO,SUPPORT,50000.0\nA. JERROLD,PERENCHIO AND AFFILIATED ENTITIES,OPPOSE,500000.0\nAARON,BEITCH,SUPPORT,570.0\nAARON,GROSSBARD,SUPPORT,30.0\nAARON,JACOBSON,OPPOSE,108.0\nAARON,JACOBSON,SUPPORT,108.0\nAARON,JUSTIS,SUPPORT,250.0\nAARON,KAPLAN,OPPOSE,250.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4452934265136719
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.2069,
+          "cost": 0.0017596,
+          "latency": 4.899298667907715,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.414) / 2 = 0.207 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.967, range overlap=0.000.\nGround truth candidate keys: {contributor_firstname, contributor_lastname, committee_position}.\nGenerated table candidate keys: {contributor_firstname, contributor_lastname, committee_position}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['committee_position', 'contributor_firstname', 'contributor_lastname'] \u2192 amount.\nMissing FDs from ground truth: ['contributor_firstname', 'contributor_lastname'] \u2192 amount.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount': range overlap=0.000, JS similarity=0.967\n    Generated    \u2014 min: -300.0, max: 28450188.0, mean: 25426.7533\n    Ground Truth \u2014 min: 0.0, max: 1148.32, mean: 290.2493\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'contributor_firstname': Jaccard=0.055\n  Column 'contributor_lastname': Jaccard=0.117",
+          "generated_samples": "Schema: ['contributor_firstname', 'contributor_lastname', 'committee_position', 'amount']\nNumber of Tuples: 12054\nExamples:\ncontributor_firstname contributor_lastname committee_position  amount\n                 ROSA            FERNANDEZ            SUPPORT      25\n                ELLEN                MARKS            SUPPORT     200\n              WILLIAM            SCHAPPELL             OPPOSE     100",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_2/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_2/training_1.csv\", index_col=0)\n\n# Join on calaccess_committee_id\njoined = pd.merge(\n    source0,\n    source1,\n    how=\"inner\",\n    left_on=\"calaccess_committee_id\",\n    right_on=\"calaccess_committee_id\",\n    suffixes=(\"\", \"_y\")\n)\n\n# Group by contributor_firstname, contributor_lastname, committee_position and sum amount\nresult = (\n    joined.groupby(\n        [\"contributor_firstname\", \"contributor_lastname\", \"committee_position\"],\n        dropna=False,\n        as_index=False,\n    )\n    .agg({\"amount\": \"sum\"})\n)\n\n# Write output with exact target schema column names\nresult.to_csv(\n    \"autopipeline-benchmarks/github-pipelines/length2_2/target_multisource_critique_history.csv\",\n    index=False,\n)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3494491577148438
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 29511.969327926636,
+        "critique": 7872.5645542144775
+      }
+    }
+  ]
+}

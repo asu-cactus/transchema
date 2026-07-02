@@ -26,7 +26,9 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
 from rag_pipeline.local_rag_db import build_upper_bound_db, get_rag_hints
 from rag_pipeline.feature_extractor import (
+    FEATURE_DIM,
     compute_from_data,
+    compute_from_jsonl_record,
     load_norm_stats,
     load_source_target_from_folder,
     parse_operation_history_for_query,
@@ -423,7 +425,7 @@ def critique(
             output_fields.append("case_id")
 
         if feature_rag_db is not None:
-            # Feature-based retrieval: compute 23-dim from current task, search feature collection
+            # Feature-based retrieval: compute 22-dim from current task, search feature collection
             task_folder = Path(main_folder) / f"length{len_idx_target_idx}"
             pipeline_list = parse_operation_history_for_query(operation_history)
             try:
@@ -444,7 +446,7 @@ def critique(
                     logger.warning(f"Feature extraction failed, using zero vector: {e}")
                 except Exception:
                     pass
-                query_vector = [0.0] * 23
+                query_vector = [0.0] * FEATURE_DIM
             if feature_norm_stats is not None:
                 query_vector = zscore_normalize(query_vector, feature_norm_stats)
             try:

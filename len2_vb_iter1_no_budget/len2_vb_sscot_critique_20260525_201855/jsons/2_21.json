@@ -1,0 +1,46 @@
+{
+  "case": "2_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7808,
+        "cost": 0.0016272,
+        "latency": 11.9994056224823,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.762) / 2 = 0.781 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.817, range overlap=0.745.\nGround truth candidate keys: {state, date}.\nGenerated table candidate keys: {state, date, draw_sales}.\nKeys present in ground truth but absent in generated: {date, state}.\nSpurious keys in generated not present in ground truth: {draw_sales, date, state}.\nFunctional dependency F1: 0.800 (precision=1.000, recall=0.667).\nMissing FDs from ground truth: ['date', 'state'] \u2192 draw_sales.\nDistribution Analysis (numerical columns with issues):\n  Column 'draw_sales': range overlap=0.491, JS similarity=0.989\n    Generated    \u2014 min: 0.0, max: 87836074.0, mean: 746605.4413\n    Ground Truth \u2014 min: 0.0, max: 179007492.0, mean: 758481.4415\n  Column 'year': range overlap=1.000, JS similarity=0.644\n    Generated    \u2014 min: 2010.0, max: 2019.0, mean: 2013.1278\n    Ground Truth \u2014 min: 2010.0, max: 2019.0, mean: 2015.016\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'date': Jaccard=0.484",
+        "generated_samples": "Schema: ['state', 'date', 'draw_sales', 'year']\nNumber of Tuples: 40000\nExamples:\nstate       date  draw_sales  year\n   ID 2015-12-25       74373  2015\n   WV 2014-03-07      248204  2014\n   DE 2014-04-09      153692  2014",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length2_21/training_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length2_21/training_1.csv\"\n    ]\n\n    # List to hold loaded source DataFrames\n    source_dfs = []\n\n    # Load each source CSV with index_col=0 to ignore the numerical index column\n    for file_path in source_files:\n        df = pd.read_csv(file_path, index_col=0)\n        source_dfs.append(df)\n\n    # Since both source tables have the same schema ['state', 'date', 'draw_sales'],\n    # and the target schema is ['state', 'date', 'draw_sales', 'year'],\n    # we can UNION the two source tables first.\n\n    # Concatenate (union) the source DataFrames\n    combined_df = pd.concat(source_dfs, ignore_index=True)\n\n    # Convert 'draw_sales' to integer (source has floats or ints, target expects int)\n    # We first fill NaNs if any, then convert\n    combined_df['draw_sales'] = combined_df['draw_sales'].fillna(0).astype(int)\n\n    # Extract 'year' from 'date' column (format 'YYYY-MM-DD')\n    combined_df['year'] = pd.to_datetime(combined_df['date'], errors='coerce').dt.year\n\n    # Convert 'date' column to string format YYYY-MM-DD (in case of any formatting issues)\n    combined_df['date'] = pd.to_datetime(combined_df['date'], errors='coerce').dt.strftime('%Y-%m-%d')\n\n    # Ensure 'state' is string type\n    combined_df['state'] = combined_df['state'].astype(str)\n\n    # Reorder columns to match target schema exactly\n    target_columns = ['state', 'date', 'draw_sales', 'year']\n    combined_df = combined_df[target_columns]\n\n    # Write the result to the target CSV file without the index column\n    combined_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "state,date,draw_sales,year\nOK,2014-03-26,269860,2014\nMI,2010-08-07,542606,2010\nFL,2010-04-03,4057842,2010\nKY,2014-01-15,531438,2014\nPA,2014-02-01,3255620,2014\nOR,2011-09-03,328931,2011\nMA,2010-02-20,511238,2010\nDE,2014-01-08,142530,2014\nMO,2010-10-06,723480,2010\nWV,2013-12-25,251286,2013\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.8968582153320312
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.002502,
+          "latency": 14.41983151435852,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/training_1.csv\", index_col=0)\n\n# UNION the two source tables (stack rows)\nunion_df = pd.concat([source0, source1], ignore_index=True)\n\n# Convert draw_sales to integer (target schema requires integer)\nunion_df['draw_sales'] = union_df['draw_sales'].astype(int)\n\n# Extract year from date column (date is string in target, year is integer)\nunion_df['year'] = union_df['date'].str[:4].astype(int)\n\n# GROUP BY state and date (leftmost non-float unique columns), aggregate sum of draw_sales\nresult = union_df.groupby(['state', 'date'], as_index=False).agg({'draw_sales': 'sum'})\n\n# Add year column back by extracting from date (since groupby drops it)\nresult['year'] = result['date'].str[:4].astype(int)\n\n# Reorder columns to match target schema exactly\nresult = result[['state', 'date', 'draw_sales', 'year']]\n\n# Write to output CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.027894973754882812
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12067.536115646362,
+        "critique": 14630.568742752075
+      }
+    }
+  ]
+}

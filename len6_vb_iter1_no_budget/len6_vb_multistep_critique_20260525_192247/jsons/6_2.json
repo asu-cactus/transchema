@@ -1,0 +1,46 @@
+{
+  "case": "6_2",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0,
+        "cost": 0.010767200000000001,
+        "latency": 41.15190148353577,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length6_2/training_0.csv\"\n    ]\n\n    # Target schema columns and types (for reference)\n    # ['0': string, '1': string, '2': string, '3': integer, '4': integer, '5': string,\n    #  '6': string, '7': integer, '8': string, 'date': string, 'hour': integer,\n    #  'minute': integer, 'seconds': integer, 'zone': integer]\n\n    # Read all source tables (only one source here) with index_col=0 to ignore the first index column\n    dfs = []\n    for file in source_files:\n        df = pd.read_csv(file, index_col=0)\n        dfs.append(df)\n\n    # Since only one source table with the exact same schema as target,\n    # we can directly use it as the target table.\n    # But we must ensure data types and formats match target schema exactly.\n\n    df_target = pd.concat(dfs, ignore_index=True)\n\n    # Ensure columns are in the correct order as target schema\n    target_columns = ['0', '1', '2', '3', '4', '5', '6', '7', '8',\n                      'date', 'hour', 'minute', 'seconds', 'zone']\n    df_target = df_target[target_columns]\n\n    # Data type conversions to match target schema\n\n    # Columns '0', '1', '2', '5', '6', '8', 'date' are strings\n    str_cols = ['0', '1', '2', '5', '6', '8', 'date']\n    for col in str_cols:\n        df_target[col] = df_target[col].astype(str)\n\n    # Columns '3', '4', '7', 'hour', 'minute', 'seconds', 'zone' are integers\n    int_cols = ['3', '4', '7', 'hour', 'minute', 'seconds', 'zone']\n    for col in int_cols:\n        # Convert to numeric first, coerce errors to NaN, then fill NaN with 0 and convert to int\n        df_target[col] = pd.to_numeric(df_target[col], errors='coerce').fillna(0).astype(int)\n\n    # Special handling for 'zone' column:\n    # In the examples, zone values are 100 or 200 (e.g. +0100, +0200)\n    # The source '0' column contains the datetime string with zone info inside.\n    # The source 'zone' column is integer but might be 0 or other values.\n    # We trust the source 'zone' column as is, but if zone is 0, try to parse from '0' column.\n\n    def extract_zone(row):\n        # The '0' column example: \"[12/Mar/2017:20:40:00  +0100]\"\n        # Extract the +0100 or +0200 part and convert to integer 100 or 200\n        try:\n            s = row['0']\n            # Extract zone part between last space and closing bracket\n            # Format: [dd/Mon/yyyy:HH:MM:SS  +zzzz]\n            if s.startswith('[') and s.endswith(']'):\n                s_inner = s[1:-1].strip()\n                parts = s_inner.split(' ')\n                zone_str = parts[-1]  # e.g. +0100\n                if zone_str.startswith('+') or zone_str.startswith('-'):\n                    # Remove sign and convert to int\n                    zone_int = int(zone_str[1:])\n                    # Keep sign as positive integer (as in examples)\n                    return zone_int\n        except Exception:\n            pass\n        return row['zone']\n\n    # Apply zone extraction only if zone is 0 or invalid\n    df_target['zone'] = df_target.apply(\n        lambda row: extract_zone(row) if row['zone'] == 0 else row['zone'], axis=1\n    ).astype(int)\n\n    # Save the transformed dataframe to the target path\n    output_path = \"autopipeline-benchmarks/github-pipelines/length6_2/target_multisource.csv\"\n    df_target.to_csv(output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.0362396240234375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0,
+          "cost": 0.0022836,
+          "latency": 20.026683568954468,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_2/training_0.csv\", index_col=0)\n\n# The source table schema matches the target schema exactly, so no transformation needed except:\n# - Convert 'zone' column from string to integer (target expects integer)\n# - Convert 'hour', 'minute', 'seconds' columns to integer if not already\n# - Strip brackets from column '0' if needed (target examples show brackets included, so keep as is)\n# - The 'zone' column in source is string (e.g., '+0200'), target expects integer (e.g., 200)\n#   So convert zone string like '+0200' to integer 200, '-0100' to -100, etc.\n\n# Convert 'zone' column from string like '+0200' to integer 200\ndef convert_zone(z):\n    if isinstance(z, str):\n        z = z.strip()\n        if z.startswith('+') or z.startswith('-'):\n            sign = 1 if z[0] == '+' else -1\n            try:\n                return sign * int(z[1:])\n            except:\n                return 0\n        else:\n            try:\n                return int(z)\n            except:\n                return 0\n    elif pd.isna(z):\n        return 0\n    else:\n        return int(z)\n\ndf0['zone'] = df0['zone'].apply(convert_zone)\n\n# Convert hour, minute, seconds to int (in case they are not)\ndf0['hour'] = pd.to_numeric(df0['hour'], errors='coerce').fillna(0).astype(int)\ndf0['minute'] = pd.to_numeric(df0['minute'], errors='coerce').fillna(0).astype(int)\ndf0['seconds'] = pd.to_numeric(df0['seconds'], errors='coerce').fillna(0).astype(int)\n\n# Convert columns 3,4,7 to int as target expects integer\ndf0['3'] = pd.to_numeric(df0['3'], errors='coerce').fillna(0).astype(int)\ndf0['4'] = pd.to_numeric(df0['4'], errors='coerce').fillna(0).astype(int)\ndf0['7'] = pd.to_numeric(df0['7'], errors='coerce').fillna(0).astype(int)\n\n# The target schema columns are:\n# ['0': string, '1': string, '2': string, '3': integer, '4': integer, '5': string, '6': string, '7': integer, '8': string, 'date': string, 'hour': integer, 'minute': integer, 'seconds': integer, 'zone': integer]\n\n# The source columns match exactly, so just reorder columns to match target schema order if needed\ntarget_columns = ['0', '1', '2', '3', '4', '5', '6', '7', '8', 'date', 'hour', 'minute', 'seconds', 'zone']\ndf0 = df0[target_columns]\n\n# Write the final dataframe to the target CSV file\ndf0.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_2/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.026226043701171875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 41154.709339141846,
+        "critique": 20599.568367004395
+      }
+    }
+  ]
+}

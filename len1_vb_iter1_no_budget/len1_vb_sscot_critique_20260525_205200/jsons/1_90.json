@@ -1,0 +1,46 @@
+{
+  "case": "1_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6679,
+        "cost": 0.001676,
+        "latency": 6.250545501708984,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.336) / 2 = 0.668 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.000.\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'dog_type': range overlap=0.000, JS similarity=0.671\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1299\n    Ground Truth \u2014 min: 8.0, max: 4471.0, mean: 942.4",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 1178\nExamples:\n dog_type\n        1\n        0\n        0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/training_0.csv\"\n\n# Load source data\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['dog_type': integer]\n# Target examples show dog_type values like 8, 30, 4471, etc.\n# Source0 has columns: doggo, floofer, pupper, puppo which are dog stage indicators.\n# These columns are mostly NaN or string labels like 'doggo', 'pupper', etc.\n# The target dog_type is an integer count.\n#\n# Hypothesis: dog_type is the count of dog stages present per tweet.\n# Each of doggo, floofer, pupper, puppo columns is either NaN or a string label.\n# We can count how many of these columns are non-null per row to get dog_type.\n#\n# This matches the target examples where dog_type is an integer count.\n#\n# Steps:\n# 1. For each row, count how many of doggo, floofer, pupper, puppo are non-null.\n# 2. Create a new dataframe with a single column 'dog_type' with this count.\n# 3. Output the result to the target CSV path.\n\ndog_stage_cols = ['doggo', 'floofer', 'pupper', 'puppo']\n\n# Count non-null dog stage columns per row\ndf0['dog_type'] = df0[dog_stage_cols].notnull().sum(axis=1)\n\n# Select only the target column\ntarget_df = df0[['dog_type']].copy()\n\n# Convert dog_type to integer type explicitly (it should already be int from sum)\ntarget_df['dog_type'] = target_df['dog_type'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_cot.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "dog_type\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.6489753723144531
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6758,
+          "cost": 0.0025708,
+          "latency": 12.805206537246704,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.352) / 2 = 0.676 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.032.\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'dog_type': range overlap=0.032, JS similarity=0.671\n    Generated    \u2014 min: 0.0, max: 150.0, mean: 50.3333\n    Ground Truth \u2014 min: 8.0, max: 4471.0, mean: 942.4",
+          "generated_samples": "Schema: ['dog_type', 'dog_type.1']\nNumber of Tuples: 3\nExamples:\n dog_type  dog_type.1\n        3           0\n        0           1\n        2         150",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 as per hint 21\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_90/training_0.csv\", index_col=0)\n\n# Since there is only one source table, no join or union with other tables is possible.\n# The target schema is ['dog_type'] with integer values.\n# The source table has no 'dog_type' column, but it has dog stage columns: doggo, floofer, pupper, puppo.\n# These columns are categorical indicators of dog types.\n# The target examples show integer counts, likely counts of each dog type category.\n# So we need to count the occurrences of each dog type category in the source data.\n\n# Create a dog_type mapping:\n# doggo=0, floofer=1, pupper=2, puppo=3 (based on the example target rows with dog_type values 0,2,3)\n# But the target examples have dog_type values 0,2,3, and 96, 4471, 30 counts.\n# The target examples are:\n# dog_type\n# 2        96\n# 0      4471\n# 3        30\n# So dog_type values correspond to doggo=0, floofer=1, pupper=2, puppo=3? But floofer is missing in target examples.\n# The target examples have only dog_type values 0,2,3, so likely doggo=0, pupper=2, puppo=3.\n# We will count the number of rows where each dog type column is not null.\n\n# Count non-null entries for each dog type column\ndoggo_count = source1['doggo'].notnull().sum()\nfloofer_count = source1['floofer'].notnull().sum()\npupper_count = source1['pupper'].notnull().sum()\npuppo_count = source1['puppo'].notnull().sum()\n\n# Construct the output DataFrame with dog_type and counts\n# dog_type: 0=doggo, 1=floofer, 2=pupper, 3=puppo\n# But target examples do not have dog_type=1 (floofer), so we exclude it.\n\noutput = pd.DataFrame({\n    'dog_type': [0, 2, 3],\n    'count': [doggo_count, pupper_count, puppo_count]\n})\n\n# The target schema is only ['dog_type'], but the examples show counts as values.\n# The target examples show dog_type as integer values with counts as values, so likely the target table is a count per dog_type.\n# So we rename 'count' column to 'dog_type' and set dog_type values as index? No, target schema is only dog_type column.\n# The target examples show dog_type values as counts, so the column name is dog_type but values are counts.\n# So the output should be a single column 'dog_type' with counts as values, and index is dog_type id.\n\n# So output should be:\n# dog_type\n# 0      4471\n# 2        96\n# 3        30\n\n# Sort by dog_type to match target examples order (not strictly necessary)\noutput = output.sort_values('dog_type')\n\n# Set dog_type as index and output the counts as values in dog_type column\noutput_final = output.set_index('dog_type')\noutput_final.columns = ['dog_type']  # rename count column to dog_type\n\n# Write to CSV\noutput_final.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\")",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0156631469726562
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6253.114700317383,
+        "critique": 12845.436096191406
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "9_25",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7734,
+        "cost": 0.010088000000000001,
+        "latency": 13.908191442489624,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.547) / 2 = 0.773 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {CANCEL_DT}.\nGenerated table candidate keys: {CANCEL_DT}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'CANCEL_DT': Jaccard=0.547",
+        "generated_samples": "Schema: ['CANCEL_DT']\nNumber of Tuples: 27699\nExamples:\nCANCEL_DT\n      NaN\n29-JUL-17\n29-JUN-16",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length9_25/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length9_25/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length9_25/training_2.csv\"\nsource4_path = \"autopipeline-benchmarks/github-pipelines/length9_25/training_4.csv\"\nsource5_path = \"autopipeline-benchmarks/github-pipelines/length9_25/training_5.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\ndf2 = pd.read_csv(source2_path, index_col=0)\ndf4 = pd.read_csv(source4_path, index_col=0)\ndf5 = pd.read_csv(source5_path, index_col=0)\n\n# Step 1: UNION of Source9_25_0, Source9_25_1, Source9_25_4, Source9_25_5\n# These four sources share the same schema, so union is valid.\nunion_df = pd.concat([df0, df1, df4, df5], ignore_index=True)\n\n# Step 2: JOIN union_df with Source9_25_2 on ROW_WID\n# union_df has 'ROW_WID' column, df2 has 'ROW_WID' column\njoined_df = pd.merge(union_df, df2, how='left', left_on='ROW_WID', right_on='ROW_WID')\n\n# Step 3: UNION with empty list means no additional union, so no operation here.\n\n# Final projection: Target schema is ['CANCEL_DT'] as string\n# Extract CANCEL_DT column, keep as string (object)\nresult_df = joined_df[['CANCEL_DT']].copy()\n\n# Ensure CANCEL_DT is string type (object in pandas)\nresult_df['CANCEL_DT'] = result_df['CANCEL_DT'].astype(str)\n\n# Replace 'nan' strings with actual NaN (to match target examples NaN)\nresult_df['CANCEL_DT'] = result_df['CANCEL_DT'].replace({'nan': pd.NA})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length9_25/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "CANCEL_DT\n26-ABR-17\n27-JUN-17\n12-MAR-15\n26-OCT-14\n18-MAY-15\n05-ENE-15\n26-MAY-16\n24-DIC-16\n30-SEP-16\n26-OCT-14\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6314983367919922
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.625,
+          "cost": 0.0032424000000000003,
+          "latency": 11.404635906219482,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.250) / 2 = 0.625 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {CANCEL_DT}.\nGenerated table candidate keys: {CANCEL_DT}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'CANCEL_DT': Jaccard=0.250",
+          "generated_samples": "Schema: ['CANCEL_DT']\nNumber of Tuples: 157\nExamples:\nCANCEL_DT\n03-FEB-17\n31-ENE-17\n03-MAY-17",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_9.csv\", index_col=0)\n\n# UNION all tables with the same schema (Source9_25_0,1,4,5)\nunioned = pd.concat([source0, source1, source4, source5], ignore_index=True)\n\n# JOIN unioned with all other aspect tables on ROW_WID\nunioned = unioned.merge(source2, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source3, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source6, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source7, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source8, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source9, on=\"ROW_WID\", how=\"inner\")\n\n# Select only CANCEL_DT column as target schema\nresult = unioned[[\"CANCEL_DT\"]]\n\n# Group by CANCEL_DT to remove duplicates (target has duplicates, no keys)\nresult = result.drop_duplicates(subset=[\"CANCEL_DT\"]).reset_index(drop=True)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.728607177734375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13975.58617591858,
+        "critique": 11618.932008743286
+      }
+    }
+  ]
+}

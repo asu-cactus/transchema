@@ -1,0 +1,46 @@
+{
+  "case": "9_3",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.3274,
+        "cost": 0.0041992,
+        "latency": 13.46225905418396,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.655) / 2 = 0.327 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.968, range overlap=0.067.\nGround truth candidate keys: {company_permalink}.\nGenerated table candidate keys: {company_permalink, raised_amount_usd}; {company_permalink, funded_year}.\nKeys present in ground truth but absent in generated: {company_permalink}.\nSpurious keys in generated not present in ground truth: {funded_year, company_permalink}; {company_permalink, raised_amount_usd}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['company_permalink', 'funded_year'] \u2192 raised_amount_usd; ['raised_amount_usd'] \u2192 funded_year; ['funded_year'] \u2192 raised_amount_usd.\nMissing FDs from ground truth: ['company_permalink'] \u2192 raised_amount_usd; ['company_permalink'] \u2192 funded_year.\nDistribution Analysis (numerical columns with issues):\n  Column 'funded_year': range overlap=0.000, JS similarity=0.967\n    Generated    \u2014 min: 0.0, max: 3200000000.0, mean: 12460400.3284\n    Ground Truth \u2014 min: 0.0, max: 108557.0, mean: 8983.4873\n  Column 'raised_amount_usd': range overlap=0.133, JS similarity=0.970\n    Generated    \u2014 min: 0.0, max: 3200000000.0, mean: 12460400.3284\n    Ground Truth \u2014 min: 0.0, max: 24060000000.0, mean: 57390706.6066\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'company_permalink': Jaccard=0.930",
+        "generated_samples": "Schema: ['company_permalink', 'funded_year', 'raised_amount_usd']\nNumber of Tuples: 50367\nExamples:\n               company_permalink  funded_year  raised_amount_usd\n/company/iscience-interventional       2009.0           20500000\n               /company/autotask       2006.0            6000000\n                 /company/scrybe       2007.0                  0",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_1.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_2.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_3.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_4.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_5.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_6.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_7.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_8.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_9.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_3/training_10.csv\"\n    ]\n\n    # Columns required for the target table\n    target_columns = ['company_permalink', 'funded_year', 'raised_amount_usd']\n\n    # Read all source files, select only the target columns, and concatenate (union) them\n    dfs = []\n    for file_path in source_files:\n        df = pd.read_csv(file_path, index_col=0)\n        # Select only the target columns\n        # Some source files may have funded_year as float (e.g., 2003.0), convert to int safely\n        df_subset = df[target_columns].copy()\n\n        # Convert funded_year to integer (some sources have float)\n        # Handle possible NaNs by filling with 0 then converting to int, then replace 0 with NaN again\n        df_subset['funded_year'] = pd.to_numeric(df_subset['funded_year'], errors='coerce')\n        df_subset['funded_year'] = df_subset['funded_year'].fillna(0).astype(int)\n        df_subset.loc[df_subset['funded_year'] == 0, 'funded_year'] = pd.NA\n\n        # Convert raised_amount_usd to integer (some sources have float)\n        df_subset['raised_amount_usd'] = pd.to_numeric(df_subset['raised_amount_usd'], errors='coerce')\n        df_subset['raised_amount_usd'] = df_subset['raised_amount_usd'].fillna(0).astype(int)\n\n        dfs.append(df_subset)\n\n    # Concatenate all dataframes vertically (union)\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Optional: Remove rows with missing company_permalink or funded_year or raised_amount_usd\n    combined_df = combined_df.dropna(subset=['company_permalink', 'funded_year', 'raised_amount_usd'])\n\n    # Reset index after dropna\n    combined_df = combined_df.reset_index(drop=True)\n\n    # Write the result to the target CSV file\n    combined_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_3/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "company_permalink,funded_year,raised_amount_usd\n/company/goto-metrics,2011.0,3000000\n/company/brighttag,2011.0,5000000\n/company/joyent,2012.0,85000000\n/company/brighttag,2012.0,15000000\n/company/exagen-diagnostics,2012.0,5300000\n/company/aspen-avionics,2012.0,12800000\n/company/janrain,2013.0,33000000\n/company/goto-metrics,2013.0,10000000\n/company/hg-data-company,2013.0,2000000\n/company/instructure,2013.0,30000000\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.0782947540283203
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0046912,
+          "latency": 19.075493097305298,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\npaths = [\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_3/training_10.csv\",\n]\n\ndfs = [pd.read_csv(p, index_col=0) for p in paths]\n\n# UNION all source tables (concatenate)\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Select only the target columns\ndf_all = df_all[['company_permalink', 'funded_year', 'raised_amount_usd']]\n\n# Convert funded_year to integer (some sources have float)\ndf_all['funded_year'] = df_all['funded_year'].astype(int)\n\n# Convert raised_amount_usd to integer (target schema expects integer)\ndf_all['raised_amount_usd'] = df_all['raised_amount_usd'].fillna(0).astype(int)\n\n# GROUP BY company_permalink and funded_year, aggregate sum of raised_amount_usd\ndf_grouped = df_all.groupby(['company_permalink', 'funded_year'], as_index=False).agg({'raised_amount_usd': 'sum'})\n\n# Write output to target file\ndf_grouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_3/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.05650520324707031
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13529.858589172363,
+        "critique": 19578.418493270874
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "3_12",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.1754,
+        "cost": 0.0018272000000000002,
+        "latency": 6.725794315338135,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.351) / 2 = 0.175 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.482, range overlap=0.413.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN, count}; {SN, Price}.\nKeys present in ground truth but absent in generated: {SN}.\nSpurious keys in generated not present in ground truth: {Price, SN}; {count, SN}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Price'] \u2192 count; ['count'] \u2192 Price.\nMissing FDs from ground truth: ['SN'] \u2192 Price; ['SN'] \u2192 count.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.326, JS similarity=0.759\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\n  Column 'count': range overlap=0.501, JS similarity=0.206\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 3.0, mean: 1.1818\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+        "generated_samples": "Schema: ['SN', 'Price', 'count']\nNumber of Tuples: 390\nExamples:\n           SN  Price  count\n Chanossast57   4.32      1\n    Firatan58   3.75      1\nRastynusuir31   2.27      1",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length3_12/training_0.csv\"\n]\n\n# List to hold transformed DataFrames from each source\ntransformed_dfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Source 0 schema: ['Purchase ID', 'SN', 'Age', 'Gender', 'Item ID', 'Item Name', 'Price']\n    # Target schema: ['SN': string, 'Price': float, 'count': integer]\n    # We need to produce count per SN and Price combination.\n    # Since Price is float and count is integer, count is the number of occurrences of each (SN, Price).\n    \n    # Group by SN and Price, count occurrences\n    grouped = df.groupby(['SN', 'Price'], as_index=False).size()\n    grouped.rename(columns={'size': 'count'}, inplace=True)\n    \n    # Ensure types\n    grouped['SN'] = grouped['SN'].astype(str)\n    grouped['Price'] = grouped['Price'].astype(float)\n    grouped['count'] = grouped['count'].astype(int)\n    \n    transformed_dfs.append(grouped)\n\n# Since only one source, no union needed beyond this\n# Concatenate all transformed dfs (if multiple sources existed)\nresult_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target path\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/target_multisource.csv\", index=False)",
+        "generated_csv_head": "SN,Price,count\nAdairialis76,2.28,1\nAelaria33,1.79,1\nAelastirin39,4.14,1\nAelidru27,1.09,1\nAelin32,2.04,1\nAelly27,2.61,1\nAellyria80,3.08,1\nAelollo59,3.14,1\nAeral68,4.0,1\nAeralstical35,2.96,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5397071838378906
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0011952,
+          "latency": 3.3330764770507812,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source data\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/training_0.csv\", index_col=0)\n\n# Group by SN, aggregate sum of Price and count of Price\nresult = source0.groupby(\"SN\", as_index=False).agg({\"Price\": \"sum\", \"Price\": \"count\"})\n\n# Rename columns to match target schema\nresult.columns = [\"SN\", \"Price\", \"count\"]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.04172325134277344
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6728.100061416626,
+        "critique": 3348.2666015625
+      }
+    }
+  ]
+}

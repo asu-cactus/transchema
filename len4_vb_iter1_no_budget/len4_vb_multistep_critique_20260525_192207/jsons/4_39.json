@@ -1,0 +1,46 @@
+{
+  "case": "4_39",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5666,
+        "cost": 0.0028347999999999997,
+        "latency": 6.952252149581909,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.333) / 2 = 0.567 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {label}.\nGenerated table candidate keys: {label}; {y}; {x}.\nSpurious keys in generated not present in ground truth: {y}; {x}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.800 (precision=0.667, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['x'] \u2192 label; ['y'] \u2192 label.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['label', 'x', 'y']\nNumber of Tuples: 70\nExamples:\nlabel  x  y\n    g  1  3\n    g  1  4\n    b  4  2",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_39/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_39/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_39/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_39/training_3.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Ensure columns order matches target schema ['label', 'x', 'y']\n    # Source schema is ['x', 'y', 'label'], so reorder and convert types accordingly\n    df = df[['label', 'x', 'y']]\n    # Convert 'label' to string type explicitly\n    df['label'] = df['label'].astype(str)\n    # Convert 'x' and 'y' to integer by rounding (since target schema expects integer)\n    df['x'] = df['x'].round().astype(int)\n    df['y'] = df['y'].round().astype(int)\n    dfs.append(df)\n\n# UNION operation: concatenate all source DataFrames\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Reorder columns to match target schema explicitly (already done, but to be safe)\ntarget_df = target_df[['label', 'x', 'y']]\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/target_multisource.csv\", index=False)",
+        "generated_csv_head": "label,x,y\ng,2,3\ng,2,3\ng,1,4\ng,2,3\ng,1,3\ng,1,4\ng,2,4\ng,1,4\ng,1,4\ng,1,4\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8397102355957031
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5666,
+          "cost": 0.0018304,
+          "latency": 6.642741441726685,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.333) / 2 = 0.567 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {label}.\nGenerated table candidate keys: {label}; {y}; {x}.\nSpurious keys in generated not present in ground truth: {y}; {x}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.800 (precision=0.667, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['x'] \u2192 label; ['y'] \u2192 label.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['label', 'x', 'y']\nNumber of Tuples: 4\nExamples:\n label  x  y\npurple  3  3\n     r  1  2\n     b  4  2",
+          "code": "import pandas as pd\n\n# Read source CSVs with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_3.csv\", index_col=0)\n\n# UNION all source tables\ndf_union = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# Group by 'label' and aggregate x and y by rounding and converting to int\ndf_grouped = df_union.groupby('label', as_index=False).agg({\n    'x': lambda col: int(round(col.mean())),\n    'y': lambda col: int(round(col.mean()))\n})\n\n# Rename columns to match target schema exactly (already matched)\n# Write output CSV\ndf_grouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.081705093383789
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7014.796018600464,
+        "critique": 6689.817428588867
+      }
+    }
+  ]
+}

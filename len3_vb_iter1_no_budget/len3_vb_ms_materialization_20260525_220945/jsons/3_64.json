@@ -1,0 +1,29 @@
+{
+  "case": "3_64",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.976,
+        "cost": 0.004062,
+        "latency": 24.726580142974854,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.952) / 2 = 0.976 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.972, range overlap=0.932.\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount_x': range overlap=0.952, JS similarity=0.949\n    Generated    \u2014 min: 1.0, max: 21.0, mean: 1.8295\n    Ground Truth \u2014 min: 1.0, max: 22.0, mean: 1.994\n  Column 'amount_y': range overlap=0.889, JS similarity=0.981\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 60.8999\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103\n  Column 'avg_amount_spent': range overlap=0.889, JS similarity=0.981\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 60.8999\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103",
+        "generated_samples": "Schema: ['customer_id', 'amount_x', 'amount_y', 'avg_amount_spent']\nNumber of Tuples: 10932\nExamples:\n customer_id  amount_x  amount_y  avg_amount_spent\n         940         5     180.0              36.0\n      100800         3      45.0              15.0\n        7510         2      60.0              30.0",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_64/training_0.csv\"\ndf_source = pd.read_csv(source_path, index_col=0)\n\n# Perform the group by and aggregations as specified:\n# group by customer_id\n# amount_x = count of amount\n# amount_y = sum of amount\n# avg_amount_spent = average of amount\nagg_df = df_source.groupby('customer_id', as_index=False).agg(\n    amount_x=('amount', 'count'),\n    amount_y=('amount', 'sum'),\n    avg_amount_spent=('amount', 'mean')\n)\n\n# Convert amount_x to integer (count is int by default, but ensure type)\nagg_df['amount_x'] = agg_df['amount_x'].astype(int)\n# amount_y is sum of integers, but target schema says integer for amount_x and float for amount_y and avg_amount_spent\n# amount_y and avg_amount_spent should be float\nagg_df['amount_y'] = agg_df['amount_y'].astype(float)\nagg_df['avg_amount_spent'] = agg_df['avg_amount_spent'].astype(float)\n\n# Rename columns to match target schema exactly (already matched)\n# ['customer_id': integer, 'amount_x': integer, 'amount_y': float, 'avg_amount_spent': float]\n\n# Write the result to the target path without index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_64/target_multisource.csv\"\nagg_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "customer_id,amount_x,amount_y,avg_amount_spent\n10,1,30.0,30.0\n80,3,200.0,66.66666666666667\n90,4,430.0,107.5\n120,1,20.0,20.0\n130,1,40.0,40.0\n160,1,30.0,30.0\n190,2,110.0,55.0\n230,1,50.0,50.0\n240,3,55.0,18.33333333333333\n260,1,15.0,15.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.1486282348632812
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 24742.916107177734,
+        "critique": 0.0
+      }
+    }
+  ]
+}

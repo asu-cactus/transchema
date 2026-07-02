@@ -1,0 +1,46 @@
+{
+  "case": "1_13",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.811,
+        "cost": 0.0013224,
+        "latency": 3.3296120166778564,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.822) / 2 = 0.811 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.856, range overlap=0.076.\nGround truth candidate keys: {sex, smoker}; {tip_pct}.\nGenerated table candidate keys: {tip_pct}.\nKeys present in ground truth but absent in generated: {smoker, sex}.\nFunctional dependency F1: 0.800 (precision=1.000, recall=0.667).\nMissing FDs from ground truth: ['sex', 'smoker'] \u2192 tip_pct.\nDistribution Analysis (numerical columns with issues):\n  Column 'tip_pct': range overlap=0.076, JS similarity=0.856\n    Generated    \u2014 min: 0.0356, max: 0.7103, mean: 0.1603\n    Ground Truth \u2014 min: 0.1474, max: 0.1984, mean: 0.1657",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 122\nExamples:\n   sex smoker  tip_pct\nFemale    Yes 0.198216\n  Male     No 0.146699\n  Male     No 0.107900",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_13/training_0.csv\"\n]\n\n# List to hold dataframes from each source\ndfs = []\n\n# Load each source file\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the first numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The source schema is:\n# ['total_bill', 'tip', 'sex', 'smoker', 'day', 'time', 'size', 'tip_pct']\n# Target schema is ['sex': string, 'smoker': string, 'tip_pct': float]\n# We just select the needed columns from the source.\n\n# Extract relevant columns from the single source dataframe\ndf_target = dfs[0][['sex', 'smoker', 'tip_pct']].copy()\n\n# Ensure correct data types as per target schema\ndf_target['sex'] = df_target['sex'].astype(str)\ndf_target['smoker'] = df_target['smoker'].astype(str)\ndf_target['tip_pct'] = df_target['tip_pct'].astype(float)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nMale,No,0.1753155680224404\nMale,No,0.1253918495297805\nFemale,No,0.2019230769230769\nFemale,No,0.1409395973154362\nMale,No,0.1737089201877934\nFemale,No,0.1377410468319559\nFemale,No,0.1757469244288224\nMale,No,0.0955302366345311\nMale,No,0.0786163522012578\nFemale,No,0.1396151948692649\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4595985412597656
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0016056,
+          "latency": 5.877869129180908,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/training_1.csv\", index_col=0)\n\n# Use all source tables by unioning them (both have the same schema)\nunion_df = pd.concat([source0, source1], ignore_index=True)\n\n# Group by 'sex' and 'smoker' and aggregate tip_pct by mean\nresult = union_df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.036716461181640625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 3333.202123641968,
+        "critique": 5890.352010726929
+      }
+    }
+  ]
+}

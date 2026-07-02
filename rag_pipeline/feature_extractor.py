@@ -1,5 +1,5 @@
 """
-Feature extractor for RAG retrieval: computes a fixed 23-dim structural vector
+Feature extractor for RAG retrieval: computes a fixed 22-dim structural vector
 per transformation case. Used for feature-based retrieval alongside or instead of text embedding.
 """
 from __future__ import annotations
@@ -12,8 +12,14 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
-FEATURE_DIM = 23
+FEATURE_DIM = 22
 OPERATOR_BINS = ["groupby", "merge", "union", "pivot", "unpivot", "other"]
+
+# Slice of the 22-dim vector occupied by the operator histogram.
+# Layout: [n_in_tables, n_in_cols, avg_rows, n_out_cols,
+#          type_in×5, type_out×5, op_hist×6, schema_overlap, avg_uniqueness]
+# Op-hist starts at index 14 and spans 6 dims.
+OP_HIST_SLICE = slice(14, 20)
 OPERATOR_ALIASES = {"concat": "union"}
 # Map multi_step operation names (from critique operation_history) to OPERATOR_BINS
 OPERATION_HISTORY_TO_BIN = {
@@ -165,7 +171,7 @@ def _avg_uniqueness_ratio(df: pd.DataFrame, max_rows: int = 50_000) -> float:
 
 def compute_from_case_folder(case_folder: Path) -> Tuple[List[float], Optional[str]]:
     """
-    Compute 23-dim feature vector from a case folder under rag-examples-w-pipeline.
+    Compute 22-dim feature vector from a case folder under rag-examples-w-pipeline.
 
     Expects:
       - case_folder/Source_datasets/*.csv (e.g. test_*.csv)
@@ -222,7 +228,7 @@ def compute_from_data(
     pipeline_operator_list: Optional[List[str]] = None,
 ) -> List[float]:
     """
-    Compute 23-dim vector from in-memory source/target data and optional pipeline list.
+    Compute 22-dim vector from in-memory source/target data and optional pipeline list.
 
     Used at ingest (from case folder CSVs) and at query time (from current task data).
     When pipeline is unknown (e.g. query), pass pipeline_operator_list=None.
@@ -248,7 +254,6 @@ def compute_from_data(
     )
 
     op_hist = _operator_histogram(pipeline_operator_list or [])
-    pipeline_length = len(pipeline_operator_list) if pipeline_operator_list else 0
 
     src_col_sets = [set(c.strip() for c in df.columns) for df in source_dfs]
     tgt_cols = list(target_df.columns) if target_df is not None else []
@@ -265,14 +270,96 @@ def compute_from_data(
         + [float(x) for x in type_counts_in]
         + [float(x) for x in type_counts_out]
         + [float(x) for x in op_hist]
-        + [overlap, avg_uniqueness, float(pipeline_length)]
+        + [overlap, avg_uniqueness]
+    )
+    assert len(vec) == FEATURE_DIM, f"expected {FEATURE_DIM} dims, got {len(vec)}"
+    return vec
+
+
+def compute_from_jsonl_record(rec: dict) -> List[float]:
+    """
+    Compute 22-dim feature vector from an enriched JSONL record.
+
+    Requires n_rows_per_input and uniqueness_per_input (added by enrich_row_stats.py).
+    Type counts are inferred from the JSONL sample data via the same pandas dtype
+    path used by compute_from_data(), so ingest and query vectors are compatible.
+    Row counts and uniqueness use the enriched fields (accurate full-dataset stats).
+
+    Args:
+        rec: One parsed record from unused_pipeline_cases_enriched.jsonl.
+
+    Returns:
+        22-dim float vector (same layout as compute_from_data).
+    """
+    inputs: dict = rec.get("inputs", {})
+    target: dict = rec.get("target", {})
+
+    # Build lightweight DataFrames from sample rows for dtype inference —
+    # pandas infers the same types here as it would from the full CSVs.
+    source_dfs_sample: List[pd.DataFrame] = []
+    for v in inputs.values():
+        cols = v.get("schema", [])
+        rows = v.get("sample", [])
+        try:
+            df = pd.DataFrame(rows, columns=cols) if rows else pd.DataFrame(columns=cols)
+        except Exception:
+            df = pd.DataFrame(columns=cols)
+        source_dfs_sample.append(df)
+
+    tgt_cols: List[str] = target.get("schema", [])
+    tgt_rows = target.get("sample", [])
+    try:
+        target_df_sample: Optional[pd.DataFrame] = (
+            pd.DataFrame(tgt_rows, columns=tgt_cols) if tgt_rows else pd.DataFrame(columns=tgt_cols)
+        )
+    except Exception:
+        target_df_sample = pd.DataFrame(columns=tgt_cols)
+
+    num_input_tables = float(rec.get("n_inputs", len(inputs)))
+    num_input_cols = float(sum(df.shape[1] for df in source_dfs_sample))
+    num_output_cols = float(len(tgt_cols))
+
+    # Use enriched fields for row/uniqueness — far more accurate than the small sample
+    n_rows: List[float] = rec.get("n_rows_per_input", [])
+    avg_rows = sum(n_rows) / len(n_rows) if n_rows else 0.0
+
+    uniqueness: List[float] = rec.get("uniqueness_per_input", [])
+    avg_uniqueness = sum(uniqueness) / len(uniqueness) if uniqueness else 0.0
+
+    # Type counts from sample DataFrames (same _count_column_types as compute_from_data)
+    type_counts_in = [0, 0, 0, 0, 0]
+    for df in source_dfs_sample:
+        for i, c in enumerate(_count_column_types(df)):
+            type_counts_in[i] += c
+
+    type_counts_out = (
+        _count_column_types(target_df_sample)
+        if target_df_sample is not None and not target_df_sample.empty
+        else [0, 0, 0, 0, 0]
+    )
+
+    op_hist = _operator_histogram(rec.get("operators", []))
+
+    src_col_sets = [
+        set(c.strip() for c in v.get("schema", []))
+        for v in inputs.values()
+    ]
+    overlap = _schema_overlap(src_col_sets, tgt_cols)
+
+    vec = (
+        [num_input_tables, num_input_cols, avg_rows]
+        + [num_output_cols]
+        + [float(x) for x in type_counts_in]
+        + [float(x) for x in type_counts_out]
+        + [float(x) for x in op_hist]
+        + [overlap, avg_uniqueness]
     )
     assert len(vec) == FEATURE_DIM, f"expected {FEATURE_DIM} dims, got {len(vec)}"
     return vec
 
 
 # ---------------------------------------------------------------------------
-# Z-score normalization for 23-dim feature vectors
+# Z-score normalization for 22-dim feature vectors
 # ---------------------------------------------------------------------------
 
 _EPSILON = 1e-8
@@ -282,8 +369,8 @@ DEFAULT_NORM_STATS_PATH = Path(__file__).resolve().parent / "feature_norm_stats.
 
 def compute_norm_stats(vectors: List[List[float]]) -> Dict[str, List[float]]:
     """
-    Compute per-dimension mean and std from a collection of raw 23-dim vectors.
-    Returns {"mean": [23 floats], "std": [23 floats]}.
+    Compute per-dimension mean and std from a collection of raw 22-dim vectors.
+    Returns {"mean": [22 floats], "std": [22 floats]}.
     """
     n = len(vectors)
     if n == 0:

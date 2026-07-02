@@ -1,0 +1,46 @@
+{
+  "case": "2_67",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6586,
+        "cost": 0.0019299999999999999,
+        "latency": 25.469234466552734,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.475 + 0.843) / 2 = 0.659 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.996, range overlap=1.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.475 (precision=0.583, recall=0.400).\nSpurious FDs in generated (not in ground truth): ['source', 'test', 'timestamp'] \u2192 operative_system; ['device', 'test', 'timestamp'] \u2192 converted; ['device', 'source', 'timestamp'] \u2192 operative_system; ['device', 'timestamp'] \u2192 converted; ['source', 'timestamp'] \u2192 converted (and 5 more).\nMissing FDs from ground truth: ['city', 'device', 'timestamp'] \u2192 test; ['city', 'source', 'timestamp'] \u2192 device; ['device', 'source', 'timestamp'] \u2192 converted; ['city', 'operative_system', 'timestamp'] \u2192 test; ['city', 'source', 'timestamp'] \u2192 test (and 16 more).\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'timestamp': Jaccard=0.086\n  Column 'city': Jaccard=0.508",
+        "generated_samples": "Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']\nNumber of Tuples: 20000\nExamples:\n user_id           timestamp         source device operative_system  test  price  converted city\n  982113 2015-03-23 08:17:16      seo-other mobile            other     1     59          0  NaN\n  680232 2015-05-23 14:11:57 direct_traffic    web          windows     0     39          0  NaN\n  613778 2015-05-21 11:26:37     seo-google mobile              iOS     1     59          0  NaN",
+        "code": "import pandas as pd\n\n# File paths for source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_67/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_67/training_1.csv\"\n\n# Step 1: Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Step 2: Inspect schemas and plan transformation\n# Source0 columns: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']\n# Source1 columns: ['user_id', 'city', 'country', 'lat', 'long']\n# Target schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']\n\n# Step 3: Join Source0 and Source1 on 'user_id' to get all target columns\n# Source1 has extra columns 'country', 'lat', 'long' which are not needed in target, so drop them after join\ndf_merged = pd.merge(df_source0, df_source1[['user_id', 'city']], on='user_id', how='left')\n\n# Step 4: Ensure data types match target schema\n# Target schema types:\n# 'user_id': int\n# 'timestamp': string\n# 'source': string\n# 'device': string\n# 'operative_system': string\n# 'test': int\n# 'price': int\n# 'converted': int\n# 'city': string\n\n# Convert user_id to int (if not already)\ndf_merged['user_id'] = df_merged['user_id'].astype(int)\n\n# Convert timestamp to string (if not already)\ndf_merged['timestamp'] = df_merged['timestamp'].astype(str)\n\n# Convert categorical columns to string\nfor col in ['source', 'device', 'operative_system', 'city']:\n    df_merged[col] = df_merged[col].astype(str)\n\n# Convert integer columns\nfor col in ['test', 'price', 'converted']:\n    df_merged[col] = pd.to_numeric(df_merged[col], errors='coerce').fillna(0).astype(int)\n\n# Step 5: Reorder columns to match target schema exactly\ntarget_columns = ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']\ndf_target = df_merged[target_columns]\n\n# Step 6: Write the transformed data to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_67/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "user_id,timestamp,source,device,operative_system,test,price,converted,city\n601047,2015-05-05 08:07:22,ads-google,mobile,iOS,0,39,0,\n653947,2015-05-16 00:02:15,ads_other,web,linux,0,39,0,\n456104,2015-04-09 18:22:21,direct_traffic,mobile,iOS,0,39,0,\n790005,2015-05-09 12:35:48,seo-google,mobile,android,0,39,0,\n915987,2015-04-20 15:52:28,seo-google,mobile,android,0,39,0,Minneapolis\n88302,2015-05-02 00:52:46,seo_facebook,web,windows,1,59,0,\n473452,2015-03-10 01:34:27,seo-google,web,windows,1,59,0,\n210351,2015-05-03 13:58:13,seo-google,mobile,android,0,39,0,\n28176,2015-03-06 11:28:46,ads-bing,mobile,android,1,59,0,\n138456,2015-04-05 09:36:46,direct_traffic,mobile,iOS,1,59,0,Fountain Valley\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.1288394927978516
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5527,
+          "cost": 0.0014804000000000002,
+          "latency": 4.108871698379517,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.276 + 0.830) / 2 = 0.553 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.979, range overlap=1.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {timestamp}; {user_id}.\nSpurious keys in generated not present in ground truth: {timestamp}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.276 (precision=0.348, recall=0.229).\nSpurious FDs in generated (not in ground truth): ['price'] \u2192 test; ['timestamp'] \u2192 device; ['operative_system', 'source', 'test'] \u2192 device; ['timestamp'] \u2192 city; ['timestamp'] \u2192 converted (and 10 more).\nMissing FDs from ground truth: ['city', 'device', 'timestamp'] \u2192 test; ['city', 'source', 'timestamp'] \u2192 device; ['device', 'source', 'timestamp'] \u2192 converted; ['price', 'timestamp'] \u2192 test; ['city', 'operative_system', 'timestamp'] \u2192 test (and 22 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.999, JS similarity=0.944\n    Generated    \u2014 min: 589.0, max: 999493.0, mean: 483476.9023\n    Ground Truth \u2014 min: 14.0, max: 999992.0, mean: 497136.3231\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'timestamp': Jaccard=0.000\n  Column 'city': Jaccard=0.508",
+          "generated_samples": "Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']\nNumber of Tuples: 1228\nExamples:\n user_id           timestamp     source device operative_system  test  price  converted            city\n  333250 2015-03-30 13:37:13 ads-google mobile            other     0     39          0        New York\n  534128 2015-03-13 04:52:26 ads-google mobile          android     0     39          0 North Highlands\n   88370 2015-05-19 10:42:44  seo-yahoo mobile          android     0     39          0       Charlotte",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_67/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_67/training_1.csv\", index_col=0)\n\n# Join on user_id (inner join to keep only matching user_ids)\nresult = pd.merge(source0, source1[['user_id', 'city']], on='user_id', how='inner')\n\n# Reorder columns to match target schema exactly\nresult = result[['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_67/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 3.356456756591797
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 25545.29309272766,
+        "critique": 17755.470037460327
+      }
+    }
+  ]
+}

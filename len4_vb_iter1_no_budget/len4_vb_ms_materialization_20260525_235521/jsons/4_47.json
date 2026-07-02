@@ -1,0 +1,46 @@
+{
+  "case": "4_47",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0085016,
+        "latency": 25.204804182052612,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_47/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_47/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_47/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_47/training_3.csv\", index_col=0)\n\n# First join: Source4_47_1 and Source4_47_3 on WarID, WarShortName, WarType\njoin1 = pd.merge(\n    source1,\n    source3,\n    how=\"inner\",\n    on=[\"WarID\", \"WarShortName\", \"WarType\"],\n    suffixes=(\"\", \"_drop\")\n)\n# Drop any duplicated columns from right side (should be none except suffix)\njoin1 = join1.drop(columns=[col for col in join1.columns if col.endswith(\"_drop\")])\n\n# Second join: Source4_47_0 and Source4_47_2 on WarID, WarShortName, WarType\njoin2 = pd.merge(\n    source0,\n    source2,\n    how=\"inner\",\n    on=[\"WarID\", \"WarShortName\", \"WarType\"],\n    suffixes=(\"\", \"_drop\")\n)\njoin2 = join2.drop(columns=[col for col in join2.columns if col.endswith(\"_drop\")])\n\n# Now union the two joined results\n# But join1 has columns: ['IsIntervention', 'WarID', 'WarShortName', 'WarType', 'IsInternational']\n# join2 has columns: ['WarID', 'WarShortName', 'WarType'] only (no IsIntervention or IsInternational)\n# We need to add missing columns to join2 with default values to match target schema\n\n# Add missing columns to join2 with default values:\n# From target examples, IsIntervention and IsInternational are integers, default 0\njoin2[\"IsIntervention\"] = 0\njoin2[\"IsInternational\"] = 0\n\n# Reorder columns to target schema: ['IsIntervention', 'WarID', 'WarShortName', 'WarType', 'IsInternational']\njoin2 = join2[['IsIntervention', 'WarID', 'WarShortName', 'WarType', 'IsInternational']]\n\n# For join1, ensure columns order matches target schema\njoin1 = join1[['IsIntervention', 'WarID', 'WarShortName', 'WarType', 'IsInternational']]\n\n# Concatenate (union) the two joined dataframes\ntarget_df = pd.concat([join1, join2], ignore_index=True)\n\n# Ensure all columns are integer type as per target schema\ntarget_df['IsIntervention'] = target_df['IsIntervention'].astype(int)\ntarget_df['WarID'] = target_df['WarID'].astype(int)\ntarget_df['WarShortName'] = target_df['WarShortName'].astype(int)\ntarget_df['WarType'] = target_df['WarType'].astype(int)\ntarget_df['IsInternational'] = target_df['IsInternational'].astype(int)\n\n# Write the final target dataframe to the specified path without index\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/target_multisource.csv\", index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.039577484130859375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.0,
+          "cost": 0.0020296000000000003,
+          "latency": 28.601390838623047,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_3.csv\", index_col=0)\n\n# Step 1: Join Source4_47_1 and Source4_47_3 on WarID (both have IsIntervention and IsInternational)\njoin_0 = pd.merge(source1, source3[['WarID', 'IsInternational']], on='WarID', how='inner')\n\n# Step 2: Union Source4_47_0 and Source4_47_2 (same schema)\nunion_0 = pd.concat([source0, source2], ignore_index=True)\n\n# Step 3: Join the unioned table with the join_0 table on WarID\njoined = pd.merge(union_0, join_0[['WarID', 'IsIntervention', 'IsInternational']], on='WarID', how='inner')\n\n# Step 4: Group by IsIntervention (the key) and aggregate other columns by max (to get consistent single values)\nresult = joined.groupby('IsIntervention', as_index=False).agg({\n    'WarID': 'max',\n    'WarShortName': 'max',\n    'WarType': 'max',\n    'IsInternational': 'max'\n})\n\n# Reorder columns to match target schema exactly\nresult = result[['IsIntervention', 'WarID', 'WarShortName', 'WarType', 'IsInternational']]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.023365020751953125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 25283.41054916382,
+        "critique": 28627.33268737793
+      }
+    }
+  ]
+}

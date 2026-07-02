@@ -1,0 +1,29 @@
+{
+  "case": "4_40",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9963,
+        "cost": 0.0028715999999999998,
+        "latency": 7.954783201217651,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.993) / 2 = 0.996 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.987, range overlap=0.998.\nGround truth candidate keys: {x}.\nGenerated table candidate keys: {x}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['x', 'y', 'label']\nNumber of Tuples: 70\nExamples:\n       x  y  label\n3.269928  1      1\n3.663441  1      1\n3.002870  1      1",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_3.csv\"\n]\n\n# Mapping for label column to convert string labels to integers as per target schema\nlabel_mapping = {\n    'purple': 1,\n    'b': 1,\n    'g': 1,\n    'r': 1\n}\n\n# List to hold dataframes from each source\ndfs = []\n\n# Load each source CSV, convert label column, and append to list\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Convert label column from string to integer using mapping\n    df['label'] = df['label'].map(label_mapping)\n    # Ensure 'x' is float and 'y' is integer as per target schema\n    df['x'] = df['x'].astype(float)\n    df['y'] = df['y'].astype(int)\n    dfs.append(df)\n\n# UNION operation: concatenate all source dataframes\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Reorder columns to match target schema explicitly (x, y, label)\ntarget_df = target_df[['x', 'y', 'label']]\n\n# Write the resulting dataframe to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_40/target_multisource.csv\", index=False)",
+        "generated_csv_head": "x,y,label\n3.019880133839796,3,1\n3.0262109868777194,3,1\n3.0283064880207946,3,1\n3.246211067603046,3,1\n3.860027948682888,3,1\n3.538831064341653,3,1\n3.552821978685766,3,1\n3.8420308923596056,3,1\n3.124173315119912,3,1\n3.2791836790111395,3,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5590190887451172
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 8017.7905559539795,
+        "critique": 0.0
+      }
+    }
+  ]
+}

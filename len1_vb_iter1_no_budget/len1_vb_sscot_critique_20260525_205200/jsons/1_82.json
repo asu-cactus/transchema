@@ -1,0 +1,46 @@
+{
+  "case": "1_82",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8152,
+        "cost": 0.0021724,
+        "latency": 14.287277936935425,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.964) / 2 = 0.815 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.855.\nGround truth candidate keys: {scientific_name}; {conservation_status}.\nGenerated table candidate keys: {conservation_status}.\nKeys present in ground truth but absent in generated: {scientific_name}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['scientific_name'] \u2192 conservation_status.\nDistribution Analysis (numerical columns with issues):\n  Column 'scientific_name': range overlap=0.855, JS similarity=1.000\n    Generated    \u2014 min: 3.0, max: 74.0, mean: 21.75\n    Ground Truth \u2014 min: 1.0, max: 84.0, mean: 25.25",
+        "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 4\nExamples:\nconservation_status  scientific_name\n        In Recovery                3\n Species of Concern               74\n         Threatened                5",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_82/training_0.csv\"\n\n# Target output path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource_cot.csv\"\n\n# Load source data with index_col=0 to ignore the first index column\ndf_source_0 = pd.read_csv(source_path_0, index_col=0)\n\n# Group by conservation_status and count distinct scientific_name\ndf_target = (\n    df_source_0\n    .groupby('conservation_status')['scientific_name']\n    .nunique()\n    .reset_index()\n    .rename(columns={'scientific_name': 'scientific_name'})\n)\n\n# Ensure the scientific_name column is integer type\ndf_target['scientific_name'] = df_target['scientific_name'].astype(int)\n\n# Save the transformed data to the target CSV file\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "conservation_status,scientific_name\nEndangered,5\nIn Recovery,3\nSpecies of Concern,74\nThreatened,5\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3167858123779297
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6708,
+          "cost": 0.0014616,
+          "latency": 5.103800535202026,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.675) / 2 = 0.671 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.029.\nGround truth candidate keys: {scientific_name}; {conservation_status}.\nGenerated table candidate keys: {conservation_status}.\nKeys present in ground truth but absent in generated: {scientific_name}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['scientific_name'] \u2192 conservation_status.\nDistribution Analysis (numerical columns with issues):\n  Column 'scientific_name': range overlap=0.029, JS similarity=0.671\n    Generated    \u2014 min: 3.0, max: 2822.0, mean: 582.4\n    Ground Truth \u2014 min: 1.0, max: 84.0, mean: 25.25",
+          "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 5\nExamples:\nconservation_status  scientific_name\n         Threatened                5\n Species of Concern               77\n        In Recovery                3",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_82/training_0.csv\", index_col=0)\n\n# Union (only one table, so just use it)\ndf_union = source0\n\n# Group by conservation_status and count scientific_name\nresult = df_union.groupby('conservation_status', dropna=False).agg({'scientific_name': 'count'}).reset_index()\n\n# Rename columns to match target schema exactly\nresult.columns = ['conservation_status', 'scientific_name']\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8285045623779297
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14289.748907089233,
+        "critique": 5134.157419204712
+      }
+    }
+  ]
+}

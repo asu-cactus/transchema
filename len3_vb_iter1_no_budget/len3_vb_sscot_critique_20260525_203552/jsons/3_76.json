@@ -1,0 +1,46 @@
+{
+  "case": "3_76",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.3956,
+        "cost": 0.0017656,
+        "latency": 8.329657793045044,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.400 + 0.391) / 2 = 0.396 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.342, range overlap=0.224.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city, fare}.\nKeys present in ground truth but absent in generated: {fare}; {city}.\nSpurious keys in generated not present in ground truth: {city, fare}.\nFunctional dependency F1: 0.400 (precision=1.000, recall=0.250).\nMissing FDs from ground truth: ['fare'] \u2192 type; ['city'] \u2192 fare; ['fare'] \u2192 city.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.224, JS similarity=0.342\n    Generated    \u2014 min: 4.36, max: 58.55, mean: 29.0436\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['city', 'type', 'fare']\nNumber of Tuples: 1188\nExamples:\n           city     type  fare\n      Davidfurt Suburban 28.69\nNew Shannonberg Suburban 37.52\n   New Ryantown    Rural 50.81",
+        "code": "import pandas as pd\n\n# File paths for source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_76/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_76/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Source schemas:\n# df0 columns: ['city', 'driver_count', 'type']\n# df1 columns: ['city', 'date', 'fare', 'ride_id']\n# Target schema: ['city': string, 'type': string, 'fare': float]\n\n# Transformation plan:\n# - df0 has no 'fare' column, but has 'type' and 'city'.\n# - df1 has 'city', 'fare', but no 'type' column.\n# - Target requires all three columns: city, type, fare.\n# \n# Approach:\n# 1. df1 has city and fare, but no type. We need to get 'type' for each city from df0.\n# 2. df0 has city and type, but no fare.\n# 3. Join df1 with df0 on 'city' to get 'type' for each fare record.\n# 4. After join, select columns ['city', 'type', 'fare'].\n# 5. There might be multiple 'type' values per city in df0 (unlikely but possible). \n#    Since df0 has 'driver_count' and 'type', presumably each city has one type.\n# 6. If multiple types per city, join will produce duplicates, but target examples suggest one type per city.\n# 7. Output the joined dataframe to the target CSV.\n\n# Perform left join of df1 with df0 on 'city' to get 'type' for each fare record\ndf_joined = pd.merge(df1, df0[['city', 'type']], on='city', how='left')\n\n# Select and reorder columns to match target schema\ndf_target = df_joined[['city', 'type', 'fare']]\n\n# Ensure correct data types\ndf_target['city'] = df_target['city'].astype(str)\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['fare'] = df_target['fare'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_76/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "city,type,fare\nLeahton,Urban,31.01\nJohnton,Urban,16.63\nPort David,Urban,32.92\nNew Kimberlyborough,Urban,35.11\nPort Frank,Urban,25.18\nBarajasview,Urban,9.21\nSouth Phillip,Urban,32.85\nNorth Jasmine,Urban,19.66\nNew Kimberlyborough,Urban,14.84\nNorth Jasmine,Urban,26.72\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6319751739501953
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.658,
+          "cost": 0.0016336,
+          "latency": 8.162307500839233,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.459) / 2 = 0.658 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.525, range overlap=0.448.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city}.\nKeys present in ground truth but absent in generated: {fare}.\nFunctional dependency F1: 0.857 (precision=1.000, recall=0.750).\nMissing FDs from ground truth: ['fare'] \u2192 city.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.448, JS similarity=0.525\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['city', 'type', 'fare']\nNumber of Tuples: 120\nExamples:\n               city  type      fare\n            Johnton Urban 21.566000\n       Valentineton Urban 30.510000\nNew Kimberlyborough Urban 30.418333",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_76/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_76/training_1.csv\", index_col=0)\n\n# Join on city\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by city and type, aggregate fare by mean\nresult = joined.groupby([\"city\", \"type\"], as_index=False).agg({\"fare\": \"mean\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_76/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1334419250488281
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8391.866207122803,
+        "critique": 8212.929248809814
+      }
+    }
+  ]
+}

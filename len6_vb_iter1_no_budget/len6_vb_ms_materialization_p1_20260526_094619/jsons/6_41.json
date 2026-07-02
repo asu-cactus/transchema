@@ -1,0 +1,29 @@
+{
+  "case": "6_41",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9278,
+        "cost": 0.0063524,
+        "latency": 18.03914213180542,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.856) / 2 = 0.928 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=1.000.\nGround truth candidate keys: {nombre, a\u00f1o}.\nGenerated table candidate keys: {nombre, a\u00f1o}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'n_aprobados': range overlap=1.000, JS similarity=0.942\n    Generated    \u2014 min: 0.0, max: 152.0, mean: 11.6943\n    Ground Truth \u2014 min: 0.0, max: 152.0, mean: 13.8868\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'nombre': Jaccard=0.469",
+        "generated_samples": "Schema: ['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']\nNumber of Tuples: 265\nExamples:\n                                   nombre  n_concursados  n_aprobados  a\u00f1o\nUNIVERSIDAD DE PLAYA ANCHA CS. EDUCACIO\u0301N              5            0 2013\n                    UNIV. ALBERTO HURTADO              7            3 2010\n       UNIV. DE PLAYA ANCHA CS. EDUCACION              6            1 2015",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\npaths = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_41/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_41/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_41/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_41/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_41/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_41/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_41/training_6.csv\",\n]\n\n# Read all source tables with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(p, index_col=0) for p in paths]\n\n# Concatenate all source tables (UNION)\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Ensure columns have correct types matching target schema\ndf_all['nombre'] = df_all['nombre'].astype(str)\ndf_all['n_concursados'] = df_all['n_concursados'].astype(int)\ndf_all['n_aprobados'] = df_all['n_aprobados'].astype(int)\ndf_all['a\u00f1o'] = df_all['a\u00f1o'].astype(int)\n\n# The target key is (nombre, a\u00f1o), so drop duplicates on these keys keeping the first occurrence\ndf_all = df_all.drop_duplicates(subset=['nombre', 'a\u00f1o'], keep='first')\n\n# Reorder columns to match target schema explicitly (though they already match)\nTarget6_41 = df_all[['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']]\n\n# Write the final target table to the specified path without the index\nTarget6_41.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_41/target_multisource.csv\", index=False)",
+        "generated_csv_head": "nombre,n_concursados,n_aprobados,a\u00f1o\nUNIVERSIDAD ARTURO PRAT,4,3,2013\nUNIVERSIDAD ACADEMIA DE HUMANISMO CRISTIANO,5,2,2013\nUNIVERSIDAD DE LA SERENA,4,2,2013\nUNIVERSIDAD METROPOLITANA DE CIENCIAS DE LA EDUCACIO\u0301N,3,2,2013\nUNIVERSIDAD ARTES Y CIENCIAS SOCIALES,8,1,2013\nUNIVERSIDAD CATO\u0301LICA DE TEMUCO,8,1,2013\nUNIVERSIDAD CATO\u0301LICA CARDENAL SILVA HENRIQUEZ,3,1,2013\nUNIVERSIDAD DE MAGALLANES,3,1,2013\nUNIVERSIDAD AUTO\u0301NOMA DE CHILE,1,1,2013\nUNIVERSIDAD BERNARDO O'HIGGINS,1,1,2013\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9715557098388672
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 18107.26022720337,
+        "critique": 0.0
+      }
+    }
+  ]
+}

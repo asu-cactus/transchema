@@ -1,0 +1,46 @@
+{
+  "case": "1_60",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.5781,
+        "cost": 0.0016267999999999999,
+        "latency": 4.722126722335815,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.156) / 2 = 0.578 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 3\nExamples:\n    type  driver_count\nSuburban           490\n   Rural            78\n   Urban           256",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_60/training_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['city', 'driver_count', 'type']\n# and the target schema is ['type', 'driver_count'], we can union all sources\n# and then group by 'type' summing 'driver_count' to get the target table.\n\n# Concatenate all source dataframes\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Group by 'type' and sum 'driver_count'\nresult_df = combined_df.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure the column types match the target schema\nresult_df['type'] = result_df['type'].astype(str)\nresult_df['driver_count'] = result_df['driver_count'].astype(int)\n\n# Write the result to the target path\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\", index=False)",
+        "generated_csv_head": "type,driver_count\nRural,78\nSuburban,490\nUrban,256\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1830329895019531
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5781,
+          "cost": 0.00115,
+          "latency": 3.003286361694336,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.156) / 2 = 0.578 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 3\nExamples:\n    type  driver_count\n   Urban           256\nSuburban           490\n   Rural            78",
+          "code": "import pandas as pd\n\n# Read source table\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_60/training_0.csv\", index_col=0)\n\n# Union all source tables (only one source here, so just use it)\ndf_union = source1\n\n# Group by 'type' and sum 'driver_count'\nresult = df_union.groupby('type', as_index=False).agg({'driver_count': 'sum'})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.7993450164794922
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4724.655866622925,
+        "critique": 3045.2194213867188
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "1_86",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9569,
+        "cost": 0.0039452,
+        "latency": 9.173479080200195,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.914) / 2 = 0.957 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.757, range overlap=0.945.\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'price_24': range overlap=0.945, JS similarity=0.757\n    Generated    \u2014 min: 23.0, max: 1040.0, mean: 89.3611\n    Ground Truth \u2014 min: 2.0, max: 1004.0, mean: 123.0",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 72\nExamples:\n             neighbourhood  price_24\n             Bar\u00f3 de Viver        25\n   Proven\u00e7als del Poblenou        65\nSant Gervasi - la Bonanova        70",
+        "code": "import pandas as pd\n\n# Read the intermediate result after the group by and aggregation operation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_86/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# Ensure the schema matches the target schema exactly:\n# Target schema: ['neighbourhood': string, 'price_24': integer]\n# Convert 'neighbourhood' to string and 'price_24' to integer (rounding if needed)\ndf['neighbourhood'] = df['neighbourhood'].astype(str)\ndf['price_24'] = df['price_24'].round().astype(int)\n\n# Write the final target table to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\ndf.to_csv(output_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nBar\u00f3 de Viver,25\nCan Bar\u00f3,58\nCan Peguera,26\nCanyelles,45\nCiutat Meridiana,23\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,278\nHorta,70\nHostafrancs,88\nMontbau,34\nNavas,47\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3475418090820312
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 9209.449768066406,
+        "critique": 0.0
+      }
+    }
+  ]
+}

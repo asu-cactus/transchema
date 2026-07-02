@@ -1,0 +1,29 @@
+{
+  "case": "9_16",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9483,
+        "cost": 0.005773200000000001,
+        "latency": 18.126286506652832,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.896) / 2 = 0.948 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {created_at, text}.\nGenerated table candidate keys: {created_at, text}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'created_at': Jaccard=0.883\n  Column 'text': Jaccard=0.891\n  Column 'coordinates': Jaccard=0.891\n  Column 'hashtags': Jaccard=0.922",
+        "generated_samples": "Schema: ['created_at', 'text', 'coordinates', 'hashtags']\nNumber of Tuples: 17000\nExamples:\n         created_at                                                              text coordinates hashtags\n2020-05-21 00:46:46  @rogejessc Wey igual yo, luego se me olvidan. Responde el examen         NaN       []\n2020-05-24 16:38:36                  Hahahaha chale... neta no se ayudan ni tantito \ud83e\udd23         NaN       []\n2020-05-20 18:57:04 Pos' primero me voy a buscar una buena playlist. Recomendaciones?         NaN       []",
+        "code": "import pandas as pd\n\n# List of source file paths as given\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_16/training_8.csv\"\n]\n\n# Columns of the target schema\ntarget_columns = ['created_at', 'text', 'coordinates', 'hashtags']\n\n# Read all source CSVs into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure columns are exactly as target schema and in the same order\n    df = df[target_columns]\n    dfs.append(df)\n\n# UNION operation: concatenate all DataFrames vertically\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure data types match target examples:\n# - created_at: string (keep as is, pandas reads as object/string)\n# - text: string\n# - coordinates: string (some are dict-like or NaN, convert all to string)\n# - hashtags: string (some are lists or dict-lists, convert all to string)\n\n# Convert 'coordinates' column to string, replacing NaN with 'NaN' string for consistency\ntarget_df['coordinates'] = target_df['coordinates'].apply(lambda x: str(x) if pd.notna(x) else 'NaN')\n\n# Convert 'hashtags' column to string, replacing NaN with '[]' string if any\ndef hashtags_to_str(x):\n    if pd.isna(x):\n        return '[]'\n    # If already a string, keep as is\n    if isinstance(x, str):\n        return x\n    # If list or dict, convert to string\n    return str(x)\n\ntarget_df['hashtags'] = target_df['hashtags'].apply(hashtags_to_str)\n\n# Convert 'created_at' and 'text' to string explicitly (in case of any anomalies)\ntarget_df['created_at'] = target_df['created_at'].astype(str)\ntarget_df['text'] = target_df['text'].astype(str)\n\n# Write the resulting DataFrame to the target CSV path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_16/target_multisource.csv\", index=False)",
+        "generated_csv_head": "created_at,text,coordinates,hashtags\n2020-05-24 22:54:55,\"@sopitas @RappiMexico Donde puedo solicitar ayuda para un pedido en curso que lleva mas de 1 hr y no llega, mi rapi\u2026 https://t.co/p550f5qpT0\",,[]\n2020-05-25 02:49:27,@castillo_2018 @futpicante Petroleros de Salamanca*,,[]\n2020-05-25 03:13:35,Ur telling me I missed a Namjin live?,,[]\n2020-05-25 00:55:42,@ewrikk Me das?,,[]\n2020-05-25 02:48:00,Hay d\u00edas que me siento bonita \ud83d\ude0e https://t.co/a4Pq6Eo90b,,[]\n2020-05-24 22:39:14,\"Que buen pedo toda la comunicaci\u00f3n Gobierno-cuidadanos. \n\nNeta no entiendo por que tanto odio a la 4T? Tan bien? Ya\u2026 https://t.co/Y748p7j4rV\",,[]\n2020-05-25 03:50:38,Im bringing back Nike headbands,,[]\n2020-05-25 01:02:25,Lmk why I thought Elon Musks son\u2019s name was pronounced \u201cAxiom\u201d as in from WALL\u2022E,,[]\n2020-05-24 23:26:55,@SoyPatylu Noooo!!! \ud83e\udd26\ud83c\udffb\u200d\u2642\ufe0f\ud83e\udd26\ud83c\udffb\u200d\u2642\ufe0f\ud83e\udd26\ud83c\udffb\u200d\u2642\ufe0f,,[]\n2020-05-24 23:39:03,\"@yeidckol @lopezobrador_ Ser\u00e9 breve\n#MORENAEsUnPeligroParaMexico https://t.co/3EIfNyGIAS\",,\"[{'text': 'MORENAEsUnPeligroParaMexico', 'indices': [36, 64]}]\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3837814331054688
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 18195.54114341736,
+        "critique": 0.0
+      }
+    }
+  ]
+}

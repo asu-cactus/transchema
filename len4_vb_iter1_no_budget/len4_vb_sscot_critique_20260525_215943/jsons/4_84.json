@@ -1,0 +1,29 @@
+{
+  "case": "4_84",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9688,
+        "cost": 0.0025952,
+        "latency": 12.248865127563477,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.938) / 2 = 0.969 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.931, range overlap=0.757.\nGround truth candidate keys: {age_grp, Count, Notes, Rate, Statistics}.\nGenerated table candidate keys: {age_grp, Count, Notes, Rate, Statistics}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Count': range overlap=1.000, JS similarity=0.921\n    Generated    \u2014 min: 0.0, max: 14951.0, mean: 164.6463\n    Ground Truth \u2014 min: 0.0, max: 14951.0, mean: 123.9976\n  Column 'Rate': range overlap=0.514, JS similarity=0.941\n    Generated    \u2014 min: 0.0, max: 42.39, mean: 4.4155\n    Ground Truth \u2014 min: 0.0, max: 21.8, mean: 4.44",
+        "generated_samples": "Schema: ['age_grp', 'Count', 'Notes', 'Rate', 'Statistics']\nNumber of Tuples: 2811\nExamples:\nage_grp  Count Notes  Rate Statistics\n    0-1    NaN     *   NaN        NaN\n  15-17   11.0   NaN  5.67        NaN\n  15-17    NaN   NaN   NaN       Dade",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_84/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_84/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_84/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_84/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_84/training_4.csv\"\n]\n\n# Target schema columns\ntarget_columns = ['age_grp', 'Count', 'Notes', 'Rate', 'Statistics']\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Inspect schemas:\n# All source tables have the same schema: ['age_grp', 'Count', 'Notes', 'Rate', 'Statistics']\n# So we can union (concat) all source tables vertically.\n\n# However, some source tables contain rows with metadata or header-like rows (e.g., rows where 'age_grp' == 'Year' or 'Unnamed: 1' == 'Year')\n# We need to filter out such rows to keep only valid data rows.\n\ndef clean_df(df):\n    # Remove rows where 'age_grp' is null or not a valid age group (e.g., 'Year', 'Total for selection', or other non-age_grp values)\n    # Also remove rows where 'Count' is NaN and 'Rate' is NaN and 'Statistics' is non-null (likely metadata rows)\n    # We keep rows where 'age_grp' looks like an age group (e.g., '1-4', '10-14', '0-1', '15-17', '5-9')\n    # Based on examples, age_grp values are strings like '1-4', '10-14', '0-1', '15-17', '5-9'\n    # So we filter out rows where age_grp is null or age_grp in ['Year', 'Total for selection'] or age_grp is numeric year values (like 2003, 2007) - but note some source rows have years in Unnamed: 1 column, not age_grp.\n    # We only keep rows where age_grp matches a pattern like digit(s)-digit(s) or digit(s)\n    # We'll use a simple regex to keep rows where age_grp matches r'^\\d+(-\\d+)?$'\n\n    import re\n    pattern = re.compile(r'^\\d+(-\\d+)?$')\n\n    # Drop rows with NaN in age_grp\n    df = df.dropna(subset=['age_grp'])\n\n    # Keep rows where age_grp matches pattern\n    df = df[df['age_grp'].apply(lambda x: bool(pattern.match(str(x))))]\n\n    # Convert Count and Rate to numeric (coerce errors to NaN)\n    df['Count'] = pd.to_numeric(df['Count'], errors='coerce')\n    df['Rate'] = pd.to_numeric(df['Rate'], errors='coerce')\n\n    # Notes and Statistics can remain as is (string or NaN)\n\n    return df\n\ncleaned_dfs = [clean_df(df) for df in dfs]\n\n# Concatenate all cleaned dataframes\ncombined_df = pd.concat(cleaned_dfs, ignore_index=True)\n\n# According to target schema, columns are: ['age_grp': string, 'Count': float, 'Notes': string, 'Rate': float, 'Statistics': string]\n# Ensure correct dtypes:\ncombined_df = combined_df[target_columns].copy()\n\ncombined_df['age_grp'] = combined_df['age_grp'].astype(str)\ncombined_df['Count'] = combined_df['Count'].astype(float)\ncombined_df['Notes'] = combined_df['Notes'].astype(object)  # keep as object to allow NaN and strings\ncombined_df['Rate'] = combined_df['Rate'].astype(float)\ncombined_df['Statistics'] = combined_df['Statistics'].astype(object)\n\n# The target examples show some NaNs in Notes and Statistics, so no filling needed.\n\n# Save the combined dataframe to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_84/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "age_grp,Count,Notes,Rate,Statistics\n1-4,21.0,,13.65,\n1-4,13.0,,8.46,\n1-4,21.0,,15.16,\n1-4,15.0,,9.74,\n1-4,22.0,,13.31,\n1-4,18.0,,11.21,\n1-4,23.0,,14.69,\n1-4,7.0,,4.55,\n1-4,14.0,,9.61,\n1-4,15.0,,10.23,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5799999237060547
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 12314.895391464233,
+        "critique": 0.0
+      }
+    }
+  ]
+}

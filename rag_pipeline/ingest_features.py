@@ -2,7 +2,7 @@
 Ingest feature vectors into a Milvus collection for feature-based RAG retrieval.
 
 Reads each case folder under rag-examples-w-pipeline (Source_datasets, Target_datasets,
-operator_pipeline.txt), computes a 23-dim vector, and inserts (vector, case_id) into
+operator_pipeline.txt), computes a 22-dim vector, and inserts (vector, case_id) into
 the feature collection. Run this after or alongside text ingest.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ def _resolve_rag_examples_base(base: str) -> Path:
 
 def get_args():
     p = argparse.ArgumentParser(
-        description="Ingest 23-dim feature vectors into Milvus for feature-based RAG."
+        description="Ingest 22-dim feature vectors into Milvus for feature-based RAG."
     )
     p.add_argument(
         "--rag-examples-base",

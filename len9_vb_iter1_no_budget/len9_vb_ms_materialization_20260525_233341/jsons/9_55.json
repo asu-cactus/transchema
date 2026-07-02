@@ -1,0 +1,29 @@
+{
+  "case": "9_55",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9989,
+        "cost": 0.0070124,
+        "latency": 31.207042694091797,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.998) / 2 = 0.999 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.995, range overlap=1.000.\nGround truth candidate keys: {revol_util}.\nGenerated table candidate keys: {revol_util}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['revol_util']\nNumber of Tuples: 13111\nExamples:\n revol_util\n          3\n          3\n          7",
+        "code": "import pandas as pd\n\n# List of source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_55/training_14.csv\"\n]\n\n# Read all source files into a list of DataFrames\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Concatenate all DataFrames (UNION operation)\nTarget9_55 = pd.concat(dfs, ignore_index=True)\n\n# Ensure the column is integer type as per target schema\nTarget9_55['revol_util'] = Target9_55['revol_util'].astype(int)\n\n# Write the result to the specified path\nTarget9_55.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_55/target_multisource.csv\", index=False)",
+        "generated_csv_head": "revol_util\n3\n3\n3\n3\n3\n3\n3\n3\n3\n3\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8900165557861328
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 31292.460203170776,
+        "critique": 0.0
+      }
+    }
+  ]
+}

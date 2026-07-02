@@ -1,0 +1,46 @@
+{
+  "case": "2_17",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.624,
+        "cost": 0.0039868,
+        "latency": 15.556641340255737,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.897 + 0.351) / 2 = 0.624 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.590, range overlap=0.285.\nGround truth candidate keys: {state}; {Broadband Initiative}; {population}.\nGenerated table candidate keys: {state}; {Federal}; {Broadband Initiative}; {population}.\nSpurious keys in generated not present in ground truth: {Federal}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.897 (precision=0.812, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Federal'] \u2192 Broadband Initiative; ['Federal'] \u2192 population; ['Federal'] \u2192 state.\nDistribution Analysis (numerical columns with issues):\n  Column 'Broadband Initiative': range overlap=0.087, JS similarity=0.525\n    Generated    \u2014 min: 1021.0, max: 66527726.0, mean: 13714627.2308\n    Ground Truth \u2014 min: 3080450.0, max: 8877028.0, mean: 5635696.0833\n  Column 'Federal': range overlap=0.165, JS similarity=0.625\n    Generated    \u2014 min: 6573382.0, max: 64208000.0, mean: 40408907.5769\n    Ground Truth \u2014 min: 0.0, max: 350064330.0, mean: 73324391.2083\n  Column 'Percent': range overlap=0.206, JS similarity=0.420\n    Generated    \u2014 min: 2.1, max: 38.4, mean: 12.1231\n    Ground Truth \u2014 min: 0.0, max: 10.0, mean: 2.0917\n  Column 'population': range overlap=0.681, JS similarity=0.790\n    Generated    \u2014 min: 1021.0, max: 66527726.0, mean: 13714627.2308\n    Ground Truth \u2014 min: 1517903.0, max: 95401525.0, mean: 17020146.4167\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'state': Jaccard=0.008",
+        "generated_samples": "Schema: ['Broadband Initiative', 'Federal', 'Percent', 'state', 'population']\nNumber of Tuples: 26\nExamples:\n Broadband Initiative   Federal  Percent state  population\n             30521480 667762768     19.2    OK     8555510\n             62464724 272572916      7.7    NY    53378043\n             31838656  76838720      2.4    SC     9516373",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_17/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_17/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source2_17_0 and Source2_17_1 on \"state\"\ndf_joined = pd.merge(df0, df1, on=\"state\", how=\"inner\")\n\n# Operation 2: group_by on Source2_17_0.state with aggregations:\n# sum(Source2_17_1.Broadband Initiative), sum(Source2_17_1.Federal),\n# sum(Source2_17_1.Percent), sum(Source2_17_0.population)\n# Note: Percent is float in target, but sum is requested by operation history.\n# We'll follow the operation history strictly.\n\ngrouped = df_joined.groupby(\"state\").agg({\n    \"Broadband Initiative\": \"sum\",\n    \"Federal\": \"sum\",\n    \"Percent\": \"sum\",\n    \"population\": \"sum\"\n}).reset_index()\n\n# Reorder columns and ensure types according to target schema:\n# ['Broadband Initiative': int, 'Federal': int, 'Percent': float, 'state': str, 'population': int]\n\n# Convert columns to correct types\ngrouped[\"Broadband Initiative\"] = grouped[\"Broadband Initiative\"].astype(int)\ngrouped[\"Federal\"] = grouped[\"Federal\"].astype(int)\ngrouped[\"Percent\"] = grouped[\"Percent\"].astype(float)\ngrouped[\"state\"] = grouped[\"state\"].astype(str)\ngrouped[\"population\"] = grouped[\"population\"].astype(int)\n\n# Reorder columns to match target schema order\ntarget_df = grouped[[\"Broadband Initiative\", \"Federal\", \"Percent\", \"state\", \"population\"]]\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_17/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Broadband Initiative,Federal,Percent,state,population\n6573382,71745250,2.1,MO,1021\n48678608,110373120,3.2,MT,2436705\n52887968,965482376,28.0,NC,21710543\n29312696,86249256,2.4,ND,1344882\n45302280,92382928,2.4,NE,5168958\n30566690,222404960,6.5,NH,2909677\n39408848,317105216,8.8,NJ,22330385\n38098296,615829360,17.6,NM,5297562\n31947528,213709784,6.4,NV,7201152\n62464724,272572916,7.700000000000001,NY,53378043\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9943714141845703
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.624,
+          "cost": 0.0018428000000000001,
+          "latency": 12.071094036102295,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.897 + 0.351) / 2 = 0.624 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.590, range overlap=0.285.\nGround truth candidate keys: {state}; {Broadband Initiative}; {population}.\nGenerated table candidate keys: {state}; {Federal}; {Broadband Initiative}; {population}.\nSpurious keys in generated not present in ground truth: {Federal}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.897 (precision=0.812, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Federal'] \u2192 Broadband Initiative; ['Federal'] \u2192 population; ['Federal'] \u2192 state.\nDistribution Analysis (numerical columns with issues):\n  Column 'Broadband Initiative': range overlap=0.087, JS similarity=0.525\n    Generated    \u2014 min: 1021.0, max: 66527726.0, mean: 13714627.2308\n    Ground Truth \u2014 min: 3080450.0, max: 8877028.0, mean: 5635696.0833\n  Column 'Federal': range overlap=0.165, JS similarity=0.625\n    Generated    \u2014 min: 6573382.0, max: 64208000.0, mean: 40408907.5769\n    Ground Truth \u2014 min: 0.0, max: 350064330.0, mean: 73324391.2083\n  Column 'Percent': range overlap=0.206, JS similarity=0.420\n    Generated    \u2014 min: 2.1, max: 38.4, mean: 12.1231\n    Ground Truth \u2014 min: 0.0, max: 10.0, mean: 2.0917\n  Column 'population': range overlap=0.681, JS similarity=0.790\n    Generated    \u2014 min: 1021.0, max: 66527726.0, mean: 13714627.2308\n    Ground Truth \u2014 min: 1517903.0, max: 95401525.0, mean: 17020146.4167\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'state': Jaccard=0.008",
+          "generated_samples": "Schema: ['Broadband Initiative', 'Federal', 'Percent', 'state', 'population']\nNumber of Tuples: 26\nExamples:\n Broadband Initiative   Federal  Percent state  population\n             33244267 906675392     25.9    WV     3667502\n             48678608 110373120      3.2    MT     2436705\n             41568200 248389464      7.2    UT     8666610",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_17/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_17/training_1.csv\", index_col=0)\n\n# Join on 'state'\njoined = pd.merge(source0, source1, on=\"state\", how=\"inner\")\n\n# Group by 'state' (leftmost non-float unique attribute in target)\n# Aggregate sums for Broadband Initiative, Federal, Percent, population\n# Rename columns to match target schema exactly\nresult = joined.groupby(\"state\", as_index=False).agg({\n    \"Broadband Initiative\": \"sum\",\n    \"Federal\": \"sum\",\n    \"Percent\": \"sum\",\n    \"population\": \"sum\"\n})\n\n# Reorder columns to match target schema\nresult = result[[\"Broadband Initiative\", \"Federal\", \"Percent\", \"state\", \"population\"]]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_17/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.18963623046875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15618.17741394043,
+        "critique": 12139.57953453064
+      }
+    }
+  ]
+}

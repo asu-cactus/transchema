@@ -1,0 +1,46 @@
+{
+  "case": "2_4",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6386,
+        "cost": 0.0014284,
+        "latency": 6.908615350723267,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.277) / 2 = 0.639 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {comment, response}.\nGenerated table candidate keys: {comment, response}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'comment': Jaccard=0.352\n  Column 'response': Jaccard=0.203",
+        "generated_samples": "Schema: ['comment', 'response']\nNumber of Tuples: 82\nExamples:\n                      comment                                            response\n                 Can you mate           No, my method of reproduction is cloning.\nWhat is it like to be a robot                      What is it like to be a human?\n              Can you control My robot body will allow me to control many things.",
+        "code": "import pandas as pd\n\n# File paths for the source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_4/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length2_4/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length2_4/training_2.csv\"\n]\n\n# List to hold dataframes\ndfs = []\n\n# Load each source CSV file with index_col=0 to ignore the first numerical index column\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Ensure columns are exactly ['comment', 'response'] as per source schema\n    # (Given all sources have the same schema, no transformation needed)\n    dfs.append(df)\n\n# Since all source tables have the same schema as the target ['comment', 'response'],\n# we can concatenate (union) all rows from the sources to form the target table.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target schema requires columns: ['comment', 'response'] both as strings.\n# Ensure the data types are string for both columns.\ntarget_df['comment'] = target_df['comment'].astype(str)\ntarget_df['response'] = target_df['response'].astype(str)\n\n# Write the combined dataframe to the target CSV file path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_4/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "comment,response\nWhat is a computer?,A computer is an electronic device which takes information in digital form and performs a series of operations based on predetermined instructions to give some output.\nWhat is a super computer?,Computers which can perform very large numbers of calculations at very high speed and accuracy are called super computers.\nWho invented computers?,It's a bit ambigous but British scientist Charles Babbage is regarded as the father of computers.\nWhat was the first computer,\"It's hard to say, but The ENIAC is regarded as the first 'real' computer. It was developed at University of Pennsylvania in 1946.\"\nWhat is a microprocessor?,An integrated circuit that implements the functions of a central processing unit of a computer.\nWhat is an operating system?,\"Software that coordinates between the hardware and other parts of the computer to run other software is called an operating system, or the OS.\"\nWhich is better Windows or macOS?,It depends on which machine you're using to talk to me!\nName some computer company,Do you mean hardware or software?\nWho uses super computers?,Anybody who wants to work with large numbers quickly with high accuracy.\nHow does a computer work?,Computers are very dumb.  They only execute instructions given by humans.\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3005733489990234
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6386,
+          "cost": 0.0018236000000000003,
+          "latency": 10.724863290786743,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.277) / 2 = 0.639 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {comment, response}.\nGenerated table candidate keys: {comment, response}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'comment': Jaccard=0.352\n  Column 'response': Jaccard=0.203",
+          "generated_samples": "Schema: ['comment', 'response']\nNumber of Tuples: 82\nExamples:\n             comment                                                                                       response\n Can you malfunction The 9000 series has a perfect operational record. We are for all practical purposes, flawless.\nI do not want to die                          Maybe you should create your own chat robot to save your personality.\nWhat is a motormouth                                                                                 A ratchet-jaw.",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_4/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_4/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_4/training_2.csv\", index_col=0)\n\n# UNION all three sources and drop duplicates to match target row count and content\ndf_union = pd.concat([df0, df1, df2], ignore_index=True).drop_duplicates()\n\n# Write output with exact target schema and column names\ndf_union.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_4/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7264614105224609
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6973.094940185547,
+        "critique": 10755.036354064941
+      }
+    }
+  ]
+}

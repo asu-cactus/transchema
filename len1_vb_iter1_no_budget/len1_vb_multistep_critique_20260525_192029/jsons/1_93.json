@@ -1,0 +1,46 @@
+{
+  "case": "1_93",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2527,
+        "cost": 0.0018676,
+        "latency": 4.944788217544556,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.286 + 0.220) / 2 = 0.253 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.843, range overlap=0.036.\nGround truth candidate keys: {time}.\nGenerated table candidate keys: {user_id, win}; {user_id, bet}; {time, win}; {time, bet}.\nKeys present in ground truth but absent in generated: {time}.\nSpurious keys in generated not present in ground truth: {user_id, bet}; {user_id, win}; {bet, time}; {win, time}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.286 (precision=0.250, recall=0.333).\nSpurious FDs in generated (not in ground truth): ['user_id'] \u2192 time; ['bet'] \u2192 win; ['win'] \u2192 bet.\nMissing FDs from ground truth: ['time'] \u2192 bet; ['time'] \u2192 win.\nDistribution Analysis (numerical columns with issues):\n  Column 'bet': range overlap=0.062, JS similarity=0.926\n    Generated    \u2014 min: 100.0, max: 104540.0, mean: 2450.2132\n    Ground Truth \u2014 min: 100.0, max: 1678321.0, mean: 25557.1319\n  Column 'win': range overlap=0.010, JS similarity=0.759\n    Generated    \u2014 min: 100.0, max: 104540.0, mean: 2450.2132\n    Ground Truth \u2014 min: 3691.0, max: 9876543.0, mean: 666401.0556\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'user_id': Jaccard=0.000\n  Column 'time': Jaccard=0.000",
+        "generated_samples": "Schema: ['user_id', 'time', 'bet', 'win']\nNumber of Tuples: 500\nExamples:\n                         user_id                 time   bet    win\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_960  [2019-03-11 7:56:35 500.0    NaN\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_994 [2019-04-10 18:25:21 800.0    NaN\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_923 [2019-04-07 15:44:49 500.0 6431.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_93/training_0.csv\"\n]\n\n# List to hold loaded source DataFrames\nsource_dfs = []\n\n# Load each source CSV file with index_col=0 to ignore the numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since all source tables have the same schema as the target:\n# ['user_id', 'time', 'bet', 'win']\n# We can union (concatenate) all source tables vertically.\n\n# Concatenate all source DataFrames\ncombined_df = pd.concat(source_dfs, ignore_index=True)\n\n# Ensure columns are in the target schema order and types:\n# Target schema: ['user_id': string, 'time': string, 'bet': float, 'win': float]\n\n# Convert user_id and time to string explicitly\ncombined_df['user_id'] = combined_df['user_id'].astype(str)\ncombined_df['time'] = combined_df['time'].astype(str)\n\n# Convert bet and win to float (they may contain NaNs)\ncombined_df['bet'] = pd.to_numeric(combined_df['bet'], errors='coerce')\ncombined_df['win'] = pd.to_numeric(combined_df['win'], errors='coerce')\n\n# The target examples show that NaNs are allowed for bet and win, so no fillna needed.\n\n# Write the combined DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_93/target_multisource.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "user_id,time,bet,win\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_912,[2019-02-24 11:42:42,,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_966,[2019-02-24 12:09:42,200.0,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_933,[2019-02-24 14:14:26,,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_914,[2019-02-24 14:30:43,,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_932,[2019-02-24 22:40:06,,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_946,[2019-02-24 7:31:17,,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_922,[2019-02-24 8:29:11,300.0,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_958,[2019-02-24 9:55:42,400.0,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_925,[2019-02-25 1:46:02,,\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_918,[2019-02-25 1:50:30,400.0,4829.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.460956573486328
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.2527,
+          "cost": 0.0011852,
+          "latency": 2.5690693855285645,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.286 + 0.220) / 2 = 0.253 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.843, range overlap=0.036.\nGround truth candidate keys: {time}.\nGenerated table candidate keys: {user_id, win}; {user_id, bet}; {time, win}; {time, bet}.\nKeys present in ground truth but absent in generated: {time}.\nSpurious keys in generated not present in ground truth: {user_id, bet}; {user_id, win}; {bet, time}; {win, time}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.286 (precision=0.250, recall=0.333).\nSpurious FDs in generated (not in ground truth): ['user_id'] \u2192 time; ['bet'] \u2192 win; ['win'] \u2192 bet.\nMissing FDs from ground truth: ['time'] \u2192 bet; ['time'] \u2192 win.\nDistribution Analysis (numerical columns with issues):\n  Column 'bet': range overlap=0.062, JS similarity=0.926\n    Generated    \u2014 min: 100.0, max: 104540.0, mean: 2450.2132\n    Ground Truth \u2014 min: 100.0, max: 1678321.0, mean: 25557.1319\n  Column 'win': range overlap=0.010, JS similarity=0.759\n    Generated    \u2014 min: 100.0, max: 104540.0, mean: 2450.2132\n    Ground Truth \u2014 min: 3691.0, max: 9876543.0, mean: 666401.0556\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'user_id': Jaccard=0.000\n  Column 'time': Jaccard=0.000",
+          "generated_samples": "Schema: ['user_id', 'time', 'bet', 'win']\nNumber of Tuples: 500\nExamples:\n                         user_id                 time   bet    win\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_973 [2019-03-16 17:01:22 400.0 5950.0\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_917  [2019-03-31 6:25:54 600.0 6439.0\n\u0417\u0430\u043f\u0438\u0441\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u2116 - user_900  [2019-03-05 0:18:34 300.0 5638.0",
+          "code": "import pandas as pd\n\n# Read the source CSV with index_col=0 to ignore the numerical index column\ndf = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_93/training_0.csv\", index_col=0)\n\n# Write the dataframe directly to the target CSV path\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_93/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.3262500762939453
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4947.305202484131,
+        "critique": 2639.9104595184326
+      }
+    }
+  ]
+}

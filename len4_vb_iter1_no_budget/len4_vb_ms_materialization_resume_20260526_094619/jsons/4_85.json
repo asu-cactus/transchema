@@ -1,0 +1,46 @@
+{
+  "case": "4_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.5171,
+        "cost": 0.005738,
+        "latency": 23.84278917312622,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.368) / 2 = 0.517 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.200.\nGround truth candidate keys: {critic}; {crit_cn}.\nGenerated table candidate keys: {crit_cn}.\nKeys present in ground truth but absent in generated: {critic}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['critic'] \u2192 crit_cn.\nDistribution Analysis (numerical columns with issues):\n  Column 'critic': range overlap=0.200, JS similarity=0.442\n    Generated    \u2014 min: 5.0, max: 10.0, mean: 8.75\n    Ground Truth \u2014 min: 5.0, max: 30.0, mean: 17.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'crit_cn': Jaccard=0.414",
+        "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 4\nExamples:\ncrit_cn  critic\n     US      10\n  Italy      10\n     UK      10",
+        "code": "import pandas as pd\n\n# Read source CSV with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_85/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# The source column 'critic' contains strings (critic names), but target expects integer counts.\n# The operation history says: group by crit_cn, sum(critic).\n# Since 'critic' in source is string, we cannot sum it directly.\n# Instead, we interpret the aggregation as counting the number of rows per crit_cn.\n\n# Group by 'crit_cn' and count the number of rows per group as 'critic' count\nresult = df.groupby('crit_cn', dropna=False).size().reset_index(name='critic')\n\n# Convert 'critic' column to integer type explicitly\nresult['critic'] = result['critic'].astype(int)\n\n# Reorder columns to match target schema exactly\nresult = result[['crit_cn', 'critic']]\n\n# Write the result to the specified output path without the index column\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_85/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "crit_cn,critic\nItaly,10\nMexico,5\nUK,10\nUS,10\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9613037109375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5171,
+          "cost": 0.0014284,
+          "latency": 5.441669940948486,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.368) / 2 = 0.517 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.200.\nGround truth candidate keys: {critic}; {crit_cn}.\nGenerated table candidate keys: {crit_cn}.\nKeys present in ground truth but absent in generated: {critic}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['critic'] \u2192 crit_cn.\nDistribution Analysis (numerical columns with issues):\n  Column 'critic': range overlap=0.200, JS similarity=0.442\n    Generated    \u2014 min: 5.0, max: 10.0, mean: 8.75\n    Ground Truth \u2014 min: 5.0, max: 30.0, mean: 17.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'crit_cn': Jaccard=0.414",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 4\nExamples:\ncrit_cn  critic\n     UK      10\n     US      10\n Mexico       5",
+          "code": "import pandas as pd\n\n# Read source data\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_85/training_0.csv\", index_col=0)\n\n# Group by 'crit_cn' and count the number of 'critic' entries per 'crit_cn'\nresult = source0.groupby('crit_cn', as_index=False).agg({'critic': 'count'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_85/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8769035339355469
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 23851.02915763855,
+        "critique": 5467.101335525513
+      }
+    }
+  ]
+}

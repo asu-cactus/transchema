@@ -1,0 +1,46 @@
+{
+  "case": "9_32",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8724,
+        "cost": 0.012179200000000001,
+        "latency": 24.990638732910156,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.745) / 2 = 0.872 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.803, range overlap=0.686.\nGround truth candidate keys: {VISITS_NUM}.\nGenerated table candidate keys: {VISITS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'VISITS_NUM': range overlap=0.686, JS similarity=0.803\n    Generated    \u2014 min: 3.0, max: 38.0, mean: 10.653\n    Ground Truth \u2014 min: 1.0, max: 52.0, mean: 9.0332",
+        "generated_samples": "Schema: ['VISITS_NUM']\nNumber of Tuples: 2386\nExamples:\n VISITS_NUM\n          8\n         10\n         12",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_32/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_32/training_1.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_32/training_5.csv\", index_col=0)\n\n# First join: Source9_32_0 and Source9_32_1 on ROW_WID\njoin_0_1 = pd.merge(source0, source1, on=\"ROW_WID\", how=\"inner\")\n\n# Second join: join the above result with Source9_32_5 on ROW_WID\nfinal_join = pd.merge(join_0_1, source5, on=\"ROW_WID\", how=\"inner\")\n\n# The target schema is ['VISITS_NUM'] only, so select that column\nTarget9_32 = final_join[[\"VISITS_NUM\"]].copy()\n\n# Ensure VISITS_NUM is integer type as per target schema\nTarget9_32[\"VISITS_NUM\"] = Target9_32[\"VISITS_NUM\"].astype(int)\n\n# Write the result to the specified path without the index column\nTarget9_32.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/target_multisource.csv\", index=False)",
+        "generated_csv_head": "VISITS_NUM\n8\n8\n8\n8\n10\n13\n14\n22\n12\n13\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.6427764892578125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7802,
+          "cost": 0.0032364000000000004,
+          "latency": 19.274901866912842,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.560) / 2 = 0.780 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.670, range overlap=0.451.\nGround truth candidate keys: {VISITS_NUM}.\nGenerated table candidate keys: {VISITS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'VISITS_NUM': range overlap=0.451, JS similarity=0.670\n    Generated    \u2014 min: 1.0, max: 24.0, mean: 5.0747\n    Ground Truth \u2014 min: 1.0, max: 52.0, mean: 9.0332",
+          "generated_samples": "Schema: ['VISITS_NUM']\nNumber of Tuples: 1915\nExamples:\n VISITS_NUM\n          8\n          5\n          5",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource_0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_0.csv\", index_col=0)\nsource_1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_1.csv\", index_col=0)\nsource_2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_2.csv\", index_col=0)\nsource_3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_3.csv\", index_col=0)\nsource_4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_4.csv\", index_col=0)\nsource_5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_5.csv\", index_col=0)\nsource_6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_6.csv\", index_col=0)\nsource_7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_7.csv\", index_col=0)\nsource_8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_8.csv\", index_col=0)\nsource_9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_9.csv\", index_col=0)\n\n# Union the four sources with the same schema (source_5,6,7,8)\nunion_5_6_7_8 = pd.concat([source_5, source_6, source_7, source_8], ignore_index=True)\n\n# Join union_5_6_7_8 with source_0 on ROW_WID\njoin_0_union = pd.merge(union_5_6_7_8, source_0, on=\"ROW_WID\", how=\"inner\")\n\n# Join the above with source_1 on ROW_WID\njoin_01 = pd.merge(join_0_union, source_1, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source_2 on ROW_WID\njoin_012 = pd.merge(join_01, source_2, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source_3 on ROW_WID\njoin_0123 = pd.merge(join_012, source_3, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source_4 on ROW_WID\njoin_01234 = pd.merge(join_0123, source_4, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source_9 on ROW_WID\nfinal_join = pd.merge(join_01234, source_9, on=\"ROW_WID\", how=\"inner\")\n\n# The target schema is ['VISITS_NUM'] only, so select that column\n# Since the target has no keys and only one column, no aggregation or group by is needed\nresult = final_join[[\"VISITS_NUM\"]]\n\n# Write the final output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7255077362060547
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 25087.876319885254,
+        "critique": 19453.450918197632
+      }
+    }
+  ]
+}

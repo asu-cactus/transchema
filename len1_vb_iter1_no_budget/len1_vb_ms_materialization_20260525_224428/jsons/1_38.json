@@ -1,0 +1,46 @@
+{
+  "case": "1_38",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.2848,
+        "cost": 0.004155600000000001,
+        "latency": 11.52059817314148,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.570) / 2 = 0.285 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.570, range overlap=0.569.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id, stressed}; {user_id, sad}.\nKeys present in ground truth but absent in generated: {user_id}.\nSpurious keys in generated not present in ground truth: {user_id, stressed}; {sad, user_id}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['stressed'] \u2192 sad; ['sad'] \u2192 stressed.\nMissing FDs from ground truth: ['user_id'] \u2192 stressed; ['user_id'] \u2192 sad.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.170\n    Generated    \u2014 min: 0.0, max: 0.3333, mean: 0.0503\n    Ground Truth \u2014 min: 2.0, max: 46.0, mean: 25.2286\n  Column 'sad': range overlap=0.750, JS similarity=0.768\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.75, mean: 0.1185\n  Column 'stressed': range overlap=0.958, JS similarity=0.771\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.9583, mean: 0.2193",
+        "generated_samples": "Schema: ['user_id', 'sad', 'stressed']\nNumber of Tuples: 31\nExamples:\n user_id      sad  stressed\n      64 0.222222  0.111111\n      56 0.000000  0.071429\n      48 0.071429  0.321429",
+        "code": "import pandas as pd\n\n# Read the source CSV with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_38/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by user_id and aggregate averages of sad.depressed and open.stressed\nagg_df = df.groupby('user_id', as_index=False).agg({\n    'sad.depressed': 'mean',\n    'open.stressed': 'mean'\n})\n\n# Rename columns to match target schema\nagg_df.rename(columns={\n    'sad.depressed': 'sad',\n    'open.stressed': 'stressed'\n}, inplace=True)\n\n# Ensure correct dtypes as per target schema\nagg_df['user_id'] = agg_df['user_id'].astype(int)\nagg_df['sad'] = agg_df['sad'].astype(float)\nagg_df['stressed'] = agg_df['stressed'].astype(float)\n\n# Save the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_38/target_multisource.csv\"\nagg_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "user_id,sad,stressed\n46,0.0,0.0\n47,0.0975609756097561,0.4756097560975609\n48,0.0714285714285714,0.3214285714285714\n49,0.2894736842105263,0.5\n51,0.0,0.0\n52,0.1162790697674418,0.1162790697674418\n54,0.0,0.0\n55,0.0,0.0344827586206896\n56,0.0,0.0714285714285714\n57,0.0,0.03125\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0833740234375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.2848,
+          "cost": 0.001616,
+          "latency": 6.00740909576416,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.570) / 2 = 0.285 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.570, range overlap=0.569.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id, stressed}; {user_id, sad}.\nKeys present in ground truth but absent in generated: {user_id}.\nSpurious keys in generated not present in ground truth: {user_id, stressed}; {sad, user_id}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['stressed'] \u2192 sad; ['sad'] \u2192 stressed.\nMissing FDs from ground truth: ['user_id'] \u2192 stressed; ['user_id'] \u2192 sad.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.170\n    Generated    \u2014 min: 0.0, max: 0.3333, mean: 0.0503\n    Ground Truth \u2014 min: 2.0, max: 46.0, mean: 25.2286\n  Column 'sad': range overlap=0.750, JS similarity=0.768\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.75, mean: 0.1185\n  Column 'stressed': range overlap=0.958, JS similarity=0.771\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.1734\n    Ground Truth \u2014 min: 0.0, max: 0.9583, mean: 0.2193",
+          "generated_samples": "Schema: ['user_id', 'sad', 'stressed']\nNumber of Tuples: 31\nExamples:\n user_id      sad  stressed\n      61 0.000000  0.094340\n      77 0.333333  0.638889\n      63 0.000000  0.022727",
+          "code": "import pandas as pd\n\n# Read source CSV with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_38/training_0.csv\", index_col=0)\n\n# Since only one source table exists, no union or join with other tables is possible.\n# The failed pipeline already did group by user_id and avg on sad.depressed and open.stressed.\n# The problem is that the failed pipeline did not rename the aggregated columns to match target schema.\n\n# Group by user_id and aggregate averages of sad.depressed and open.stressed\nresult = source0.groupby(\"user_id\").agg({\n    \"sad.depressed\": \"mean\",\n    \"open.stressed\": \"mean\"\n}).reset_index()\n\n# Rename columns to match target schema exactly\nresult.columns = [\"user_id\", \"sad\", \"stressed\"]\n\n# Write output to target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_38/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.461029052734375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11531.444549560547,
+        "critique": 6065.1609897613525
+      }
+    }
+  ]
+}

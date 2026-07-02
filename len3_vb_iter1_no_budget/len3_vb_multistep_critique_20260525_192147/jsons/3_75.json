@@ -1,0 +1,46 @@
+{
+  "case": "3_75",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.658,
+        "cost": 0.0036172,
+        "latency": 10.391207933425903,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.459) / 2 = 0.658 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.525, range overlap=0.448.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city}.\nKeys present in ground truth but absent in generated: {fare}.\nFunctional dependency F1: 0.857 (precision=1.000, recall=0.750).\nMissing FDs from ground truth: ['fare'] \u2192 city.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.448, JS similarity=0.525\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['city', 'type', 'fare']\nNumber of Tuples: 120\nExamples:\n           city  type      fare\nEast Kaylahaven Urban 26.286667\n    Michaelberg Rural 34.997500\n  Martinezhaven Urban 27.026667",
+        "code": "import pandas as pd\n\n# Load source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_75/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_75/training_1.csv\"\n\nSource3_75_0 = pd.read_csv(source0_path, index_col=0)\nSource3_75_1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN on \"city\"\njoined = pd.merge(Source3_75_0, Source3_75_1, on=\"city\", how=\"inner\")\n\n# Operation 2: group_by [Source3_75_0.city, Source3_75_1.type], aggregations = avg(Source3_75_0.fare)\n# Group by city and type, aggregate average fare\ngrouped = (\n    joined.groupby([\"city\", \"type\"], as_index=False)\n    .agg({\"fare\": \"mean\"})\n)\n\n# Rename columns to match target schema exactly\ngrouped = grouped.rename(columns={\"fare\": \"fare\"})\n\n# Ensure column order as per target schema: ['city', 'type', 'fare']\ngrouped = grouped[[\"city\", \"type\", \"fare\"]]\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_75/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "city,type,fare\nAmandaburgh,Urban,32.49\nBarajasview,Urban,16.206666666666667\nBarronchester,Suburban,36.4225\nBethanyland,Suburban,32.95611111111111\nBradshawfurt,Rural,40.064\nBrandonfort,Suburban,35.43736842105263\nCarriemouth,Urban,32.038333333333334\nChristopherfurt,Urban,31.20833333333333\nColemanland,Suburban,30.894545454545455\nDavidfurt,Suburban,31.995882352941173\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2862682342529297
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.658,
+          "cost": 0.0015716,
+          "latency": 4.8662683963775635,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.459) / 2 = 0.658 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.525, range overlap=0.448.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city}.\nKeys present in ground truth but absent in generated: {fare}.\nFunctional dependency F1: 0.857 (precision=1.000, recall=0.750).\nMissing FDs from ground truth: ['fare'] \u2192 city.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.448, JS similarity=0.525\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['city', 'type', 'fare']\nNumber of Tuples: 120\nExamples:\n         city  type      fare\n   South Jack Urban 24.981667\n Simpsonburgh Urban 27.060000\nNorth Jasmine Urban 20.371000",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_75/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_75/training_1.csv\", index_col=0)\n\n# Join on 'city' (inner join by default)\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'city' (the primary key) and 'type' is functionally dependent on city, so only group by city\n# Aggregate average fare\nresult = joined.groupby(\"city\", as_index=False).agg({\"fare\": \"mean\"})\n\n# Add 'type' column back by taking the first non-null 'type' per city (since city -> type is FD)\n# We can get 'type' from source1 since it has unique city->type mapping\ntype_map = source1.set_index(\"city\")[\"type\"]\nresult[\"type\"] = result[\"city\"].map(type_map)\n\n# Reorder columns to match target schema: ['city', 'type', 'fare']\nresult = result[[\"city\", \"type\", \"fare\"]]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_75/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.6891956329345703
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10454.771518707275,
+        "critique": 4926.997900009155
+      }
+    }
+  ]
+}

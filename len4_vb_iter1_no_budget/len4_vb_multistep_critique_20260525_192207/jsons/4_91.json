@@ -1,0 +1,29 @@
+{
+  "case": "4_91",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0036092,
+        "latency": 6.6374900341033936,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {attributes}.\nGenerated table candidate keys: {attributes}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['attributes']\nNumber of Tuples: 22540\nExamples:\nattributes\n    normal\n       NaN\n    normal",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_3.csv\"\n]\n\n# Load all source tables with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(path, index_col=0) for path in source_files]\n\n# According to the operation history, perform UNION of the four source tables\n# The target schema is ['attributes'] only, so we select only the 'attributes' column from each source\n# The 'attributes' column may contain NaN values; keep them as is to match source data\n\nattributes_dfs = [df[['attributes']] for df in dfs]\n\n# Concatenate (union) all attributes columns vertically\ntarget_df = pd.concat(attributes_dfs, ignore_index=True)\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_91/target_multisource.csv\", index=False)",
+        "generated_csv_head": "attributes\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0066032409667969
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 6704.268217086792,
+        "critique": 0.0
+      }
+    }
+  ]
+}

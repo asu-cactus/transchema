@@ -1,0 +1,46 @@
+{
+  "case": "1_16",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5833,
+        "cost": 0.0021832,
+        "latency": 5.103228330612183,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.500) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}; {ORDERNUMBER}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 754\nExamples:\n                CUSTOMERNAME  ORDERNUMBER\n          Reims Collectables        10359\nMini Gifts Distributors Ltd.        10382\n          Baane Mini Imports        10309",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_16/training_0.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Inspect columns of source0 and target schema:\n# Source0 columns include 'CUSTOMERNAME' and 'ORDERNUMBER' which match target schema columns exactly.\n# Target schema: ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n\n# Extract only the needed columns for the target table\ndf_target = df_source0[['CUSTOMERNAME', 'ORDERNUMBER']].copy()\n\n# Data type adjustments:\n# CUSTOMERNAME should be string\ndf_target['CUSTOMERNAME'] = df_target['CUSTOMERNAME'].astype(str)\n\n# ORDERNUMBER should be integer\n# There might be NaNs or floats, so convert carefully\ndf_target['ORDERNUMBER'] = pd.to_numeric(df_target['ORDERNUMBER'], errors='coerce').fillna(0).astype(int)\n\n# Remove rows where CUSTOMERNAME is empty or 'nan' string or ORDERNUMBER is 0 (assuming 0 is invalid order number)\ndf_target = df_target[(df_target['CUSTOMERNAME'].str.strip() != '') & (df_target['CUSTOMERNAME'].str.lower() != 'nan')]\ndf_target = df_target[df_target['ORDERNUMBER'] != 0]\n\n# Reset index for clean output\ndf_target.reset_index(drop=True, inplace=True)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nToys4GrownUps.com,10367\nThe Sharp Gifts Warehouse,10407\nSignal Gift Stores,10124\nHeintze Collectables,10161\nGift Depot Inc.,10172\nMini Gifts Distributors Ltd.,10182\nOnline Diecast Creations Co.,10192\nMuscle Machine Inc,10204\nCollectable Mini Designs Co.,10226\nMuscle Machine Inc,10267\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.239776611328125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5833,
+          "cost": 0.0018424000000000001,
+          "latency": 8.288105249404907,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.500) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}; {ORDERNUMBER}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n      CUSTOMERNAME  ORDERNUMBER\nAmica Models & Co.        10280\n     Mini Classics        10195\n  Super Scale Inc.        10196",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the first numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/training_0.csv\", index_col=0)\n\n# Since only one source table is given, no union or join with other tables is possible.\n# But the instructions say all source tables must be used, and only one source table exists.\n# The target schema is ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n# The FD says CUSTOMERNAME is the key, so we group by CUSTOMERNAME and aggregate ORDERNUMBER by min (or any aggregate)\n# to reduce duplicates and match the target unique keys.\n\n# Clean data: drop rows with NaN in CUSTOMERNAME or ORDERNUMBER to avoid invalid rows\ndf = source1.dropna(subset=['CUSTOMERNAME', 'ORDERNUMBER'])\n\n# Convert ORDERNUMBER to integer (it may be float due to NaNs)\ndf['ORDERNUMBER'] = df['ORDERNUMBER'].astype(int)\n\n# Group by CUSTOMERNAME and aggregate ORDERNUMBER by min (to pick one order number per customer)\nresult = df.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': 'min'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7479190826416016
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5106.059312820435,
+        "critique": 8335.712671279907
+      }
+    }
+  ]
+}

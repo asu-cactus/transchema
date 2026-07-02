@@ -1,0 +1,29 @@
+{
+  "case": "2_71",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9929,
+        "cost": 0.0022828,
+        "latency": 12.911656141281128,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.986) / 2 = 0.993 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.943.\nGround truth candidate keys: {reading_score}; {type}.\nGenerated table candidate keys: {reading_score}; {type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'reading_score': range overlap=0.943, JS similarity=1.000\n    Generated    \u2014 min: 80.9008, max: 83.9245, mean: 82.4127\n    Ground Truth \u2014 min: 81.037, max: 83.8886, mean: 82.4628",
+        "generated_samples": "Schema: ['type', 'reading_score']\nNumber of Tuples: 2\nExamples:\n    type  reading_score\n Charter      83.924544\nDistrict      80.900820",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_71/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_71/training_1.csv\"\n\n# Define output file path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_71/target_multisource_cot.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Join Source1 with Source0 on 'school_name' to get 'type' for each student\ndf_joined = pd.merge(df_source1, df_source0[['school_name', 'type']], on='school_name', how='inner')\n\n# Group by 'type' and calculate average reading_score\ndf_result = df_joined.groupby('type', as_index=False)['reading_score'].mean()\n\n# Ensure the column order and types match the target schema\ndf_result = df_result[['type', 'reading_score']]\ndf_result['type'] = df_result['type'].astype(str)\ndf_result['reading_score'] = df_result['reading_score'].astype(float)\n\n# Save the result to the output CSV file\ndf_result.to_csv(output_path, index=False)",
+        "generated_csv_head": "type,reading_score\nCharter,83.924543946932\nDistrict,80.90081972766073\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5397071838378906
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 12979.695558547974,
+        "critique": 0.0
+      }
+    }
+  ]
+}

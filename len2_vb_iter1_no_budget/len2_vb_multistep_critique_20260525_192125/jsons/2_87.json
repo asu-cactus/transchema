@@ -1,0 +1,46 @@
+{
+  "case": "2_87",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.0017588000000000003,
+        "latency": 4.8248372077941895,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Name}.\nGenerated table candidate keys: {Name}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Name': Jaccard=0.000",
+        "generated_samples": "Schema: ['Name']\nNumber of Tuples: 446\nExamples:\n                          Name\n           LeRoy, Miss. Bertha\n             Harper, Rev. John\nO'Sullivan, Miss. Bridget Mary",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_87/training_0.csv\"\n]\n\n# Load all source tables\n# According to the prompt, there is only one source table: Source2_87_0\n# We read it with index_col=0 to ignore the first numerical index column\ndf_source_0 = pd.read_csv(source_files[0], index_col=0)\n\n# Transformation plan:\n# Target schema: ['Name'] (string)\n# Source schema: ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket', 'Fare', 'Cabin', 'Embarked']\n# We only need to extract the 'Name' column from the source table.\n# The target examples show some NaN values in 'Name', so we keep them as is.\n# Since there is only one source table, no union or join is needed.\n# Just select the 'Name' column and output.\n\ndf_target = df_source_0[['Name']].copy()\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_87/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Name\n\"Dodge, Master. Washington\"\n\"Mellinger, Miss. Madeleine Violet\"\n\"Seward, Mr. Frederic Kimber\"\n\"Baclini, Miss. Marie Catherine\"\n\"Peuchen, Major. Arthur Godfrey\"\n\"West, Mr. Edwy Arthur\"\n\"Hagland, Mr. Ingvald Olai Olsen\"\n\"Foreman, Mr. Benjamin Laventall\"\n\"Goldenberg, Mr. Samuel L\"\n\"Peduzzi, Mr. Joseph\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9126663208007812
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0026520000000000003,
+          "latency": 11.174158334732056,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Name}.\nGenerated table candidate keys: {Name}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Name': Jaccard=0.000",
+          "generated_samples": "Schema: ['Name']\nNumber of Tuples: 446\nExamples:\n                            Name\n (Longley, Miss. Gretchen Fiske)\n              (Saad, Mr. Khalil)\n(Meanwell, Miss. (Marion Ogden))",
+          "code": "import pandas as pd\n\n# Read source table\nsource_path = \"autopipeline-benchmarks/github-pipelines/length2_87/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Filter rows where Name is not null and not empty\ndf = df[df['Name'].notnull() & (df['Name'] != '')]\n\n# Add parentheses around the Name string\ndf['Name'] = '(' + df['Name'] + ')'\n\n# Select only the Name column\ndf = df[['Name']]\n\n# Write to target CSV\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_87/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8997917175292969
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4828.241348266602,
+        "critique": 11217.066049575806
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "2_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6238,
+        "cost": 0.0021768000000000004,
+        "latency": 11.833611011505127,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.498) / 2 = 0.624 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.705, range overlap=0.780.\nGround truth candidate keys: {Date}; {NumMosquitos}.\nGenerated table candidate keys: {Date}.\nKeys present in ground truth but absent in generated: {NumMosquitos}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['ResultDir'] \u2192 NumMosquitos.\nMissing FDs from ground truth: ['NumMosquitos'] \u2192 Date.\nDistribution Analysis (numerical columns with issues):\n  Column 'ResultDir': range overlap=0.843, JS similarity=0.754\n    Generated    \u2014 min: 2.0, max: 36.0, mean: 17.3889\n    Ground Truth \u2014 min: 1.0, max: 31.5, mean: 17.7549\n  Column 'NumMosquitos': range overlap=0.718, JS similarity=0.655\n    Generated    \u2014 min: 2.0, max: 36.0, mean: 17.3889\n    Ground Truth \u2014 min: 1.6, max: 48.9785, mean: 15.6484\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+        "generated_samples": "Schema: ['Date', 'ResultDir', 'NumMosquitos']\nNumber of Tuples: 45\nExamples:\n      Date  ResultDir  NumMosquitos\n2013-08-29       10.0     18.496503\n2013-07-12        8.0     26.351648\n2009-08-25       21.0      8.226190",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_35/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_35/training_1.csv\"\n\n# Load Source 0\n# index_col=0 to ignore the first numerical index column as per Hint 24\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# --- Transformation Plan ---\n# Target schema: ['Date': string, 'ResultDir': float, 'NumMosquitos': float]\n# Source 0 has 'Date' and 'ResultDir' columns, but no 'NumMosquitos'.\n# Source 1 has 'Date' and 'NumMosquitos', but no 'ResultDir'.\n# Both share 'Date' column, which is the key to join on.\n#\n# So, join Source 0 and Source 1 on 'Date' to get all three columns.\n# Since Source 0 has multiple rows per date (different Stations), and Source 1 has multiple rows per date (different traps),\n# we need to aggregate before join to avoid Cartesian explosion.\n#\n# Aggregation:\n# - For Source 0: aggregate ResultDir by average per Date (float)\n# - For Source 1: aggregate NumMosquitos by average per Date (float)\n#\n# Then join on Date.\n#\n# Finally, ensure Date is string type, ResultDir and NumMosquitos are floats.\n#\n# Export the result to the target CSV path.\n\n# Clean and convert 'ResultDir' in df0 to numeric (coerce errors to NaN)\ndf0['ResultDir'] = pd.to_numeric(df0['ResultDir'], errors='coerce')\n\n# Aggregate df0 by Date: average ResultDir\ndf0_agg = df0.groupby('Date', as_index=False)['ResultDir'].mean()\n\n# Clean and convert 'NumMosquitos' in df1 to numeric (coerce errors to NaN)\ndf1['NumMosquitos'] = pd.to_numeric(df1['NumMosquitos'], errors='coerce')\n\n# Aggregate df1 by Date: average NumMosquitos\ndf1_agg = df1.groupby('Date', as_index=False)['NumMosquitos'].mean()\n\n# Join aggregated dataframes on 'Date' (inner join to keep only dates present in both)\ndf_target = pd.merge(df0_agg, df1_agg, on='Date', how='inner')\n\n# Ensure column types as per target schema\ndf_target['Date'] = df_target['Date'].astype(str)\ndf_target['ResultDir'] = df_target['ResultDir'].astype(float)\ndf_target['NumMosquitos'] = df_target['NumMosquitos'].astype(float)\n\n# Sort by Date ascending (optional, for neatness)\ndf_target = df_target.sort_values('Date').reset_index(drop=True)\n\n# Write to target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_35/target_multisource_cot.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Date,ResultDir,NumMosquitos\n2009-08-07,15.0,7.839506172839506\n2009-08-13,15.0,5.733333333333333\n2009-08-25,21.0,8.226190476190476\n2009-08-27,7.5,3.240740740740741\n2009-09-03,5.5,2.345454545454545\n2009-09-14,23.0,5.072072072072072\n2009-09-17,6.5,5.850393700787402\n2009-09-25,11.0,5.616\n2009-10-01,13.0,3.261538461538461\n2011-06-10,2.0,6.919354838709677\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1734962463378906
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6238,
+          "cost": 0.0017304,
+          "latency": 5.67182993888855,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.498) / 2 = 0.624 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.705, range overlap=0.780.\nGround truth candidate keys: {Date}; {NumMosquitos}.\nGenerated table candidate keys: {Date}.\nKeys present in ground truth but absent in generated: {NumMosquitos}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['ResultDir'] \u2192 NumMosquitos.\nMissing FDs from ground truth: ['NumMosquitos'] \u2192 Date.\nDistribution Analysis (numerical columns with issues):\n  Column 'ResultDir': range overlap=0.843, JS similarity=0.754\n    Generated    \u2014 min: 2.0, max: 36.0, mean: 17.3889\n    Ground Truth \u2014 min: 1.0, max: 31.5, mean: 17.7549\n  Column 'NumMosquitos': range overlap=0.718, JS similarity=0.655\n    Generated    \u2014 min: 2.0, max: 36.0, mean: 17.3889\n    Ground Truth \u2014 min: 1.6, max: 48.9785, mean: 15.6484\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+          "generated_samples": "Schema: ['Date', 'ResultDir', 'NumMosquitos']\nNumber of Tuples: 45\nExamples:\n      Date  ResultDir  NumMosquitos\n2009-08-13       15.0      5.733333\n2013-06-21       19.0     11.370690\n2011-06-30       16.5     16.066116",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_35/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_35/training_1.csv\", index_col=0)\n\n# Join on Date (inner join to keep only matching dates)\njoined = pd.merge(source0, source1, on=\"Date\", how=\"inner\")\n\n# Select needed columns and rename to target schema\n# ResultDir from source0, NumMosquitos from source1, Date as is\nselected = joined[[\"Date\", \"ResultDir\", \"NumMosquitos\"]]\n\n# Group by Date and aggregate mean for ResultDir and NumMosquitos\nresult = selected.groupby(\"Date\", as_index=False).agg({\n    \"ResultDir\": \"mean\",\n    \"NumMosquitos\": \"mean\"\n})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_35/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.8057823181152344
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11906.13079071045,
+        "critique": 5760.0109577178955
+      }
+    }
+  ]
+}

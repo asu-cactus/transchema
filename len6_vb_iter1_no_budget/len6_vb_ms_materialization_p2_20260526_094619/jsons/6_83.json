@@ -1,0 +1,46 @@
+{
+  "case": "6_83",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5232,
+        "cost": 0.01682,
+        "latency": 78.69737100601196,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.625 + 0.421) / 2 = 0.523 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.801, range overlap=0.244.\nGround truth candidate keys: {Country}; {Latitude}; {Population}.\nGenerated table candidate keys: {Country}.\nKeys present in ground truth but absent in generated: {Latitude}; {Population}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.625 (precision=0.714, recall=0.556).\nSpurious FDs in generated (not in ground truth): ['Medal'] \u2192 Latitude; ['Medal'] \u2192 Population.\nMissing FDs from ground truth: ['Latitude'] \u2192 Population; ['Population'] \u2192 Country; ['Latitude'] \u2192 Medal; ['Latitude'] \u2192 Country.\nDistribution Analysis (numerical columns with issues):\n  Column 'Population': range overlap=0.234, JS similarity=0.871\n    Generated    \u2014 min: 0.0, max: 1371220000.0, mean: 36302174.2687\n    Ground Truth \u2014 min: 37531.0, max: 321418820.0, mean: 47589633.7895\n  Column 'Medal': range overlap=0.000, JS similarity=0.900\n    Generated    \u2014 min: 0.0, max: 1371220000.0, mean: 36302174.2687\n    Ground Truth \u2014 min: 1.0, max: 292.0, mean: 79.2105\n  Column 'Latitude': range overlap=0.498, JS similarity=0.633\n    Generated    \u2014 min: 34.26, max: 59.91, mean: 45.9737\n    Ground Truth \u2014 min: 37.04, max: 49.81, mean: 44.9289\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Country': Jaccard=0.117",
+        "generated_samples": "Schema: ['Country', 'Population', 'Medal', 'Latitude']\nNumber of Tuples: 201\nExamples:\n      Country  Population  Medal  Latitude\n        Japan   126958472      0     35.69\n     Tanzania    53470420      0       NaN\nGuinea-Bissau     1844325      0       NaN",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_83/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_83/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_83/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_83/training_3.csv\", index_col=0)\n\n# Step 1: Join Source0 and Source1 on 'Country'\n# Source0 columns: ['Country', 'Code', 'Population', 'GDP per Capita']\n# Source1 columns: ['Year', 'City', 'Sport', 'Discipline', 'Athlete', 'Country', 'Gender', 'Event', 'Medal']\n# We want to join on 'Country' to associate medals with population\njoin_0_1 = pd.merge(source0, source1, on='Country', how='left')\n\n# Step 2: Join Source2 and Source3 on 'Host City' to get Latitude per Host City\njoin_2_3 = pd.merge(source2, source3, on='Host City', how='left')\n\n# Step 3: We want to get Latitude per Country.\n# Source2 'Host' column corresponds to country names of the host cities.\n# So we can get Latitude per Host country by grouping join_2_3 by 'Host' and averaging Latitude.\nlatitude_per_country = join_2_3.groupby('Host', as_index=False)['Latitude'].mean()\n\n# Step 4: Aggregate join_0_1 by Country:\n# - Population: sum of Population from Source0 (though Population is per country, so sum is just the value)\n# - Medal: count of medals (count of non-null Medal entries from Source1)\n# - Latitude: will be joined from latitude_per_country by matching Country to Host (country name)\n# Note: Population in source0 is float, convert to int after aggregation\n# Medal column in source1 is categorical (Bronze, Silver, Gold), count medals per country\n\n# Count medals per country (only count rows where Medal is not null)\nmedal_counts = join_0_1.groupby('Country')['Medal'].count().reset_index(name='Medal')\n\n# Sum population per country (population is per country, so sum is just the value)\npopulation_sum = source0.groupby('Country', as_index=False)['Population'].sum()\n\n# Merge population and medal counts on Country\npop_medal = pd.merge(population_sum, medal_counts, on='Country', how='left')\n\n# Fill NaN medals with 0 (countries with no medals)\npop_medal['Medal'] = pop_medal['Medal'].fillna(0).astype(int)\n\n# Join Latitude from latitude_per_country by matching Country to Host\n# Some country names may differ in spelling or format, but we assume direct match here\nfinal = pd.merge(pop_medal, latitude_per_country, left_on='Country', right_on='Host', how='left')\n\n# Drop 'Host' column after join\nfinal = final.drop(columns=['Host'])\n\n# Convert Population to int (rounding)\nfinal['Population'] = final['Population'].round().astype(int)\n\n# Latitude may have NaNs if no matching host city found; fill with NaN (float)\n# Medal is already int\n\n# Reorder columns to match target schema: ['Country', 'Population', 'Medal', 'Latitude']\nfinal = final[['Country', 'Population', 'Medal', 'Latitude']]\n\n# Save to target path\nfinal.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_83/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Country,Population,Medal,Latitude\nAfghanistan,32526562,0,\nAlbania,2889167,0,\nAlgeria,39666519,0,\nAmerican Samoa*,55538,0,\nAndorra,70473,0,\nAngola,25021974,0,\nAntigua and Barbuda,91818,0,\nArgentina,43416755,0,\nArmenia,3017712,0,\nAruba*,103889,0,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1360645294189453
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.0,
+          "cost": 0.0022372,
+          "latency": 6.1692986488342285,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_83/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_83/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_83/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_83/training_3.csv\", index_col=0)\n\n# Join Source6_83_0 and Source6_83_1 on Country\njoin_0_1 = pd.merge(source0, source1, how='inner', left_on='Country', right_on='Country')\n\n# Join Source6_83_2 and Source6_83_3 on Host City\njoin_2_3 = pd.merge(source2, source3, how='inner', left_on='Host City', right_on='Host City')\n\n# Join the above results on Source6_83_0.Country = Source6_83_2.Host\nfinal_join = pd.merge(join_0_1, join_2_3, how='inner', left_on='Country', right_on='Host')\n\n# Group by Country and aggregate:\n# sum of Population (from source0),\n# count of Medal (from source1),\n# average of Latitude (from source3)\nresult = final_join.groupby('Country').agg({\n    'Population': 'sum',\n    'Medal': 'count',\n    'Latitude': 'mean'\n}).reset_index()\n\n# Rename columns to match target schema exactly\nresult = result.rename(columns={'Medal': 'Medal', 'Latitude': 'Latitude', 'Population': 'Population', 'Country': 'Country'})\n\n# Ensure data types match target schema\nresult['Population'] = result['Population'].astype(int)\nresult['Medal'] = result['Medal'].astype(int)\nresult['Latitude'] = result['Latitude'].astype(float)\nresult['Country'] = result['Country'].astype(str)\n\n# Write to output CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_83/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.023126602172851562
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 78767.18235015869,
+        "critique": 6206.153154373169
+      }
+    }
+  ]
+}

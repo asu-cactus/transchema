@@ -1,0 +1,46 @@
+{
+  "case": "2_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.225,
+        "cost": 0.0038192,
+        "latency": 27.531295776367188,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.450) / 2 = 0.225 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.243, range overlap=0.107.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Timepoint, Mouse ID}.\nKeys present in ground truth but absent in generated: {Timepoint, Drug}.\nSpurious keys in generated not present in ground truth: {Timepoint, Mouse ID, Drug}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.100, JS similarity=0.170\n    Generated    \u2014 min: 1.0, max: 191.0, mean: 94.8235\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.114, JS similarity=0.317\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+        "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 952\nExamples:\n    Drug  Timepoint  Mouse ID\nCeftamin         25        93\nKetapril         30       112\nKetapril         20        42",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_85/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_85/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Inspect schemas:\n# df0 columns: ['Mouse ID', 'Timepoint', 'Tumor Volume (mm3)', 'Metastatic Sites']\n# df1 columns: ['Mouse ID', 'Drug']\n\n# Target schema: ['Drug': string, 'Timepoint': integer, 'Mouse ID': integer]\n\n# Transformation plan:\n# - We need to produce a table with columns Drug, Timepoint, Mouse ID.\n# - df0 has Mouse ID and Timepoint, but Mouse ID values are strings like 'n763', 'q787', etc.\n# - df1 has Mouse ID and Drug, Mouse ID also strings like 'f234', 'x402', etc.\n# - We must join df0 and df1 on 'Mouse ID' to get Drug and Timepoint together.\n# - After join, select columns Drug, Timepoint, Mouse ID.\n# - Convert Mouse ID to integer: The target examples show Mouse ID as integers (e.g., 25, 19).\n#   But source Mouse ID values are strings with letters and digits.\n#   This means we need to map Mouse ID strings to integers.\n# - Since target examples have Mouse ID as integers, we will create a mapping from unique Mouse ID strings to integers.\n# - Timepoint is integer in target, source Timepoint is integer already.\n# - Drug is string in both.\n# - After join, map Mouse ID strings to integers.\n# - Output the final dataframe to the specified CSV path.\n\n# Step 1: Join df0 and df1 on 'Mouse ID' (inner join to keep only Mouse IDs present in both)\ndf_joined = pd.merge(df0, df1, on='Mouse ID', how='inner')\n\n# Step 2: Map Mouse ID strings to integers\n# Create a mapping dictionary from unique Mouse ID strings to integers starting from 1\nunique_mouse_ids = df_joined['Mouse ID'].unique()\nmouse_id_map = {mid: idx for idx, mid in enumerate(sorted(unique_mouse_ids), start=1)}\n\n# Apply mapping\ndf_joined['Mouse ID'] = df_joined['Mouse ID'].map(mouse_id_map)\n\n# Step 3: Select and reorder columns to match target schema: ['Drug', 'Timepoint', 'Mouse ID']\ndf_target = df_joined[['Drug', 'Timepoint', 'Mouse ID']]\n\n# Step 4: Ensure data types match target schema\ndf_target['Drug'] = df_target['Drug'].astype(str)\ndf_target['Timepoint'] = df_target['Timepoint'].astype(int)\ndf_target['Mouse ID'] = df_target['Mouse ID'].astype(int)\n\n# Step 5: Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_85/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Drug,Timepoint,Mouse ID\nPlacebo,20,108\nPlacebo,25,108\nPlacebo,30,108\nPlacebo,35,108\nPlacebo,40,108\nPlacebo,20,131\nPlacebo,25,131\nPlacebo,30,131\nPlacebo,35,131\nPlacebo,40,131\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5482902526855469
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0017860000000000003,
+          "latency": 7.942279815673828,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_85/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_85/training_1.csv\", index_col=0)\n\n# Join on 'Mouse ID'\ndf = pd.merge(source0, source1, on='Mouse ID', how='inner')\n\n# Convert 'Mouse ID' to integer to match target schema\ndf['Mouse ID'] = df['Mouse ID'].astype(int)\n\n# Select and reorder columns to match target schema: ['Drug', 'Timepoint', 'Mouse ID']\ndf = df[['Drug', 'Timepoint', 'Mouse ID']]\n\n# Group by all columns to remove duplicates (no aggregation needed)\ndf = df.drop_duplicates(subset=['Drug', 'Timepoint', 'Mouse ID'])\n\n# Write output\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_85/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.022411346435546875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 27592.015981674194,
+        "critique": 7953.612565994263
+      }
+    }
+  ]
+}

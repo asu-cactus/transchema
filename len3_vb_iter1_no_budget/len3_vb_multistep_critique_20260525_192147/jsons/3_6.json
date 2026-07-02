@@ -1,0 +1,29 @@
+{
+  "case": "3_6",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9411,
+        "cost": 0.0049164000000000005,
+        "latency": 8.765974283218384,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.882) / 2 = 0.941 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.919, range overlap=1.000.\nGround truth candidate keys: {movie title}.\nGenerated table candidate keys: {movie title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'rating': range overlap=1.000, JS similarity=0.919\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.1842\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'movie title': Jaccard=0.805",
+        "generated_samples": "Schema: ['movie title', 'rating']\nNumber of Tuples: 1394\nExamples:\n                                    movie title   rating\n                              Persuasion (1995) 3.750000\n                     Little Rascals, The (1994) 2.333333\nThirty-Two Short Films About Glenn Gould (1993) 4.000000",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_6/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length3_6/training_2.csv\"\n\ndf_source1 = pd.read_csv(source1_path, index_col=0)\ndf_source2 = pd.read_csv(source2_path, index_col=0)\n\n# Operation 1: JOIN Source3_6_1 and Source3_6_2 on \"movie id\"\ndf_joined = pd.merge(df_source1, df_source2, on=\"movie id\", how=\"inner\")\n\n# Operation 2: group_by Source3_6_1.movie title, aggregations avg(Source3_6_2.rating)\ndf_grouped = df_joined.groupby(\"movie title\", as_index=False)[\"rating\"].mean()\n\n# Rename columns to match target schema exactly\ndf_grouped.rename(columns={\"movie title\": \"movie title\", \"rating\": \"rating\"}, inplace=True)\n\n# Ensure correct dtypes: 'movie title' as string, 'rating' as float\ndf_grouped[\"movie title\"] = df_grouped[\"movie title\"].astype(str)\ndf_grouped[\"rating\"] = df_grouped[\"rating\"].astype(float)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_6/target_multisource.csv\"\ndf_grouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "movie title,rating\n101 Dalmatians (1996),2.875\n12 Angry Men (1957),4.285714285714286\n187 (1997),3.1\n2 Days in the Valley (1996),3.238095238095238\n\"20,000 Leagues Under the Sea (1954)\",3.5\n2001: A Space Odyssey (1968),4.0227272727272725\n\"39 Steps, The (1935)\",4.214285714285714\n8 1/2 (1963),4.6\n8 Heads in a Duffel Bag (1997),4.0\n8 Seconds (1994),5.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1792182922363281
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 8827.051877975464,
+        "critique": 0.0
+      }
+    }
+  ]
+}

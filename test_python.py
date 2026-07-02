@@ -1,17 +1,12 @@
 import pandas as pd
 
-# Load the intermediate result after the group_by and avg aggregation operation
-intermediate_path = "autopipeline-benchmarks/github-pipelines/intermediate_space/length1_3/intermediate_step1.csv"
-df = pd.read_csv(intermediate_path, index_col=0)
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_8/training_0.csv", index_col=0)
+df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_8/training_1.csv", index_col=0)
 
-# Ensure the schema and types match the target schema
-df = df.rename(columns={"Median": "Median", "Major_category": "Major_category"})
-df["Major_category"] = df["Major_category"].astype(str)
-df["Median"] = df["Median"].astype(float)
+merged = pd.merge(df1, df0, on="track_id", how="left")
 
-# Reorder columns to match target schema exactly
-df = df[["Major_category", "Median"]]
+result = merged[["index_track", "track_id", "dummy"]].copy()
+result["index_track"] = result["index_track"].astype(int)
+result["track_id"] = result["track_id"].astype(int)
 
-# Write the final target table to the specified path
-output_path = "autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv"
-df.to_csv(output_path)
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_8/target_multisource_mcts.csv", index=False)

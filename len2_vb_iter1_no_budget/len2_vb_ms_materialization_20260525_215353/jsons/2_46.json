@@ -1,0 +1,29 @@
+{
+  "case": "2_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9772,
+        "cost": 0.005805600000000001,
+        "latency": 22.84436273574829,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.954) / 2 = 0.977 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.976, range overlap=1.000.\nGround truth candidate keys: {mkt_name, cm_name, mp_month, mp_year, mp_price}.\nGenerated table candidate keys: {mkt_name, cm_name, mp_month, mp_year, mp_price}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'um_id': range overlap=1.000, JS similarity=0.940\n    Generated    \u2014 min: 5.0, max: 56.0, mean: 19.5668\n    Ground Truth \u2014 min: 5.0, max: 56.0, mean: 18.1572\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'adm1_name': Jaccard=0.789\n  Column 'mkt_name': Jaccard=0.781",
+        "generated_samples": "Schema: ['adm0_name', 'adm1_name', 'mkt_name', 'cm_name', 'cur_name', 'pt_name', 'um_id', 'um_name', 'mp_month', 'mp_year', 'mp_price']\nNumber of Tuples: 10936\nExamples:\n  adm0_name              adm1_name mkt_name         cm_name cur_name pt_name  um_id um_name  mp_month  mp_year  mp_price\n       Iraq              Qadissiya    Wasit Oil (vegetable)      IQD  Retail     15       L         9     2016    1500.0\nSouth Sudan Western Bahr El Ghazal      Jau   Cassava (dry)      SSP  Retail     47  3.5 KG         9     2010      10.0\nSouth Sudan                  Lakes   Rumbek     Wheat flour      SSP  Retail      5      KG         9     2016     100.0",
+        "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_46/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_46/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_46/training_2.csv\", index_col=0)\n\n# All sources have the same schema as the target, so union them by concatenation\ndf = pd.concat([source0, source1, source2], ignore_index=True)\n\n# Ensure correct dtypes as per target schema:\n# ['adm0_name': string, 'adm1_name': string, 'mkt_name': string, 'cm_name': string,\n#  'cur_name': string, 'pt_name': string, 'um_id': integer, 'um_name': string,\n#  'mp_month': integer, 'mp_year': integer, 'mp_price': float]\n\n# Convert columns to correct types explicitly\ndf['adm0_name'] = df['adm0_name'].astype(str)\ndf['adm1_name'] = df['adm1_name'].astype(str)\ndf['mkt_name'] = df['mkt_name'].astype(str)\ndf['cm_name'] = df['cm_name'].astype(str)\ndf['cur_name'] = df['cur_name'].astype(str)\ndf['pt_name'] = df['pt_name'].astype(str)\ndf['um_id'] = pd.to_numeric(df['um_id'], errors='coerce').fillna(0).astype(int)\ndf['um_name'] = df['um_name'].astype(str)\ndf['mp_month'] = pd.to_numeric(df['mp_month'], errors='coerce').fillna(0).astype(int)\ndf['mp_year'] = pd.to_numeric(df['mp_year'], errors='coerce').fillna(0).astype(int)\ndf['mp_price'] = pd.to_numeric(df['mp_price'], errors='coerce').astype(float)\n\n# Save the final target table to the specified path\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_46/target_multisource.csv\", index=False)",
+        "generated_csv_head": "adm0_name,adm1_name,mkt_name,cm_name,cur_name,pt_name,um_id,um_name,mp_month,mp_year,mp_price\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,1,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,2,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,3,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,4,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,5,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,6,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,7,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,8,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,9,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,10,2014,50.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 4.056453704833984
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 22934.526920318604,
+        "critique": 0.0
+      }
+    }
+  ]
+}

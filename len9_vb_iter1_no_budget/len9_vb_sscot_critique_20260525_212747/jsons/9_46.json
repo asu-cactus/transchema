@@ -1,0 +1,29 @@
+{
+  "case": "9_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9844,
+        "cost": 0.0021708,
+        "latency": 9.942888259887695,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.969) / 2 = 0.984 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.947, range overlap=0.991.\nGround truth candidate keys: {purpose}.\nGenerated table candidate keys: {purpose}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'purpose': range overlap=0.991, JS similarity=0.947\n    Generated    \u2014 min: 2.0, max: 1575.0, mean: 203.8513\n    Ground Truth \u2014 min: 2.0, max: 1590.0, mean: 217.8557",
+        "generated_samples": "Schema: ['purpose']\nNumber of Tuples: 195\nExamples:\n purpose\n      43\n       5\n     158",
+        "code": "import pandas as pd\n\ndef main():\n    # List all source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_0.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_1.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_2.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_3.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_4.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_5.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_6.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_7.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_8.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_9.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_10.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_11.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_12.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_13.csv\",\n        \"autopipeline-benchmarks/github-pipelines/length9_46/training_14.csv\"\n    ]\n\n    # Read all source tables into a list of DataFrames\n    dfs = []\n    for file_path in source_files:\n        df = pd.read_csv(file_path, index_col=0)\n        # Ensure the column 'purpose' is integer type as per target schema\n        df['purpose'] = df['purpose'].astype(int)\n        dfs.append(df)\n\n    # Since all source tables have the exact same schema ['purpose'] as the target,\n    # and the target schema is also ['purpose'], we can union (concatenate) all source tables.\n    target_df = pd.concat(dfs, ignore_index=True)\n\n    # The target table has only one column 'purpose' of integer type, so no further transformation needed.\n\n    # Write the result to the specified path\n    target_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_46/target_multisource_cot.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "purpose\n1575\n350\n287\n209\n158\n105\n88\n67\n57\n42\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.6823539733886719
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 10006.274461746216,
+        "critique": 0.0
+      }
+    }
+  ]
+}

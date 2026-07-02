@@ -69,8 +69,8 @@ POST_AGGREGATE_EXPAND_OPS: List[str] = [
 # Re-expansion beyond the initial batch is gated by the reaggregation_needed flag.
 AGGREGATE_MAX_CHILDREN: int = 9
 
-# Default UCB1 exploration constant (sqrt(2) ≈ 1.414)
-DEFAULT_EXPLORATION_WEIGHT: float = 0.5
+
+DEFAULT_EXPLORATION_WEIGHT: float = math.sqrt(2)
 
 
 class MCTSNode:
@@ -142,6 +142,18 @@ class MCTSNode:
     # ──────────────────────────────────────────────────────────────────────────
     # UCB1 / selection helpers
     # ──────────────────────────────────────────────────────────────────────────
+
+    @property
+    def depth(self) -> int:
+        """
+        Logical depth in the tree; root = 0.
+        GROUP_BY + AGGREGATE count as one combined step, so AGGREGATE steps
+        are excluded from the count (they share the depth slot with their GROUP_BY).
+        """
+        return sum(
+            1 for step in self.operation_history
+            if step.split(":")[0].strip() != "AGGREGATE"
+        )
 
     @property
     def q_value(self) -> float:
@@ -277,6 +289,20 @@ class MCTSNode:
         node = self
         while node.children:
             node = max(node.children.values(), key=lambda c: c.q_value)
+            path.append(node)
+        return path
+
+    def best_reward_path(self) -> List["MCTSNode"]:
+        """
+        Greedily descend by total_reward (raw accumulated sum, visit-independent).
+        Each step picks the child with the highest total_reward; terminates at
+        a leaf (no children). The leaf's best_script is the final answer because
+        any node with total_reward > 0 must have been simulated at least once.
+        """
+        path = [self]
+        node = self
+        while node.children:
+            node = max(node.children.values(), key=lambda c: c.total_reward)
             path.append(node)
         return path
 

@@ -1,0 +1,46 @@
+{
+  "case": "5_1",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0031260000000000003,
+        "latency": 17.60867977142334,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "Schema: ['Time', 'Date', 'Room', 'Room_Capacity', 'Module', 'Registered_Students']\nNumber of Tuples: 45\nExamples:\n Time  Date  Room  Room_Capacity  Module  Registered_Students\n  NaN   NaN   NaN            NaN     NaN                  NaN\n  NaN   NaN   NaN            NaN     NaN                  NaN\n  NaN   NaN   NaN            NaN     NaN                  NaN",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length5_1/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_1/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_1/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_1/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_1/training_4.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# UNION operation: concatenate all source DataFrames vertically\nTarget5_1 = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target CSV file\nTarget5_1.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Time,Date,Room,Room_Capacity,Module,Registered_Students\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.1834373474121094
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.0,
+          "cost": 0.0017364,
+          "latency": 4.587043762207031,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_4.csv\", index_col=0)\n\n# UNION all sources\ndf = pd.concat([source0, source1, source2, source3, source4], ignore_index=True)\n\n# Filter out rows where all columns are NaN\ndf = df.dropna(how='all')\n\n# Write output with exact target schema and column names\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03314018249511719
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 17674.39317703247,
+        "critique": 4614.341020584106
+      }
+    }
+  ]
+}

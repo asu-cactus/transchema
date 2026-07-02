@@ -1,0 +1,46 @@
+{
+  "case": "1_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7635,
+        "cost": 0.0013672,
+        "latency": 3.7656407356262207,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.527) / 2 = 0.763 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.663, range overlap=0.851.\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Median': range overlap=0.851, JS similarity=0.663\n    Generated    \u2014 min: 43000.0, max: 75000.0, mean: 55428.2286\n    Ground Truth \u2014 min: 40250.0, max: 77857.1429, mean: 52839.5172\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Major_category': Jaccard=0.297",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 13\nExamples:\n                     Major_category       Median\nIndustrial Arts & Consumer Services 57600.000000\n                  Physical Sciences 62400.000000\n                           Business 60615.384615",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_21/training_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Major_category': string, 'Median': float]\n# - Source0 has columns including 'Major_category' and 'Median' with correct types.\n# - Since only one source table is provided, no union or join is needed.\n# - Just select the required columns from source0.\n# - The target examples show aggregated median values per Major_category.\n# - Source0 has multiple rows per Major_category, so we need to aggregate Median by Major_category.\n# - Median in source is per Major (not aggregated), so we compute the mean Median per Major_category.\n# - This matches the target examples where Median is float and grouped by Major_category.\n\n# Aggregate Median by Major_category (mean)\nresult = df0.groupby('Major_category', as_index=False)['Median'].mean()\n\n# Ensure column types match target schema\nresult['Major_category'] = result['Major_category'].astype(str)\nresult['Median'] = result['Median'].astype(float)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nArts,43525.0\nBiology & Life Science,49000.0\nBusiness,60615.38461538462\nComputers & Mathematics,74500.0\nEngineering,75000.0\nHealth,56458.333333333336\nHumanities & Liberal Arts,45357.142857142855\nIndustrial Arts & Consumer Services,57600.0\nInterdisciplinary,43000.0\nLaw & Public Policy,55333.333333333336\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0349750518798828
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.001556,
+          "latency": 4.796232223510742,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_21/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_21/training_1.csv\", index_col=0)\n\n# Join on Major_category (primary key)\njoined = pd.merge(source0, source1, on=\"Major_category\", how=\"inner\")\n\n# Calculate mean Median per Major_category (group by Major_category)\nresult = joined.groupby(\"Major_category\", as_index=False).agg({\"Median\": \"mean\"})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.0324249267578125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 3768.094539642334,
+        "critique": 4806.8225383758545
+      }
+    }
+  ]
+}

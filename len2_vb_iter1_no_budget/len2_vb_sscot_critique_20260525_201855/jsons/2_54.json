@@ -1,0 +1,46 @@
+{
+  "case": "2_54",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6556,
+        "cost": 0.0018148,
+        "latency": 6.778568983078003,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.644) / 2 = 0.656 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.961, range overlap=0.091.\nGround truth candidate keys: {G3}; {G1}; {sex}; {G2}.\nGenerated table candidate keys: {sex, G3}; {sex, G2}; {sex, G1}.\nKeys present in ground truth but absent in generated: {G3}; {G1}; {sex}; {G2}.\nSpurious keys in generated not present in ground truth: {sex, G3}; {sex, G1}; {sex, G2}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['G1'] \u2192 sex; ['G3'] \u2192 sex; ['G2'] \u2192 sex; ['sex'] \u2192 G1; ['sex'] \u2192 G3 (and 1 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'G1': range overlap=0.102, JS similarity=0.961\n    Generated    \u2014 min: 3.0, max: 19.0, mean: 11.096\n    Ground Truth \u2014 min: 9.8602, max: 11.4904, mean: 10.6753\n  Column 'G2': range overlap=0.084, JS similarity=0.961\n    Generated    \u2014 min: 3.0, max: 19.0, mean: 11.096\n    Ground Truth \u2014 min: 10.0645, max: 11.4038, mean: 10.7342\n  Column 'G3': range overlap=0.087, JS similarity=0.961\n    Generated    \u2014 min: 3.0, max: 19.0, mean: 11.096\n    Ground Truth \u2014 min: 9.8602, max: 11.25, mean: 10.5551",
+        "generated_samples": "Schema: ['sex', 'G1', 'G2', 'G3']\nNumber of Tuples: 198\nExamples:\nsex   G1   G2   G3\n  F  9.0 10.0 10.0\n  M 11.0 13.0 13.0\n  M  7.0 10.0 10.0",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_54/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_54/training_1.csv\"\n\n# Load Source 0: schema ['ID', 'G1', 'G2', 'G3']\n# index_col=0 to ignore the first column as per Hint 24\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: schema includes 'sex' and 'ID' among many other columns\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['sex': string, 'G1': float, 'G2': float, 'G3': float]\n# - Source0 has G1, G2, G3 but no sex column.\n# - Source1 has sex but no G1, G2, G3 columns.\n# - Both have 'ID' column which can be used as join key.\n# - Join Source0 and Source1 on 'ID' to get sex + G1, G2, G3.\n# - Select and reorder columns to match target schema.\n# - Ensure types: sex as string, G1,G2,G3 as float.\n\n# Join on 'ID' (index after reading with index_col=0)\n# Both df0 and df1 have index as ID, so join on index\ndf_joined = df1[['sex']].join(df0[['G1', 'G2', 'G3']], how='inner')\n\n# Convert types explicitly\ndf_joined['sex'] = df_joined['sex'].astype(str)\ndf_joined['G1'] = df_joined['G1'].astype(float)\ndf_joined['G2'] = df_joined['G2'].astype(float)\ndf_joined['G3'] = df_joined['G3'].astype(float)\n\n# Reset index to default integer index (optional, but target examples show default index)\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_54/target_multisource_cot.csv\"\ndf_result.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,G1,G2,G3\nM,9.0,9.0,10.0\nF,18.0,18.0,18.0\nF,9.0,9.0,10.0\nF,16.0,16.0,16.0\nF,8.0,10.0,10.0\nF,9.0,9.0,10.0\nF,7.0,6.0,6.0\nF,10.0,10.0,11.0\nF,10.0,9.0,9.0\nF,7.0,7.0,7.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5215873718261719
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7646,
+          "cost": 0.0015800000000000002,
+          "latency": 4.598012447357178,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.529) / 2 = 0.765 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.302.\nGround truth candidate keys: {G3}; {G1}; {sex}; {G2}.\nGenerated table candidate keys: {G3}; {G1}; {sex}; {G2}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'G1': range overlap=0.271, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 9.8602, max: 11.4904, mean: 10.6753\n  Column 'G2': range overlap=0.318, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 10.0645, max: 11.4038, mean: 10.7342\n  Column 'G3': range overlap=0.318, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 9.8602, max: 11.25, mean: 10.5551",
+          "generated_samples": "Schema: ['sex', 'G1', 'G2', 'G3']\nNumber of Tuples: 2\nExamples:\nsex        G1        G2        G3\n  M 10.903614 10.662651 10.493976\n  F 11.234783 10.652174 10.052174",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_54/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_54/training_1.csv\", index_col=0)\n\n# Join on 'ID' column (primary key)\njoined = pd.merge(source0, source1, on=\"ID\", how=\"inner\")\n\n# Group by 'sex' and aggregate mean of G1, G2, G3\nresult = joined.groupby(\"sex\", as_index=False).agg({\n    \"G1\": \"mean\",\n    \"G2\": \"mean\",\n    \"G3\": \"mean\"\n})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_54/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.9190311431884766
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6840.298891067505,
+        "critique": 4695.156574249268
+      }
+    }
+  ]
+}

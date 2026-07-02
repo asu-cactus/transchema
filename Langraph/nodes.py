@@ -24,6 +24,7 @@ Conditional edge functions (return routing strings)
   check_budget         — after backpropagate
 """
 
+import json
 import multiprocessing
 import os
 import re
@@ -83,22 +84,50 @@ _MAX_SIMULATE_STEPS = 15
 _SCORE_TIMEOUT = 60
 
 
-def _score_worker(target_file_location: str, ground_truth_location: str, result_queue):
+def _score_worker(target_file_location: str, ground_truth_location: str, result_queue,
+                  gt_cache_path: str = ""):
     """Subprocess worker: load CSVs and compute score, put result in queue.
 
     Accepts file paths instead of DataFrames to avoid pickling overhead.
+    Loads pre-computed GT data from *gt_cache_path* when available so that
+    FD mining and self-column-map on the (static) ground truth are skipped.
+    If the cache recorded that GT was reduced (col_indices set), df_gt is
+    reduced to the same columns/rows before scoring.
     """
     try:
         df_output = pd.read_csv(target_file_location, low_memory=False)
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
         df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-        _, _, _, _, true_combined_score, _ = relative_csv_score(df_output, df_gt)
+
+        precomputed_gt = None
+        if gt_cache_path and os.path.exists(gt_cache_path):
+            try:
+                with open(gt_cache_path) as _f:
+                    _cache = json.load(_f)
+                col_indices = _cache.get("col_indices")
+                max_fd_rows = _cache.get("max_fd_rows")
+                if col_indices is not None:
+                    df_gt = df_gt.iloc[:max_fd_rows, col_indices]
+                precomputed_gt = {
+                    "FDs_b": [(_item["lhs"], _item["rhs"]) for _item in _cache["FDs_b"]],
+                    "E_b": _cache["E_b"],
+                    "keys_b": _cache["keys_b"],
+                    "self_col_count": _cache["self_col_count"],
+                    "max_fd_rows": max_fd_rows,
+                }
+            except Exception:
+                precomputed_gt = None
+
+        _, _, _, _, true_combined_score, _ = relative_csv_score(
+            df_output, df_gt, precomputed_gt=precomputed_gt
+        )
         result_queue.put(true_combined_score)
     except Exception:
         result_queue.put(0.0)
 
 
-def _score_with_timeout(target_file_location: str, ground_truth_location: str) -> float:
+def _score_with_timeout(target_file_location: str, ground_truth_location: str,
+                        gt_cache_path: str = "") -> float:
     """Run scoring in a child process with a hard timeout.
 
     Passes file paths (not DataFrames) to avoid pickling overhead.
@@ -110,7 +139,7 @@ def _score_with_timeout(target_file_location: str, ground_truth_location: str) -
     q = multiprocessing.Queue()
     p = multiprocessing.Process(
         target=_score_worker,
-        args=(target_file_location, ground_truth_location, q),
+        args=(target_file_location, ground_truth_location, q, gt_cache_path),
         daemon=True,
     )
     p.start()
@@ -125,45 +154,104 @@ def _score_with_timeout(target_file_location: str, ground_truth_location: str) -
         return 0.0
 
 
-def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue):
+_MAX_SCORE_COLS = 20
+_MAX_SCORE_ROWS = 2000
+
+
+def _apply_symmetric_truncation(df_output, df_gt):
+    """Truncate both tables to 20 evenly-spaced GT cols + 2000 rows each.
+    Returns (df_output_truncated, df_gt_truncated, precomputed_gt=None).
+    precomputed_gt is None so FDs are recomputed on the truncated GT.
+    """
+    if len(df_gt.columns) > _MAX_SCORE_COLS:
+        df_gt = df_gt.iloc[:_MAX_SCORE_ROWS, :_MAX_SCORE_COLS]
+    else:
+        df_gt = df_gt.iloc[:_MAX_SCORE_ROWS]
+    df_output = df_output.iloc[:_MAX_SCORE_ROWS]
+    return df_output, df_gt, None  # precomputed_gt=None → recompute on truncated GT
+
+
+def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue,
+                        gt_cache_path: str = "", force_truncate: bool = False):
     """Subprocess worker: load CSVs and compute value_based score, put result in queue.
 
-    Uses Jaccard-aligned column matching + value-based distribution scoring
-    instead of the standard relative_csv_score.
+    Uses Jaccard-aligned column matching + value-based distribution scoring.
+    If the cache recorded GT was reduced (col_indices set), or force_truncate=True,
+    both df_gt and df_output are truncated symmetrically before scoring.
     """
     try:
         df_output = pd.read_csv(target_file_location, low_memory=False)
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
         df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
-        _, _, _, _, true_combined_score, _ = value_based_relative_csv_score(df_output, df_gt)
+
+        precomputed_gt = None
+        col_indices = None
+        max_fd_rows = None
+
+        if gt_cache_path and os.path.exists(gt_cache_path):
+            try:
+                with open(gt_cache_path) as _f:
+                    _cache = json.load(_f)
+                col_indices = _cache.get("col_indices")
+                max_fd_rows = _cache.get("max_fd_rows")
+                if col_indices is not None:
+                    df_gt = df_gt.iloc[:max_fd_rows, col_indices]
+                    df_output = df_output.iloc[:max_fd_rows]  # symmetric row cap
+                precomputed_gt = {
+                    "FDs_b": [(_item["lhs"], _item["rhs"]) for _item in _cache["FDs_b"]],
+                    "E_b": _cache["E_b"],
+                    "keys_b": _cache["keys_b"],
+                    "self_col_count": _cache["self_col_count"],
+                    "max_fd_rows": max_fd_rows,
+                }
+            except Exception:
+                precomputed_gt = None
+
+        if force_truncate and col_indices is None:
+            # Scoring timed out on the full table — truncate both symmetrically
+            df_output, df_gt, precomputed_gt = _apply_symmetric_truncation(df_output, df_gt)
+
+        _, _, _, _, true_combined_score, _ = value_based_relative_csv_score(
+            df_output, df_gt, precomputed_gt=precomputed_gt
+        )
         result_queue.put(true_combined_score)
     except Exception:
         result_queue.put(0.0)
 
 
-def _value_score_with_timeout(target_file_location: str, ground_truth_location: str) -> float:
+def _value_score_with_timeout(target_file_location: str, ground_truth_location: str,
+                              gt_cache_path: str = "") -> float:
     """Run value_based scoring in a child process with a hard timeout.
 
-    Identical process-isolation pattern to _score_with_timeout but calls
-    value_based_relative_csv_score (Jaccard-aligned columns + value-based
-    distribution). Returns 0.0 on timeout or error.
+    Phase 1: score on the (possibly GT-truncated) tables.
+    Phase 2: if Phase 1 times out, retry with symmetric truncation of both tables
+             (20 evenly-spaced GT cols + 2000 rows each) so scoring always completes.
     """
-    q = multiprocessing.Queue()
-    p = multiprocessing.Process(
-        target=_value_score_worker,
-        args=(target_file_location, ground_truth_location, q),
-        daemon=True,
-    )
-    p.start()
-    p.join(timeout=_SCORE_TIMEOUT)
-    if p.is_alive():
-        p.terminate()
-        p.join()
-        return 0.0
-    try:
-        return q.get_nowait()
-    except Exception:
-        return 0.0
+    def _run(force_truncate: bool) -> tuple[float | None, bool]:
+        q = multiprocessing.Queue()
+        p = multiprocessing.Process(
+            target=_value_score_worker,
+            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate),
+            daemon=True,
+        )
+        p.start()
+        p.join(timeout=_SCORE_TIMEOUT)
+        if p.is_alive():
+            p.terminate()
+            p.join()
+            return None, True  # timed out
+        try:
+            return q.get_nowait(), False
+        except Exception:
+            return 0.0, False
+
+    score, timed_out = _run(force_truncate=False)
+    if timed_out:
+        # Phase 2: truncate both tables symmetrically and retry
+        score, _ = _run(force_truncate=True)
+        if score is None:
+            score = 0.0
+    return score
 
 
 def _score_and_validate_output(
@@ -171,6 +259,7 @@ def _score_and_validate_output(
     ground_truth_location: str,
     validation_mode: str,
     reward_mode: str,
+    gt_cache_path: str = "",
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
@@ -179,13 +268,17 @@ def _score_and_validate_output(
       - "validation"      : avg_similarity from compare_lists/tables_matching (per-col × per-row)
       - "partial"         : fuzzy column-match ratio from compare_tables_fuzzy
 
-    Returns (reward, is_correct) where is_correct is derived from reward == 1.0.
+    Returns (reward, is_correct) where is_correct is derived from reward >= threshold.
+    gt_cache_path: path to pre-computed GT JSON cache; passed to subprocess workers to
+                   skip per-iteration FD mining and self-column-map on ground truth.
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
     df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
 
-    _SCORE_THRESHOLD = 0.9  # stopping threshold; binary validation only happens at the end
+    _SCORE_THRESHOLD = 0.9  # default stopping threshold
+    # det_score_value uses a stricter 1.0 threshold to avoid false-positive early stops
+    _DET_SCORE_THRESHOLD = 1.0
 
     if reward_mode == "validation":
         validate_fn = (
@@ -199,11 +292,11 @@ def _score_and_validate_output(
         return float(partial), float(partial) >= _SCORE_THRESHOLD
 
     elif reward_mode == "det_score_value":
-        score = _value_score_with_timeout(target_file_location, ground_truth_location)
-        return score, score >= _SCORE_THRESHOLD
+        score = _value_score_with_timeout(target_file_location, ground_truth_location, gt_cache_path)
+        return score, score >= _DET_SCORE_THRESHOLD
 
     else:  # "score"
-        score = _score_with_timeout(target_file_location, ground_truth_location)
+        score = _score_with_timeout(target_file_location, ground_truth_location, gt_cache_path)
         return score, score >= _SCORE_THRESHOLD
 
 
@@ -903,14 +996,16 @@ def mcts_select(state: MCTSGraphState) -> dict:
     root: MCTSNode = state["root"]
     config = state["config"]
 
+    max_depth: int = state.get("max_depth", _MAX_SELECT_DEPTH)
+
     node = root
     path: List[MCTSNode] = [node]
 
     while (
         not node.is_terminal
+        and node.depth < max_depth       # depth-capped nodes are forced leaves
         and node.is_fully_expanded()
-        and node.children  # safety: has at least one child
-        and len(path) <= _MAX_SELECT_DEPTH
+        and node.children                # safety: has at least one child
     ):
         # A promising GROUP_BY node may have reaggregation_needed set by backprop.
         # Stop here to add more AGGREGATE variants instead of descending.
@@ -1009,6 +1104,11 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             # Safety guard: all types already covered — shouldn't reach here in
             # normal flow since is_fully_expanded() would have been True.
             expand_ops = list(STRUCTURAL_EXPAND_OPS)
+        # Allow the LLM to propose NO_MORE_OPERATION when the current prefix
+        # is already a valid stopping point.  It is never required (not in
+        # STRUCTURAL_EXPAND_OPS) so it does not affect is_fully_expanded().
+        if "NO_MORE_OPERATION" not in covered_op_types:
+            expand_ops.append("NO_MORE_OPERATION")
 
     # ── RAG: fetch similar-case hints for the current pipeline prefix ─────
     # Skip at depth 0: no operation history to query on, and all operators are
@@ -1104,12 +1204,26 @@ def next_operator_step(state: MCTSGraphState) -> dict:
                 f"(tree now has {len(selected_node.children)} children)"
             )
 
-    # ── Hint-driven GROUP_BY candidate ───────────────────────────────────────
-    # When GROUP_BY is still uncovered at this node, add one deterministic
-    # candidate built from hints_v3 statistical checks on the source data.
-    # This runs regardless of hint_source and is additive to LLM candidates.
-    # The candidate was pre-computed once at case start (30 s timeout) and
-    # cached in config.hint_groupby_v3_candidate — no inline computation here.
+    # ── FD-based GROUP BY candidate (pre-computed from target table keys) ────
+    # Injected first (before LLM and hints_v3) so it gets simulated first when
+    # it is new. Derived from functional-dependency analysis of the target table.
+    _fd_cfg_new: Optional[str] = None  # set when FD candidate is freshly added this iter
+    if not is_groupby_expansion and "GROUP_BY" in expand_ops:
+        fd_cfg = getattr(config, "hint_groupby_fd_candidate", None)
+        if fd_cfg and fd_cfg not in existing_configs:
+            child_history = rollout_history + [fd_cfg]
+            selected_node.add_child(fd_cfg, child_history, operator_type="GROUP_BY")
+            new_configs_added.append(fd_cfg)
+            existing_configs.add(fd_cfg)
+            _fd_cfg_new = fd_cfg
+            config.logger.info(
+                f"[expand] Iter {state['iteration']}: added FD-based GROUP_BY "
+                f"cfg={fd_cfg[:100]}"
+            )
+
+    # ── hints_v3 GROUP_BY candidate ───────────────────────────────────────────
+    # Added after FD candidate (lower priority). Derived from statistical checks
+    # on source data. Pre-computed once at case start (30 s timeout).
     if not is_groupby_expansion and "GROUP_BY" in expand_ops:
         hint_cfg = getattr(config, "hint_groupby_v3_candidate", None)
         if hint_cfg and hint_cfg not in existing_configs:
@@ -1122,22 +1236,6 @@ def next_operator_step(state: MCTSGraphState) -> dict:
                 f"cfg={hint_cfg[:100]}"
             )
 
-    # ── FD-based GROUP BY candidate (pre-computed from target table keys) ────
-    # Also injected when GROUP_BY is uncovered. Different heuristic from the
-    # hints_v3 candidate: derived from functional-dependency analysis of the
-    # target table, so it reflects what columns uniquely identify target rows.
-    if not is_groupby_expansion and "GROUP_BY" in expand_ops:
-        fd_cfg = getattr(config, "hint_groupby_fd_candidate", None)
-        if fd_cfg and fd_cfg not in existing_configs:
-            child_history = rollout_history + [fd_cfg]
-            selected_node.add_child(fd_cfg, child_history, operator_type="GROUP_BY")
-            new_configs_added.append(fd_cfg)
-            existing_configs.add(fd_cfg)
-            config.logger.info(
-                f"[expand] Iter {state['iteration']}: added FD-based GROUP_BY "
-                f"cfg={fd_cfg[:100]}"
-            )
-
     # Saturation: LLM returned no new configs — mark so selection descends past this node
     if not new_configs_added and candidates:
         selected_node.saturated = True
@@ -1146,8 +1244,19 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             f"node marked saturated"
         )
 
-    # ── Simulation target: always the LLM's #1 priority candidate ─────────
-    if candidates:
+    # ── Simulation target priority: FD candidate > LLM #1 > fallback ─────────
+    # If an FD candidate was freshly added this iteration, simulate it first.
+    # Otherwise fall back to the LLM's top-ranked candidate.
+    if _fd_cfg_new:
+        chosen_op, chosen_cfg = "GROUP_BY", _fd_cfg_new
+        new_history = rollout_history + [chosen_cfg]
+        new_node = selected_node.children[chosen_cfg]
+        config.logger.info(
+            f"[expand] Iter {state['iteration']}: simulating FD-based GROUP_BY first "
+            f"| cfg={chosen_cfg[:80]} "
+            f"({len(new_configs_added)} new child(ren) added this iteration)"
+        )
+    elif candidates:
         chosen_op, chosen_cfg = candidates[0]
         new_history = rollout_history + [chosen_cfg]
 
@@ -1160,7 +1269,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             new_node = selected_node.children[chosen_cfg]
 
         config.logger.info(
-            f"[expand] Iter {state['iteration']}: simulating top-priority op={chosen_op} "
+            f"[expand] Iter {state['iteration']}: simulating LLM top-priority op={chosen_op} "
             f"| cfg={chosen_cfg[:80]} "
             f"({len(new_configs_added)} new child(ren) added this iteration)"
         )
@@ -1300,7 +1409,15 @@ def execute_and_score(state: MCTSGraphState) -> dict:
                 ground_truth_location=ground_truth_location,
                 validation_mode=validation_mode,
                 reward_mode=reward_mode,
+                gt_cache_path=state.get("gt_score_cache_path", ""),
             )
+            # --no_score_threshold: suppress early-stop for continuous score modes
+            # so the search exhausts its full budget and picks the best at the end.
+            if (
+                state.get("no_score_threshold", False)
+                and reward_mode in ("score", "det_score_value")
+            ):
+                iteration_validation_passed = False
         except Exception:
             config.logger.warning(
                 f"[execute_and_score] Scoring/validation failed: {traceback.format_exc()}"
@@ -1370,6 +1487,7 @@ def execute_and_score(state: MCTSGraphState) -> dict:
         "best_score": best_score,
         "best_script": best_script,
         "best_operation_history": best_op_hist,
+        "latest_script": state["current_script"],  # always track last executed script
         "log_messages": state["log_messages"]
         + [
             f"Iter {state['iteration']}: "
@@ -1456,6 +1574,8 @@ def backpropagate(state: MCTSGraphState) -> dict:
         f"Pass 1 ({'sim' if sim_diverged else 'selection'} path): "
         f"{len(sim_backprop_path)} nodes, reward={pre_critique_score:.4f}"
     )
+    # Capture old best BEFORE update() promotes it — used for script caching below.
+    _sim_leaf_old_best = sim_backprop_path[-1].best_score if sim_backprop_path else float('inf')
     for node in reversed(sim_backprop_path):
         node.update(pre_critique_score)
         if (
@@ -1475,9 +1595,10 @@ def backpropagate(state: MCTSGraphState) -> dict:
     for node in reversed(selection_only_nodes):
         node.update(0.0)  # visits += 1, total_reward += 0 → UCB1 becomes finite
 
-    # Cache best script on the deepest simulated node if improved
-    if sim_backprop_path and pre_critique_score > sim_backprop_path[-1].best_score:
-        sim_backprop_path[-1].best_score = pre_critique_score
+    # Cache best script on the deepest simulated node if improved.
+    # Compare against the OLD best (before update() promoted it), otherwise the
+    # strict '>' check is never True on the first visit of a node.
+    if sim_backprop_path and pre_critique_score > _sim_leaf_old_best:
         sim_backprop_path[-1].best_script = script
 
     # ── Pass 2: Backprop critique score to critique path (if it exists) ──────
@@ -1486,6 +1607,8 @@ def backpropagate(state: MCTSGraphState) -> dict:
             f"[backpropagate] Iter {state['iteration']}: "
             f"Pass 2 (critique path): {len(critique_selection_path)} nodes, reward={critique_score:.4f}"
         )
+        # Capture old best BEFORE update() promotes it.
+        _crit_leaf_old_best = critique_selection_path[-1].best_score
         for node in reversed(critique_selection_path):
             node.update(critique_score)  # in-place: visits += 1, total_reward += reward
             if (
@@ -1495,9 +1618,8 @@ def backpropagate(state: MCTSGraphState) -> dict:
             ):
                 node.reaggregation_needed = True
 
-        # Cache best script on the deepest critique node if improved
-        if critique_score > critique_selection_path[-1].best_score:
-            critique_selection_path[-1].best_score = critique_score
+        # Cache best script on the deepest critique node if improved.
+        if critique_score > _crit_leaf_old_best:
             critique_selection_path[-1].best_script = script
 
     # ── Update iteration and no-improvement counter ──
@@ -1519,6 +1641,21 @@ def backpropagate(state: MCTSGraphState) -> dict:
         f"next_iter={new_iteration}, no_improvement_count={no_improvement_count}"
     )
 
+    # Per-iteration tree snapshot — printed every iteration so timeouts still
+    # capture the last complete iteration's state.
+    _reward_path = root.best_reward_path()
+    _leaf = _reward_path[-1]
+    config.logger.info(
+        f"[MCTS Iter {state['iteration']} Summary] "
+        f"best_score_so_far={new_best:.4f}, "
+        f"reward_path_depth={_leaf.depth}, "
+        f"reward_path_ops={_leaf.operation_history}, "
+        f"leaf_total_reward={_leaf.total_reward:.4f}, "
+        f"leaf_script_cached={'yes' if _leaf.best_script else 'no'}, "
+        f"root_visits={root.visits}, root_total_reward={root.total_reward:.4f}"
+    )
+    config.logger.info(f"[MCTS Tree Iter {state['iteration']}] {root.to_dict()}")
+
     return {
         "iteration": new_iteration,
         "no_improvement_count": no_improvement_count,
@@ -1538,27 +1675,45 @@ def backpropagate(state: MCTSGraphState) -> dict:
 
 def extract_best(state: MCTSGraphState) -> dict:
     """
-    MCTS search complete. Extract the best result found across all iterations.
-    Saves best script to disk and logs the final tree summary.
+    MCTS search complete. Determine the final script by walking the
+    best-reward path (greedy descent by total_reward, visit-independent)
+    from the root to a leaf, then taking that leaf's cached script.
+
+    Any leaf with total_reward > 0 must have been simulated at least once,
+    so its best_script is guaranteed to be set.
     """
     config = state["config"]
     main_folder = state["main_folder"]
     experiment_name = state["experiment_name"]
     case_id = state["case_id"]
-    best_score = state["best_score"]
-    best_script = state["best_script"]
-    best_op_history = state["best_operation_history"]
     root: MCTSNode = state["root"]
 
+    # ── Walk best-reward path ─────────────────────────────────────────────────
+    reward_path = root.best_reward_path()
+    leaf = reward_path[-1]
+
+    if not leaf.best_script:
+        config.logger.warning(
+            f"[extract_best] Best-reward-path leaf has no cached script "
+            f"(depth={leaf.depth}, op={leaf.operator_type}, "
+            f"total_reward={leaf.total_reward:.4f}, visits={leaf.visits}). "
+            f"This should not happen — every visited node must have been simulated."
+        )
+
+    best_script = leaf.best_script
+    best_score = leaf.best_score
+    best_op_history = leaf.operation_history
+
     config.logger.info(
-        f"[MCTS Complete] best_score={best_score:.4f}, "
-        f"best_op_history={best_op_history}, "
+        f"[MCTS Complete] best-reward path: depth={leaf.depth}, "
+        f"ops={best_op_history}, "
+        f"leaf_total_reward={leaf.total_reward:.4f}, leaf_best_score={best_score:.4f}, "
         f"total_root_visits={root.visits}, "
         f"tree_depth_explored={len(root.best_path())}"
     )
     config.logger.info(f"[MCTS Tree] {root.to_dict()}")
 
-    # "best" mode: critique the best script once before saving
+    # "best" mode: critique the final script once before saving
     if (
         getattr(config, "mcts_critique_mode", "none") == "best"
         and best_script
@@ -1594,10 +1749,13 @@ def extract_best(state: MCTSGraphState) -> dict:
         config.logger.info(f"[extract_best] Scripts saved to {archive_path}")
 
     return {
+        "best_script": best_script,
+        "best_score": best_score,
+        "best_operation_history": best_op_history,
         "log_messages": state["log_messages"]
         + [
             f"MCTS complete after {state['iteration']} iterations. "
-            f"Best score={best_score:.4f}"
+            f"Best-reward-path score={best_score:.4f}, depth={leaf.depth}"
         ],
     }
 
@@ -1890,22 +2048,58 @@ def should_critique(state: MCTSGraphState) -> str:
         if llm_judge != "none":
             needs_critique = not state.get("judge_verdict", False)
         else:
-            critique_threshold = 0.9 if reward_mode in ("score", "det_score_value") else 1.0
+            critique_threshold = 0.9 if reward_mode == "score" else 1.0
             needs_critique = state["current_score"] < critique_threshold
         if needs_critique:
             return "critique"
     return "backpropagate"
 
 
-def is_selected_terminal(state: MCTSGraphState) -> str:
+def reuse_terminal_reward(state: MCTSGraphState) -> dict:
     """
-    After mcts_select: if the selected node is already a terminal leaf
-    (NO_MORE_OPERATION, previously expanded), skip expansion and go directly
-    to simulate so MCTS re-samples a reward for this node.
-    Otherwise expand with next_operator_step first.
+    A NO_MORE_OPERATION node was selected that has already been simulated at least
+    once.  Skip re-simulation entirely: backpropagate the cached best_score so the
+    tree statistics stay consistent without spending another LLM call.
     """
     node: MCTSNode = state["selected_node"]
-    if node.is_terminal:
+    config = state["config"]
+    config.logger.info(
+        f"[reuse_terminal] Iter {state['iteration']}: "
+        f"reusing cached reward={node.best_score:.4f} for NO_MORE_OPERATION node "
+        f"(visits={node.visits}, depth={len(node.operation_history)})"
+    )
+    return {
+        "current_score": node.best_score,
+        "pre_critique_score": node.best_score,
+        "current_script": node.best_script,
+        "current_full_history": list(node.operation_history),
+        "current_response": "Success" if node.best_script else "",
+        # Clear stale critique state from previous iterations
+        "critique_selection_path": [],
+        "critique_score": 0.0,
+        "critique_attempted": True,  # prevent critique from triggering on reused reward
+        "log_messages": state["log_messages"]
+        + [
+            f"[REUSE_TERMINAL] iter={state['iteration']} "
+            f"cached_reward={node.best_score:.4f} depth={len(node.operation_history)}"
+        ],
+    }
+
+
+def is_selected_terminal(state: MCTSGraphState) -> str:
+    """
+    After mcts_select:
+    - terminal node (NO_MORE_OPERATION) or depth-capped node (depth >= max_depth):
+        visits > 0 → reuse cached reward (no LLM call)
+        visits == 0 → simulate for the first time
+    - non-terminal and within depth cap: expand with next_operator_step
+    """
+    node: MCTSNode = state["selected_node"]
+    max_depth: int = state.get("max_depth", _MAX_SELECT_DEPTH)
+    is_leaf = node.is_terminal or node.depth >= max_depth
+    if is_leaf:
+        if node.visits > 0:
+            return "reuse_terminal"
         return "terminal"
     return "expand"
 
@@ -1942,6 +2136,23 @@ def check_budget(state: MCTSGraphState) -> str:
             f"[check_budget] Validation passed at iter {state['iteration']} — stopping."
         )
         return "done"
+
+    # Stop if any leaf node (no children) has been visited >= 5 times.
+    # A leaf visited that many times means the same path keeps getting selected;
+    # further iterations are wasteful.
+    _root = state.get("root")
+    if _root is not None and _root.visits > 0:
+        _stack = list(_root.children.values())
+        while _stack:
+            _n = _stack.pop()
+            if not _n.children and _n.visits >= 5:
+                _op_label = _n.operation_history[-1] if _n.operation_history else "?"
+                config.logger.info(
+                    f"[check_budget] Leaf node saturated "
+                    f"(visits={_n.visits}>=5, op={_op_label!r}) — stopping early."
+                )
+                return "done"
+            _stack.extend(_n.children.values())
 
     no_improvement_count = state.get("no_improvement_count", 0)
     early_stopping = state.get("early_stopping", 5)

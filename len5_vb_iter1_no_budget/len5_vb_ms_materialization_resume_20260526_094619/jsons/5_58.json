@@ -1,0 +1,46 @@
+{
+  "case": "5_58",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6352,
+        "cost": 0.006242800000000001,
+        "latency": 24.207207441329956,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.720 + 0.550) / 2 = 0.635 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.387, range overlap=0.490.\nGround truth candidate keys: {Category}.\nGenerated table candidate keys: {Category, Nominee}; {Category, Winner}; {Category, Movie}; {Category, Year}.\nKeys present in ground truth but absent in generated: {Category}.\nSpurious keys in generated not present in ground truth: {Winner, Category}; {Category, Nominee}; {Movie, Category}; {Category, Year}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.720 (precision=0.750, recall=0.692).\nSpurious FDs in generated (not in ground truth): ['Movie'] \u2192 Nominee; ['Movie'] \u2192 Year; ['Movie'] \u2192 Winner.\nMissing FDs from ground truth: ['Category'] \u2192 Movie; ['Category'] \u2192 Nominee; ['Category'] \u2192 Year; ['Category'] \u2192 Winner.\nDistribution Analysis (numerical columns with issues):\n  Column 'Year': range overlap=0.488, JS similarity=0.387\n    Generated    \u2014 min: 1.0, max: 83.0, mean: 40.8343\n    Ground Truth \u2014 min: 42.0, max: 85.0, mean: 72.2\n  Column 'Nominee': range overlap=0.488, JS similarity=0.387\n    Generated    \u2014 min: 1.0, max: 83.0, mean: 40.8343\n    Ground Truth \u2014 min: 42.0, max: 85.0, mean: 72.2\n  Column 'Movie': range overlap=0.494, JS similarity=0.387\n    Generated    \u2014 min: 1.0, max: 83.0, mean: 40.8343\n    Ground Truth \u2014 min: 42.0, max: 84.0, mean: 72.0\n  Column 'Winner': range overlap=0.488, JS similarity=0.387\n    Generated    \u2014 min: 1.0, max: 83.0, mean: 40.8343\n    Ground Truth \u2014 min: 42.0, max: 85.0, mean: 72.2",
+        "generated_samples": "Schema: ['Category', 'Year', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 362\nExamples:\n             Category  Year  Nominee  Movie  Winner\nActor -- Leading Role    54       54     54      54\nActor -- Leading Role    28       28     28      28\nActor -- Leading Role    18       18     18      18",
+        "code": "import pandas as pd\n\n# File paths for source CSVs\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_58/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_58/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_58/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_58/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_58/training_4.csv\",\n]\n\n# Read all source tables with index_col=0 to ignore the first index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Concatenate all source tables (UNION)\ndf = pd.concat(dfs, ignore_index=True)\n\n# The 'Year' column is like \"2010 (83rd)\" - extract the number inside parentheses as integer year\n# According to target examples, 'Year' is integer like 84, 42, 85 etc.\n# The number inside parentheses is the ordinal number of the ceremony, e.g. 83rd -> 83\n# But target examples show years like 84, 42, 85 which correspond to ceremony number (not calendar year)\n# So we extract the number inside parentheses and convert to int\n\ndf['Year'] = df['Year'].str.extract(r'\\((\\d+)[a-z]{2}\\)').astype(int)\n\n# The columns 'Nominee', 'Movie', 'Winner' in source are strings, but target expects integers.\n# From intermediate_step1 examples, these columns have integer values equal to the 'Year' column.\n# The target examples show Nominee, Movie, Winner columns have the same integer values as Year.\n# So we set Nominee, Movie, Winner columns to be equal to Year column as integers.\n\ndf['Nominee'] = df['Year']\ndf['Movie'] = df['Year']\ndf['Winner'] = df['Year']\n\n# The 'Category' column is already string and matches target schema.\n\n# Reorder columns to match target schema exactly\ndf = df[['Category', 'Year', 'Nominee', 'Movie', 'Winner']]\n\n# Save the final target table to the specified path\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Category,Year,Nominee,Movie,Winner\nActor -- Supporting Role,83,83,83,83\nActor -- Supporting Role,82,82,82,82\nActor -- Supporting Role,81,81,81,81\nActor -- Supporting Role,80,80,80,80\nActor -- Supporting Role,79,79,79,79\nActor -- Supporting Role,78,78,78,78\nActor -- Supporting Role,77,77,77,77\nActor -- Supporting Role,76,76,76,76\nActor -- Supporting Role,75,75,75,75\nActor -- Supporting Role,74,74,74,74\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0221004486083984
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9965,
+          "cost": 0.0019632,
+          "latency": 7.396365165710449,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.993) / 2 = 0.997 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.983.\nGround truth candidate keys: {Category}.\nGenerated table candidate keys: {Category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['Category', 'Year', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 5\nExamples:\n                  Category  Year  Nominee  Movie  Winner\nActress -- Supporting Role    75       75     75      75\n  Actor -- Supporting Role    75       75     75      75\n     Actor -- Leading Role    85       85     84      85",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_3.csv\", index_col=0)\ndf4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_4.csv\", index_col=0)\n\n# UNION all source tables (concatenate)\ndf = pd.concat([df0, df1, df2, df3, df4], ignore_index=True)\n\n# Group by 'Category' (primary key) and aggregate counts of other columns\nresult = df.groupby('Category').agg(\n    Year=('Year', 'count'),\n    Nominee=('Nominee', 'count'),\n    Movie=('Movie', 'count'),\n    Winner=('Winner', 'count')\n).reset_index()\n\n# Ensure columns are in the exact order as target schema\nresult = result[['Category', 'Year', 'Nominee', 'Movie', 'Winner']]\n\n# Write to target CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.15966796875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 24287.648677825928,
+        "critique": 7470.309734344482
+      }
+    }
+  ]
+}

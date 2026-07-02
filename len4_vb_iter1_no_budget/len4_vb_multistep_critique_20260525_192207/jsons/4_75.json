@@ -1,0 +1,29 @@
+{
+  "case": "4_75",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.99,
+        "cost": 0.0043852000000000006,
+        "latency": 12.795969724655151,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.980) / 2 = 0.990 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.940.\nGround truth candidate keys: {type}; {b}; {a}.\nGenerated table candidate keys: {type}; {b}; {a}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'a': range overlap=0.938, JS similarity=1.000\n    Generated    \u2014 min: 77.0043, max: 83.635, mean: 80.3196\n    Ground Truth \u2014 min: 76.9661, max: 83.2564, mean: 80.1113\n  Column 'b': range overlap=0.943, JS similarity=1.000\n    Generated    \u2014 min: 80.9008, max: 83.9245, mean: 82.4127\n    Ground Truth \u2014 min: 81.037, max: 83.8886, mean: 82.4628",
+        "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type         a         b\n Charter 83.924544 83.634950\nDistrict 80.900820 77.004336",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_75/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_75/training_1.csv\"\n\nSource4_75_0 = pd.read_csv(source0_path, index_col=0)\nSource4_75_1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source4_75_0 and Source4_75_1 on \"school_name\"\njoined_df = pd.merge(Source4_75_0, Source4_75_1, on=\"school_name\", how=\"inner\")\n\n# Operation 2: GROUP BY Source4_75_0.type and aggregate averages:\n# avg(Source4_75_0.size), avg(Source4_75_0.budget), avg(Source4_75_1.reading_score), avg(Source4_75_1.math_score)\ngrouped = joined_df.groupby('type').agg({\n    'size': 'mean',\n    'budget': 'mean',\n    'reading_score': 'mean',\n    'math_score': 'mean'\n}).reset_index()\n\n# According to target schema: ['type': string, 'a': float, 'b': float]\n# Target examples show only 3 columns: type, a, b\n# From the operation history, we have 4 aggregated columns, but target only has 2 float columns (a,b).\n# We need to map the aggregated columns to target columns a and b.\n# The target examples:\n#    type          a          b\n# 1  District  76.966107  81.037004\n# 0  Charter  83.256445  83.888602\n#\n# By inspecting the averages:\n# - a likely corresponds to avg(size)\n# - b likely corresponds to avg(math_score)\n# Because size and budget are from Source4_75_0, reading_score and math_score from Source4_75_1.\n# The target examples' 'a' and 'b' values are around 70-80, which fits better with scores than size or budget.\n# But size is in thousands (e.g., 2917), budget is in millions (1,910,635), so those values are too large.\n# Reading and math scores are in the range 0-100, matching target values.\n# So 'a' = avg(reading_score), 'b' = avg(math_score)\n\n# So we select:\nresult = grouped[['type', 'reading_score', 'math_score']].rename(columns={\n    'reading_score': 'a',\n    'math_score': 'b'\n})\n\n# Ensure 'type' is string, 'a' and 'b' are float\nresult['type'] = result['type'].astype(str)\nresult['a'] = result['a'].astype(float)\nresult['b'] = result['b'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,a,b\nCharter,83.924543946932,83.63495024875621\nDistrict,80.90081972766073,77.00433574961046\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5859603881835938
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 12858.735084533691,
+        "critique": 0.0
+      }
+    }
+  ]
+}

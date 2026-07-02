@@ -1,0 +1,29 @@
+{
+  "case": "1_34",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0016252,
+        "latency": 4.307433366775513,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHJ4*02\nIGHJ4*02\nIGHJ4*02",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_34/training_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)  # ignore the first numerical index column\n    source_dfs.append(df)\n\n# Since there is only one source table with schema ['J_CALL'] and target schema is ['V_GENE'],\n# and the target examples show that V_GENE corresponds exactly to J_CALL values,\n# the transformation is a simple rename of the column from 'J_CALL' to 'V_GENE'.\n\n# Concatenate all source tables vertically (union) if there were multiple,\n# here only one source table, so just take it directly.\ncombined_df = pd.concat(source_dfs, ignore_index=True)\n\n# Rename the column to match the target schema\ncombined_df = combined_df.rename(columns={\"J_CALL\": \"V_GENE\"})\n\n# Select only the target columns (in case source has extra columns)\ntarget_df = combined_df[[\"V_GENE\"]]\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ4*02\nIGHJ3*02\nIGHJ4*02\nIGHJ6*02\nIGHJ6*02\nIGHJ4*02\nIGHJ5*02\nIGHJ5*02\n\"IGHJ4*02,IGHJ5*02\"\nIGHJ6*03\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.020193099975586
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 4312.519550323486,
+        "critique": 0.0
+      }
+    }
+  ]
+}

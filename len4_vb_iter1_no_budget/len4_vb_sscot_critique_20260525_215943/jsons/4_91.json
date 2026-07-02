@@ -1,0 +1,29 @@
+{
+  "case": "4_91",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0016684,
+        "latency": 4.928085803985596,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {attributes}.\nGenerated table candidate keys: {attributes}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['attributes']\nNumber of Tuples: 4\nExamples:\n         attributes\n             normal\n          head_down\npartial_obstruction",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_91/training_3.csv\"\n]\n\n# List to hold the 'attributes' columns from each source\nattributes_list = []\n\n# Load each source CSV, extract the 'attributes' column, drop NaNs, and collect\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Extract 'attributes' column, drop NaN values\n    attrs = df['attributes'].dropna()\n    attributes_list.append(attrs)\n\n# Concatenate all attributes from all sources into a single Series\nall_attributes = pd.concat(attributes_list, ignore_index=True)\n\n# Remove duplicates and reset index\nall_attributes_unique = all_attributes.drop_duplicates().reset_index(drop=True)\n\n# Create the target DataFrame with the single column 'attributes'\ntarget_df = pd.DataFrame({'attributes': all_attributes_unique})\n\n# Save the result to the specified target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_91/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "attributes\nnormal\nhead_down\npartial_obstruction\ndirectly_at_camera\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.6816387176513672
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 4991.809606552124,
+        "critique": 0.0
+      }
+    }
+  ]
+}

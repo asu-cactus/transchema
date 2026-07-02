@@ -1,0 +1,46 @@
+{
+  "case": "3_37",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5482,
+        "cost": 0.0042428,
+        "latency": 24.858588457107544,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.430) / 2 = 0.548 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['r1401'] \u2192 r1403; ['r1403'] \u2192 r1401.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.359\n  Column 'r1401': Jaccard=0.531\n  Column 'r1403': Jaccard=0.398",
+        "generated_samples": "Schema: ['County', 'r1401', 'r1403']\nNumber of Tuples: 19\nExamples:\n     County    r1401      r1403\n       Weld       NR         NR\nClear Creek $459,640   $524,541\n    Boulder      NaN $1,396,479",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_37/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_37/training_1.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length3_37/training_3.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)  # Columns: County, r1403\ndf1 = pd.read_csv(source1_path, index_col=0)  # Columns: County, r1402 (not used in joins)\ndf3 = pd.read_csv(source3_path, index_col=0)  # Columns: County, r1401\n\n# According to operation_history:\n# 1) JOIN Source3_37_0 and Source3_37_3 on County\njoin_0_3 = pd.merge(df0, df3, on=\"County\", how=\"left\")  # Columns: County, r1403, r1401\n\n# 2) JOIN Source3_37_1 and Source3_37_3 on County\njoin_1_3 = pd.merge(df1, df3, on=\"County\", how=\"left\")  # Columns: County, r1402, r1401\n\n# The target schema is ['County', 'r1401', 'r1403']\n# The target examples do not include r1402, so we do not use join_1_3 for final output.\n# The transformation plan only requires the two joins in sequence, but the final target table\n# is named Target3_37 with columns County, r1401, r1403.\n\n# The first join (join_0_3) already has County, r1403, r1401 as columns.\n# We will use join_0_3 as the final output.\n\n# Clean up columns to match target schema exactly and reorder\ntarget_df = join_0_3[['County', 'r1401', 'r1403']].copy()\n\n# Optional: Strip whitespace from County and ensure string type for all columns\ntarget_df['County'] = target_df['County'].astype(str).str.strip()\ntarget_df['r1401'] = target_df['r1401'].astype(str).str.strip()\ntarget_df['r1403'] = target_df['r1403'].astype(str).str.strip()\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_37/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "County,r1401,r1403\nAdams,NR,NR\nBoulder,,\"$1,396,479\"\nClear Creek,\"$459,640\",\"$524,541\"\nDenver,\"$8,482,593\",\"$10,746,117\"\nGarfield,NR,NR\nGilpin,\"$197,379\",\"$131,685\"\nGunnison,NR,NR\nJefferson,\"$853,675\",\"$1,056,723\"\nLake,NR,NR\nOuray,NR,NR\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 4.608631134033203
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5352,
+          "cost": 0.0018104,
+          "latency": 11.602347373962402,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.070) / 2 = 0.535 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.000\n  Column 'r1401': Jaccard=0.102\n  Column 'r1403': Jaccard=0.109",
+          "generated_samples": "Schema: ['County', 'r1401', 'r1403']\nNumber of Tuples: 8\nExamples:\nCounty r1401 r1403\n  Lake    NR    NR\n  Weld    NR    NR\n  Park    NR    NR",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_37/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_37/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_37/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_37/training_3.csv\", index_col=0)\n\n# Join Source3_37_3 and Source3_37_0 on County\ndf = pd.merge(source3, source0, on=\"County\", how=\"inner\")\n\n# Join the result with Source3_37_1 on County\ndf = pd.merge(df, source1, on=\"County\", how=\"inner\")\n\n# Join the result with Source3_37_2 on County\ndf = pd.merge(df, source2, on=\"County\", how=\"inner\")\n\n# Group by County to ensure uniqueness and remove duplicates if any\ndf = df.groupby(\"County\", as_index=False).first()\n\n# Select only the columns in the target schema: ['County', 'r1401', 'r1403']\ndf = df[[\"County\", \"r1401\", \"r1403\"]]\n\n# Write the final output\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_37/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9012222290039062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 24929.308652877808,
+        "critique": 11661.31567955017
+      }
+    }
+  ]
+}

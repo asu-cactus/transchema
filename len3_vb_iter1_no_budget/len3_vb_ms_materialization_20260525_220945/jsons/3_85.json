@@ -1,0 +1,46 @@
+{
+  "case": "3_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.4429,
+        "cost": 0.0075248,
+        "latency": 24.2518572807312,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.029) / 2 = 0.443 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['m1403'] \u2192 m1401.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.000\n  Column 'm1401': Jaccard=0.039\n  Column 'm1403': Jaccard=0.047",
+        "generated_samples": "Schema: ['County', 'm1401', 'm1403']\nNumber of Tuples: 16\nExamples:\nCounty    m1401    m1403\nTeller       NR       NR\nSummit $271,441 $253,937\n  Park       NR       NR",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_85/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_85/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_85/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_85/training_3.csv\", index_col=0)\n\n# Step 1: Join Source3_85_2 (County, m1401) with Source3_85_0 (County, m1403) on County\ndf1 = pd.merge(source2, source0, on=\"County\", how=\"inner\")\n\n# Step 2: Join the result with Source3_85_3 (County) on County\ndf2 = pd.merge(df1, source3, on=\"County\", how=\"inner\")\n\n# The join with source3 adds no new columns, but may filter rows to those counties in source3\n\n# The intermediate_step2.csv has an extra 'Unnamed: 0' column, but we do not have it here,\n# so no need to drop it.\n\n# The target schema is ['County', 'm1401', 'm1403']\n# Ensure columns are in the correct order\ntarget_df = df2[['County', 'm1401', 'm1403']]\n\n# Save the final target table to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/target_multisource.csv\", index=False)",
+        "generated_csv_head": "County,m1401,m1403\nLa Plata,\"$523,193\",\"$587,114\"\nLarimer,\"$964,948\",\"$1,234,344\"\nMesa,NR,NR\nMoffat,NR,NR\nMontezuma,\"$100,634\",NR\nMontrose,NR,NR\nOuray,NR,NR\nPark,NR,NR\nPitkin,\"$194,865\",\"$157,541\"\nPueblo,\"$419,894\",\"$375,711\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0390281677246094
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.4429,
+          "cost": 0.0017516,
+          "latency": 5.432496070861816,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.029) / 2 = 0.443 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['m1403'] \u2192 m1401.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.000\n  Column 'm1401': Jaccard=0.039\n  Column 'm1403': Jaccard=0.047",
+          "generated_samples": "Schema: ['County', 'm1401', 'm1403']\nNumber of Tuples: 16\nExamples:\n   County    m1401    m1403\n    Ouray       NR       NR\n    Routt $239,509 $214,650\nMontezuma $100,634       NR",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_3.csv\", index_col=0)\n\n# Join Source3_85_2 and Source3_85_0 on County\ndf_join1 = pd.merge(source2, source0, on=\"County\", how=\"inner\")\n\n# Join the above result with Source3_85_3 on County\ndf_join2 = pd.merge(df_join1, source3, on=\"County\", how=\"inner\")\n\n# Group by County and m1401 (primary key columns) to ensure uniqueness and match target keys\ndf_final = df_join2.groupby([\"County\", \"m1401\"], as_index=False).first()\n\n# Select only the columns in the target schema and order them accordingly\ndf_final = df_final[[\"County\", \"m1401\", \"m1403\"]]\n\n# Write the final output\ndf_final.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.561880111694336
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 24325.303554534912,
+        "critique": 5481.387138366699
+      }
+    }
+  ]
+}

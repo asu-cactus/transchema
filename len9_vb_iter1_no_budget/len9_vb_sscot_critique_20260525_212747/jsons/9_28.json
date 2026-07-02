@@ -1,0 +1,29 @@
+{
+  "case": "9_28",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9978,
+        "cost": 0.0034836000000000003,
+        "latency": 23.208014011383057,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.996) / 2 = 0.998 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.991, range overlap=1.000.\nGround truth candidate keys: {ARPU}.\nGenerated table candidate keys: {ARPU}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['ARPU']\nNumber of Tuples: 27699\nExamples:\n   ARPU\n 403.00\n1087.22\n 695.00",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = {\n    \"Source9_28_0\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_0.csv\",\n    \"Source9_28_1\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_1.csv\",\n    \"Source9_28_2\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_2.csv\",\n    \"Source9_28_3\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_3.csv\",\n    \"Source9_28_4\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_4.csv\",\n    \"Source9_28_5\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_5.csv\",\n    \"Source9_28_6\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_6.csv\",\n    \"Source9_28_7\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_7.csv\",\n    \"Source9_28_8\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_8.csv\",\n    \"Source9_28_9\": \"autopipeline-benchmarks/github-pipelines/length9_28/training_9.csv\",\n}\n\n# Step 1: Load all source tables with index_col=0 to ignore the numerical index column\ndf_0 = pd.read_csv(source_files[\"Source9_28_0\"], index_col=0)  # ['ROW_WID', 'KEYWORDS_NUM']\ndf_1 = pd.read_csv(source_files[\"Source9_28_1\"], index_col=0)  # ['ROW_WID', 'COLLECTION_EVENTS_NUM']\ndf_2 = pd.read_csv(source_files[\"Source9_28_2\"], index_col=0)  # ['ROW_WID', 'INBOUND_CALLS_NUM']\ndf_3 = pd.read_csv(source_files[\"Source9_28_3\"], index_col=0)  # ['CANCELED', 'ROW_WID', ..., 'ARPU', ...]\ndf_4 = pd.read_csv(source_files[\"Source9_28_4\"], index_col=0)  # ['ROW_WID', 'TECHSUPPORT_NUM']\ndf_5 = pd.read_csv(source_files[\"Source9_28_5\"], index_col=0)  # same schema as df_3\ndf_6 = pd.read_csv(source_files[\"Source9_28_6\"], index_col=0)  # same schema as df_3\ndf_7 = pd.read_csv(source_files[\"Source9_28_7\"], index_col=0)  # same schema as df_3\ndf_8 = pd.read_csv(source_files[\"Source9_28_8\"], index_col=0)  # ['ROW_WID', 'INTERACTIONS_NUM']\ndf_9 = pd.read_csv(source_files[\"Source9_28_9\"], index_col=0)  # ['ROW_WID', 'VISITS_NUM']\n\n# Step 2: Union all source tables with the same schema as df_3 (which includes ARPU)\n# These are df_3, df_5, df_6, df_7\ndf_union_arpu = pd.concat([df_3, df_5, df_6, df_7], ignore_index=True)\n\n# Step 3: From the unioned df, keep only ROW_WID and ARPU columns (ARPU is the target column)\ndf_arpu = df_union_arpu[['ROW_WID', 'ARPU']]\n\n# Step 4: Join all other source tables (aspect tables) on ROW_WID\n# These tables are: df_0(KEYWORDS_NUM), df_1(COLLECTION_EVENTS_NUM), df_2(INBOUND_CALLS_NUM),\n# df_4(TECHSUPPORT_NUM), df_8(INTERACTIONS_NUM), df_9(VISITS_NUM)\n\n# We will do left joins starting from df_arpu (which has ROW_WID and ARPU)\ndf_joined = df_arpu.copy()\n\n# Join df_0\ndf_joined = df_joined.merge(df_0, on='ROW_WID', how='left')\n\n# Join df_1\ndf_joined = df_joined.merge(df_1, on='ROW_WID', how='left')\n\n# Join df_2\ndf_joined = df_joined.merge(df_2, on='ROW_WID', how='left')\n\n# Join df_4\ndf_joined = df_joined.merge(df_4, on='ROW_WID', how='left')\n\n# Join df_8\ndf_joined = df_joined.merge(df_8, on='ROW_WID', how='left')\n\n# Join df_9\ndf_joined = df_joined.merge(df_9, on='ROW_WID', how='left')\n\n# Step 5: The target table schema is only ['ARPU'] (float)\n# The target examples show only ARPU column, so we project only ARPU column\n\n# Step 6: According to the target examples, ARPU is float, ensure type is float\ndf_result = df_joined[['ARPU']].copy()\ndf_result['ARPU'] = df_result['ARPU'].astype(float)\n\n# Step 7: Write the result to the target CSV file without the index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length9_28/target_multisource_cot.csv\"\ndf_result.to_csv(output_path, index=False)",
+        "generated_csv_head": "ARPU\n555.12\n260.15\n252.85\n489.35\n167.71\n587.88\n301.97\n430.22\n583.21\n500.97\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5707015991210938
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 23302.069425582886,
+        "critique": 0.0
+      }
+    }
+  ]
+}

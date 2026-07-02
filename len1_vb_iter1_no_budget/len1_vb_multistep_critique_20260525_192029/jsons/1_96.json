@@ -1,0 +1,46 @@
+{
+  "case": "1_96",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0073668,
+        "latency": 9.944457054138184,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_96/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_96/training_1.csv\"\n\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation: JOIN : [[\"Source1_96_0\",\"Source1_96_1\"],[\"Publisher\",\"hero_names\"]]\n# Join df_source0 and df_source1 on df_source0.Publisher == df_source1.hero_names\n\n# Before join, check if join keys have matching formats (both are strings)\n# From examples, Publisher values are like \"DC Comics\", \"Marvel Comics\"\n# hero_names values are like \"3-D Man\", \"A-Bomb\", so no overlap expected.\n# But the operation history explicitly says to join on these columns.\n\n# Perform inner join on df_source0.Publisher == df_source1.hero_names\ndf_joined = pd.merge(df_source0, df_source1, left_on=\"Publisher\", right_on=\"hero_names\", how=\"inner\")\n\n# Target schema: ['Publisher': integer]\n# Target examples show Publisher as integer values (e.g., 2, 7, 3)\n# Source Publisher is string (e.g., \"DC Comics\", \"Marvel Comics\")\n# hero_names is string (e.g., \"3-D Man\", \"A-Bomb\")\n# Since join keys are strings, but target Publisher is integer, we need to convert/join accordingly.\n\n# The join as per operation history is on Publisher and hero_names, but these don't match in values.\n# This will result in an empty dataframe if done directly.\n# However, we must follow the operation history strictly.\n\n# After join, we need to produce a dataframe with one column \"Publisher\" as integer.\n# Since no aggregation or mapping info is given, we will:\n# - Extract the \"Publisher\" column from df_source0 (string)\n# - Map unique Publisher strings to unique integers (like label encoding)\n# - Use that integer as the final \"Publisher\" column\n\n# Create a mapping from Publisher string to integer based on unique values in df_source0\npublisher_unique = df_source0[\"Publisher\"].dropna().unique()\npublisher_map = {pub: idx+1 for idx, pub in enumerate(sorted(publisher_unique))}\n\n# Map the Publisher column in the joined dataframe to integers\ndf_joined[\"Publisher_int\"] = df_joined[\"Publisher\"].map(publisher_map)\n\n# Final target dataframe with only the \"Publisher\" column as integer\ndf_target = df_joined[[\"Publisher_int\"]].rename(columns={\"Publisher_int\": \"Publisher\"})\n\n# According to target examples, there are 21 tuples in target.\n# The join may produce more or fewer rows; we keep all joined rows.\n\n# Save the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_96/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.042438507080078125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0024932,
+          "latency": 6.804661273956299,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Publisher}.\nGenerated table candidate keys: {Publisher}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['Publisher']\nNumber of Tuples: 18\nExamples:\n       Publisher\n       Star Trek\n            SyFy\nJ. R. R. Tolkien",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_96/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_96/training_1.csv\", index_col=0)\n\n# Join on Source1_96_0.name = Source1_96_1.hero_names\njoined = pd.merge(source0, source1, left_on=\"name\", right_on=\"hero_names\", how=\"inner\")\n\n# Select only the Publisher column as per target schema\nresult = joined[[\"Publisher\"]]\n\n# Group by Publisher to remove duplicates if any (target has no keys, but grouping on Publisher to match target)\nresult = result.groupby(\"Publisher\", as_index=False).size().drop(columns=\"size\", errors='ignore')\n\n# Write output to target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_96/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6227493286132812
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10032.123327255249,
+        "critique": 6866.7848110198975
+      }
+    }
+  ]
+}

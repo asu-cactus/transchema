@@ -1,0 +1,46 @@
+{
+  "case": "1_42",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8711,
+        "cost": 0.0017436,
+        "latency": 8.45221996307373,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.875 + 0.867) / 2 = 0.871 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.827, range overlap=0.950.\nGround truth candidate keys: {item_id, timestamp}; {user_id, item_id}.\nGenerated table candidate keys: {item_id, timestamp}; {user_id, item_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.875 (precision=0.875, recall=0.875).\nSpurious FDs in generated (not in ground truth): ['movie title', 'rating', 'timestamp'] \u2192 user_id.\nMissing FDs from ground truth: ['movie title', 'timestamp'] \u2192 rating.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.815, JS similarity=0.423\n    Generated    \u2014 min: 1.0, max: 943.0, mean: 619.2002\n    Ground Truth \u2014 min: 1.0, max: 769.0, mean: 307.9821\n  Column 'timestamp': range overlap=1.000, JS similarity=0.932\n    Generated    \u2014 min: 874724937.0, max: 893286638.0, mean: 883578444.6744\n    Ground Truth \u2014 min: 874724710.0, max: 893286638.0, mean: 883492613.6419\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'movie title': Jaccard=0.781",
+        "generated_samples": "Schema: ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']\nNumber of Tuples: 20000\nExamples:\n user_id  item_id  rating  timestamp                       movie title\n     814      559       3  885411132 Interview with the Vampire (1994)\n     783      895       4  884326787                   Scream 2 (1997)\n     506      705       5  878044851        Singin' in the Rain (1952)",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_42/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_42/training_1.csv\"\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_cot.csv\"\n\n# Step 1: Load Source 0\n# Schema: ['user_id', 'item_id', 'rating', 'timestamp']\n# Load with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Step 2: Load Source 1\n# Schema: ['item_id', 'movie title', 'release date', 'video release date', 'IMDb URL', ...]\n# We only need 'item_id' and 'movie title' columns for the target\ndf_source1 = pd.read_csv(source1_path, index_col=0, usecols=['item_id', 'movie title'])\n\n# Step 3: Join Source 0 and Source 1 on 'item_id'\n# This will add the 'movie title' column to the ratings data\ndf_merged = pd.merge(df_source0, df_source1, on='item_id', how='inner')\n\n# Step 4: Ensure target schema and types\n# Target schema: ['user_id': int, 'item_id': int, 'rating': int, 'timestamp': int, 'movie title': str]\ndf_merged = df_merged.astype({\n    'user_id': 'int64',\n    'item_id': 'int64',\n    'rating': 'int64',\n    'timestamp': 'int64',\n    'movie title': 'string'\n})\n\n# Step 5: Reorder columns to match target schema exactly\ndf_target = df_merged[['user_id', 'item_id', 'rating', 'timestamp', 'movie title']]\n\n# Step 6: Save the result to the specified output path\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "user_id,item_id,rating,timestamp,movie title\n846,198,5,883948457,Nikita (La Femme Nikita) (1990)\n641,198,5,879370028,Nikita (La Femme Nikita) (1990)\n916,198,4,880844463,Nikita (La Femme Nikita) (1990)\n932,198,4,891249109,Nikita (La Femme Nikita) (1990)\n385,198,3,881128357,Nikita (La Femme Nikita) (1990)\n757,198,4,888445864,Nikita (La Femme Nikita) (1990)\n567,198,5,882425631,Nikita (La Femme Nikita) (1990)\n786,198,5,882843753,Nikita (La Femme Nikita) (1990)\n894,198,4,882404460,Nikita (La Femme Nikita) (1990)\n658,198,5,875148108,Nikita (La Femme Nikita) (1990)\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9040107727050781
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8711,
+          "cost": 0.001538,
+          "latency": 3.8308658599853516,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.875 + 0.867) / 2 = 0.871 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.827, range overlap=0.950.\nGround truth candidate keys: {item_id, timestamp}; {user_id, item_id}.\nGenerated table candidate keys: {item_id, timestamp}; {user_id, item_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.875 (precision=0.875, recall=0.875).\nSpurious FDs in generated (not in ground truth): ['movie title', 'rating', 'timestamp'] \u2192 user_id.\nMissing FDs from ground truth: ['movie title', 'timestamp'] \u2192 rating.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.815, JS similarity=0.423\n    Generated    \u2014 min: 1.0, max: 943.0, mean: 619.2002\n    Ground Truth \u2014 min: 1.0, max: 769.0, mean: 307.9821\n  Column 'timestamp': range overlap=1.000, JS similarity=0.932\n    Generated    \u2014 min: 874724937.0, max: 893286638.0, mean: 883578444.6744\n    Ground Truth \u2014 min: 874724710.0, max: 893286638.0, mean: 883492613.6419\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'movie title': Jaccard=0.781",
+          "generated_samples": "Schema: ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']\nNumber of Tuples: 20000\nExamples:\n user_id  item_id  rating  timestamp          movie title\n      34      991       4  888602618 Keys to Tulsa (1997)\n     767      483       5  891462870    Casablanca (1942)\n     766      176       2  891308927        Aliens (1986)",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_42/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_42/training_1.csv\", index_col=0)\n\n# Join on item_id (inner join to keep only matching items)\nresult = pd.merge(source0, source1[['item_id', 'movie title']], on='item_id', how='inner')\n\n# Select columns exactly as target schema\nresult = result[['user_id', 'item_id', 'rating', 'timestamp', 'movie title']]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.597332000732422
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8513.946056365967,
+        "critique": 6070.647239685059
+      }
+    }
+  ]
+}

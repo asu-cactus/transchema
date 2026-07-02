@@ -1,0 +1,46 @@
+{
+  "case": "9_30",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7567,
+        "cost": 0.041889600000000006,
+        "latency": 103.04345893859863,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.513) / 2 = 0.757 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.989, range overlap=0.038.\nGround truth candidate keys: {ARPU}.\nGenerated table candidate keys: {ARPU}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'ARPU': range overlap=0.038, JS similarity=0.989\n    Generated    \u2014 min: 5.78, max: 4240.99, mean: 535.4556\n    Ground Truth \u2014 min: 4.07, max: 112674.74, mean: 586.3921",
+        "generated_samples": "Schema: ['ARPU']\nNumber of Tuples: 1986\nExamples:\n ARPU\n470.0\n568.0\n486.0",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_30/training_9.csv\", index_col=0)\n\n# Step 1: Union the four sources with the same schema (source3, source4, source5, source7)\nunion_3_4_5_7 = pd.concat([source3, source4, source5, source7], ignore_index=True)\n\n# Step 2: Join source0 with source6 on ROW_WID\njoin_0_6 = pd.merge(source0, source6, on=\"ROW_WID\", how=\"inner\")\n\n# Step 3: Join source8 with source9 on ROW_WID\njoin_8_9 = pd.merge(source8, source9, on=\"ROW_WID\", how=\"inner\")\n\n# Step 4: Join join_0_6 with join_8_9 on ROW_WID\njoin_0_6_8_9 = pd.merge(join_0_6, join_8_9, on=\"ROW_WID\", how=\"inner\")\n\n# Step 5: Join union_3_4_5_7 with source0 on ROW_WID\n# But source0 is already joined with source6 and others, so join union with source0 first\n# Actually, the operation history shows the first joins are union then join with source0,1,2\n# So we need to join union_3_4_5_7 with source0, source1, source2 on ROW_WID\n\n# Join union_3_4_5_7 with source0 on ROW_WID\nunion_with_0 = pd.merge(union_3_4_5_7, source0, on=\"ROW_WID\", how=\"inner\")\n\n# Join the above with source1 on ROW_WID\nunion_with_0_1 = pd.merge(union_with_0, source1, on=\"ROW_WID\", how=\"inner\")\n\n# Join the above with source2 on ROW_WID\nunion_with_0_1_2 = pd.merge(union_with_0_1, source2, on=\"ROW_WID\", how=\"inner\")\n\n# Now join union_with_0_1_2 with join_0_6_8_9 on ROW_WID to combine all\n# But join_0_6_8_9 already contains source0,6,8,9\n# union_with_0_1_2 contains union_3_4_5_7, source0,1,2\n# source0 is duplicated in both, so join on ROW_WID to combine all columns\n\nfinal_join = pd.merge(union_with_0_1_2, join_0_6_8_9, on=\"ROW_WID\", how=\"inner\", suffixes=('_left', '_right'))\n\n# The final target schema is ['ARPU': float]\n# ARPU is present in union_3_4_5_7 (and thus in union_with_0_1_2) and also in union_3_4_5_7 part of final_join (left side)\n# We take ARPU from the left side (union_with_0_1_2) which is the unioned ARPU column\n\n# Extract ARPU column and convert to float\nTarget9_30 = final_join[['ARPU']].copy()\nTarget9_30['ARPU'] = Target9_30['ARPU'].astype(float)\n\n# Save the result to the specified path\nTarget9_30.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/target_multisource.csv\", index=False)",
+        "generated_csv_head": "ARPU\n785.0\n4240.99\n382.0\n755.0\n665.0\n312.0\n312.0\n304.0\n580.0\n400.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8895397186279297
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7472,
+          "cost": 0.0031764000000000002,
+          "latency": 9.758570432662964,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.494) / 2 = 0.747 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.989, range overlap=0.000.\nGround truth candidate keys: {ARPU}.\nGenerated table candidate keys: {ARPU}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'ARPU': range overlap=0.000, JS similarity=0.989\n    Generated    \u2014 min: 535.4556, max: 535.4556, mean: 535.4556\n    Ground Truth \u2014 min: 4.07, max: 112674.74, mean: 586.3921",
+          "generated_samples": "Schema: ['ARPU']\nNumber of Tuples: 1\nExamples:\n      ARPU\n535.455554",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0\ns0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_0.csv\", index_col=0)\ns1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_1.csv\", index_col=0)\ns2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_2.csv\", index_col=0)\ns3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_3.csv\", index_col=0)\ns4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_4.csv\", index_col=0)\ns5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_5.csv\", index_col=0)\ns6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_6.csv\", index_col=0)\ns7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_7.csv\", index_col=0)\ns8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_8.csv\", index_col=0)\ns9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_9.csv\", index_col=0)\n\n# Union the dimension tables with same schema (s3,s4,s5,s7)\ndim_union = pd.concat([s3, s4, s5, s7], ignore_index=True)\n\n# Join unioned dimension table with all aspect tables on ROW_WID\ndf = dim_union.merge(s0, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s1, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s2, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s6, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s8, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s9, on=\"ROW_WID\", how=\"inner\")\n\n# The target schema is only ['ARPU'] (float)\n# Since no key or group by columns exist in target, aggregate by mean ARPU\nresult = pd.DataFrame()\nresult[\"ARPU\"] = [df[\"ARPU\"].mean()]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7379055023193359
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 103138.57007026672,
+        "critique": 9925.87685585022
+      }
+    }
+  ]
+}

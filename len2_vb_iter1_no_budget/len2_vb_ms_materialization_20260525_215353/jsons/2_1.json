@@ -1,0 +1,46 @@
+{
+  "case": "2_1",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.4078,
+        "cost": 0.0017464,
+        "latency": 9.038355588912964,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.816) / 2 = 0.408 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.881, range overlap=0.750.\nGround truth candidate keys: {userId, movieId}; {movieId, timestamp}.\nGenerated table candidate keys: {userId, timestamp}; {movieId, timestamp}.\nKeys present in ground truth but absent in generated: {userId, movieId}.\nSpurious keys in generated not present in ground truth: {userId, timestamp}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['timestamp', 'userId'] \u2192 movieId; ['timestamp', 'userId'] \u2192 rating; ['movieId'] \u2192 userId; ['userId'] \u2192 movieId.\nMissing FDs from ground truth: ['movieId', 'userId'] \u2192 rating; ['movieId', 'timestamp'] \u2192 rating; ['movieId', 'timestamp'] \u2192 userId; ['movieId', 'userId'] \u2192 timestamp.\nDistribution Analysis (numerical columns with issues):\n  Column 'userId': range overlap=0.002, JS similarity=0.708\n    Generated    \u2014 min: 1.0, max: 161918.0, mean: 12946.5531\n    Ground Truth \u2014 min: 1.0, max: 367.0, mean: 177.0073\n  Column 'timestamp': range overlap=1.000, JS similarity=0.868\n    Generated    \u2014 min: 828212412.0, max: 1476469445.0, mean: 1124461988.338\n    Ground Truth \u2014 min: 828213150.0, max: 1476640644.0, mean: 1135655184.5384",
+        "generated_samples": "Schema: ['userId', 'movieId', 'rating', 'timestamp']\nNumber of Tuples: 20000\nExamples:\n userId  movieId  rating  timestamp\n    388     2683     4.0  946508880\n    433     4027     4.5 1417929847\n    384    59615     3.5 1212441921",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_1/training_0.csv\"\n    ]\n\n    # List to hold dataframes from all sources\n    source_dfs = []\n\n    # Load each source CSV with index_col=0 to ignore the numerical index column\n    for file_path in source_files:\n        df = pd.read_csv(file_path, index_col=0)\n        source_dfs.append(df)\n\n    # Since all source tables have the exact same schema as the target,\n    # we can union (concatenate) them directly.\n    # Here, only one source table is given, so just use it directly.\n    combined_df = pd.concat(source_dfs, ignore_index=True)\n\n    # Ensure the schema and data types match the target schema:\n    # Target Schema: ['userId': int, 'movieId': int, 'rating': float, 'timestamp': int]\n    combined_df = combined_df.astype({\n        'userId': 'int64',\n        'movieId': 'int64',\n        'rating': 'float64',\n        'timestamp': 'int64'\n    })\n\n    # Write the combined dataframe to the target CSV path\n    combined_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/target_multisource.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "userId,movieId,rating,timestamp\n515,2422,5.0,1286399024\n624,88672,3.0,1403449194\n518,1081,5.0,945362262\n602,147,3.0,842359924\n574,1517,2.0,1232810465\n553,118105,4.0,1423011525\n599,90576,5.0,1344134770\n461,3182,3.0,1096527500\n584,163,3.5,1276157463\n471,27075,3.0,1239659793\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.676797866821289
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.4078,
+          "cost": 0.0015272000000000003,
+          "latency": 9.964115858078003,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.816) / 2 = 0.408 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.881, range overlap=0.750.\nGround truth candidate keys: {userId, movieId}; {movieId, timestamp}.\nGenerated table candidate keys: {userId, timestamp}; {movieId, timestamp}.\nKeys present in ground truth but absent in generated: {userId, movieId}.\nSpurious keys in generated not present in ground truth: {userId, timestamp}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['timestamp', 'userId'] \u2192 movieId; ['timestamp', 'userId'] \u2192 rating; ['movieId'] \u2192 userId; ['userId'] \u2192 movieId.\nMissing FDs from ground truth: ['movieId', 'userId'] \u2192 rating; ['movieId', 'timestamp'] \u2192 rating; ['movieId', 'timestamp'] \u2192 userId; ['movieId', 'userId'] \u2192 timestamp.\nDistribution Analysis (numerical columns with issues):\n  Column 'userId': range overlap=0.002, JS similarity=0.708\n    Generated    \u2014 min: 1.0, max: 161918.0, mean: 12946.5531\n    Ground Truth \u2014 min: 1.0, max: 367.0, mean: 177.0073\n  Column 'timestamp': range overlap=1.000, JS similarity=0.868\n    Generated    \u2014 min: 828212412.0, max: 1476469445.0, mean: 1124461988.338\n    Ground Truth \u2014 min: 828213150.0, max: 1476640644.0, mean: 1135655184.5384",
+          "generated_samples": "Schema: ['userId', 'movieId', 'rating', 'timestamp']\nNumber of Tuples: 20000\nExamples:\n userId  movieId  rating  timestamp\n    597     2076     5.0  940708718\n    529    27741     4.0 1141748173\n    624    97328     3.0 1353855482",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/training_0.csv\", index_col=0)\n\n# Since there is only one source table, and the target schema matches the source schema,\n# no join or union is needed. Just output the source as is.\n\n# Write the output to the target file path\nsource0.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.5578269958496094
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9059.411764144897,
+        "critique": 11043.004274368286
+      }
+    }
+  ]
+}

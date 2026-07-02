@@ -1,0 +1,46 @@
+{
+  "case": "1_60",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.5781,
+        "cost": 0.0031796000000000003,
+        "latency": 11.235084056854248,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.156) / 2 = 0.578 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 3\nExamples:\n    type  driver_count\n   Urban           256\n   Rural            78\nSuburban           490",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_60/training_0.csv\"\ndf_source = pd.read_csv(source_path, index_col=0)\n\n# Group by 'type' and sum 'driver_count'\ndf_grouped = df_source.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure the schema matches target: 'type' as string, 'driver_count' as integer\ndf_grouped['type'] = df_grouped['type'].astype(str)\ndf_grouped['driver_count'] = df_grouped['driver_count'].astype(int)\n\n# Write the result to the target path without the index column\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource.csv\"\ndf_grouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nRural,78\nSuburban,490\nUrban,256\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0654926300048828
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5781,
+          "cost": 0.0014744,
+          "latency": 5.125028371810913,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.156) / 2 = 0.578 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 3\nExamples:\n    type  driver_count\n   Rural            78\nSuburban           490\n   Urban           256",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 as per hint 21\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_60/training_0.csv\", index_col=0)\n\n# UNION step (only one table, so just use it directly)\nunion_df = source1\n\n# GROUP BY type and sum driver_count\nresult = union_df.groupby(\"type\", as_index=False).agg({\"driver_count\": \"sum\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_60/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7183551788330078
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11245.050191879272,
+        "critique": 5153.336048126221
+      }
+    }
+  ]
+}

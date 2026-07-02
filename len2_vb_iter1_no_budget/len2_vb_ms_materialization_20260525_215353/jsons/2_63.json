@@ -1,0 +1,46 @@
+{
+  "case": "2_63",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5527,
+        "cost": 0.004284,
+        "latency": 11.707444667816162,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.615 + 0.490) / 2 = 0.553 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.428, range overlap=0.493.\nGround truth candidate keys: {ride_id}; {city}; {fare}.\nGenerated table candidate keys: {ride_id}.\nKeys present in ground truth but absent in generated: {city}; {fare}.\nFunctional dependency F1: 0.615 (precision=1.000, recall=0.444).\nMissing FDs from ground truth: ['fare'] \u2192 city; ['city'] \u2192 fare; ['fare'] \u2192 ride_id; ['city'] \u2192 ride_id; ['fare'] \u2192 driver_count.\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.972, JS similarity=0.641\n    Generated    \u2014 min: 1.0, max: 73.0, mean: 21.0758\n    Ground Truth \u2014 min: 3.0, max: 73.0, mean: 36.4394\n  Column 'fare': range overlap=0.224, JS similarity=0.342\n    Generated    \u2014 min: 4.36, max: 58.55, mean: 29.0436\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\n  Column 'ride_id': range overlap=0.283, JS similarity=0.301\n    Generated    \u2014 min: 321833677.0, max: 9990581345298.0, mean: 4882208575031.637\n    Ground Truth \u2014 min: 3403837182917.0, max: 6235677181407.223, mean: 4880016052134.776\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+        "generated_samples": "Schema: ['city', 'driver_count', 'fare', 'ride_id']\nNumber of Tuples: 1188\nExamples:\n           city  driver_count  fare      ride_id\nLake Latoyabury             2 16.18 8.492925e+12\n    Brandonfort            10 46.01 2.286157e+12\nLake Robertside             4 28.07 1.677403e+12",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_63/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_63/training_1.csv\", index_col=0)\n\n# Join on 'city' as per operation history\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Select and reorder columns to match target schema: ['city', 'driver_count', 'fare', 'ride_id']\n# Ensure types: city (string), driver_count (int), fare (float), ride_id (float)\n# Convert driver_count to int (it should already be int, but enforce)\njoined[\"driver_count\"] = joined[\"driver_count\"].astype(int)\njoined[\"fare\"] = joined[\"fare\"].astype(float)\njoined[\"ride_id\"] = joined[\"ride_id\"].astype(float)\njoined[\"city\"] = joined[\"city\"].astype(str)\n\ntarget = joined[[\"city\", \"driver_count\", \"fare\", \"ride_id\"]]\n\n# Write to target path without index\ntarget.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_63/target_multisource.csv\", index=False)",
+        "generated_csv_head": "city,driver_count,fare,ride_id\nRichardfort,38,11.42,2916078036620.0\nRichardfort,38,25.81,9110913538598.0\nRichardfort,38,8.28,5127600643309.0\nRichardfort,38,42.22,4051093040264.0\nRichardfort,38,16.35,6077906760851.0\nRichardfort,38,4.85,3291539624738.0\nRichardfort,38,43.01,7636011510547.0\nRichardfort,38,10.91,3567611375530.0\nRichardfort,38,21.39,237473464569.0\nRichardfort,38,16.35,5934239154720.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.465963363647461
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7101,
+          "cost": 0.0015764,
+          "latency": 5.266505718231201,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.620) / 2 = 0.710 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.598.\nGround truth candidate keys: {ride_id}; {city}; {fare}.\nGenerated table candidate keys: {ride_id}; {city}.\nKeys present in ground truth but absent in generated: {fare}.\nFunctional dependency F1: 0.800 (precision=1.000, recall=0.667).\nMissing FDs from ground truth: ['fare'] \u2192 city; ['fare'] \u2192 ride_id; ['fare'] \u2192 driver_count.\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.972, JS similarity=0.729\n    Generated    \u2014 min: 1.0, max: 73.0, mean: 24.775\n    Ground Truth \u2014 min: 3.0, max: 73.0, mean: 36.4394\n  Column 'fare': range overlap=0.448, JS similarity=0.525\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\n  Column 'ride_id': range overlap=0.373, JS similarity=0.759\n    Generated    \u2014 min: 2330211881707.1665, max: 9917197764299.0, mean: 4889201957494.755\n    Ground Truth \u2014 min: 3403837182917.0, max: 6235677181407.223, mean: 4880016052134.776\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+          "generated_samples": "Schema: ['city', 'driver_count', 'fare', 'ride_id']\nNumber of Tuples: 120\nExamples:\n       city  driver_count      fare      ride_id\nBrandonfort            10 35.437368 5.429539e+12\n Rodneyfort            34 35.790000 9.917198e+12\nNorth Holly             8 29.130000 4.109350e+12",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_63/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_63/training_1.csv\", index_col=0)\n\n# Join on 'city'\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'city' and 'driver_count' (both are non-float, leftmost columns in target schema)\n# Aggregate 'fare' and 'ride_id' by mean to reduce duplicates and match target data scale\nresult = joined.groupby([\"city\", \"driver_count\"], as_index=False).agg({\n    \"fare\": \"mean\",\n    \"ride_id\": \"mean\"\n})\n\n# Ensure column order and types match target schema\nresult = result[[\"city\", \"driver_count\", \"fare\", \"ride_id\"]]\nresult[\"driver_count\"] = result[\"driver_count\"].astype(int)\nresult[\"fare\"] = result[\"fare\"].astype(float)\nresult[\"ride_id\"] = result[\"ride_id\"].astype(float)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_63/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.1414756774902344
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11781.62169456482,
+        "critique": 5366.503000259399
+      }
+    }
+  ]
+}

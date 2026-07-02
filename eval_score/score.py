@@ -61,6 +61,7 @@ def serialize_column_map(col_map):
         })
     return serialized
 MAX_FD_COLS = 52
+MAX_FD_ROWS = 2000  # row cap for gen-side FD mining every iteration; keeps scoring fast on large tables
 
 
 def compute_distribution_scores(df_a, df_b, col_map=None):
@@ -192,16 +193,26 @@ def compute_distribution_scores(df_a, df_b, col_map=None):
     }
 
 
-def relative_csv_score(df_a, df_b):
-    column_map_utils.GLOBAL_SUMMARY = None  # Reset the actual module-level cache
+def relative_csv_score(df_a, df_b, precomputed_gt=None):
+    column_map_utils.GLOBAL_SUMMARY = None  # Reset before computing col_map(df_a, df_b)
 
-    # Truncate columns to fdtool's supported limit (no row truncation)
-    df_a_fd = df_a.iloc[:, :MAX_FD_COLS]
-    df_b_fd = df_b.iloc[:, :MAX_FD_COLS]
+    # Always cap gen-side rows for FD mining to keep per-iteration scoring fast.
+    # When GT was also reduced (max_fd_rows in cache), use that value so both
+    # sides are consistent; otherwise fall back to the global MAX_FD_ROWS cap.
+    _max_fd_rows = (precomputed_gt.get("max_fd_rows") if precomputed_gt else None) or MAX_FD_ROWS
+    df_a_fd = df_a.iloc[:_max_fd_rows, :MAX_FD_COLS]
 
-    # Run FD mining with hard 60s timeout
+    # Run FD mining on generated output — always needed each iteration
     FDs_a, E_a, keys_a = _run_fdtool(df_a_fd)
-    FDs_b, E_b, keys_b = _run_fdtool(df_b_fd)
+
+    # GT FDs — skip if pre-computed (saves up to FD_TIMEOUT seconds per iteration)
+    if precomputed_gt is not None:
+        FDs_b  = precomputed_gt["FDs_b"]
+        E_b    = precomputed_gt["E_b"]
+        keys_b = precomputed_gt["keys_b"]
+    else:
+        df_b_fd = df_b.iloc[:, :MAX_FD_COLS]
+        FDs_b, E_b, keys_b = _run_fdtool(df_b_fd)
 
     fd_count_a = len(FDs_a)
     fd_count_b = len(FDs_b)
@@ -237,11 +248,17 @@ def relative_csv_score(df_a, df_b):
 
     # Column map ratio
     col_map = get_column_map(df_a, df_b)
-    column_map_utils.GLOBAL_SUMMARY = None  # Reset so self-map recomputes from df_b
-    self_col_map = get_column_map(df_b, df_b)
+
+    # GT self-column-map count — skip if pre-computed
+    if precomputed_gt is not None:
+        self_col_count = precomputed_gt["self_col_count"]
+        self_col_map   = precomputed_gt.get("self_col_map", [])
+    else:
+        column_map_utils.GLOBAL_SUMMARY = None  # Reset so self-map recomputes from df_b
+        self_col_map   = get_column_map(df_b, df_b)
+        self_col_count = len(self_col_map)
 
     col_count = len(col_map)
-    self_col_count = len(self_col_map)
     col_ratio = col_count / max(self_col_count, 1)
 
     combined_score = (fd_ratio + col_ratio) / 2

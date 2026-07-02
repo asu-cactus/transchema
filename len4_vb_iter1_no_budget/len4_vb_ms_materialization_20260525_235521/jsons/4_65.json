@@ -1,0 +1,46 @@
+{
+  "case": "4_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8758,
+        "cost": 0.0055852,
+        "latency": 13.083916664123535,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.824 + 0.928) / 2 = 0.876 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Nominee}; {Nominee, Movie}.\nKeys present in ground truth but absent in generated: {Year, Nominee, Category}.\nSpurious keys in generated not present in ground truth: {Year, Nominee}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.824 (precision=0.778, recall=0.875).\nSpurious FDs in generated (not in ground truth): ['Nominee', 'Year'] \u2192 Movie; ['Nominee', 'Year'] \u2192 Category.\nMissing FDs from ground truth: ['Category', 'Nominee', 'Year'] \u2192 Movie.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.875\n  Column 'Movie': Jaccard=0.766",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 1412\nExamples:\n       Year                   Category                             Nominee                                         Movie Winner\n1964 (37th)    Actress -- Leading Role                        Sophia Loren Marriage Italian Style {'Filomena Marturano'}     NO\n2010 (83rd) Actress -- Supporting Role                    Hailee Steinfeld                     True Grit {'Mattie Ross'}     NO\n2008 (81st)                  Directing The Curious Case of Benjamin Button                                 David Fincher     NO",
+        "code": "import pandas as pd\n\n# File paths for source CSVs\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_65/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_65/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_65/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_65/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_65/training_4.csv\"\n]\n\n# Read all source tables with index_col=0 to ignore the first index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# All source tables have the same schema and match the target schema exactly,\n# so we perform a UNION (concatenation) of all source tables.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure columns are in the exact order and type as target schema:\n# Target Schema: ['Year': string, 'Category': string, 'Nominee': string, 'Movie': string, 'Winner': string]\ntarget_columns = ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\ntarget_df = target_df[target_columns]\n\n# Convert all columns to string type to match target schema exactly\nfor col in target_columns:\n    target_df[col] = target_df[col].astype(str)\n\n# Write the final target table to the specified path without the index\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Year,Category,Nominee,Movie,Winner\n2010 (83rd),Actress -- Supporting Role,Amy Adams,The Fighter {'Charlene Fleming'},NO\n2010 (83rd),Actress -- Supporting Role,Helena Bonham Carter,The King's Speech {'Queen Elizabeth'},NO\n2010 (83rd),Actress -- Supporting Role,Hailee Steinfeld,True Grit {'Mattie Ross'},NO\n2010 (83rd),Actress -- Supporting Role,Jacki Weaver,Animal Kingdom {'Janine 'Smurf' Cody'},NO\n2009 (82nd),Actress -- Supporting Role,Pen\u00e9lope Cruz,Nine {'Carla'},NO\n2009 (82nd),Actress -- Supporting Role,Vera Farmiga,Up in the Air {'Alex Goran'},NO\n2009 (82nd),Actress -- Supporting Role,Maggie Gyllenhaal,Crazy Heart {'Jean Craddock'},NO\n2009 (82nd),Actress -- Supporting Role,Anna Kendrick,Up in the Air {'Natalie Keener'},NO\n2008 (81st),Actress -- Supporting Role,Amy Adams,Doubt {'Sister James'},NO\n2008 (81st),Actress -- Supporting Role,Viola Davis,Doubt {'Mrs. Miller'},NO\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6019344329833984
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.4335,
+          "cost": 0.002278,
+          "latency": 7.9993040561676025,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.526 + 0.341) / 2 = 0.433 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Movie}; {Year, Nominee}.\nKeys present in ground truth but absent in generated: {Year, Nominee, Category}; {Movie, Nominee}.\nSpurious keys in generated not present in ground truth: {Movie}; {Year, Nominee}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.526 (precision=0.455, recall=0.625).\nSpurious FDs in generated (not in ground truth): ['Movie'] \u2192 Year; ['Year'] \u2192 Category; ['Winner'] \u2192 Category; ['Movie'] \u2192 Nominee; ['Nominee', 'Year'] \u2192 Movie (and 1 more).\nMissing FDs from ground truth: ['Movie', 'Year'] \u2192 Category; ['Category', 'Nominee', 'Year'] \u2192 Movie; ['Movie', 'Nominee'] \u2192 Year.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Year': Jaccard=0.430\n  Column 'Category': Jaccard=0.156\n  Column 'Nominee': Jaccard=0.086\n  Column 'Movie': Jaccard=0.031",
+          "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 140\nExamples:\n       Year                   Category         Nominee                                    Movie Winner\n1944 (17th) Actress -- Supporting Role Agnes Moorehead        Mrs. Parkington {'Aspacia Conti'}     NO\n1966 (39th) Actress -- Supporting Role Vivien Merchant                           Alfie {'Lily'}     NO\n1969 (42nd) Actress -- Supporting Role   Susannah York They Shoot Horses, Don't They? {'Alice'}     NO",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_4.csv\", index_col=0)\n\n# Join all sources on 'Year' column stepwise, starting from source0 as base\ndf = source0.merge(source1, on='Year', suffixes=('', '_1'))\ndf = df.merge(source2, on='Year', suffixes=('', '_2'))\ndf = df.merge(source3, on='Year', suffixes=('', '_3'))\ndf = df.merge(source4, on='Year', suffixes=('', '_4'))\n\n# After join, select columns from source0 only to match target schema exactly\n# Because all sources have same schema, and target schema is same as source schema,\n# but the target examples suggest no column duplication, so we keep only source0 columns.\ndf = df[['Year', 'Category', 'Nominee', 'Movie', 'Winner']]\n\n# Group by all columns to remove duplicates if any (target has no keys, but duplicates may exist)\ndf = df.groupby(['Year', 'Category', 'Nominee', 'Movie', 'Winner'], as_index=False).size()\ndf = df.drop(columns=['size'])  # size was just to force groupby, drop it\n\n# Write output to target file\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.237630844116211
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13162.773132324219,
+        "critique": 8258.009195327759
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "4_40",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9963,
+        "cost": 0.0044532,
+        "latency": 12.17469310760498,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.993) / 2 = 0.996 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.987, range overlap=0.998.\nGround truth candidate keys: {x}.\nGenerated table candidate keys: {x}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['x', 'y', 'label']\nNumber of Tuples: 70\nExamples:\n       x  y  label\n3.428091  1      1\n3.387861  4      1\n3.026211  3      1",
+        "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_40/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_40/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_40/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_40/training_3.csv\", index_col=0)\n\n# According to the intermediate_step1.csv, the union operation has been done and label values are already converted to integers.\n# But source label columns have string labels (purple, b, g, r).\n# The intermediate_step1.csv shows label as integer 1 for all rows.\n# So we need to convert all label values to integer 1.\n\n# Concatenate all source dataframes (union)\ndf = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# Convert 'y' to integer by rounding (since target schema y is integer)\ndf['y'] = df['y'].round().astype(int)\n\n# Convert 'label' to integer 1 for all rows (as per intermediate_step1 and target examples)\ndf['label'] = 1\n\n# Ensure 'x' is float (should already be)\ndf['x'] = df['x'].astype(float)\n\n# Reorder columns to match target schema ['x', 'y', 'label']\ndf = df[['x', 'y', 'label']]\n\n# Write the final dataframe to the target CSV file without the index\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_40/target_multisource.csv\", index=False)",
+        "generated_csv_head": "x,y,label\n3.019880133839796,4,1\n3.0262109868777194,3,1\n3.0283064880207946,3,1\n3.246211067603046,3,1\n3.860027948682888,3,1\n3.538831064341653,3,1\n3.552821978685766,3,1\n3.8420308923596056,4,1\n3.124173315119912,4,1\n3.2791836790111395,3,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9715557098388672
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 12254.809617996216,
+        "critique": 0.0
+      }
+    }
+  ]
+}

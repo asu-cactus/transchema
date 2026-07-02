@@ -1,0 +1,46 @@
+{
+  "case": "2_87",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.0013616000000000001,
+        "latency": 6.582568407058716,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Name}.\nGenerated table candidate keys: {Name}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Name': Jaccard=0.000",
+        "generated_samples": "Schema: ['Name']\nNumber of Tuples: 446\nExamples:\n                                   Name\nWest, Mrs. Edwy Arthur (Ada Mary Worth)\n                       Pasic, Mr. Jakob\n                   Knight, Mr. Robert J",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_87/training_0.csv\"\n]\n\n# Load all source tables\n# According to the prompt, there is only one source table: Source2_87_0\n# We load it with index_col=0 to ignore the numerical index column\nsource_dfs = [pd.read_csv(path, index_col=0) for path in source_files]\n\n# Transformation plan:\n# - Target schema: ['Name'] (string)\n# - Source schema: ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket', 'Fare', 'Cabin', 'Embarked']\n# - We only need the 'Name' column from the source table(s).\n# - The target examples show some NaN values in 'Name', so we keep them as is.\n# - Since there is only one source table, no union or join is needed.\n# - Just select the 'Name' column and write to the target CSV.\n\n# Extract 'Name' column from each source dataframe and concatenate if multiple sources exist\n# Here only one source, so just take it directly\nnames_df = source_dfs[0][['Name']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_87/target_multisource_cot.csv\"\nnames_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Name\n\"Dodge, Master. Washington\"\n\"Mellinger, Miss. Madeleine Violet\"\n\"Seward, Mr. Frederic Kimber\"\n\"Baclini, Miss. Marie Catherine\"\n\"Peuchen, Major. Arthur Godfrey\"\n\"West, Mr. Edwy Arthur\"\n\"Hagland, Mr. Ingvald Olai Olsen\"\n\"Foreman, Mr. Benjamin Laventall\"\n\"Goldenberg, Mr. Samuel L\"\n\"Peduzzi, Mr. Joseph\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0139942169189453
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5664,
+          "cost": 0.002184,
+          "latency": 12.088590621948242,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.133) / 2 = 0.566 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Name}.\nGenerated table candidate keys: {Name}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Name': Jaccard=0.133",
+          "generated_samples": "Schema: ['Name']\nNumber of Tuples: 446\nExamples:\n   Name\n   Pehr\n   Dibo\nAbraham",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_87/training_0.csv\", index_col=0)\n\n# Since only one source table is given, and the target schema is just ['Name'] with 445 tuples,\n# and the source has 446 tuples, the failed pipeline output 446 rows (one extra).\n# The target has 445 rows, so one row is likely dropped or filtered.\n# The target examples show some NaN values in Name column, so we should keep NaNs.\n# The failed pipeline output had full names with titles, but target examples show shorter names (e.g., \"Edith\", \"Grice\").\n# This suggests a string operation to extract the first name from the 'Name' column.\n\n# Extract first name from the 'Name' column:\n# The source 'Name' column has format like \"LastName, Title. FirstName MiddleName\"\n# We want to extract the first name after the title.\n# For example: \"Dodge, Master. Washington\" -> \"Washington\"\n# \"Mellinger, Miss. Madeleine Violet\" -> \"Madeleine\"\n# \"Seward, Mr. Frederic Kimber\" -> \"Frederic\"\n\n# Steps:\n# 1. Split by comma, take the second part (title + first name)\n# 2. Remove title (e.g., \"Master.\", \"Miss.\", \"Mr.\", \"Mrs.\", \"Ms.\", \"Dr.\", etc.)\n# 3. Take the first word after title as first name\n\ndef extract_first_name(full_name):\n    if pd.isna(full_name):\n        return full_name\n    parts = full_name.split(',', 1)\n    if len(parts) < 2:\n        return full_name.strip()\n    after_comma = parts[1].strip()\n    # Titles to remove\n    titles = ['Master.', 'Miss.', 'Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Rev.', 'Col.', 'Major.', 'Capt.', 'Sir.', 'Lady.', 'Mlle.', 'Mme.', 'Don.', 'Jonkheer.', 'Countess.']\n    for title in titles:\n        if after_comma.startswith(title):\n            after_comma = after_comma[len(title):].strip()\n            break\n    # Take first word as first name\n    first_name = after_comma.split(' ')[0]\n    return first_name\n\n# Apply the extraction\nsource0['Name'] = source0['Name'].map(extract_first_name)\n\n# The target has 445 tuples, source has 446, so drop rows with NaN in Name to match target count\nresult = source0[['Name']].copy()\nresult = result[result['Name'].notna()]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_87/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6251335144042969
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6585.093259811401,
+        "critique": 12118.674993515015
+      }
+    }
+  ]
+}

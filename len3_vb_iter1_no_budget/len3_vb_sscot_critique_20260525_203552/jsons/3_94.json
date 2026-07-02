@@ -1,0 +1,46 @@
+{
+  "case": "3_94",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8372,
+        "cost": 0.0018768,
+        "latency": 9.209120035171509,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.924) / 2 = 0.837 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.907, range overlap=0.995.\nGround truth candidate keys: {movie_id}.\nGenerated table candidate keys: {movie_id}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.750 (precision=0.600, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['F'] \u2192 M; ['M'] \u2192 F.\nDistribution Analysis (numerical columns with issues):\n  Column 'movie_id': range overlap=0.986, JS similarity=0.915\n    Generated    \u2014 min: 1.0, max: 1680.0, mean: 731.6844\n    Ground Truth \u2014 min: 1.0, max: 1657.0, mean: 800.8025\n  Column 'F': range overlap=1.000, JS similarity=0.892\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2529\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.1321\n  Column 'M': range overlap=1.000, JS similarity=0.914\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2529\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.1405\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.844",
+        "generated_samples": "Schema: ['movie_id', 'title', 'F', 'M']\nNumber of Tuples: 1388\nExamples:\n movie_id                                     title        F    M\n     1303                       Getaway, The (1994)      NaN 2.00\n      847                Looking for Richard (1996) 4.000000 4.00\n      435 Butch Cassidy and the Sundance Kid (1969) 3.571429 3.76",
+        "code": "import pandas as pd\nimport numpy as np\n\n# File paths for source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_94/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_94/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length3_94/training_2.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_movies = pd.read_csv(source0_path, index_col=0)  # Source3_94_0\ndf_ratings = pd.read_csv(source1_path, index_col=0) # Source3_94_1\ndf_users = pd.read_csv(source2_path, index_col=0)   # Source3_94_2\n\n# Step 1: Join ratings with users on user_id to get sex for each rating\ndf_ratings_users = pd.merge(df_ratings, df_users[['user_id', 'sex']], on='user_id', how='inner')\n\n# Step 2: Aggregate ratings by movie_id and sex to get average rating per sex per movie\navg_ratings_by_sex = df_ratings_users.groupby(['movie_id', 'sex'])['rating'].mean().reset_index()\n\n# Step 3: Pivot the sex column to get separate columns for 'F' and 'M' average ratings\npivot_ratings = avg_ratings_by_sex.pivot(index='movie_id', columns='sex', values='rating').reset_index()\n\n# Rename columns to match target schema\npivot_ratings = pivot_ratings.rename(columns={'F': 'F', 'M': 'M'})\n\n# Step 4: Join with movies table to get movie titles\ndf_target = pd.merge(pivot_ratings, df_movies[['movie_id', 'title']], on='movie_id', how='left')\n\n# Step 5: Reorder columns to match target schema: ['movie_id', 'title', 'F', 'M']\ndf_target = df_target[['movie_id', 'title', 'F', 'M']]\n\n# Step 6: Ensure correct data types\ndf_target['movie_id'] = df_target['movie_id'].astype(int)\ndf_target['title'] = df_target['title'].astype(str)\ndf_target['F'] = df_target['F'].astype(float)\ndf_target['M'] = df_target['M'].astype(float)\n\n# Step 7: Write the result to the specified CSV file path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_94/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "movie_id,title,F,M\n1,Toy Story (1995),3.684210526315789,4.038461538461538\n2,GoldenEye (1995),3.333333333333333,3.1\n3,Four Rooms (1995),2.6666666666666665,2.857142857142857\n4,Get Shorty (1995),2.75,3.6296296296296298\n5,Copycat (1995),3.75,3.2222222222222223\n6,Shanghai Triad (Yao a yao yao dao waipo qiao) (1995),4.0,2.6666666666666665\n7,Twelve Monkeys (1995),3.5384615384615383,3.9384615384615382\n8,Babe (1995),3.823529411764706,3.9615384615384617\n9,Dead Man Walking (1995),3.625,3.843137254901961\n10,Richard III (1995),4.333333333333333,3.7\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.0194053649902344
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8372,
+          "cost": 0.0018900000000000002,
+          "latency": 8.01504397392273,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.924) / 2 = 0.837 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.907, range overlap=0.995.\nGround truth candidate keys: {movie_id}.\nGenerated table candidate keys: {movie_id}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.750 (precision=0.600, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['F'] \u2192 M; ['M'] \u2192 F.\nDistribution Analysis (numerical columns with issues):\n  Column 'movie_id': range overlap=0.986, JS similarity=0.915\n    Generated    \u2014 min: 1.0, max: 1680.0, mean: 731.6844\n    Ground Truth \u2014 min: 1.0, max: 1657.0, mean: 800.8025\n  Column 'F': range overlap=1.000, JS similarity=0.892\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2529\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.1321\n  Column 'M': range overlap=1.000, JS similarity=0.914\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2529\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.1405\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.844",
+          "generated_samples": "Schema: ['movie_id', 'title', 'F', 'M']\nNumber of Tuples: 1388\nExamples:\n movie_id                   title        F        M\n      127   Godfather, The (1972) 3.909091 4.271186\n      521 Deer Hunter, The (1978) 4.000000 4.080000\n      849  Days of Thunder (1990) 3.000000 2.538462",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_94/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_94/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_94/training_2.csv\", index_col=0)\n\n# Join Source1 and Source2 on user_id\njoined_1_2 = pd.merge(source1, source2, on=\"user_id\", how=\"inner\")\n\n# Join the above result with Source0 on movie_id\njoined_all = pd.merge(source0, joined_1_2, on=\"movie_id\", how=\"inner\")\n\n# Create columns F and M: average rating by sex per movie\n# Filter ratings by sex and aggregate mean rating per movie_id and title\n# We group by movie_id and title (leftmost non-float unique keys)\n\n# Compute mean rating for females (sex == 'F')\nf_ratings = joined_all[joined_all[\"sex\"] == \"F\"].groupby([\"movie_id\", \"title\"])[\"rating\"].mean().rename(\"F\")\n\n# Compute mean rating for males (sex == 'M')\nm_ratings = joined_all[joined_all[\"sex\"] == \"M\"].groupby([\"movie_id\", \"title\"])[\"rating\"].mean().rename(\"M\")\n\n# Combine F and M ratings into one DataFrame\nresult = pd.concat([f_ratings, m_ratings], axis=1).reset_index()\n\n# Write output to the specified path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_94/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.077341079711914
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9277.857542037964,
+        "critique": 8322.721719741821
+      }
+    }
+  ]
+}

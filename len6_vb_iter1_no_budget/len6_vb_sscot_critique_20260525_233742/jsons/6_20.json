@@ -1,0 +1,46 @@
+{
+  "case": "6_20",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4859,
+        "cost": 0.0016516,
+        "latency": 11.043389558792114,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.972) / 2 = 0.486 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.926, range overlap=0.999.\nGround truth candidate keys: {State Name, Year, Month}.\nGenerated table candidate keys: {State Name, Year, Month, AQI}.\nKeys present in ground truth but absent in generated: {Month, State Name, Year}.\nSpurious keys in generated not present in ground truth: {Month, State Name, Year, AQI}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Month', 'State Name', 'Year'] \u2192 AQI.\nDistribution Analysis (numerical columns with issues):\n  Column 'Year': range overlap=1.000, JS similarity=0.891\n    Generated    \u2014 min: 2015.0, max: 2018.0, mean: 2016.5\n    Ground Truth \u2014 min: 2015.0, max: 2018.0, mean: 2016.2934\n  Column 'AQI': range overlap=0.998, JS similarity=0.918\n    Generated    \u2014 min: 0.0, max: 6403.0, mean: 38.4121\n    Ground Truth \u2014 min: 16.0, max: 6403.0, mean: 137.3106",
+        "generated_samples": "Schema: ['State Name', 'AQI', 'Year', 'Month']\nNumber of Tuples: 80000\nExamples:\n    State Name  AQI  Year  Month\n         Texas   20  2015      6\n         Texas   20  2017      8\nSouth Carolina   41  2018      8",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length6_20/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_20/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_20/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_20/training_3.csv\"\n]\n\n# List to hold dataframes\ndfs = []\n\n# Load each source CSV file with index_col=0 to ignore the numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # The source schema is ['State Name', 'AQI', 'Year', 'Month'] which matches target schema exactly\n    # So no column renaming or reordering needed\n    # Just ensure correct dtypes as per target schema:\n    # 'State Name': string, 'Year': int, 'Month': int, 'AQI': int\n    df['State Name'] = df['State Name'].astype(str)\n    df['Year'] = df['Year'].astype(int)\n    df['Month'] = df['Month'].astype(int)\n    df['AQI'] = df['AQI'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the exact same schema as the target,\n# we can concatenate (union) all source dataframes vertically\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target examples have 2273 rows, but source tables have 20000 rows each,\n# so the target is likely a filtered subset or aggregated version.\n# However, no aggregation or filtering instructions are given,\n# so we output the full union as the target.\n\n# Save the combined dataframe to the target CSV file path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_20/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "State Name,AQI,Year,Month\nRhode Island,50,2018,4\nOklahoma,37,2018,10\nPennsylvania,29,2018,1\nOklahoma,41,2018,8\nMontana,26,2018,3\nOklahoma,29,2018,4\nOklahoma,34,2018,10\nOhio,51,2018,12\nSouth Carolina,34,2018,12\nNebraska,29,2018,9\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.3698806762695312
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.933,
+          "cost": 0.0023220000000000003,
+          "latency": 7.599865913391113,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.866) / 2 = 0.933 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=0.674.\nGround truth candidate keys: {State Name, Year, Month}.\nGenerated table candidate keys: {State Name, Year, Month}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'AQI': range overlap=0.022, JS similarity=0.917\n    Generated    \u2014 min: 8.0, max: 154.0, mean: 38.2064\n    Ground Truth \u2014 min: 16.0, max: 6403.0, mean: 137.3106",
+          "generated_samples": "Schema: ['State Name', 'Year', 'Month', 'AQI']\nNumber of Tuples: 2219\nExamples:\n    State Name  Year  Month  AQI\n       Georgia  2016      5   44\nSouth Carolina  2016      2   37\n        Nevada  2018      3   34",
+          "code": "import pandas as pd\n\n# Read all source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv('autopipeline-benchmarks/github-pipelines/length6_20/training_0.csv', index_col=0)\ndf1 = pd.read_csv('autopipeline-benchmarks/github-pipelines/length6_20/training_1.csv', index_col=0)\ndf2 = pd.read_csv('autopipeline-benchmarks/github-pipelines/length6_20/training_2.csv', index_col=0)\ndf3 = pd.read_csv('autopipeline-benchmarks/github-pipelines/length6_20/training_3.csv', index_col=0)\n\n# UNION all source tables\ndf_union = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# GROUP BY 'State Name', 'Year', 'Month' and aggregate AQI by mean, then round and convert to int\ndf_grouped = df_union.groupby(['State Name', 'Year', 'Month'], as_index=False).agg({'AQI': 'mean'})\n\n# Round AQI to nearest integer and convert to int type\ndf_grouped['AQI'] = df_grouped['AQI'].round().astype(int)\n\n# Reorder columns to match target schema exactly\ndf_grouped = df_grouped[['State Name', 'Year', 'Month', 'AQI']]\n\n# Write output to target file\ndf_grouped.to_csv('autopipeline-benchmarks/github-pipelines/length6_20/target_multisource_critique_history.csv', index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3594627380371094
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11144.006252288818,
+        "critique": 8678.834676742554
+      }
+    }
+  ]
+}

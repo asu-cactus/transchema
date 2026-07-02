@@ -1,0 +1,46 @@
+{
+  "case": "1_18",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6105,
+        "cost": 0.0018372000000000002,
+        "latency": 5.302214860916138,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.221) / 2 = 0.611 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.000.\nGround truth candidate keys: {petal length (cm)}; {petal width (cm)}; {sepal length (cm)}; {y}; {sepal width (cm)}.\nGenerated table candidate keys: {petal length (cm)}; {petal width (cm)}; {sepal length (cm)}; {y}; {sepal width (cm)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'y': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.5\n  Column 'sepal length (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'sepal width (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal length (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal width (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5",
+        "generated_samples": "Schema: ['Unnamed: 0', 'y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\nNumber of Tuples: 75\nExamples:\n Unnamed: 0  y  sepal length (cm)  sepal width (cm)  petal length (cm)  petal width (cm)\n        100  2                  6                 3                  6                 2\n        134  2                  6                 3                  6                 1\n        125  2                  7                 3                  6                 2",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_18/training_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# The source schema is:\n# ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)', 'y']\n# The target schema is:\n# ['y': int, 'sepal length (cm)': int, 'sepal width (cm)': int, 'petal length (cm)': int, 'petal width (cm)': int]\n\n# Transform the source data to match the target schema and types\n# Target examples show integer values, so we convert float columns to int by rounding.\n\ndf_source = source_dfs[0]\n\n# Reorder columns to match target schema order\ndf_target = df_source[['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']].copy()\n\n# Convert all columns to integer type\ndf_target = df_target.round(0).astype(int)\n\n# Save the transformed DataFrame to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_18/target_multisource.csv\"\ndf_target.to_csv(output_path)",
+        "generated_csv_head": "Unnamed: 0,y,sepal length (cm),sepal width (cm),petal length (cm),petal width (cm)\n75,1,7,3,4,1\n76,1,7,3,5,1\n77,1,7,3,5,2\n78,1,6,3,4,2\n79,1,6,3,4,1\n80,1,6,2,4,1\n81,1,6,2,4,1\n82,1,6,3,4,1\n83,1,6,3,5,2\n84,1,5,3,4,2\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1796951293945312
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9221,
+          "cost": 0.0014772000000000001,
+          "latency": 7.2022788524627686,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.844) / 2 = 0.922 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.888, range overlap=0.800.\nGround truth candidate keys: {petal length (cm)}; {petal width (cm)}; {sepal length (cm)}; {y}; {sepal width (cm)}.\nGenerated table candidate keys: {petal length (cm)}; {petal width (cm)}; {sepal length (cm)}; {y}; {sepal width (cm)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'y': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.5\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.5",
+          "generated_samples": "Schema: ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\nNumber of Tuples: 2\nExamples:\n y  sepal length (cm)  sepal width (cm)  petal length (cm)  petal width (cm)\n 2                 50                50                 50                50\n 1                 25                25                 25                25",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_18/training_0.csv\", index_col=0)\n\n# Since only one source table, UNION is trivial (just use the table itself)\ndf_union = source0\n\n# Group by 'y' (primary key), aggregate counts of each measurement column\ndf_grouped = df_union.groupby('y').agg({\n    'sepal length (cm)': 'count',\n    'sepal width (cm)': 'count',\n    'petal length (cm)': 'count',\n    'petal width (cm)': 'count'\n}).reset_index()\n\n# Rename columns to match target schema exactly\ndf_grouped.columns = ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\n\n# Write output to target file\ndf_grouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_18/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9796619415283203
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5305.484056472778,
+        "critique": 7267.974376678467
+      }
+    }
+  ]
+}

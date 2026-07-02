@@ -1,0 +1,29 @@
+{
+  "case": "9_29",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9444,
+        "cost": 0.005292,
+        "latency": 12.224898338317871,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.889) / 2 = 0.944 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.778, range overlap=1.000.\nGround truth candidate keys: {COLLECTION_EVENTS_NUM}.\nGenerated table candidate keys: {COLLECTION_EVENTS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'COLLECTION_EVENTS_NUM': range overlap=1.000, JS similarity=0.778\n    Generated    \u2014 min: 1.0, max: 143.0, mean: 9.8059\n    Ground Truth \u2014 min: 1.0, max: 143.0, mean: 16.1216",
+        "generated_samples": "Schema: ['COLLECTION_EVENTS_NUM']\nNumber of Tuples: 14028\nExamples:\n COLLECTION_EVENTS_NUM\n                    38\n                     2\n                     9",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length9_29/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length9_29/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history: JOIN : [[\"Source9_29_0\", \"Source9_29_1\"], [\"ROW_WID\", \"ROW_WID\"]]\n# Join df0 and df1 on 'ROW_WID'\ndf_joined = pd.merge(df0, df1, on=\"ROW_WID\", how=\"inner\")\n\n# Target schema: ['COLLECTION_EVENTS_NUM': integer]\n# The target examples only have COLLECTION_EVENTS_NUM column.\n# After join, df_joined has columns: ROW_WID, COLLECTION_EVENTS_NUM, VISITS_NUM\n# We only keep COLLECTION_EVENTS_NUM as per target schema.\n\n# Ensure COLLECTION_EVENTS_NUM is integer type\ndf_joined[\"COLLECTION_EVENTS_NUM\"] = df_joined[\"COLLECTION_EVENTS_NUM\"].astype(int)\n\n# Prepare final target dataframe with only COLLECTION_EVENTS_NUM column\ntarget_df = df_joined[[\"COLLECTION_EVENTS_NUM\"]]\n\n# Write the result to the specified path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length9_29/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "COLLECTION_EVENTS_NUM\n4\n14\n14\n6\n1\n4\n9\n4\n14\n3\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8330345153808594
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 12285.66837310791,
+        "critique": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "2_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2107,
+        "cost": 0.0030688,
+        "latency": 11.237586498260498,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.421) / 2 = 0.211 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.208, range overlap=0.057.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Timepoint}; {Drug, Mouse ID}.\nSpurious keys in generated not present in ground truth: {Mouse ID, Drug}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Timepoint'] \u2192 Mouse ID; ['Mouse ID'] \u2192 Timepoint.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.000, JS similarity=0.099\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.114, JS similarity=0.317\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+        "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 952\nExamples:\n     Drug  Timepoint  Mouse ID\n Naftisol         45       724\nCapomulin         45       364\n Ceftamin         45       471",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_85/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_85/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history: JOIN on [\"Mouse ID\", \"Mouse ID\"]\n# Join df0 and df1 on \"Mouse ID\"\ndf_joined = pd.merge(df0, df1, on=\"Mouse ID\", how=\"inner\")\n\n# Target schema: ['Drug': string, 'Timepoint': integer, 'Mouse ID': integer]\n# From source data:\n# - \"Drug\" comes from df1 (string)\n# - \"Timepoint\" comes from df0 (integer)\n# - \"Mouse ID\" should be integer, but in source0 examples it looks like strings (e.g., 'n763')\n#   We need to convert \"Mouse ID\" to integer if possible.\n# However, source0 \"Mouse ID\" values are strings like 'n763', 'q787', 'y163', which cannot be converted to int.\n# Target examples show \"Mouse ID\" as integers (e.g., 20, 22, 25).\n# This implies that the \"Mouse ID\" in the target is actually the \"Timepoint\" or some other numeric ID.\n# But the join key is \"Mouse ID\" string in both sources.\n# Since the target schema requires \"Mouse ID\" as integer, and source \"Mouse ID\" is string,\n# we must convert \"Mouse ID\" to integer by extracting numeric part if possible.\n# Let's try to extract digits from \"Mouse ID\" strings.\n\ndef extract_int_mouse_id(mouse_id_str):\n    # Extract digits from the string and convert to int\n    import re\n    digits = re.findall(r'\\d+', mouse_id_str)\n    if digits:\n        return int(digits[0])\n    else:\n        # If no digits found, return NaN\n        return pd.NA\n\ndf_joined['Mouse ID'] = df_joined['Mouse ID'].apply(extract_int_mouse_id)\n\n# Ensure \"Timepoint\" is integer\ndf_joined['Timepoint'] = df_joined['Timepoint'].astype(int)\n\n# Ensure \"Drug\" is string\ndf_joined['Drug'] = df_joined['Drug'].astype(str)\n\n# Select only the target columns in the order: Drug, Timepoint, Mouse ID\ndf_target = df_joined[['Drug', 'Timepoint', 'Mouse ID']]\n\n# Drop rows with missing Mouse ID after conversion (if any)\ndf_target = df_target.dropna(subset=['Mouse ID'])\n\n# Convert Mouse ID to int after dropping NaNs\ndf_target['Mouse ID'] = df_target['Mouse ID'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_85/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Drug,Timepoint,Mouse ID\nPlacebo,20,763\nPlacebo,25,763\nPlacebo,30,763\nPlacebo,35,763\nPlacebo,40,763\nPlacebo,20,787\nPlacebo,25,787\nPlacebo,30,787\nPlacebo,35,787\nPlacebo,40,787\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5292167663574219
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0014248000000000002,
+          "latency": 3.0232996940612793,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_85/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_85/training_1.csv\", index_col=0)\n\n# Join on Mouse ID\njoined = pd.merge(source0, source1, on=\"Mouse ID\", how=\"inner\")\n\n# Group by Drug and Timepoint, aggregate Mouse ID by min (to convert to integer and reduce duplicates)\nresult = joined.groupby([\"Drug\", \"Timepoint\"], as_index=False).agg({\"Mouse ID\": \"min\"})\n\n# Ensure column types match target schema\nresult[\"Drug\"] = result[\"Drug\"].astype(str)\nresult[\"Timepoint\"] = result[\"Timepoint\"].astype(int)\nresult[\"Mouse ID\"] = result[\"Mouse ID\"].astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_85/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.021696090698242188
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11300.55856704712,
+        "critique": 3045.8250045776367
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "1_53",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.3283,
+        "cost": 0.0014520000000000002,
+        "latency": 4.834401369094849,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.657) / 2 = 0.328 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.701, range overlap=0.440.\nGround truth candidate keys: {total_litres_of_pure_alcohol}; {continent}; {wine_servings}; {beer_servings}; {spirit_servings}.\nGenerated table candidate keys: {continent, beer_servings, spirit_servings, wine_servings, total_litres_of_pure_alcohol}.\nKeys present in ground truth but absent in generated: {continent}; {total_litres_of_pure_alcohol}; {wine_servings}; {beer_servings}; {spirit_servings}.\nSpurious keys in generated not present in ground truth: {total_litres_of_pure_alcohol, spirit_servings, beer_servings, wine_servings, continent}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['wine_servings'] \u2192 beer_servings; ['wine_servings'] \u2192 continent; ['beer_servings'] \u2192 total_litres_of_pure_alcohol; ['continent'] \u2192 total_litres_of_pure_alcohol; ['continent'] \u2192 beer_servings (and 15 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'beer_servings': range overlap=0.436, JS similarity=0.780\n    Generated    \u2014 min: 0.0, max: 376.0, mean: 104.0\n    Ground Truth \u2014 min: 31.9, max: 195.7083, mean: 109.7233\n  Column 'spirit_servings': range overlap=0.387, JS similarity=0.592\n    Generated    \u2014 min: 0.0, max: 326.0, mean: 72.6289\n    Ground Truth \u2014 min: 15.5769, max: 141.7917, mean: 85.0094\n  Column 'wine_servings': range overlap=0.399, JS similarity=0.753\n    Generated    \u2014 min: 0.0, max: 339.0, mean: 44.2577\n    Ground Truth \u2014 min: 10.75, max: 145.9583, mean: 61.5944\n  Column 'total_litres_of_pure_alcohol': range overlap=0.540, JS similarity=0.680\n    Generated    \u2014 min: 0.0, max: 12.9, mean: 4.5216\n    Ground Truth \u2014 min: 2.0, max: 8.9625, mean: 4.9266",
+        "generated_samples": "Schema: ['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']\nNumber of Tuples: 97\nExamples:\ncontinent  beer_servings  spirit_servings  wine_servings  total_litres_of_pure_alcohol\n       AF            9.0              1.0            7.0                           0.3\n       AF           51.0              3.0           20.0                           1.3\n       AF            0.0              0.0            0.0                           0.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_53/training_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, and its schema matches the target schema except for column order,\n# we just need to select and reorder columns to match the target schema:\n# Target schema: ['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']\n\n# Extract the single source DataFrame\ndf_source = source_dfs[0]\n\n# Select and reorder columns to match target schema\ndf_target = df_source[['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']].copy()\n\n# Convert data types to match target schema explicitly\ndf_target['continent'] = df_target['continent'].astype(str)\ndf_target['beer_servings'] = df_target['beer_servings'].astype(float)\ndf_target['spirit_servings'] = df_target['spirit_servings'].astype(float)\ndf_target['wine_servings'] = df_target['wine_servings'].astype(float)\ndf_target['total_litres_of_pure_alcohol'] = df_target['total_litres_of_pure_alcohol'].astype(float)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_53/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "continent,beer_servings,spirit_servings,wine_servings,total_litres_of_pure_alcohol\nAF,19.0,152.0,2.0,3.1\nAF,0.0,0.0,0.0,0.0\nEU,343.0,244.0,56.0,12.9\nEU,236.0,133.0,271.0,11.4\nAF,26.0,15.0,4.0,0.8\nAF,8.0,11.0,1.0,1.5\nAS,13.0,4.0,0.0,0.3\nAS,0.0,0.0,0.0,0.0\nAF,5.0,1.0,1.0,0.6\nEU,149.0,100.0,120.0,6.6\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.040386199951172
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9314,
+          "cost": 0.0015136000000000001,
+          "latency": 4.461287260055542,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.863) / 2 = 0.931 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.778, range overlap=0.879.\nGround truth candidate keys: {total_litres_of_pure_alcohol}; {continent}; {wine_servings}; {beer_servings}; {spirit_servings}.\nGenerated table candidate keys: {total_litres_of_pure_alcohol}; {continent}; {wine_servings}; {beer_servings}; {spirit_servings}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'beer_servings': range overlap=0.917, JS similarity=1.000\n    Generated    \u2014 min: 41.3333, max: 191.5714, mean: 113.8017\n    Ground Truth \u2014 min: 31.9, max: 195.7083, mean: 109.7233\n  Column 'spirit_servings': range overlap=0.831, JS similarity=0.647\n    Generated    \u2014 min: 17.0741, max: 122.0, mean: 73.3065\n    Ground Truth \u2014 min: 15.5769, max: 141.7917, mean: 85.0094\n  Column 'wine_servings': range overlap=0.920, JS similarity=0.802\n    Generated    \u2014 min: 7.6667, max: 137.9524, mean: 49.609\n    Ground Truth \u2014 min: 10.75, max: 145.9583, mean: 61.5944\n  Column 'total_litres_of_pure_alcohol': range overlap=0.849, JS similarity=0.662\n    Generated    \u2014 min: 2.3125, max: 8.2238, mean: 4.663\n    Ground Truth \u2014 min: 2.0, max: 8.9625, mean: 4.9266",
+          "generated_samples": "Schema: ['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']\nNumber of Tuples: 5\nExamples:\ncontinent  beer_servings  spirit_servings  wine_servings  total_litres_of_pure_alcohol\n       EU     191.571429       122.000000     137.952381                       8.22381\n       AS      41.333333        64.458333       7.666667                       2.31250\n       SA     190.400000       118.000000      65.000000                       6.66000",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_53/training_0.csv\", index_col=0)\n\n# Group by 'continent' and aggregate by mean for numeric columns\nresult = source0.groupby('continent', as_index=False).agg({\n    'beer_servings': 'mean',\n    'spirit_servings': 'mean',\n    'wine_servings': 'mean',\n    'total_litres_of_pure_alcohol': 'mean'\n})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_53/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.5103816986083984
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4836.81845664978,
+        "critique": 4519.408702850342
+      }
+    }
+  ]
+}

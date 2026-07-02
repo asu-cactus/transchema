@@ -1,0 +1,29 @@
+{
+  "case": "9_31",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9576,
+        "cost": 0.0034348,
+        "latency": 21.114169597625732,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.915) / 2 = 0.958 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.831, range overlap=1.000.\nGround truth candidate keys: {HOME_PASSED}.\nGenerated table candidate keys: {HOME_PASSED}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'HOME_PASSED': range overlap=1.000, JS similarity=0.831\n    Generated    \u2014 min: 1.0, max: 4892.0, mean: 1381.8901\n    Ground Truth \u2014 min: 2.0, max: 4892.0, mean: 1334.8983",
+        "generated_samples": "Schema: ['HOME_PASSED']\nNumber of Tuples: 27699\nExamples:\n HOME_PASSED\n          75\n        4892\n        2085",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = {\n    \"source0\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_0.csv\",\n    \"source1\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_1.csv\",\n    \"source2\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_2.csv\",\n    \"source3\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_3.csv\",\n    \"source4\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_4.csv\",\n    \"source5\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_5.csv\",\n    \"source6\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_6.csv\",\n    \"source7\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_7.csv\",\n    \"source8\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_8.csv\",\n    \"source9\": \"autopipeline-benchmarks/github-pipelines/length9_31/training_9.csv\",\n}\n\n# Step 1: Load all source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source_files[\"source0\"], index_col=0)\ndf1 = pd.read_csv(source_files[\"source1\"], index_col=0)\ndf2 = pd.read_csv(source_files[\"source2\"], index_col=0)\ndf3 = pd.read_csv(source_files[\"source3\"], index_col=0)\ndf4 = pd.read_csv(source_files[\"source4\"], index_col=0)\ndf5 = pd.read_csv(source_files[\"source5\"], index_col=0)\ndf6 = pd.read_csv(source_files[\"source6\"], index_col=0)\ndf7 = pd.read_csv(source_files[\"source7\"], index_col=0)\ndf8 = pd.read_csv(source_files[\"source8\"], index_col=0)\ndf9 = pd.read_csv(source_files[\"source9\"], index_col=0)\n\n# Step 2: Union all source tables that share the same schema as the target column HOME_PASSED\n# The target column is 'HOME_PASSED' (integer).\n# Source tables with schema containing 'HOME_PASSED' and matching schema:\n# source0, source1, source3, source5 all have the same schema with 'HOME_PASSED' column.\n# We union these four tables on all columns (schema identical), then keep only ROW_WID and HOME_PASSED.\n\n# Union source0, source1, source3, source5\ndf_union = pd.concat([df0, df1, df3, df5], ignore_index=True)\n\n# We only need ROW_WID and HOME_PASSED columns from this union for joining with other sources\ndf_union = df_union[['ROW_WID', 'HOME_PASSED']]\n\n# Step 3: Other source tables have different schemas but share ROW_WID as key:\n# source2: ['ROW_WID', 'INTERACTIONS_NUM']\n# source4: ['ROW_WID', 'VISITS_NUM']\n# source6: ['ROW_WID', 'KEYWORDS_NUM']\n# source7: ['ROW_WID', 'INBOUND_CALLS_NUM']\n# source8: ['ROW_WID', 'TECHSUPPORT_NUM']\n# source9: ['ROW_WID', 'COLLECTION_EVENTS_NUM']\n\n# Step 4: Join all these aspect tables with the unioned dimension table on ROW_WID\n# We do left joins starting from df_union to keep only ROW_WID present in the unioned main table.\n\ndf_join = df_union.copy()\n\n# Join source2\ndf_join = df_join.merge(df2, on='ROW_WID', how='left')\n\n# Join source4\ndf_join = df_join.merge(df4, on='ROW_WID', how='left')\n\n# Join source6\ndf_join = df_join.merge(df6, on='ROW_WID', how='left')\n\n# Join source7\ndf_join = df_join.merge(df7, on='ROW_WID', how='left')\n\n# Join source8\ndf_join = df_join.merge(df8, on='ROW_WID', how='left')\n\n# Join source9\ndf_join = df_join.merge(df9, on='ROW_WID', how='left')\n\n# Step 5: The target table schema is only ['HOME_PASSED'] (integer).\n# According to the target examples, the target table only contains the HOME_PASSED column.\n# So we project only the HOME_PASSED column from the joined dataframe.\n\n# Step 6: The target examples show 4161 tuples, which is fewer than the unioned rows (df_union has more).\n# We keep all rows from df_union (unioned main tables) because the target examples are a subset.\n# No aggregation or group by is needed since target has a single column and no primary key.\n\ntarget_df = df_join[['HOME_PASSED']].copy()\n\n# Step 7: Ensure HOME_PASSED is integer type as per target schema\ntarget_df['HOME_PASSED'] = target_df['HOME_PASSED'].fillna(0).astype(int)\n\n# Step 8: Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length9_31/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "HOME_PASSED\n3439\n1499\n860\n2085\n753\n3439\n3273\n3439\n240\n284\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5416145324707031
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 21180.907011032104,
+        "critique": 0.0
+      }
+    }
+  ]
+}

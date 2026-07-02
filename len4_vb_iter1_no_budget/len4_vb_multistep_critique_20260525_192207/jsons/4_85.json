@@ -1,0 +1,46 @@
+{
+  "case": "4_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0033935999999999997,
+        "latency": 10.518284797668457,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Load the source table\nsource_path = \"autopipeline-benchmarks/github-pipelines/length4_85/training_0.csv\"\ndf_source = pd.read_csv(source_path, index_col=0)\n\n# According to the operation history:\n# group_by = [Source4_85_0.crit_cn]\n# aggregations = [sum(Source4_85_0.critic)]\n\n# First, ensure 'critic' column is numeric. If there are non-numeric values, convert them to NaN and then fill with 0 or drop.\n# From the error in previous attempts, 'critic' column may contain non-numeric strings concatenated multiple times.\n# We will coerce errors to NaN and then drop those rows to avoid invalid sums.\n\n# Convert 'critic' to numeric, coercing errors to NaN\ndf_source['critic'] = pd.to_numeric(df_source['critic'], errors='coerce')\n\n# Drop rows where 'critic' is NaN (invalid numeric values)\ndf_source = df_source.dropna(subset=['critic'])\n\n# Convert 'critic' to integer type after cleaning\ndf_source['critic'] = df_source['critic'].astype(int)\n\n# Group by 'crit_cn' and sum 'critic'\ndf_target = df_source.groupby('crit_cn', as_index=False)['critic'].sum()\n\n# Ensure the target schema: ['crit_cn': string, 'critic': integer]\ndf_target['crit_cn'] = df_target['crit_cn'].astype(str)\ndf_target['critic'] = df_target['critic'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_85/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.049591064453125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5171,
+          "cost": 0.001494,
+          "latency": 7.281110525131226,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.368) / 2 = 0.517 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.200.\nGround truth candidate keys: {crit_cn}; {critic}.\nGenerated table candidate keys: {crit_cn}.\nKeys present in ground truth but absent in generated: {critic}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['critic'] \u2192 crit_cn.\nDistribution Analysis (numerical columns with issues):\n  Column 'critic': range overlap=0.200, JS similarity=0.442\n    Generated    \u2014 min: 5.0, max: 10.0, mean: 8.75\n    Ground Truth \u2014 min: 5.0, max: 30.0, mean: 17.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'crit_cn': Jaccard=0.414",
+          "generated_samples": "Schema: ['crit_cn', 'critic']\nNumber of Tuples: 4\nExamples:\ncrit_cn  critic\n     US      10\n Mexico       5\n  Italy      10",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_85/training_0.csv\", index_col=0)\n\n# UNION step (only one table, so just use it)\ndf_union = source0.copy()\n\n# Group by crit_cn and count the number of critics\nresult = df_union.groupby('crit_cn', as_index=False).agg(critic=('critic', 'count'))\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_85/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0538101196289062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10521.925687789917,
+        "critique": 7323.152303695679
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "9_28",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9978,
+        "cost": 0.018863200000000004,
+        "latency": 51.84562158584595,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.996) / 2 = 0.998 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.991, range overlap=1.000.\nGround truth candidate keys: {ARPU}.\nGenerated table candidate keys: {ARPU}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['ARPU']\nNumber of Tuples: 27580\nExamples:\n  ARPU\n333.00\n448.97\n563.72",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_28/training_9.csv\", index_col=0)\n\n# Step 1: Union all source tables with the same schema as source3 (which have ARPU column)\n# These are source3, source5, source6, source7\n# They share the same schema including 'ARPU' and 'ROW_WID'\nunion_dfs = [source3, source5, source6, source7]\nunion_all = pd.concat(union_dfs, ignore_index=True)\n\n# Remove duplicates in union_all on ROW_WID to avoid duplication in join\nunion_all = union_all.drop_duplicates(subset=['ROW_WID'])\n\n# Step 2: Join union_all with all other source tables on ROW_WID\n# Other source tables: source0, source1, source2, source4, source8, source9\n# Join left on union_all to keep only rows with ARPU from union_all\n\nmerged = union_all.merge(source0, on='ROW_WID', how='left')\nmerged = merged.merge(source1, on='ROW_WID', how='left')\nmerged = merged.merge(source2, on='ROW_WID', how='left')\nmerged = merged.merge(source4, on='ROW_WID', how='left')\nmerged = merged.merge(source8, on='ROW_WID', how='left')\nmerged = merged.merge(source9, on='ROW_WID', how='left')\n\n# Step 3: Project only the ARPU column as target schema requires only ['ARPU']\n# Ensure ARPU is float type\nTarget9_28 = merged[['ARPU']].copy()\nTarget9_28['ARPU'] = Target9_28['ARPU'].astype(float)\n\n# Step 4: Save the result to the specified path\nTarget9_28.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/target_multisource.csv\", index=False)",
+        "generated_csv_head": "ARPU\n555.12\n260.15\n252.85\n489.35\n167.71\n587.88\n301.97\n430.22\n583.21\n500.97\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1069774627685547
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 51942.04258918762,
+        "critique": 0.0
+      }
+    }
+  ]
+}

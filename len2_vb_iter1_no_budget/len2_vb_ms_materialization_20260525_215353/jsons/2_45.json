@@ -1,0 +1,46 @@
+{
+  "case": "2_45",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8574,
+        "cost": 0.0017984000000000001,
+        "latency": 6.811278820037842,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.715) / 2 = 0.857 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.715, range overlap=0.570.\nGround truth candidate keys: {Item ID}.\nGenerated table candidate keys: {Item ID}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Item ID': range overlap=1.000, JS similarity=0.945\n    Generated    \u2014 min: 0.0, max: 183.0, mean: 93.2821\n    Ground Truth \u2014 min: 0.0, max: 183.0, mean: 90.7212\n  Column 'Price': range overlap=0.141, JS similarity=0.484\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 29.4, mean: 7.3849\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Item Name': Jaccard=0.859",
+        "generated_samples": "Schema: ['Item ID', 'Item Name', 'Price']\nNumber of Tuples: 390\nExamples:\n Item ID                Item Name  Price\n      92             Final Critic   4.88\n     146     Warped Iron Scimitar   3.10\n      93 Apocalyptic Battlescythe   1.97",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_45/training_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the first numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, and it contains all target columns plus extra columns,\n# we select only the target columns: ['Item ID', 'Item Name', 'Price']\n# and ensure the data types match the target schema:\n# 'Item ID': integer, 'Item Name': string, 'Price': float\n\n# Extract relevant columns from the single source dataframe\ndf_source = dfs[0][['Item ID', 'Item Name', 'Price']].copy()\n\n# Enforce data types according to target schema\ndf_source['Item ID'] = df_source['Item ID'].astype(int)\ndf_source['Item Name'] = df_source['Item Name'].astype(str)\ndf_source['Price'] = df_source['Price'].astype(float)\n\n# The target table is named Target2_45, but we are asked to write the result to a CSV file.\n# Write the transformed dataframe to the specified output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_45/target_multisource.csv\"\ndf_source.to_csv(output_path, index=False)",
+        "generated_csv_head": "Item ID,Item Name,Price\n75,Brutality Ivory Warmace,2.42\n20,Netherbane,3.27\n181,Reaper's Toll,1.66\n54,Eternal Cleaver,2.5\n60,Wolf,3.54\n152,Darkheart,1.74\n131,Fury,1.44\n100,Blindscythe,3.27\n96,Blood-Forged Skeletal Spine,3.09\n143,Frenzied Scimitar,1.56\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.863241195678711
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8574,
+          "cost": 0.0011268,
+          "latency": 1.684046745300293,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.715) / 2 = 0.857 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.715, range overlap=0.570.\nGround truth candidate keys: {Item ID}.\nGenerated table candidate keys: {Item ID}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Item ID': range overlap=1.000, JS similarity=0.945\n    Generated    \u2014 min: 0.0, max: 183.0, mean: 93.2821\n    Ground Truth \u2014 min: 0.0, max: 183.0, mean: 90.7212\n  Column 'Price': range overlap=0.141, JS similarity=0.484\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 29.4, mean: 7.3849\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Item Name': Jaccard=0.859",
+          "generated_samples": "Schema: ['Item ID', 'Item Name', 'Price']\nNumber of Tuples: 390\nExamples:\n Item ID           Item Name  Price\n     120              Agatha   3.08\n     183 Dragon's Greatsword   1.09\n      86   Stormfury Lantern   2.27",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_45/training_0.csv\", index_col=0)\n\n# Select only the columns needed for the target schema\nresult = source0[['Item ID', 'Item Name', 'Price']]\n\n# Write the result to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_45/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.081228256225586
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6818.284511566162,
+        "critique": 1736.4966869354248
+      }
+    }
+  ]
+}

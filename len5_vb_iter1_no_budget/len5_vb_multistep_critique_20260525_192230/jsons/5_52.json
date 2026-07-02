@@ -1,0 +1,46 @@
+{
+  "case": "5_52",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0032908000000000004,
+        "latency": 6.833640098571777,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "Schema: ['Module', 'Time', 'Date', 'Room', 'Room_Capacity', 'Registered_Students']\nNumber of Tuples: 45\nExamples:\n Module  Time  Date  Room  Room_Capacity  Registered_Students\n    NaN   NaN   NaN   NaN            NaN                  NaN\n    NaN   NaN   NaN   NaN            NaN                  NaN\n    NaN   NaN   NaN   NaN            NaN                  NaN",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length5_52/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_52/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_52/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_52/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_52/training_4.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# According to operation_history, perform UNION of all source tables\n# All source tables have the same schema:\n# ['Time', 'Date', 'Room', 'Room_Capacity', 'Module', 'Registered_Students']\n\n# Concatenate all dataframes vertically (union)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Reorder columns to match target schema (which is the same as source schema)\ntarget_columns = ['Module', 'Time', 'Date', 'Room', 'Room_Capacity', 'Registered_Students']\n# The source columns order is different, so reorder accordingly\ntarget_df = target_df[target_columns]\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_52/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Module,Time,Date,Room,Room_Capacity,Registered_Students\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.1240711212158203
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.0,
+          "cost": 0.0025396,
+          "latency": 10.115894079208374,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "Schema: ['Module', 'Time', 'Date', 'Room', 'Room_Capacity', 'Registered_Students']\nNumber of Tuples: 1\nExamples:\n Module  Time  Date  Room  Room_Capacity  Registered_Students\n    NaN   NaN   NaN   NaN            0.0                  0.0",
+          "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_52/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_52/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_52/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_52/training_3.csv\", index_col=0)\ndf4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_52/training_4.csv\", index_col=0)\n\n# Join all source tables on the shared key columns: Time, Date, Room, Module\n# Since all tables have the same schema, we join them pairwise on these columns\n# We will do a chain of merges with inner join to keep only matching rows\n\ndf01 = pd.merge(df0, df1, on=['Time', 'Date', 'Room', 'Module'], how='inner', suffixes=('_0', '_1'))\ndf012 = pd.merge(df01, df2, on=['Time', 'Date', 'Room', 'Module'], how='inner')\ndf0123 = pd.merge(df012, df3, on=['Time', 'Date', 'Room', 'Module'], how='inner', suffixes=('_2', '_3'))\ndf_all = pd.merge(df0123, df4, on=['Time', 'Date', 'Room', 'Module'], how='inner')\n\n# After join, columns from different tables are suffixed or duplicated.\n# We need to sum Room_Capacity and Registered_Students from all tables.\n\n# Collect all Room_Capacity columns\nroom_capacity_cols = [col for col in df_all.columns if 'Room_Capacity' in col]\n# Collect all Registered_Students columns\nregistered_students_cols = [col for col in df_all.columns if 'Registered_Students' in col]\n\n# Sum across these columns row-wise\ndf_all['Room_Capacity'] = df_all[room_capacity_cols].sum(axis=1)\ndf_all['Registered_Students'] = df_all[registered_students_cols].sum(axis=1)\n\n# Select the final columns as per target schema order\nfinal_cols = ['Module', 'Time', 'Date', 'Room', 'Room_Capacity', 'Registered_Students']\ndf_final = df_all[final_cols]\n\n# Group by the leftmost columns that are string or int and unique in target examples\n# Here, group by Module, Time, Date, Room and aggregate sums of Room_Capacity and Registered_Students\ndf_final = df_final.groupby(['Module', 'Time', 'Date', 'Room'], dropna=False, as_index=False).agg({\n    'Room_Capacity': 'sum',\n    'Registered_Students': 'sum'\n})\n\n# Write the final output CSV\ndf_final.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_52/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 3.2362937927246094
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6894.997835159302,
+        "critique": 10251.899242401123
+      }
+    }
+  ]
+}

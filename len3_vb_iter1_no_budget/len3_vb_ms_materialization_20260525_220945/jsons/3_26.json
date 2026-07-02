@@ -1,0 +1,46 @@
+{
+  "case": "3_26",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8332,
+        "cost": 0.008388000000000001,
+        "latency": 27.005857229232788,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.666) / 2 = 0.833 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.596, range overlap=0.632.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=0.632, JS similarity=0.596\n    Generated    \u2014 min: -2.3306, max: 1.6694, mean: 0.0\n    Ground Truth \u2014 min: -3.0, max: 3.3333, mean: -0.0464\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.719",
+        "generated_samples": "Schema: ['title', '0']\nNumber of Tuples: 2656\nExamples:\n                         title         0\n   Horse Whisperer, The (1998) -0.997237\nPlan 9 from Outer Space (1958) -1.080571\n           Postman, The (1997) -1.330571",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_26/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_26/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_26/training_2.csv\", index_col=0)\n\n# Join Source3_26_0 and Source3_26_1 on movie_id\njoined = pd.merge(source0, source1, on=\"movie_id\", how=\"inner\")\n\n# Group by title and compute average rating\ngrouped = joined.groupby(\"title\", as_index=False)[\"rating\"].mean()\n\n# Rename columns to match target schema: ['title', '0']\ngrouped.rename(columns={\"rating\": \"0\"}, inplace=True)\n\n# The target '0' column has float values that range roughly from -3 to 3.3,\n# but the average rating is from 1 to 5. The target values appear to be normalized or centered.\n# We need to transform the average rating to match the target distribution.\n# Since no explicit normalization is given, we can center the ratings by subtracting the mean rating\n# and then scale to roughly match the target range.\n\n# Calculate mean rating from grouped data\nmean_rating = grouped[\"0\"].mean()\n\n# Center the ratings by subtracting the mean\ngrouped[\"0\"] = grouped[\"0\"] - mean_rating\n\n# Save the result to the target path\ngrouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_26/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title,0\n'Night Mother (1986),-0.5805707040968375\n'Til There Was You (1997),-0.8305707040968375\n\"'burbs, The (1989)\",0.1694292959031624\n...And Justice for All (1979),0.4194292959031624\n10 Things I Hate About You (1999),-0.0448564183825519\n101 Dalmatians (1961),0.1694292959031624\n101 Dalmatians (1996),-0.2305707040968374\n12 Angry Men (1957),0.7408578673317336\n\"13th Warrior, The (1999)\",-0.1162849898111231\n187 (1997),-0.3305707040968375\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.980377197265625
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7198,
+          "cost": 0.0016428000000000002,
+          "latency": 4.910172462463379,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.440) / 2 = 0.720 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.029, range overlap=0.292.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=0.292, JS similarity=0.029\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.3306\n    Ground Truth \u2014 min: -3.0, max: 3.3333, mean: -0.0464\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.719",
+          "generated_samples": "Schema: ['title', '0']\nNumber of Tuples: 2656\nExamples:\n                      title   0\n           Kagemusha (1980) 4.4\nSwimming with Sharks (1995) 4.4\n    Follow the Bitch (1998) 5.0",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_26/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_26/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_26/training_2.csv\", index_col=0)\n\n# Join Source3_26_0 and Source3_26_1 on movie_id\njoin_0_1 = pd.merge(source0, source1, on=\"movie_id\", how=\"inner\")\n\n# Join the above result with Source3_26_2 on user_id\njoin_all = pd.merge(join_0_1, source2, on=\"user_id\", how=\"inner\")\n\n# Group by title and aggregate average rating\nresult = join_all.groupby(\"title\", as_index=False).agg({\"rating\": \"mean\"})\n\n# Rename columns to match target schema\nresult.columns = [\"title\", \"0\"]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_26/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.5537738800048828
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 27123.396396636963,
+        "critique": 5228.64842414856
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "5_78",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.021931600000000002,
+        "latency": 38.1706657409668,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 745877.14, max: 745877.14, mean: 745877.14\n    Ground Truth \u2014 min: 128535.89, max: 272252.51, mean: 193972.71",
+        "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 1\nExamples:\n   Profit\n745877.14",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_78/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_78/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length5_78/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length5_78/training_3.csv\"\n\nsource0 = pd.read_csv(source0_path, index_col=0)\nsource1 = pd.read_csv(source1_path, index_col=0)\nsource2 = pd.read_csv(source2_path, index_col=0)\nsource3 = pd.read_csv(source3_path, index_col=0)\n\n# Operation 1: JOIN Source5_78_3 and Source5_78_0 on Cust_id\ndf = pd.merge(source3, source0, left_on=\"Cust_id\", right_on=\"Cust_id\", how=\"inner\")\n\n# Operation 2: group_by = [], aggregations = [sum(Source5_78_3.Profit)]\n# Since group_by is empty, sum all Profit values in df (which is the merged df)\n# But we must keep the dataframe for next joins, so we do not reduce here.\n# The aggregation is likely a check or intermediate step, so we do not drop columns or change df here.\n\n# Operation 3: JOIN Source5_78_3 and Source5_78_2 on Ord_id\n# Note: The operation history says join Source5_78_3 and Source5_78_2 on Ord_id,\n# but we have df currently as Source5_78_3 joined with Source5_78_0.\n# The join should be done on df (which has Source5_78_3 columns) and Source5_78_2 on Ord_id.\ndf = pd.merge(df, source2, left_on=\"Ord_id\", right_on=\"Ord_id\", how=\"inner\")\n\n# Operation 4: JOIN Source5_78_3 and Source5_78_1 on Ship_id\n# Similarly, join df with source1 on Ship_id\ndf = pd.merge(df, source1, left_on=\"Ship_id\", right_on=\"Ship_id\", how=\"inner\")\n\n# Operations 5 to 12: multiple group_by = [], aggregations = [sum(Source5_78_3.Profit)]\n# These repeated aggregations indicate summing Profit without grouping.\n# We do not alter df structure here, just ensure final output matches target schema.\n\n# Final step: The target schema is ['Profit': float]\n# The target examples show only one column: Profit, with float values.\n# So we aggregate sum of Profit over the entire joined dataframe.\n\ntotal_profit = df[\"Profit\"].sum()\n\n# Create the final dataframe with the target schema and the aggregated Profit\ntarget_df = pd.DataFrame({\"Profit\": [total_profit]})\n\n# Save the result to the specified path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length5_78/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Profit\n745877.14\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7295608520507812
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0020392,
+          "latency": 7.84415602684021,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 745877.14, max: 745877.14, mean: 745877.14\n    Ground Truth \u2014 min: 128535.89, max: 272252.51, mean: 193972.71",
+          "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 1\nExamples:\n   Profit\n745877.14",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_78/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_78/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_78/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_78/training_3.csv\", index_col=0)\n\n# Source4 is not used in the failed pipeline and target schema, so we skip it\n\n# Join Source5_78_3 with Source5_78_0 on Cust_id\ndf = pd.merge(source3, source0, on=\"Cust_id\", how=\"inner\")\n\n# Join the result with Source5_78_2 on Ord_id\ndf = pd.merge(df, source2, on=\"Ord_id\", how=\"inner\")\n\n# Join the result with Source5_78_1 on Ship_id\ndf = pd.merge(df, source1, on=\"Ship_id\", how=\"inner\")\n\n# Aggregate sum of Profit (no group by since target schema has only Profit column)\nresult = pd.DataFrame()\nresult[\"Profit\"] = [df[\"Profit\"].sum()]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_78/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6411075592041016
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 38260.75005531311,
+        "critique": 7915.461778640747
+      }
+    }
+  ]
+}

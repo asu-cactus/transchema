@@ -1,0 +1,46 @@
+{
+  "case": "3_9",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5833,
+        "cost": 0.0038412000000000003,
+        "latency": 21.301195859909058,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.500) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {park_name}.\nGenerated table candidate keys: {park_name}; {observations}.\nSpurious keys in generated not present in ground truth: {observations}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['observations'] \u2192 park_name.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['park_name', 'observations']\nNumber of Tuples: 4\nExamples:\n                park_name  observations\n      Bryce National Park          3162\nYellowstone National Park          3158\n   Yosemite National Park          3206",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource3_9_0_path = \"autopipeline-benchmarks/github-pipelines/length3_9/training_0.csv\"\nsource3_9_1_path = \"autopipeline-benchmarks/github-pipelines/length3_9/training_1.csv\"\n\nsource3_9_0 = pd.read_csv(source3_9_0_path, index_col=0)\nsource3_9_1 = pd.read_csv(source3_9_1_path, index_col=0)\n\n# Operation 1: JOIN Source3_9_0 and Source3_9_1 on \"scientific_name\"\njoined_df = pd.merge(source3_9_0, source3_9_1, on=\"scientific_name\", how=\"inner\")\n\n# Operation 2: group_by Source3_9_1.park_name and aggregate count of Source3_9_1.observations\n# Note: The aggregation is count of observations, so count number of rows per park_name\n# Since observations column is numeric, but the operation is count, we count non-null observations per park_name\n\n# Group by park_name from Source3_9_1 (which is now in joined_df)\ngrouped = joined_df.groupby(\"park_name\")[\"observations\"].count().reset_index()\n\n# Rename columns to match target schema\ngrouped.rename(columns={\"park_name\": \"park_name\", \"observations\": \"observations\"}, inplace=True)\n\n# Ensure data types match target schema: park_name as string, observations as integer\ngrouped[\"park_name\"] = grouped[\"park_name\"].astype(str)\ngrouped[\"observations\"] = grouped[\"observations\"].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_9/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "park_name,observations\nBryce National Park,3162\nGreat Smoky Mountains National Park,3251\nYellowstone National Park,3158\nYosemite National Park,3206\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2116432189941406
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6157,
+          "cost": 0.0014312,
+          "latency": 3.3616549968719482,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.565) / 2 = 0.616 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.259, range overlap=0.000.\nGround truth candidate keys: {park_name}.\nGenerated table candidate keys: {park_name}; {observations}.\nSpurious keys in generated not present in ground truth: {observations}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['observations'] \u2192 park_name.\nDistribution Analysis (numerical columns with issues):\n  Column 'observations': range overlap=0.000, JS similarity=0.259\n    Generated    \u2014 min: 240348.0, max: 783767.0, mean: 453496.5\n    Ground Truth \u2014 min: 1.0, max: 1.0, mean: 1.0",
+          "generated_samples": "Schema: ['park_name', 'observations']\nNumber of Tuples: 4\nExamples:\n                park_name  observations\nYellowstone National Park        783767\n      Bryce National Park        313712\n   Yosemite National Park        476159",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_9/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_9/training_1.csv\", index_col=0)\n\n# Join Source3_9_0 and Source3_9_1 on scientific_name (inner join)\njoined = pd.merge(source0, source1, how='inner', on='scientific_name')\n\n# Group by park_name and sum observations\nresult = joined.groupby('park_name', as_index=False).agg({'observations': 'sum'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_9/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8082389831542969
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 21363.52825164795,
+        "critique": 3430.133104324341
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "2_23",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7573,
+        "cost": 0.0075844,
+        "latency": 29.770272493362427,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.515) / 2 = 0.757 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.389, range overlap=0.513.\nGround truth candidate keys: {city}.\nGenerated table candidate keys: {city}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'type': range overlap=0.513, JS similarity=0.389\n    Generated    \u2014 min: 0.0, max: 39.0, mean: 10.95\n    Ground Truth \u2014 min: 9.0, max: 29.0, mean: 17.9848\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+        "generated_samples": "Schema: ['city', 'type']\nNumber of Tuples: 120\nExamples:\n         city  type\nNorth Jeffrey     0\nNorth Jasmine    30\n Williamsview    21",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_23/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_23/training_1.csv\", index_col=0)\n\n# The operation history:\n# 1) Join Source0 and Source1 on 'city'\n# 2) Group by Source0.city and sum Source1.type (which is categorical 'Urban' in examples, so must be converted to integer first)\n\n# From Source1 examples, 'type' column is categorical with values like 'Urban'.\n# But in intermediate_step1.csv, 'type' is numeric (3, etc.), so likely 'type' was mapped to integer before sum.\n# We must replicate that mapping.\n\n# Map Source1.type from string to integer:\n# Since the intermediate_step1.csv shows 'type' values like 3, 16, 19, etc., \n# but Source1.type examples show 'Urban' only, we must assume 'type' in Source1 is categorical and needs mapping.\n# However, the prompt shows Source1.type examples as 'Urban' only, but intermediate_step1.csv has numeric 'type'.\n# This suggests 'type' in Source1 is actually numeric in the file, or was mapped before join.\n\n# Let's check Source1.type unique values and map them to integers if needed.\n# Since we cannot check interactively, we assume 'type' is categorical and map it to integers.\n\n# Let's create a mapping from unique Source1.type values to integers.\n# But since only 'Urban' is shown, let's map 'Urban' -> 1 (or 3 as in intermediate_step1?).\n# However, intermediate_step1.csv shows 'type' values like 3 for Leahton, so maybe 'type' is driver_count or another column?\n\n# Wait, Source1 schema: ['city', 'driver_count', 'type']\n# Source1.type is categorical ('Urban'), driver_count is integer.\n# The intermediate_step1.csv schema: ['Unnamed: 0', 'city', 'type']\n# The 'type' column in intermediate_step1.csv is numeric, so likely the join kept Source1.type as numeric.\n\n# The operation history says join on city, then group by city summing Source1.type.\n# But Source1.type is categorical, so summing it is invalid.\n# Possibly, the 'type' column in intermediate_step1.csv is actually driver_count or a mapped integer from 'type'.\n\n# Given the operation history and intermediate results, it seems 'type' in Source1 was mapped from categorical to integer before join.\n# Let's map 'Urban' -> 3 (as in intermediate_step1.csv examples).\n\n# So mapping:\ntype_mapping = {'Urban': 3}\n\nsource1['type'] = source1['type'].map(type_mapping)\n\n# Now join Source0 and Source1 on 'city'\njoined = pd.merge(source0[['city']], source1[['city', 'type']], on='city', how='inner')\n\n# Group by city and sum the 'type' column\ngrouped = joined.groupby('city', as_index=False)['type'].sum()\n\n# Ensure 'city' is string and 'type' is integer as per target schema\ngrouped['city'] = grouped['city'].astype(str)\ngrouped['type'] = grouped['type'].astype(int)\n\n# Write the result to the target path\ngrouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_23/target_multisource.csv\", index=False)",
+        "generated_csv_head": "city,type\nAmandaburgh,9\nBarajasview,18\nBarronchester,0\nBethanyland,0\nBradshawfurt,0\nBrandonfort,0\nCarriemouth,18\nChristopherfurt,18\nColemanland,0\nDavidfurt,0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1720657348632812
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.4778,
+          "cost": 0.0014072000000000002,
+          "latency": 6.4685962200164795,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.289) / 2 = 0.478 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {city}.\nGenerated table candidate keys: {city}; {type}.\nSpurious keys in generated not present in ground truth: {type}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['type'] \u2192 city.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+          "generated_samples": "Schema: ['city', 'type']\nNumber of Tuples: 120\nExamples:\n        city                                                                                                                                                                                             type\nWilliamsstad                                                                                                                                                                             UrbanUrbanUrbanUrban\n New Raymond                 SuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburban\nSouth Brenda SuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburbanSuburban",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_23/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_23/training_1.csv\", index_col=0)\n\n# Join on city (inner join to keep only matching cities)\njoined = pd.merge(source0, source1, how='inner', on='city')\n\n# Group by city and sum the 'type' column from source1\n# Note: 'type' is integer in target, so sum aggregation is appropriate\nresult = joined.groupby('city', as_index=False).agg({'type': 'sum'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_23/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1243820190429688
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 29851.55701637268,
+        "critique": 6522.536754608154
+      }
+    }
+  ]
+}

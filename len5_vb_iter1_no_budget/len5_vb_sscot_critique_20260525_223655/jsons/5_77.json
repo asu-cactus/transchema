@@ -1,0 +1,46 @@
+{
+  "case": "5_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5353,
+        "cost": 0.0018112000000000002,
+        "latency": 9.190213203430176,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.404) / 2 = 0.535 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.514, range overlap=0.008.\nGround truth candidate keys: {school_name}; {reading_score}.\nGenerated table candidate keys: {school_name}.\nKeys present in ground truth but absent in generated: {reading_score}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['reading_score'] \u2192 school_name.\nDistribution Analysis (numerical columns with issues):\n  Column 'reading_score': range overlap=0.008, JS similarity=0.514\n    Generated    \u2014 min: 0.0, max: 385481.0, mean: 106601.9333\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.547",
+        "generated_samples": "Schema: ['school_name', 'reading_score']\nNumber of Tuples: 15\nExamples:\n        school_name  reading_score\n  Huang High School              0\n Bailey High School         264634\nCabrera High School              0",
+        "code": "import pandas as pd\n\n# File paths for the source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_77/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_77/training_1.csv\"\n\n# Load Source 0: student-level data with reading scores\n# index_col=0 to ignore the first numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: school-level data with school attributes\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['school_name': string, 'reading_score': integer]\n# Source 0 has 'school_name' and 'reading_score' at student level.\n# Source 1 has school-level info but no reading_score.\n# The target examples show reading_score aggregated at school level (e.g., Wilson High School 2283).\n# So we need to aggregate reading_score by school_name from Source 0.\n# Then join with Source 1 on school_name to ensure all schools are accounted for (if needed).\n# But since Source 1 has no reading_score, and target only needs school_name and reading_score,\n# we only need to aggregate Source 0 by school_name.\n# Source 1 is not needed for the target columns, but Hint 6 and 28 say all sources must be used.\n# So we will do a left join of aggregated Source 0 with Source 1 on school_name to ensure all schools from Source 1 appear.\n# For schools in Source 1 but not in Source 0, reading_score will be 0 (or NaN replaced by 0).\n# Finally, select only ['school_name', 'reading_score'] columns for the target.\n\n# Aggregate reading_score by school_name from Source 0\nagg_reading = df_source0.groupby('school_name', as_index=False)['reading_score'].sum()\n\n# Join aggregated reading scores with Source 1 on school_name (left join Source 1 to keep all schools)\ndf_joined = pd.merge(df_source1[['school_name']], agg_reading, on='school_name', how='left')\n\n# Replace NaN reading_score with 0 for schools without students in Source 0\ndf_joined['reading_score'] = df_joined['reading_score'].fillna(0).astype(int)\n\n# Final target dataframe with required schema and types\ntarget_df = df_joined[['school_name', 'reading_score']]\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_77/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "school_name,reading_score\nHuang High School,0\nFigueroa High School,0\nShelton High School,0\nHernandez High School,0\nGriffin High School,0\nWilson High School,0\nCabrera High School,0\nBailey High School,264634\nHolden High School,35789\nPena High School,80851\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1794567108154297
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6845,
+          "cost": 0.0021312,
+          "latency": 7.56287956237793,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.369) / 2 = 0.684 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.696.\nGround truth candidate keys: {school_name}; {reading_score}.\nGenerated table candidate keys: {school_name}; {reading_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'reading_score': range overlap=0.696, JS similarity=0.671\n    Generated    \u2014 min: 427.0, max: 4976.0, mean: 2662.375\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+          "generated_samples": "Schema: ['school_name', 'reading_score']\nNumber of Tuples: 8\nExamples:\n          school_name  reading_score\n     Ford High School           2739\nRodriguez High School           3999\n  Johnson High School           4761",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_77/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_77/training_1.csv\", index_col=0)\n\n# Join Source5_77_0 and Source5_77_1 on school_name\njoined = pd.merge(source0, source1, on=\"school_name\", how=\"inner\")\n\n# Group by school_name and aggregate size as reading_score (take first since size is unique per school)\nresult = joined.groupby(\"school_name\", as_index=False).agg({\"size\": \"first\"})\n\n# Rename 'size' to 'reading_score' to match target schema\nresult = result.rename(columns={\"size\": \"reading_score\"})\n\n# Write output to the target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_77/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8256435394287109
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9253.235578536987,
+        "critique": 7628.921270370483
+      }
+    }
+  ]
+}

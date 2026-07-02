@@ -1,0 +1,46 @@
+{
+  "case": "1_40",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5587,
+        "cost": 0.002494,
+        "latency": 8.528757333755493,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.400 + 0.717) / 2 = 0.559 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.571, range overlap=0.581.\nGround truth candidate keys: {CUSTOMERNAME, QUANTITYORDERED}; {ORDERNUMBER}.\nGenerated table candidate keys: {ORDERNUMBER, QUANTITYORDERED}.\nKeys present in ground truth but absent in generated: {QUANTITYORDERED, CUSTOMERNAME}; {ORDERNUMBER}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER, QUANTITYORDERED}.\nFunctional dependency F1: 0.400 (precision=0.500, recall=0.333).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER', 'QUANTITYORDERED'] \u2192 CUSTOMERNAME.\nMissing FDs from ground truth: ['CUSTOMERNAME', 'QUANTITYORDERED'] \u2192 ORDERNUMBER; ['ORDERNUMBER'] \u2192 QUANTITYORDERED.\nDistribution Analysis (numerical columns with issues):\n  Column 'QUANTITYORDERED': range overlap=0.162, JS similarity=0.192\n    Generated    \u2014 min: 11.0, max: 85.0, mean: 34.9894\n    Ground Truth \u2014 min: 6.0, max: 464.0, mean: 173.8954",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER', 'QUANTITYORDERED']\nNumber of Tuples: 754\nExamples:\n                CUSTOMERNAME  ORDERNUMBER  QUANTITYORDERED\nQuebec Home Shopping Network        10261               44\nCollectable Mini Designs Co.        10222               37\nMini Gifts Distributors Ltd.        10229               48",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_40/training_0.csv\"\n]\n\n# Target schema columns\ntarget_columns = ['CUSTOMERNAME', 'ORDERNUMBER', 'QUANTITYORDERED']\n\n# Load all source tables\n# According to the prompt, only one source table is given.\n# If there were multiple, we would load all similarly.\ndfs = []\nfor file in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since only one source table is given, transformation is straightforward:\n# Extract the target columns from the source table.\n# According to source schema, these columns exist:\n# 'CUSTOMERNAME' (string), 'ORDERNUMBER' (integer), 'QUANTITYORDERED' (integer)\n# We need to ensure types match target schema:\n# CUSTOMERNAME: string\n# ORDERNUMBER: integer\n# QUANTITYORDERED: integer\n\n# Extract relevant columns\ndf_source = dfs[0]\n\n# Clean and convert data types:\n# - CUSTOMERNAME: convert to string, fill missing with empty string or drop rows with missing CUSTOMERNAME\n# - ORDERNUMBER: convert to integer, drop rows with missing or invalid ORDERNUMBER\n# - QUANTITYORDERED: convert to integer, drop rows with missing or invalid QUANTITYORDERED\n\n# Drop rows where any of the target columns are missing or NaN\ndf_clean = df_source[target_columns].dropna(subset=target_columns)\n\n# Convert ORDERNUMBER and QUANTITYORDERED to integers safely\n# Some values might be floats or strings, so convert carefully\ndf_clean['ORDERNUMBER'] = pd.to_numeric(df_clean['ORDERNUMBER'], errors='coerce').dropna().astype(int)\ndf_clean['QUANTITYORDERED'] = pd.to_numeric(df_clean['QUANTITYORDERED'], errors='coerce').dropna().astype(int)\n\n# After conversion, drop rows where conversion failed (NaN introduced)\ndf_clean = df_clean.dropna(subset=['ORDERNUMBER', 'QUANTITYORDERED'])\n\n# Ensure CUSTOMERNAME is string type\ndf_clean['CUSTOMERNAME'] = df_clean['CUSTOMERNAME'].astype(str)\n\n# Reorder columns to target schema order (should already be correct)\ndf_final = df_clean[target_columns]\n\n# Save the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_40/target_multisource.csv\"\ndf_final.to_csv(output_path, index=False)",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER,QUANTITYORDERED\nToys4GrownUps.com,10367,44\nThe Sharp Gifts Warehouse,10407,66\nSignal Gift Stores,10124,22\nHeintze Collectables,10161,37\nGift Depot Inc.,10172,32\nMini Gifts Distributors Ltd.,10182,47\nOnline Diecast Creations Co.,10192,37\nMuscle Machine Inc,10204,20\nCollectable Mini Designs Co.,10226,21\nMuscle Machine Inc,10267,40\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4128684997558594
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9679,
+          "cost": 0.0019132000000000003,
+          "latency": 6.783449649810791,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.936) / 2 = 0.968 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.896, range overlap=0.912.\nGround truth candidate keys: {CUSTOMERNAME, QUANTITYORDERED}; {ORDERNUMBER}.\nGenerated table candidate keys: {CUSTOMERNAME, QUANTITYORDERED}; {ORDERNUMBER}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'QUANTITYORDERED': range overlap=0.823, JS similarity=0.827\n    Generated    \u2014 min: 22.0, max: 543.0, mean: 172.4314\n    Ground Truth \u2014 min: 6.0, max: 464.0, mean: 173.8954",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER', 'QUANTITYORDERED']\nNumber of Tuples: 153\nExamples:\n             CUSTOMERNAME  ORDERNUMBER  QUANTITYORDERED\n  Tekni Collectables Inc.        10401              543\n     Marta's Replicas Co.        10285              295\nThe Sharp Gifts Warehouse        10257               46",
+          "code": "import pandas as pd\n\n# Read source CSV with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_40/training_0.csv\", index_col=0)\n\n# Since only one source table is given, UNION is trivial (just use the table as is)\n# The target schema is ['CUSTOMERNAME': string, 'ORDERNUMBER': integer, 'QUANTITYORDERED': integer]\n\n# Clean data: drop rows with NaN in key columns to avoid duplicates and join issues\ndf = source0.dropna(subset=['CUSTOMERNAME', 'ORDERNUMBER', 'QUANTITYORDERED'])\n\n# Convert ORDERNUMBER and QUANTITYORDERED to integer as per target schema\ndf['ORDERNUMBER'] = df['ORDERNUMBER'].astype(int)\ndf['QUANTITYORDERED'] = df['QUANTITYORDERED'].astype(int)\n\n# Group by CUSTOMERNAME and ORDERNUMBER, aggregate sum of QUANTITYORDERED\nresult = df.groupby(['CUSTOMERNAME', 'ORDERNUMBER'], as_index=False).agg({'QUANTITYORDERED': 'sum'})\n\n# Write output with exact target schema column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_40/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.6193389892578125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8533.501625061035,
+        "critique": 6849.819898605347
+      }
+    }
+  ]
+}

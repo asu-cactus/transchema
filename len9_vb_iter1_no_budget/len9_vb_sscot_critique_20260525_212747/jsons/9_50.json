@@ -1,0 +1,29 @@
+{
+  "case": "9_50",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9948,
+        "cost": 0.0021720000000000003,
+        "latency": 8.646729469299316,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.990) / 2 = 0.995 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.979, range overlap=1.000.\nGround truth candidate keys: {emp_length}.\nGenerated table candidate keys: {emp_length}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['emp_length']\nNumber of Tuples: 160\nExamples:\n emp_length\n        266\n        105\n        317",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_50/training_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure emp_length column is integer type\n    df['emp_length'] = df['emp_length'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the exact same schema ['emp_length'] as the target,\n# and the target schema is also ['emp_length'], we can simply concatenate (union) all rows.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure the target column is integer type as specified\ntarget_df['emp_length'] = target_df['emp_length'].astype(int)\n\n# Write the combined DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_50/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "emp_length\n706\n317\n304\n292\n271\n264\n216\n193\n134\n114\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8294582366943359
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 8709.157705307007,
+        "critique": 0.0
+      }
+    }
+  ]
+}

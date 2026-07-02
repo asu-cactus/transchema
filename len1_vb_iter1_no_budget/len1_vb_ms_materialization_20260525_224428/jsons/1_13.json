@@ -1,0 +1,46 @@
+{
+  "case": "1_13",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.811,
+        "cost": 0.0017883999999999999,
+        "latency": 5.0404253005981445,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.822) / 2 = 0.811 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.856, range overlap=0.076.\nGround truth candidate keys: {tip_pct}; {sex, smoker}.\nGenerated table candidate keys: {tip_pct}.\nKeys present in ground truth but absent in generated: {sex, smoker}.\nFunctional dependency F1: 0.800 (precision=1.000, recall=0.667).\nMissing FDs from ground truth: ['sex', 'smoker'] \u2192 tip_pct.\nDistribution Analysis (numerical columns with issues):\n  Column 'tip_pct': range overlap=0.076, JS similarity=0.856\n    Generated    \u2014 min: 0.0356, max: 0.7103, mean: 0.1603\n    Ground Truth \u2014 min: 0.1474, max: 0.1984, mean: 0.1657",
+        "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 122\nExamples:\n sex smoker  tip_pct\nMale    Yes 0.129422\nMale    Yes 0.117735\nMale     No 0.107900",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_13/training_0.csv\"\n]\n\n# List to hold transformed DataFrames from each source\ndfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the first numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Extract only the columns needed for the target schema\n    # Target schema: ['sex': string, 'smoker': string, 'tip_pct': float]\n    # Source schema includes these columns, so just select them\n    df_selected = df[['sex', 'smoker', 'tip_pct']].copy()\n    \n    # Ensure correct data types as per target schema\n    df_selected['sex'] = df_selected['sex'].astype(str)\n    df_selected['smoker'] = df_selected['smoker'].astype(str)\n    df_selected['tip_pct'] = df_selected['tip_pct'].astype(float)\n    \n    dfs.append(df_selected)\n\n# Since there is only one source table, no union needed beyond this\n# If there were multiple sources with the same schema, we would concat here\n\n# Concatenate all source DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource.csv\", index=False)",
+        "generated_csv_head": "sex,smoker,tip_pct\nMale,No,0.1753155680224404\nMale,No,0.1253918495297805\nFemale,No,0.2019230769230769\nFemale,No,0.1409395973154362\nMale,No,0.1737089201877934\nFemale,No,0.1377410468319559\nFemale,No,0.1757469244288224\nMale,No,0.0955302366345311\nMale,No,0.0786163522012578\nFemale,No,0.1396151948692649\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.981496810913086
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9076,
+          "cost": 0.0012024,
+          "latency": 2.800090789794922,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.815) / 2 = 0.908 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.500, range overlap=0.392.\nGround truth candidate keys: {tip_pct}; {sex, smoker}.\nGenerated table candidate keys: {tip_pct}; {sex, smoker}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'tip_pct': range overlap=0.392, JS similarity=0.500\n    Generated    \u2014 min: 0.1551, max: 0.1751, mean: 0.1618\n    Ground Truth \u2014 min: 0.1474, max: 0.1984, mean: 0.1657",
+          "generated_samples": "Schema: ['sex', 'smoker', 'tip_pct']\nNumber of Tuples: 4\nExamples:\n   sex smoker  tip_pct\nFemale     No 0.159824\nFemale    Yes 0.175072\n  Male    Yes 0.155085",
+          "code": "import pandas as pd\n\n# Read source table\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/training_0.csv\", index_col=0)\n\n# Union all source tables (only one source here)\ndf = source1\n\n# Group by 'sex' and 'smoker' and aggregate mean of 'tip_pct'\nresult = df.groupby(['sex', 'smoker'], as_index=False).agg({'tip_pct': 'mean'})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_13/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.6045570373535156
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5054.600954055786,
+        "critique": 2853.5616397857666
+      }
+    }
+  ]
+}

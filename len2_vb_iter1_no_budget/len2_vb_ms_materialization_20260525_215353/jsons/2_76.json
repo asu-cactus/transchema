@@ -1,0 +1,46 @@
+{
+  "case": "2_76",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.3747,
+        "cost": 0.0039912,
+        "latency": 11.330706119537354,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.333 + 0.416) / 2 = 0.375 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.373, range overlap=0.296.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city, ride_id}; {city, fare}.\nKeys present in ground truth but absent in generated: {city}; {fare}.\nSpurious keys in generated not present in ground truth: {city, fare}; {ride_id, city}.\nFunctional dependency F1: 0.333 (precision=0.500, recall=0.250).\nSpurious FDs in generated (not in ground truth): ['ride_id'] \u2192 fare.\nMissing FDs from ground truth: ['fare'] \u2192 city; ['city'] \u2192 ride_id; ['city'] \u2192 fare.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.224, JS similarity=0.342\n    Generated    \u2014 min: 4.36, max: 58.55, mean: 29.0436\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\n  Column 'ride_id': range overlap=0.369, JS similarity=0.405\n    Generated    \u2014 min: 4.36, max: 58.55, mean: 29.0436\n    Ground Truth \u2014 min: 9.0, max: 29.0, mean: 17.9848\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+        "generated_samples": "Schema: ['city', 'fare', 'ride_id']\nNumber of Tuples: 1188\nExamples:\n       city  fare       ride_id\nJessicaport 33.72 3046889917159\n Port Shane 15.59  127445516863\n Josephside 44.74 5592692102803",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_76/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_76/training_1.csv\", index_col=0)\n\n# Perform the join on 'city' as specified\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Select only the columns required by the target schema\n# Target schema: ['city': string, 'fare': float, 'ride_id': integer]\n# Convert 'ride_id' to integer (it may be large, so use int64)\nresult = joined[['city', 'fare', 'ride_id']].copy()\nresult['fare'] = result['fare'].astype(float)\nresult['ride_id'] = result['ride_id'].astype('int64')\n\n# Write the result to the specified path without the index\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_76/target_multisource.csv\", index=False)",
+        "generated_csv_head": "city,fare,ride_id\nLeahton,31.01,2116500207936\nLeahton,14.87,3839886060948\nLeahton,43.44,4290916547911\nLeahton,36.79,6214133326256\nJohnton,16.63,7248459450448\nJohnton,17.89,1266248389669\nJohnton,30.27,1604984494757\nJohnton,19.68,8534361219730\nJohnton,23.36,3671342249951\nPort David,32.92,857956984195\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0745525360107422
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6081,
+          "cost": 0.001444,
+          "latency": 4.4290611743927,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.466) / 2 = 0.608 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.410, range overlap=0.410.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city}.\nKeys present in ground truth but absent in generated: {fare}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['ride_id'] \u2192 fare.\nMissing FDs from ground truth: ['fare'] \u2192 city.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.448, JS similarity=0.525\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\n  Column 'ride_id': range overlap=0.373, JS similarity=0.295\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 9.0, max: 29.0, mean: 17.9848\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+          "generated_samples": "Schema: ['city', 'fare', 'ride_id']\nNumber of Tuples: 120\nExamples:\n       city      fare       ride_id\nBrandonfort 35.437368 9840779665113\n Rodneyfort 35.790000 9917197764299\nNorth Holly 29.130000 6259094156900",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_76/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_76/training_1.csv\", index_col=0)\n\n# Join on 'city'\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'city' (primary key), aggregate fare by average, ride_id by max (to keep integer type and consistent with examples)\nresult = joined.groupby(\"city\", as_index=False).agg({\n    \"fare\": \"mean\",\n    \"ride_id\": \"max\"\n})\n\n# Ensure column order and names exactly as target schema\nresult = result[[\"city\", \"fare\", \"ride_id\"]]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_76/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9531974792480469
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11402.705907821655,
+        "critique": 4478.099346160889
+      }
+    }
+  ]
+}

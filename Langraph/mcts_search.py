@@ -139,8 +139,10 @@ def _fd_groupby_worker(
         import os, sys
         _here = os.path.dirname(os.path.abspath(__file__))
         _root = os.path.dirname(_here)
-        if _root not in sys.path:
-            sys.path.insert(0, _root)
+        _eval_score = os.path.join(_root, "eval_score")
+        for _p in (_root, _eval_score):
+            if _p not in sys.path:
+                sys.path.insert(0, _p)
 
         import pandas as pd
         from auto_suggest_llm_util import get_filtered_functional_dependency
@@ -149,6 +151,31 @@ def _fd_groupby_worker(
         df = df.drop(df.columns[0], axis=1)
 
         keys, _fds = get_filtered_functional_dependency(df)
+
+        # Fallback: quality.quality.analyze_functional_dependencies crashes on some
+        # tables (TypeError inside GetFDs).  When that happens, get_filtered_functional_dependency
+        # silently returns [] — retry with fdtool.main from eval_score/ which is more robust.
+        if not keys:
+            try:
+                import fdtool.fdtool as _fdtool
+                from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FTE
+                _df_s = df.sample(n=min(1000, len(df)), replace=False).iloc[:, :15]
+                with ThreadPoolExecutor(max_workers=1) as _ex:
+                    _fut = _ex.submit(_fdtool.main, _df_s)
+                    try:
+                        _FDs, _E, _raw_keys = _fut.result(timeout=30)
+                    except _FTE:
+                        _raw_keys = []
+                # Take only singleton keys (single-column) at column position 0 or string dtype.
+                for _k in _raw_keys:
+                    if len(_k) == 1:
+                        _col = _k[0]
+                        if df.columns.get_loc(_col) == 0 or df[_col].dtype == "object":
+                            keys = [_col]
+                            break
+            except Exception:
+                pass
+
         if not keys:
             result_queue.put(None)
             return
@@ -279,6 +306,184 @@ def _compute_hints_v3_groupby_candidate(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# GT scoring cache — pre-computed once per case, reused every iteration
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _gt_score_cache_worker(
+    ground_truth_location: str,
+    cache_path: str,
+    result_queue: "multiprocessing.Queue",
+) -> None:
+    """Subprocess worker: compute GT-side FDs and self-column-map count, write to JSON."""
+    try:
+        import json, os, sys
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+        _here = os.path.dirname(os.path.abspath(__file__))
+        _root = os.path.dirname(_here)
+        _eval_score = os.path.join(_root, "eval_score")
+        for _p in (_root, _eval_score):
+            if _p not in sys.path:
+                sys.path.insert(0, _p)
+
+        import pandas as pd
+        import fdtool.fdtool as _fdtool
+        import column_map_utils
+        from column_map_utils import get_column_map
+
+        MAX_FD_COLS    = 52
+        FD_TIMEOUT     = 60
+        _MAX_SCORE_COLS = 20
+        _MAX_FD_ROWS    = 2000
+
+        def _run_fdtool_local(df):
+            """Returns (FDs, E, keys, timed_out)."""
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_fdtool.main, df)
+                try:
+                    result = future.result(timeout=FD_TIMEOUT)
+                    return result[0], result[1], result[2], False
+                except FuturesTimeoutError:
+                    return [], [], [], True
+
+        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+
+        # Phase 1: try FD mining on the full table (no column/row caps).
+        FDs_b, E_b, keys_b, fd_timed_out = _run_fdtool_local(df_gt.iloc[:, :MAX_FD_COLS])
+
+        col_indices = None   # None → no reduction was needed
+        max_fd_rows = None
+
+        if fd_timed_out:
+            # Phase 2: FD timed out — reduce to 20 evenly-spaced cols + 2000 rows and retry.
+            _n   = len(df_gt.columns)
+            df_gt = df_gt.iloc[:_MAX_FD_ROWS, :_MAX_SCORE_COLS]
+            FDs_b, E_b, keys_b, _ = _run_fdtool_local(df_gt.iloc[:, :MAX_FD_COLS])
+            col_indices = list(range(_MAX_SCORE_COLS))
+            max_fd_rows = _MAX_FD_ROWS
+
+        column_map_utils.GLOBAL_SUMMARY = None
+        self_col_count = len(get_column_map(df_gt, df_gt))
+
+        # Serialize E_b (list of equivalence pairs)
+        e_b_serial = []
+        for item in E_b:
+            try:
+                left, right = item
+                e_b_serial.append({"left": list(left), "right": list(right)})
+            except Exception:
+                e_b_serial.append({"raw": str(item)})
+
+        # Serialize keys_b — try direct JSON, fall back to str conversion
+        try:
+            json.dumps(keys_b)
+            keys_b_serial = keys_b
+        except (TypeError, ValueError):
+            keys_b_serial = [str(k) for k in keys_b] if hasattr(keys_b, "__iter__") else str(keys_b)
+
+        cache = {
+            "FDs_b": [{"lhs": list(lhs), "rhs": rhs} for lhs, rhs in FDs_b],
+            "E_b": e_b_serial,
+            "keys_b": keys_b_serial,
+            "self_col_count": self_col_count,
+            "col_indices": col_indices,   # list[int] if GT was reduced, else null
+            "max_fd_rows": max_fd_rows,   # int if GT was reduced, else null
+        }
+        with open(cache_path, "w") as f:
+            json.dump(cache, f)
+
+        result_queue.put(True)
+    except Exception:
+        result_queue.put(False)
+
+
+def _compute_gt_score_cache(
+    ground_truth_location: str,
+    cache_path: str,
+    logger,
+    timeout: int = 90,
+) -> bool:
+    """Pre-compute GT-side FDs and self-column-map count; write result to *cache_path*.
+
+    Runs in a subprocess so slow GT tables (wide schemas, many FDs) never block
+    MCTS startup.  The internal fdtool already has a 60 s thread timeout, so 90 s
+    here gives it room to finish gracefully and still write the cache file.
+
+    Returns True if the cache was written successfully, False otherwise.
+    """
+    result_queue: multiprocessing.Queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_gt_score_cache_worker,
+        args=(ground_truth_location, cache_path, result_queue),
+    )
+    proc.start()
+    proc.join(timeout=timeout)
+
+    if proc.is_alive():
+        logger.warning(
+            f"[GT score cache] Timed out after {timeout}s — "
+            "GT FDs will be recomputed each scoring iteration"
+        )
+        proc.terminate()
+        proc.join()
+        return False
+
+    if not result_queue.empty():
+        return bool(result_queue.get())
+    return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# Tree visualisation helper
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _ascii_tree(root: Any, iteration: int) -> str:
+    """Render the MCTS tree as a human-readable ASCII string.
+
+    Children are sorted by total_reward descending so the most-explored
+    branch appears first.  Nodes on the best-reward path are marked ★.
+    Nodes that have a cached script are marked [script].
+    """
+    best_ids = {id(n) for n in root.best_reward_path()}
+
+    def _node_lines(node, prefix: str, is_last: bool) -> list:
+        label = node.operation_history[-1][:72] if node.operation_history else "ROOT"
+        tags = ""
+        if node.best_script:
+            tags += " [script]"
+        if id(node) in best_ids:
+            tags += " ★"
+        connector = "└── " if is_last else "├── "
+        line = (
+            prefix + connector
+            + f"{label}  "
+            + f"v={node.visits}  q={node.q_value:.3f}  "
+            + f"Σr={node.total_reward:.3f}  score={node.best_score:.3f}"
+            + tags
+        )
+        result = [line]
+        child_prefix = prefix + ("    " if is_last else "│   ")
+        children = sorted(node.children.values(), key=lambda c: c.total_reward, reverse=True)
+        for i, child in enumerate(children):
+            result.extend(_node_lines(child, child_prefix, i == len(children) - 1))
+        return result
+
+    root_tags = " ★" if id(root) in best_ids else ""
+    header = (
+        f"=== MCTS tree after iteration {iteration} ===\n"
+        f"ROOT  v={root.visits}  q={root.q_value:.3f}  "
+        f"Σr={root.total_reward:.3f}  score={root.best_score:.3f}{root_tags}"
+    )
+    children = sorted(root.children.values(), key=lambda c: c.total_reward, reverse=True)
+    child_lines = []
+    for i, child in enumerate(children):
+        child_lines.extend(_node_lines(child, "", i == len(children) - 1))
+    return header + ("\n" + "\n".join(child_lines) if child_lines else "")
+
+
 # Main entry point
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -311,6 +516,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     anon_flag = args.anon_flag
     fd_flag = args.fd_flag
     max_iterations = getattr(args, "mcts_iterations", 10)
+    max_depth = getattr(args, "max_depth", 15)
     early_stopping = getattr(args, "early_stopping", 5)
     cost_budget = getattr(args, "cost_budget", 0.0)
     validation = getattr(args, "validation", "hard_match")
@@ -390,6 +596,19 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             f"{main_folder}/length{len_idx_target_idx}/target_multisource_mcts.csv"
         )
         ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
+
+        # ── Pre-compute GT scoring cache (FDs + self-col-map) — done once per case ──
+        _gt_score_cache_path = f"/tmp/gt_score_cache_{len_idx_target_idx}.json"
+        _gt_cache_ok = _compute_gt_score_cache(
+            ground_truth_location=ground_truth_location,
+            cache_path=_gt_score_cache_path,
+            logger=logger,
+            timeout=90,
+        )
+        if _gt_cache_ok:
+            logger.info(f"[GT score cache] Pre-computed → {_gt_score_cache_path}")
+        else:
+            _gt_score_cache_path = ""
 
         # ── Intermediate materialization setup ────────────────────────────────
         intermediate_materialization = getattr(args, "intermediate_materialization", False)
@@ -531,25 +750,82 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                         f"[RAG] global: querying top {_global_top_k} from {_global_db_path} "
                         f"for case {len_idx_target_idx}"
                     )
+                    _rag_search_t0 = time.time()
                     _global_results = _gdb.search(
                         target_schema=config.target_data_schema,
                         source_schemas=config.source_data_schema_list,
                         top_k=_global_top_k,
                     )
+                    _rag_search_sec = time.time() - _rag_search_t0
                     logger.info(
-                        f"[RAG] global: retrieved {len(_global_results)} candidates"
+                        f"[RAG] global: retrieved {len(_global_results)} candidates "
+                        f"in {_rag_search_sec:.2f}s"
                     )
-                    _auto_db_path = f"/tmp/rag_global_{len_idx_target_idx}.db"
+                    _auto_db_path = f"/tmp/rag_global_{len_idx_target_idx}_k{_global_top_k}.db"
+                    _rag_populate_t0 = time.time()
                     _n_inserted = populate_from_global_results(_auto_db_path, _global_results)
+                    _rag_populate_sec = time.time() - _rag_populate_t0
                     logger.info(
                         f"[RAG] global: populated local SQLite with {_n_inserted} examples "
-                        f"at {_auto_db_path}"
+                        f"in {_rag_populate_sec:.2f}s at {_auto_db_path}"
                     )
                     _local_rag_db = _auto_db_path
                 except Exception:
                     import traceback as _tb
                     logger.warning(
                         f"[RAG] global retrieval failed — RAG disabled for this case.\n"
+                        f"{_tb.format_exc()}"
+                    )
+
+        # ── Global feature-vector RAG: retrieve top-k → populate local DB ────
+        if _rag_mode == "global_feature":
+            _feature_db_path = getattr(args, "global_feature_rag_db", "")
+            if not _feature_db_path:
+                logger.warning(
+                    "[RAG] --rag global_feature requires --global_feature_rag_db — RAG disabled."
+                )
+            else:
+                try:
+                    from pathlib import Path as _Path
+                    from rag_pipeline.global_rag_db import GlobalFeatureDB
+                    from rag_pipeline.feature_extractor import load_source_target_from_folder
+                    _fdb = GlobalFeatureDB(db_path=_feature_db_path)
+                    logger.info(
+                        f"[RAG] global_feature: {_fdb.count()} indexed cases "
+                        f"from {_feature_db_path}"
+                    )
+                    _global_top_k = getattr(args, "global_rag_top_k", 50)
+                    _task_folder = _Path(main_folder) / f"length{len_idx_target_idx}"
+                    _source_dfs, _target_df = load_source_target_from_folder(_task_folder)
+                    logger.info(
+                        f"[RAG] global_feature: querying top {_global_top_k} "
+                        f"for case {len_idx_target_idx}"
+                    )
+                    _rag_search_t0 = time.time()
+                    _global_results = _fdb.search(
+                        source_dfs=_source_dfs,
+                        target_df=_target_df,
+                        top_k=_global_top_k,
+                        exclude_case_id=len_idx_target_idx,
+                    )
+                    _rag_search_sec = time.time() - _rag_search_t0
+                    logger.info(
+                        f"[RAG] global_feature: retrieved {len(_global_results)} candidates "
+                        f"in {_rag_search_sec:.2f}s"
+                    )
+                    _auto_db_path = f"/tmp/rag_global_feature_{len_idx_target_idx}_k{_global_top_k}.db"
+                    _rag_populate_t0 = time.time()
+                    _n_inserted = populate_from_global_results(_auto_db_path, _global_results)
+                    _rag_populate_sec = time.time() - _rag_populate_t0
+                    logger.info(
+                        f"[RAG] global_feature: populated local SQLite with {_n_inserted} "
+                        f"examples in {_rag_populate_sec:.2f}s at {_auto_db_path}"
+                    )
+                    _local_rag_db = _auto_db_path
+                except Exception:
+                    import traceback as _tb
+                    logger.warning(
+                        f"[RAG] global_feature retrieval failed — RAG disabled for this case.\n"
                         f"{_tb.format_exc()}"
                     )
 
@@ -577,6 +853,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             # Iteration control
             "iteration": 0,
             "max_iterations": max_iterations,
+            "max_depth": max_depth,
             "early_stopping": early_stopping,
             "cost_budget": cost_budget,
             "cost_budget_exhausted": False,
@@ -600,6 +877,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "best_score": 0.0,
             "best_operation_history": [],
             "no_improvement_count": 0,
+            "latest_script": "",
             # Critique
             "simulation_mode": getattr(args, "simulation_mode", "pipeline"),
             "intermediate_materialization": intermediate_materialization,
@@ -609,8 +887,12 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "pre_critique_score": 0.0,
             "critique_selection_path": [],
             "critique_score": 0.0,
+            # Stopping criteria
+            "no_score_threshold": getattr(args, "no_score_threshold", False),
             # RAG support — active for upper_bound and global modes
-            "local_rag_db_path": _local_rag_db if _rag_mode in ("upper_bound", "global") else "",
+            "local_rag_db_path": _local_rag_db if _rag_mode in ("upper_bound", "global", "global_feature") else "",
+            # GT scoring cache — pre-computed FDs and self-col-map to skip per-iteration recomputation
+            "gt_score_cache_path": _gt_score_cache_path,
             # Logging
             "log_messages": [],
         }
@@ -625,24 +907,50 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         final_state: MCTSGraphState = initial_state
         # Cost-budget mode can run far more iterations — raise the graph step limit accordingly
         _recursion_limit = 10000 if cost_budget > 0.0 else 500
+        _prev_iter = 0  # track completed iterations for per-iteration tree files
         for _step_state in mcts_graph.stream(
             initial_state,
             config={"recursion_limit": _recursion_limit},
             stream_mode="values",
         ):
             final_state = _step_state
-            if _step_state.get("best_script"):
-                try:
+
+            # Overwrite tree_latest.txt whenever a new iteration completes
+            # (backpropagate increments state["iteration"]).
+            _curr_iter = _step_state.get("iteration", 0)
+            if _curr_iter > _prev_iter:
+                _snap_root = _step_state.get("root")
+                if _snap_root is not None:
+                    _tree_out = os.path.join(log_dir_, "tree_latest.txt")
+                    try:
+                        with open(_tree_out, "w") as _tf:
+                            _tf.write(_ascii_tree(_snap_root, _prev_iter))
+                    except Exception:
+                        pass
+                _prev_iter = _curr_iter
+
+            # Checkpoint the best-reward-path leaf script after every graph step so
+            # timeout/OOM recovery uses the same path-based selection as extract_best.
+            try:
+                _ckpt_root = _step_state.get("root")
+                if _ckpt_root is not None and _ckpt_root.visits > 0:
+                    _ckpt_leaf = _ckpt_root.best_reward_path()[-1]
+                    _ckpt_script = _ckpt_leaf.best_script
+                    _ckpt_score = _ckpt_leaf.best_score
+                    _ckpt_history = str(_ckpt_leaf.operation_history)
+                else:
+                    _ckpt_script = _step_state.get("best_script") or _step_state.get("latest_script", "")
+                    _ckpt_score = _step_state.get("best_score", 0.0)
+                    _ckpt_history = str(_step_state.get("best_operation_history", []))
+                if _ckpt_script:
                     with open(_checkpoint_file, "w") as _cf:
                         json.dump({
-                            "best_script": _step_state["best_script"],
-                            "best_score": _step_state.get("best_score", 0.0),
-                            "best_operation_history": str(
-                                _step_state.get("best_operation_history", [])
-                            ),
+                            "best_script": _ckpt_script,
+                            "best_score": _ckpt_score,
+                            "best_operation_history": _ckpt_history,
                         }, _cf)
-                except Exception:
-                    pass
+            except Exception:
+                pass
 
         # ── Extract results from final state ──────────────────────────────
         best_script = final_state["best_script"]
@@ -766,7 +1074,7 @@ if __name__ == "__main__":
     import multiprocessing
     from datetime import datetime
 
-    _CASE_TIMEOUT = 600  # 10 minutes per case
+    _CASE_TIMEOUT = 300  # 5 minutes per case
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
@@ -794,6 +1102,26 @@ if __name__ == "__main__":
     parser.add_argument("--anon_flag", type=bool, default=False)
     parser.add_argument("--fd_flag", type=int, default=0)
     parser.add_argument("--mcts_iterations", type=int, default=5)
+    parser.add_argument(
+        "--max_depth",
+        type=int,
+        default=15,
+        help=(
+            "Hard cap on tree depth (default: 15). Nodes at this depth are treated as forced leaves: "
+            "they are simulated once and their cached reward is reused on subsequent selections. "
+            "They never spawn children regardless of how many iterations remain."
+        ),
+    )
+    parser.add_argument(
+        "--no_score_threshold",
+        action="store_true",
+        default=False,
+        help=(
+            "Suppress score-based early stopping for 'score' and 'det_score_value' reward modes. "
+            "The search runs to its full iteration/cost budget and returns the best-scoring script. "
+            "Useful for re-running failed cases without the 0.9 threshold stopping the search early."
+        ),
+    )
     parser.add_argument("--early_stopping", type=int, default=5,
                         help="Stop if best_score does not improve for this many consecutive iterations (default: 5); "
                              "set to 0 to disable plateau stopping in cost-budget mode")
@@ -933,13 +1261,14 @@ if __name__ == "__main__":
         "--rag",
         type=str,
         default="",
-        choices=["upper_bound", "global"],
+        choices=["upper_bound", "global", "global_feature"],
         help=(
             "Enable RAG-augmented prompts.  "
             "'upper_bound' injects hints from a pre-built local SQLite DB "
             "(supply the path via --local_rag_db).  "
-            "'global' uses schema-embedding retrieval from a global Milvus DB "
-            "(supply the path via --global_rag_db).  "
+            "'global' uses schema-embedding retrieval (supply --global_rag_db).  "
+            "'global_feature' uses 22-dim structural feature retrieval "
+            "(supply --global_feature_rag_db).  "
             "Omit to disable RAG entirely."
         ),
     )
@@ -974,6 +1303,17 @@ if __name__ == "__main__":
         default="auto",
         choices=["auto", "cuda", "cpu", "mps"],
         help="Device for the global RAG embedding model (default: auto).",
+    )
+    parser.add_argument(
+        "--global_feature_rag_db",
+        type=str,
+        default="",
+        help=(
+            "Path prefix for the GlobalFeatureDB built by "
+            "rag_pipeline/ingest_global_feature_db.py "
+            "(e.g. rag_pipeline/db/global_features). "
+            "Required when --rag global_feature."
+        ),
     )
     args = parser.parse_args()
     args.join_hints_truncate = []
@@ -1066,10 +1406,23 @@ if __name__ == "__main__":
                             _df_gt = pd.read_csv(_gt_file, low_memory=False)
                             _df_gt = _df_gt.drop(columns=_df_gt.columns[0], axis=1)
                             _, _is_correct, _, _ = _validate_fn(_df_out, _df_gt)
-                            # Two-phase: override is_correct with test-data validation
+                            # Two-phase: override is_correct with test-data validation.
+                            # Use a recovery-specific output path to avoid race conditions
+                            # with any orphaned test-validation subprocess still writing to
+                            # the shared target_multisource_mcts_test_val.csv path.
                             if _data_split == "training":
-                                _test_script = make_test_validation_script(_best_script)
-                                _test_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts_test_val.csv"
+                                _test_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts_recovery_test_val.csv"
+                                _test_script_raw = make_test_validation_script(_best_script)
+                                _test_script = _test_script_raw.replace(
+                                    "target_multisource_mcts_test_val.csv",
+                                    "target_multisource_mcts_recovery_test_val.csv"
+                                )
+                                _case_log_dir = os.path.join(log_dir_, f"cases_c{case_id}")
+                                os.makedirs(_case_log_dir, exist_ok=True)
+                                # Save the test script for inspection
+                                _saved_script = os.path.join(_case_log_dir, "recovery_test_script.py")
+                                with open(_saved_script, "w") as _sf:
+                                    _sf.write(_test_script)
                                 _test_exec = execute_python(_test_script)
                                 if _test_exec == "Success" and os.path.exists(_test_file):
                                     try:
@@ -1081,6 +1434,9 @@ if __name__ == "__main__":
                                         _is_correct = _test_is_correct
                                     except Exception:
                                         print(f"[two-phase mcts timeout] test validation failed")
+                                    finally:
+                                        if os.path.exists(_test_file):
+                                            os.remove(_test_file)
                             _recovered = True
                             print(
                                 f"[MCTS] Case {case_id} timeout-recovered: "
@@ -1147,19 +1503,102 @@ if __name__ == "__main__":
                     "error": tb.strip().splitlines()[-1],
                 }
         else:
-            print(f"[MCTS] Case {case_id} exited with no result (exit code {_proc.exitcode})")
+            _exitcode = _proc.exitcode
+            print(f"[MCTS] Case {case_id} exited with no result (exit code {_exitcode})")
             results[case_id] = None
-            _row = {
-                "case_id": case_label,
-                "is_correct": False,
-                "cost": "N/A",
-                "latency_seconds": "N/A",
-                "best_score": "N/A",
-                "operation_history": "",
-                "timestamp": _ts,
-                "status": "error",
-                "error": f"Process exited with code {_proc.exitcode}",
-            }
+
+            # Attempt checkpoint recovery (same logic as timeout path) —
+            # covers OOM kills (-9) and other unexpected exits where the
+            # subprocess wrote at least one checkpoint during iteration.
+            _checkpoint_file = f"/tmp/mcts_checkpoint_{length}_{case_id}.json"
+            _recovered = False
+            if os.path.exists(_checkpoint_file):
+                try:
+                    with open(_checkpoint_file) as _cf:
+                        _ckpt = json.load(_cf)
+                    _best_script = _ckpt.get("best_script", "")
+                    _best_score  = _ckpt.get("best_score", 0.0)
+                    _best_op_hist = _ckpt.get("best_operation_history", "")
+                    if _best_script:
+                        _mf = (
+                            "autopipeline-benchmarks/monteprep-pipelines"
+                            if args.benchmark == "monteprep"
+                            else "autopipeline-benchmarks/github-pipelines"
+                        )
+                        _target_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts.csv"
+                        _gt_file = f"{_mf}/length{length}_{case_id}/target.csv"
+                        from util.utils import execute_python
+                        _exec_result = execute_python(_best_script)
+                        _validate_fn = (
+                            compare_tables_matching
+                            if args.validation == "autopipeline"
+                            else compare_lists_matching
+                        )
+                        _data_split = getattr(args, "data_split", "test")
+                        if _exec_result == "Success":
+                            _df_out = pd.read_csv(_target_file, low_memory=False)
+                            _df_gt  = pd.read_csv(_gt_file, low_memory=False)
+                            _df_gt  = _df_gt.drop(columns=_df_gt.columns[0], axis=1)
+                            _, _is_correct, _, _ = _validate_fn(_df_out, _df_gt)
+                            if _data_split == "training":
+                                _test_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts_recovery_test_val.csv"
+                                _test_script_raw = make_test_validation_script(_best_script)
+                                _test_script = _test_script_raw.replace(
+                                    "target_multisource_mcts_test_val.csv",
+                                    "target_multisource_mcts_recovery_test_val.csv"
+                                )
+                                _case_log_dir = os.path.join(log_dir_, f"cases_c{case_id}")
+                                os.makedirs(_case_log_dir, exist_ok=True)
+                                # Save the test script for inspection
+                                _saved_script = os.path.join(_case_log_dir, "recovery_test_script.py")
+                                with open(_saved_script, "w") as _sf:
+                                    _sf.write(_test_script)
+                                _test_exec = execute_python(_test_script)
+                                if _test_exec == "Success" and os.path.exists(_test_file):
+                                    try:
+                                        _df_test = pd.read_csv(_test_file, low_memory=False)
+                                        _df_gt2  = pd.read_csv(_gt_file, low_memory=False)
+                                        _df_gt2  = _df_gt2.drop(columns=_df_gt2.columns[0], axis=1)
+                                        _, _test_is_correct, _, _ = _validate_fn(_df_test, _df_gt2)
+                                        print(f"[two-phase mcts oom] is_correct: training={_is_correct} → test={_test_is_correct}")
+                                        _is_correct = _test_is_correct
+                                    except Exception:
+                                        print(f"[two-phase mcts oom] test validation failed")
+                                    finally:
+                                        if os.path.exists(_test_file):
+                                            os.remove(_test_file)
+                            _recovered = True
+                            print(
+                                f"[MCTS] Case {case_id} oom-recovered: "
+                                f"is_correct={_is_correct}, best_score={_best_score:.4f}"
+                            )
+                            _row = {
+                                "case_id": case_label,
+                                "is_correct": _is_correct,
+                                "cost": "N/A",
+                                "latency_seconds": "N/A",
+                                "best_score": round(_best_score, 4),
+                                "operation_history": _best_op_hist,
+                                "timestamp": _ts,
+                                "status": "oom_recovered",
+                                "error": f"Process killed (code {_exitcode}); best script validated",
+                            }
+                    os.remove(_checkpoint_file)
+                except Exception as _e:
+                    print(f"[MCTS] Case {case_id} oom recovery failed: {_e}")
+
+            if not _recovered:
+                _row = {
+                    "case_id": case_label,
+                    "is_correct": False,
+                    "cost": "N/A",
+                    "latency_seconds": "N/A",
+                    "best_score": "N/A",
+                    "operation_history": "",
+                    "timestamp": _ts,
+                    "status": "error",
+                    "error": f"Process exited with code {_exitcode}",
+                }
         with open(results_csv_path, "a", newline="") as _f:
             csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_row)
         print(f"[MCTS] CSV updated: {results_csv_path}")

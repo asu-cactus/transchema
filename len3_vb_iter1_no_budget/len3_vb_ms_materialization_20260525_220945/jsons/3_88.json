@@ -1,0 +1,29 @@
+{
+  "case": "3_88",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9913,
+        "cost": 0.0082428,
+        "latency": 18.084962129592896,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.983) / 2 = 0.991 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.967, range overlap=0.998.\nGround truth candidate keys: {playlist_id, track_id}; {index_playlist, index_track}; {track_id, index_playlist}; {playlist_id, index_track}.\nGenerated table candidate keys: {playlist_id, track_id}; {index_playlist, index_track}; {track_id, index_playlist}; {playlist_id, index_track}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['playlist_id', 'track_id', 'interaction', 'index_playlist', 'index_track']\nNumber of Tuples: 1750\nExamples:\n playlist_id  track_id  interaction  index_playlist  index_track\n     7888802   2731277            1           30109        68682\n     7916715   1548421            1           30254        37771\n    10320724   2233185            1           38752        55738",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_88/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_88/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_88/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_88/training_3.csv\", index_col=0)\n\n# Step 1: Join Source3_88_2 and Source3_88_0 on 'playlist_id'\nintermediate_step1 = pd.merge(source2, source0, on=\"playlist_id\", how=\"inner\")\n\n# Step 2: Join intermediate_step1 and Source3_88_1 on 'track_id'\nintermediate_step2 = pd.merge(intermediate_step1, source1, on=\"track_id\", how=\"inner\")\n\n# The target schema is:\n# ['playlist_id': integer, 'track_id': integer, 'interaction': integer, 'index_playlist': integer, 'index_track': integer]\n\n# The intermediate_step2 already has these columns:\n# ['playlist_id', 'track_id', 'interaction', 'index_playlist', 'index_track']\n\n# Ensure correct column order and types\nTarget3_88 = intermediate_step2[['playlist_id', 'track_id', 'interaction', 'index_playlist', 'index_track']].copy()\n\n# Convert columns to integer type explicitly (if not already)\nTarget3_88 = Target3_88.astype({\n    'playlist_id': 'int64',\n    'track_id': 'int64',\n    'interaction': 'int64',\n    'index_playlist': 'int64',\n    'index_track': 'int64'\n})\n\n# Save the final target table to the specified path\nTarget3_88.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_88/target_multisource.csv\", index=False)",
+        "generated_csv_head": "playlist_id,track_id,interaction,index_playlist,index_track\n35043,1195234,1,232,29162\n4925828,3790462,1,14395,97051\n10831624,1571853,1,41479,38357\n6411700,2609171,1,21847,65417\n8670342,2609171,1,34425,65417\n6255294,2609171,1,21077,65417\n5892486,2609171,1,19265,65417\n6788946,2609171,1,23784,65417\n4757858,1961191,1,13644,48681\n10622378,2319014,1,40365,58329\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0743141174316406
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 18187.912702560425,
+        "critique": 0.0
+      }
+    }
+  ]
+}
