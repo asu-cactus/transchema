@@ -110,12 +110,12 @@ def extract_all_scored_scripts(filepath: Path) -> List[Tuple[int, str, str, floa
     return out
 
 
-def run_and_check(script: str, case_num: int) -> Tuple[bool, str]:
+def run_and_check(script: str, case_num: int, length: int = 1) -> Tuple[bool, str]:
     test_script = swap_training_to_test(script)
     ok, err = run_script(test_script, WORK_DIR)
     if not ok:
         return False, f"run_failed: {err[:80]}"
-    correct, sim = validate_output(case_num, WORK_DIR)
+    correct, sim = validate_output(case_num, WORK_DIR, length=length)
     return correct, f"sim={sim:.3f}"
 
 

@@ -476,12 +476,12 @@ def run_script(script: str, work_dir: Path) -> Tuple[bool, str]:
             pass
 
 
-def validate_output(case_num: int, work_dir: Path) -> Tuple[bool, float]:
+def validate_output(case_num: int, work_dir: Path, length: int = 1) -> Tuple[bool, float]:
     """
     Load target_multisource_mcts.csv (output) and target.csv (ground truth),
     run compare_tables_matching, return (is_correct, similarity).
     """
-    case_dir = work_dir / f"autopipeline-benchmarks/github-pipelines/length1_{case_num}"
+    case_dir = work_dir / f"autopipeline-benchmarks/github-pipelines/length{length}_{case_num}"
     output_path = case_dir / "target_multisource_mcts.csv"
     gt_path     = case_dir / "target.csv"
 
