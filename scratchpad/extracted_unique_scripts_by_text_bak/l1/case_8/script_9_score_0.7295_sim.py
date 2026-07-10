@@ -1,0 +1,15 @@
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_8/training_0.csv", index_col=0)
+df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_8/training_1.csv", index_col=0)
+
+grouped = df0.groupby("track_id").size().reset_index(name="dummy")
+
+merged = pd.merge(grouped, df1, on="track_id", how="inner")
+
+result = merged[["index_track", "track_id", "dummy"]]
+result["index_track"] = result["index_track"].astype(int)
+result["track_id"] = result["track_id"].astype(int)
+result["dummy"] = result["dummy"].astype(int)
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_8/target_multisource_mcts.csv", index=False)

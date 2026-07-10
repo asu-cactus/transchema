@@ -1,0 +1,40 @@
+import pandas as pd
+
+source0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_0.csv", index_col=0)
+source1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_1.csv", index_col=0)
+source2 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_2.csv", index_col=0)
+source3 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_3.csv", index_col=0)
+source4 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_4.csv", index_col=0)
+source5 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_5.csv", index_col=0)
+source6 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_6.csv", index_col=0)
+source7 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_7.csv", index_col=0)
+source8 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_8.csv", index_col=0)
+source9 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_9.csv", index_col=0)
+source10 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_12/training_10.csv", index_col=0)
+
+df = pd.merge(source0, source1, on='2012-12-05', how='outer')
+df = pd.merge(df, source6, on='2012-12-05', how='outer')
+df = pd.merge(df, source8, on='2012-12-05', how='outer')
+df = pd.merge(df, source7, on='2012-12-05', how='outer')
+df = pd.merge(df, source9, on='2012-12-05', how='outer')
+df = pd.merge(df, source3, on='2012-12-05', how='outer')
+df = pd.merge(df, source4, on='2012-12-05', how='outer')
+df = pd.merge(df, source10, on='2012-12-05', how='outer')
+df = pd.merge(df, source5, on='2012-12-05', how='outer')
+df = pd.merge(df, source2, on='2012-12-05', how='outer')
+
+df['301.0'] = pd.to_numeric(df['301.0'], errors='coerce').astype('Int64')
+df['0.0075805085'] = pd.to_numeric(df['0.0075805085'], errors='coerce').astype(float)
+df['0.0179'] = pd.to_numeric(df['0.0179'], errors='coerce').astype(float)
+df['6.9'] = pd.to_numeric(df['6.9'], errors='coerce').astype(float)
+df['0.17657143'] = pd.to_numeric(df['0.17657143'], errors='coerce').astype(float)
+df['20.3333'] = pd.to_numeric(df['20.3333'], errors='coerce').astype(float)
+df['0.016157143'] = pd.to_numeric(df['0.016157143'], errors='coerce').astype(float)
+df['242.364'] = pd.to_numeric(df['242.364'], errors='coerce').astype(float)
+df['0.1646'] = pd.to_numeric(df['0.1646'], errors='coerce').astype(float)
+df['0.7268'] = pd.to_numeric(df['0.7268'], errors='coerce').astype(float)
+df['0.4332'] = pd.to_numeric(df['0.4332'], errors='coerce').astype(float)
+
+df = df[['2012-12-05', '301.0', '0.0075805085', '0.0179', '6.9', '0.17657143', '20.3333', '0.016157143', '242.364', '0.1646', '0.7268', '0.4332']]
+
+df.to_csv("autopipeline-benchmarks/github-pipelines/length9_12/target_multisource_mcts.csv")

@@ -74,6 +74,25 @@ from rag_pipeline.local_rag_db import build_upper_bound_db, populate_from_global
 
 # ──────────────────────────────────────────────────────────────────────────────
 
+_SCORE_1_COMPONENT_ORDER = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score")
+
+
+def _parse_score_weights(raw: str | None) -> dict | None:
+    """Parse --score_weights ('fd_f1,avg_col_score_1,row_count_score,max_missing_score')
+    into a dict. Returns None (-> equal weights, unchanged default behavior)
+    when not provided."""
+    if not raw:
+        return None
+    parts = [p.strip() for p in raw.split(",")]
+    if len(parts) != len(_SCORE_1_COMPONENT_ORDER):
+        raise ValueError(
+            f"--score_weights expects {len(_SCORE_1_COMPONENT_ORDER)} comma-separated "
+            f"values in order {_SCORE_1_COMPONENT_ORDER}, got {len(parts)}: {raw!r}"
+        )
+    return {k: float(v) for k, v in zip(_SCORE_1_COMPONENT_ORDER, parts)}
+
+# ──────────────────────────────────────────────────────────────────────────────
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Config dataclass (mirrors methods/multi_step.py:Config, extended with extras)
@@ -521,6 +540,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     cost_budget = getattr(args, "cost_budget", 0.0)
     validation = getattr(args, "validation", "hard_match")
     reward_mode = getattr(args, "reward", "score")
+    score_weights = _parse_score_weights(getattr(args, "score_weights", None))
     join_flag = getattr(args, "join_flag", 0)
     aggregate_flag = getattr(args, "aggregate_flag", 0)
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
@@ -840,6 +860,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "target_file_location": target_file_location,
             "validation_mode": validation,
             "reward_mode": reward_mode,
+            "score_weights": score_weights,
             "experiment_name": experiment_name,
             "case_id": len_idx_target_idx,
             # Prompt extras
@@ -1164,6 +1185,18 @@ if __name__ == "__main__":
             "'det_score_value' = value_based_relative_csv_score (Jaccard-aligned columns + value-based distribution), "
             "'validation' = binary 1.0 if hard-match validation passes else 0.0, "
             "'partial' = fuzzy column-match ratio (matched target cols / total target cols)"
+        ),
+    )
+    parser.add_argument(
+        "--score_weights",
+        type=str,
+        default=None,
+        help=(
+            "Only used with --reward det_score_value. Comma-separated weights "
+            "for the 4 score_1 components in order "
+            "fd_f1,avg_col_score_1,row_count_score,max_missing_score "
+            "(e.g. '0.1241,0.2487,0.3562,0.2710'). Default: None -> equal "
+            "weights (0.25 each), i.e. the original unweighted score_1."
         ),
     )
     parser.add_argument(

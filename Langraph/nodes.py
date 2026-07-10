@@ -172,12 +172,20 @@ def _apply_symmetric_truncation(df_output, df_gt):
 
 
 def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue,
-                        gt_cache_path: str = "", force_truncate: bool = False):
+                        gt_cache_path: str = "", force_truncate: bool = False, weights: dict | None = None):
     """Subprocess worker: load CSVs and compute value_based score, put result in queue.
 
     Uses Jaccard-aligned column matching + value-based distribution scoring.
     If the cache recorded GT was reduced (col_indices set), or force_truncate=True,
     both df_gt and df_output are truncated symmetrically before scoring.
+
+    weights: optional score_1 component weights (fd_f1/avg_col_score_1/
+        row_count_score/max_missing_score), forwarded to
+        value_based_relative_csv_score. Defaults to equal weights there.
+    Puts a dict {"score": float, "components": {...} | None} in result_queue
+    -- components are the 4 raw (unweighted) score_1 inputs, logged
+    regardless of which weights produced the score, so the score can be
+    recomputed under different weights later without rerunning MCTS.
     """
     try:
         df_output = pd.read_csv(target_file_location, low_memory=False)
@@ -211,27 +219,36 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
             # Scoring timed out on the full table — truncate both symmetrically
             df_output, df_gt, precomputed_gt = _apply_symmetric_truncation(df_output, df_gt)
 
-        _, _, _, _, true_combined_score, _ = value_based_relative_csv_score(
-            df_output, df_gt, precomputed_gt=precomputed_gt
+        _, _, _, fd_f1, true_combined_score, debug_dict = value_based_relative_csv_score(
+            df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights
         )
-        result_queue.put(true_combined_score)
+        components = {
+            "fd_f1": fd_f1,
+            "avg_col_score_1": debug_dict.get("avg_col_score_1"),
+            "row_count_score": debug_dict.get("row_count_score"),
+            "max_missing_score": debug_dict.get("max_missing_score"),
+        }
+        result_queue.put({"score": true_combined_score, "components": components})
     except Exception:
-        result_queue.put(0.0)
+        result_queue.put({"score": 0.0, "components": None})
 
 
 def _value_score_with_timeout(target_file_location: str, ground_truth_location: str,
-                              gt_cache_path: str = "") -> float:
+                              gt_cache_path: str = "", weights: dict | None = None):
     """Run value_based scoring in a child process with a hard timeout.
 
     Phase 1: score on the (possibly GT-truncated) tables.
     Phase 2: if Phase 1 times out, retry with symmetric truncation of both tables
              (20 evenly-spaced GT cols + 2000 rows each) so scoring always completes.
+
+    Returns (score, components) -- components is a dict of the 4 raw
+    (unweighted) score_1 inputs, or None on timeout/error.
     """
-    def _run(force_truncate: bool) -> tuple[float | None, bool]:
+    def _run(force_truncate: bool):
         q = multiprocessing.Queue()
         p = multiprocessing.Process(
             target=_value_score_worker,
-            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate),
+            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate, weights),
             daemon=True,
         )
         p.start()
@@ -239,19 +256,20 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
         if p.is_alive():
             p.terminate()
             p.join()
-            return None, True  # timed out
+            return None, None, True  # timed out
         try:
-            return q.get_nowait(), False
+            result = q.get_nowait()
+            return result["score"], result["components"], False
         except Exception:
-            return 0.0, False
+            return 0.0, None, False
 
-    score, timed_out = _run(force_truncate=False)
+    score, components, timed_out = _run(force_truncate=False)
     if timed_out:
         # Phase 2: truncate both tables symmetrically and retry
-        score, _ = _run(force_truncate=True)
+        score, components, _ = _run(force_truncate=True)
         if score is None:
             score = 0.0
-    return score
+    return score, components
 
 
 def _score_and_validate_output(
@@ -260,6 +278,7 @@ def _score_and_validate_output(
     validation_mode: str,
     reward_mode: str,
     gt_cache_path: str = "",
+    score_weights: dict | None = None,
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
@@ -268,9 +287,16 @@ def _score_and_validate_output(
       - "validation"      : avg_similarity from compare_lists/tables_matching (per-col × per-row)
       - "partial"         : fuzzy column-match ratio from compare_tables_fuzzy
 
-    Returns (reward, is_correct) where is_correct is derived from reward >= threshold.
+    Returns (reward, is_correct, components) where is_correct is derived from
+    reward >= threshold. components is a dict of the 4 raw (unweighted)
+    score_1 inputs when reward_mode="det_score_value" (None otherwise, and
+    None on timeout/scoring error) -- logged regardless of score_weights so
+    the score can be recomputed under different weights later.
     gt_cache_path: path to pre-computed GT JSON cache; passed to subprocess workers to
                    skip per-iteration FD mining and self-column-map on ground truth.
+    score_weights: optional score_1 component weights (fd_f1/avg_col_score_1/
+                   row_count_score/max_missing_score), only used when
+                   reward_mode="det_score_value". Defaults to equal weights.
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
@@ -285,19 +311,21 @@ def _score_and_validate_output(
             compare_tables_matching if validation_mode == "autopipeline" else compare_lists_matching
         )
         avg_similarity, _, _, _ = validate_fn(df_output, df_gt)
-        return float(avg_similarity), float(avg_similarity) >= _SCORE_THRESHOLD
+        return float(avg_similarity), float(avg_similarity) >= _SCORE_THRESHOLD, None
 
     elif reward_mode == "partial":
         partial, _ = compare_tables_fuzzy(df_output, df_gt)
-        return float(partial), float(partial) >= _SCORE_THRESHOLD
+        return float(partial), float(partial) >= _SCORE_THRESHOLD, None
 
     elif reward_mode == "det_score_value":
-        score = _value_score_with_timeout(target_file_location, ground_truth_location, gt_cache_path)
-        return score, score >= _DET_SCORE_THRESHOLD
+        score, components = _value_score_with_timeout(
+            target_file_location, ground_truth_location, gt_cache_path, weights=score_weights
+        )
+        return score, score >= _DET_SCORE_THRESHOLD, components
 
     else:  # "score"
         score = _score_with_timeout(target_file_location, ground_truth_location, gt_cache_path)
-        return score, score >= _SCORE_THRESHOLD
+        return score, score >= _SCORE_THRESHOLD, None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1402,15 +1430,17 @@ def execute_and_score(state: MCTSGraphState) -> dict:
     judge_verdict = False
     reward_mode = state.get("reward_mode", "score")
     llm_judge = state.get("llm_judge", "none")
+    score_components = None
 
     if response == "Success":
         try:
-            reward, iteration_validation_passed = _score_and_validate_output(
+            reward, iteration_validation_passed, score_components = _score_and_validate_output(
                 target_file_location=target_file_location,
                 ground_truth_location=ground_truth_location,
                 validation_mode=validation_mode,
                 reward_mode=reward_mode,
                 gt_cache_path=state.get("gt_score_cache_path", ""),
+                score_weights=state.get("score_weights"),
             )
             # --no_score_threshold: suppress early-stop for continuous score modes
             # so the search exhausts its full budget and picks the best at the end.
@@ -1446,10 +1476,14 @@ def execute_and_score(state: MCTSGraphState) -> dict:
 
     validation_passed = state.get("validation_passed", False) or iteration_validation_passed
 
+    _components_str = (
+        "components={" + ", ".join(f"{k}={v}" for k, v in score_components.items()) + "}"
+        if score_components else "components=None"
+    )
     config.logger.info(
         f"[execute_and_score] Iter {state['iteration']}: "
         f"reward={reward:.4f} (mode={reward_mode}), validation_passed={validation_passed}, "
-        f"history={rollout_history}"
+        f"{_components_str}, history={rollout_history}"
     )
 
     # Update global best.
@@ -1727,7 +1761,7 @@ def extract_best(state: MCTSGraphState) -> dict:
             f"[extract_best] Running 'best' mode critique on final script "
             f"(score={best_score:.4f})"
         )
-        crit_script, crit_score, _, _, _ = _run_critique_llm(state, best_script)
+        crit_script, crit_score, _, _, _, _ = _run_critique_llm(state, best_script)
         if crit_score > best_score:
             config.logger.info(
                 f"[extract_best] Critique improved score: {best_score:.4f} → {crit_score:.4f}"
@@ -1844,8 +1878,9 @@ def _build_critique_prompt(state: MCTSGraphState, script: str, rag_hints: str = 
 def _run_critique_llm(state: MCTSGraphState, script: str):
     """
     Build + send the critique prompt.
-    Returns (new_script, new_score, new_response, validation_passed, critique_plan).
-    Loads ground truth internally for scoring.
+    Returns (new_script, new_score, new_response, validation_passed, critique_plan, score_components).
+    Loads ground truth internally for scoring. score_components is the 4 raw
+    (unweighted) score_1 inputs (det_score_value mode only), or None.
     critique_plan is a List[str] parsed from $PLAN$...$END_PLAN$ block, or [] if not found.
     """
     config = state["config"]
@@ -1855,7 +1890,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 
     prompt = _build_critique_prompt(state, script, rag_hints="")
     if not prompt:
-        return script, state.get("current_score", 0.0), "Prompt build failed", False, []
+        return script, state.get("current_score", 0.0), "Prompt build failed", False, [], None
 
     res = query_gpt(
         config.llm_client,
@@ -1886,23 +1921,25 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
     new_score = state.get("current_score", 0.0)
     new_response = "No code extracted"
     validation_passed = False
+    score_components = None
 
     if new_script:
         new_response = execute_python(new_script)
         if new_response == "Success":
             try:
                 reward_mode = state.get("reward_mode", "score")
-                new_score, validation_passed = _score_and_validate_output(
+                new_score, validation_passed, score_components = _score_and_validate_output(
                     target_file_location=target_file_location,
                     ground_truth_location=ground_truth_location,
                     validation_mode=validation_mode,
                     reward_mode=reward_mode,
+                    score_weights=state.get("score_weights"),
                 )
             except Exception:
                 new_score = 0.0
                 validation_passed = False
 
-    return new_script, new_score, new_response, validation_passed, critique_plan
+    return new_script, new_score, new_response, validation_passed, critique_plan, score_components
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1932,13 +1969,17 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"critiquing script (score={state['current_score']:.4f})"
     )
 
-    new_script, new_score, new_response, critique_validation_passed, critique_plan = _run_critique_llm(
+    new_script, new_score, new_response, critique_validation_passed, critique_plan, new_score_components = _run_critique_llm(
         state, state["current_script"]
     )
 
+    _crit_components_str = (
+        "components={" + ", ".join(f"{k}={v}" for k, v in new_score_components.items()) + "}"
+        if new_score_components else "components=None"
+    )
     config.logger.info(
         f"[mcts_critique] Iter {state['iteration']}: "
-        f"score {state['current_score']:.4f} → {new_score:.4f}"
+        f"score {state['current_score']:.4f} → {new_score:.4f}, {_crit_components_str}"
     )
 
     # Build critique_selection_path by walking/creating tree nodes for critique_plan,

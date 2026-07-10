@@ -534,7 +534,12 @@ def _reduce_columns_for_scoring(df: pd.DataFrame, max_cols: int = MAX_COLS_FOR_S
 # Main scoring entry point
 # ---------------------------------------------------------------------------
 
-def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, precomputed_gt=None):
+SCORE_1_COMPONENTS = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score")
+DEFAULT_SCORE_1_WEIGHTS = {k: 0.25 for k in SCORE_1_COMPONENTS}
+
+
+def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, precomputed_gt=None,
+                                    weights: dict | None = None):
     """
     Drop-in replacement for relative_csv_score.
 
@@ -545,9 +550,15 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
          categorical → Jaccard similarity (from alignment step)
     4. true_combined_score = (fd_f1 + avg(column_score)) / 2
 
+    weights: optional dict with keys fd_f1/avg_col_score_1/row_count_score/
+        max_missing_score controlling how those 4 components combine into
+        score_1 (see below). Defaults to DEFAULT_SCORE_1_WEIGHTS (0.25 each),
+        which reproduces the original unweighted score_1 exactly.
+
     Returns the same 6-tuple as relative_csv_score:
         (fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict)
     """
+    weights = weights or DEFAULT_SCORE_1_WEIGHTS
     if df_gen is None or df_gt is None or len(df_gen) == 0 or len(df_gt) == 0:
         return 0.0, 0.0, 0.0, 0.0, 0.0, {"error": "empty or None dataframe", "jaccard_column_map": []}
 
@@ -633,10 +644,24 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
             else:  # date_as_numeric, date_mismatch
                 _s1_vals.append(_cd.get("column_score", 0.0))
         _avg_col_score_1 = round(sum(_s1_vals) / len(_s1_vals), 4)
-        score_1 = round((fd_f1 + _avg_col_score_1 + row_count_score + max_missing_score) / 4, 4)
+        score_1 = round(
+            weights["fd_f1"] * fd_f1
+            + weights["avg_col_score_1"] * _avg_col_score_1
+            + weights["row_count_score"] * row_count_score
+            + weights["max_missing_score"] * max_missing_score,
+            4,
+        )
     else:
+        # avg_col_score_1 unavailable (no per-column data) -- renormalize
+        # over the remaining 3 components so e.g. equal weights (0.25 each)
+        # still reduce to a plain average of the 3, matching prior behavior.
         _avg_col_score_1 = None
-        score_1 = round((fd_f1 + row_count_score + max_missing_score) / 3, 4)
+        _w_fd, _w_row, _w_miss = weights["fd_f1"], weights["row_count_score"], weights["max_missing_score"]
+        _w_sum = _w_fd + _w_row + _w_miss
+        score_1 = round(
+            (_w_fd * fd_f1 + _w_row * row_count_score + _w_miss * max_missing_score) / _w_sum,
+            4,
+        )
 
     # score_2: full value-based score = (fd_f1 + avg_column_score + row_ratio) / 3.
     # Includes JS similarity, nunique/missing similarity, and row-count penalty.

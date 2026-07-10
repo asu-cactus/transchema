@@ -1,0 +1,25 @@
+import pandas as pd
+
+s0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_0.csv", index_col=0)
+s1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_1.csv", index_col=0)
+s2 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_2.csv", index_col=0)
+s3 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_3.csv", index_col=0)
+s4 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_4.csv", index_col=0)
+s5 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_5.csv", index_col=0)
+s6 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_6.csv", index_col=0)
+s7 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_7.csv", index_col=0)
+s8 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_8.csv", index_col=0)
+s9 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_72/training_9.csv", index_col=0)
+
+j01 = pd.merge(s0, s1, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('_0', '_1'))
+j012 = pd.merge(j01, s2, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['sampled_bid_id', 'message_timestamp'], suffixes=('', '_2'))
+j012.drop(columns=['sampled_bid_id'], inplace=True)
+j0123 = pd.merge(j012, s3, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('', '_3'))
+j01234 = pd.merge(j0123, s4, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('', '_4'))
+j012345 = pd.merge(j01234, s5, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('', '_5'))
+j0123456 = pd.merge(j012345, s6, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('', '_6'))
+j01234567 = pd.merge(j0123456, s7, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('', '_7'))
+j012345678 = pd.merge(j01234567, s8, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('', '_8'))
+j0123456789 = pd.merge(j012345678, s9, how='inner', left_on=['bid_id', 'message_timestamp'], right_on=['bid_id', 'message_timestamp'], suffixes=('', '_9'))
+
+j0123456789.to_csv("autopipeline-benchmarks/github-pipelines/length9_72/target_multisource_mcts.csv", index=False)

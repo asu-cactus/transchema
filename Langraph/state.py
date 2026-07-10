@@ -34,6 +34,8 @@ class MCTSGraphState(TypedDict):
     target_file_location: str        # path where generated CSV is written
     validation_mode: str             # "hard_match" or "autopipeline"
     reward_mode: str                 # "score" | "det_score_value" | "validation" | "partial"
+    score_weights: Any                # dict of fd_f1/avg_col_score_1/row_count_score/max_missing_score
+                                       # weights for score_1 (det_score_value mode only), or None = equal weights
     experiment_name: str             # label for saved scripts
     case_id: str                     # e.g. "2_5" for length2_5
 
