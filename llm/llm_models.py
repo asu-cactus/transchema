@@ -15,9 +15,20 @@ from transformers import AutoTokenizer
 _OLLAMA_READ_TIMEOUT = float(os.environ.get("TRANSCHEMA_OLLAMA_HTTP_TIMEOUT", "3600"))
 
 
+def _ollama_base_url():
+    # Some clusters (e.g. Sol) bind the Ollama server to the node's real interface
+    # per $OLLAMA_HOST rather than loopback, so "localhost" refuses the connection.
+    # Honor $OLLAMA_HOST (Ollama's own env var, e.g. "sg238:11434") the same way
+    # the ollama CLI does; default to localhost for normal single-machine use.
+    host = os.environ.get("OLLAMA_HOST", "localhost:11434").strip()
+    if not host.startswith("http://") and not host.startswith("https://"):
+        host = f"http://{host}"
+    return f"{host.rstrip('/')}/v1"
+
+
 def _ollama_openai_client():
     return OpenAI(
-        base_url="http://localhost:11434/v1",
+        base_url=_ollama_base_url(),
         api_key="ollama",
         timeout=httpx.Timeout(
             connect=60.0,

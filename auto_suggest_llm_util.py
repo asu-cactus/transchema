@@ -16,6 +16,17 @@ from validation.hard_match import is_column_numerical
 
 # import auto_suggest_llm_prompts as prt
 import tiktoken
+from transformers import AutoTokenizer
+
+# Cache HF tokenizers across calls — get_prompt() is invoked many times per MCTS
+# iteration, and AutoTokenizer.from_pretrained() is too slow to re-run every call.
+_HF_TOKENIZER_CACHE = {}
+
+
+def _hf_tokenizer(name):
+    if name not in _HF_TOKENIZER_CACHE:
+        _HF_TOKENIZER_CACHE[name] = AutoTokenizer.from_pretrained(name)
+    return _HF_TOKENIZER_CACHE[name]
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms
 
@@ -94,11 +105,26 @@ def get_prompt(
     # dynamic : target_examples
     # max_tokens = 128000 # for gpt4turbo
 
+    ml = model.lower()
     if model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
     elif model == "o4-mini" or model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
+    elif "qwen2.5" in ml:
+        encoding = _hf_tokenizer(
+            "Qwen/Qwen2.5-32B-Instruct" if "32b" in ml else "Qwen/Qwen2.5-7B-Instruct"
+        )
+    elif "qwen3" in ml:
+        encoding = _hf_tokenizer(
+            "Qwen/Qwen3-32B" if ("32b" in ml or "30b" in ml) else "Qwen/Qwen3-8B"
+        )
+    elif "deepseek-r1" in ml:
+        # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
+        encoding = _hf_tokenizer("deepseek-ai/DeepSeek-V3")
+    elif "mixtral" in ml:
+        # Mixtral uses the Mistral tokenizer
+        encoding = _hf_tokenizer("mistralai/Mixtral-8x7B-Instruct-v0.1")
     else:
         encoding = tiktoken.encoding_for_model(model)
 
