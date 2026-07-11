@@ -6,7 +6,26 @@ from openai import OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai.api_key)
 import backoff
+import httpx
 import tiktoken
+from transformers import AutoTokenizer
+
+# OpenAI SDK defaults to ~600s; local Ollama runs (especially 30B+) often need longer.
+# Override with TRANSCHEMA_OLLAMA_HTTP_TIMEOUT (seconds), e.g. 7200.
+_OLLAMA_READ_TIMEOUT = float(os.environ.get("TRANSCHEMA_OLLAMA_HTTP_TIMEOUT", "3600"))
+
+
+def _ollama_openai_client():
+    return OpenAI(
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        timeout=httpx.Timeout(
+            connect=60.0,
+            read=_OLLAMA_READ_TIMEOUT,
+            write=120.0,
+            pool=60.0,
+        ),
+    )
 
 
 class CostBudgetExceeded(Exception):
@@ -70,19 +89,44 @@ class LLMClient:
 
     def __init__(self, model, tracker, logger, cost_budget: float = 0.0):
         """Initializes the client with a specified model and a usage tracker."""
-        self.client = openai.OpenAI(api_key=openai.api_key)
         self.model = model
         self.cost_budget = cost_budget
-        if model == "gpt-4.1-mini":
-            # According to https://github.com/openai/tiktoken/issues/395
-            self.encoding = tiktoken.get_encoding("o200k_base")
-        elif model == "o4-mini" or model == "o3":
-            self.encoding = tiktoken.get_encoding("cl100k_base")
-        else:
-            self.encoding = tiktoken.encoding_for_model(model)
-
         self.tracker = tracker
         self.logger = logger
+
+        ml = model.lower()
+        if "qwen2.5" in ml:
+            self.client = _ollama_openai_client()
+            if "32b" in ml:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-32B-Instruct")
+            else:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+        elif "qwen3" in ml:
+            self.client = _ollama_openai_client()
+            if "32b" in ml or "30b" in ml:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
+            else:
+                self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+        elif "deepseek-r1" in ml:
+            self.client = _ollama_openai_client()
+            # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
+            self.encoding = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
+        elif "mixtral" in ml:
+            self.client = _ollama_openai_client()
+            # Mixtral uses the Mistral tokenizer
+            self.encoding = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+        else:
+            self.client = openai.OpenAI(api_key=openai.api_key)
+            if model == "gpt-4.1-mini":
+                # According to https://github.com/openai/tiktoken/issues/395
+                self.encoding = tiktoken.get_encoding("o200k_base")
+            elif model == "o4-mini" or model == "o3":
+                self.encoding = tiktoken.get_encoding("cl100k_base")
+            else:
+                self.encoding = tiktoken.encoding_for_model(model)
+
+        _base = str(getattr(self.client, "base_url", "") or "")
+        self._uses_ollama = "11434" in _base or "ollama" in _base.lower()
 
     def __repr__(self):
         return f"LLMClient(model={self.model}, tracker={self.tracker})"
@@ -134,6 +178,25 @@ class LLMClient:
                     f"(accumulated=${current_cost:.6f}) — request blocked."
                 )
 
+        if self._uses_ollama:
+            combined = "\n".join(
+                str(m.get("content", "")) for m in messages if isinstance(m, dict)
+            )
+            try:
+                est_tokens = self.calculate_token_length(combined) if combined else 0
+            except Exception:
+                est_tokens = -1
+            self.logger.info(
+                "Ollama: sending chat.completions to %s model=%r "
+                "prompt_chars=%s est_tokens=%s max_tokens=%s temp=%s (waiting on server…)",
+                getattr(self.client, "base_url", "?"),
+                self.model,
+                len(combined),
+                est_tokens,
+                max_tokens,
+                temperature,
+            )
+
         @backoff.on_exception(
             backoff.expo,
             openai._exceptions.OpenAIError,
@@ -169,8 +232,23 @@ class LLMClient:
                 )
 
         response = _request_with_backoff()
+
+        if self._uses_ollama:
+            text = response.choices[0].message.content or "" if response.choices else ""
+            usage = getattr(response, "usage", None)
+            self.logger.info(
+                "Ollama: reply received model=%r response_chars=%s "
+                "usage_prompt_tokens=%s usage_completion_tokens=%s",
+                self.model,
+                len(text),
+                getattr(usage, "prompt_tokens", None) if usage else None,
+                getattr(usage, "completion_tokens", None) if usage else None,
+            )
+
         self.tracker.add_usage(
-            self.model, response.usage.completion_tokens, response.usage.prompt_tokens
+            self.model,
+            response.usage.completion_tokens if response.usage else 0,
+            response.usage.prompt_tokens if response.usage else 0,
         )
         return response
 

@@ -172,7 +172,8 @@ def _apply_symmetric_truncation(df_output, df_gt):
 
 
 def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue,
-                        gt_cache_path: str = "", force_truncate: bool = False, weights: dict | None = None):
+                        gt_cache_path: str = "", force_truncate: bool = False, weights: dict | None = None,
+                        confidence: float | None = None):
     """Subprocess worker: load CSVs and compute value_based score, put result in queue.
 
     Uses Jaccard-aligned column matching + value-based distribution scoring.
@@ -180,10 +181,13 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
     both df_gt and df_output are truncated symmetrically before scoring.
 
     weights: optional score_1 component weights (fd_f1/avg_col_score_1/
-        row_count_score/max_missing_score), forwarded to
+        row_count_score/max_missing_score/confidence), forwarded to
         value_based_relative_csv_score. Defaults to equal weights there.
+    confidence: optional self-reported LLM confidence (0.0-1.0), forwarded to
+        value_based_relative_csv_score as the 5th score_1 component. None
+        (default) excludes it, reproducing the original 4-component score_1.
     Puts a dict {"score": float, "components": {...} | None} in result_queue
-    -- components are the 4 raw (unweighted) score_1 inputs, logged
+    -- components are the raw (unweighted) score_1 inputs, logged
     regardless of which weights produced the score, so the score can be
     recomputed under different weights later without rerunning MCTS.
     """
@@ -220,13 +224,14 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
             df_output, df_gt, precomputed_gt = _apply_symmetric_truncation(df_output, df_gt)
 
         _, _, _, fd_f1, true_combined_score, debug_dict = value_based_relative_csv_score(
-            df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights
+            df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights, confidence=confidence
         )
         components = {
             "fd_f1": fd_f1,
             "avg_col_score_1": debug_dict.get("avg_col_score_1"),
             "row_count_score": debug_dict.get("row_count_score"),
             "max_missing_score": debug_dict.get("max_missing_score"),
+            "confidence": debug_dict.get("confidence"),
         }
         result_queue.put({"score": true_combined_score, "components": components})
     except Exception:
@@ -234,21 +239,25 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
 
 
 def _value_score_with_timeout(target_file_location: str, ground_truth_location: str,
-                              gt_cache_path: str = "", weights: dict | None = None):
+                              gt_cache_path: str = "", weights: dict | None = None,
+                              confidence: float | None = None):
     """Run value_based scoring in a child process with a hard timeout.
 
     Phase 1: score on the (possibly GT-truncated) tables.
     Phase 2: if Phase 1 times out, retry with symmetric truncation of both tables
              (20 evenly-spaced GT cols + 2000 rows each) so scoring always completes.
 
-    Returns (score, components) -- components is a dict of the 4 raw
+    confidence: optional self-reported LLM confidence (0.0-1.0), forwarded to
+        value_based_relative_csv_score as the 5th score_1 component.
+
+    Returns (score, components) -- components is a dict of the raw
     (unweighted) score_1 inputs, or None on timeout/error.
     """
     def _run(force_truncate: bool):
         q = multiprocessing.Queue()
         p = multiprocessing.Process(
             target=_value_score_worker,
-            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate, weights),
+            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate, weights, confidence),
             daemon=True,
         )
         p.start()
@@ -279,6 +288,7 @@ def _score_and_validate_output(
     reward_mode: str,
     gt_cache_path: str = "",
     score_weights: dict | None = None,
+    confidence: float | None = None,
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
@@ -288,15 +298,20 @@ def _score_and_validate_output(
       - "partial"         : fuzzy column-match ratio from compare_tables_fuzzy
 
     Returns (reward, is_correct, components) where is_correct is derived from
-    reward >= threshold. components is a dict of the 4 raw (unweighted)
+    reward >= threshold. components is a dict of the raw (unweighted)
     score_1 inputs when reward_mode="det_score_value" (None otherwise, and
     None on timeout/scoring error) -- logged regardless of score_weights so
     the score can be recomputed under different weights later.
     gt_cache_path: path to pre-computed GT JSON cache; passed to subprocess workers to
                    skip per-iteration FD mining and self-column-map on ground truth.
     score_weights: optional score_1 component weights (fd_f1/avg_col_score_1/
-                   row_count_score/max_missing_score), only used when
+                   row_count_score/max_missing_score/confidence), only used when
                    reward_mode="det_score_value". Defaults to equal weights.
+    confidence: optional self-reported LLM confidence (0.0-1.0) that the
+                output matches the target -- only meaningful (non-None) on
+                mcts_critique calls, which parse it from the $CONFIDENCE$
+                block. Folded into score_1 as its 5th component when
+                reward_mode="det_score_value"; ignored otherwise.
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
@@ -319,7 +334,8 @@ def _score_and_validate_output(
 
     elif reward_mode == "det_score_value":
         score, components = _value_score_with_timeout(
-            target_file_location, ground_truth_location, gt_cache_path, weights=score_weights
+            target_file_location, ground_truth_location, gt_cache_path,
+            weights=score_weights, confidence=confidence,
         )
         return score, score >= _DET_SCORE_THRESHOLD, components
 
@@ -1761,7 +1777,7 @@ def extract_best(state: MCTSGraphState) -> dict:
             f"[extract_best] Running 'best' mode critique on final script "
             f"(score={best_score:.4f})"
         )
-        crit_script, crit_score, _, _, _, _ = _run_critique_llm(state, best_script)
+        crit_script, crit_score, _, _, _, _, _, _, _ = _run_critique_llm(state, best_script)
         if crit_score > best_score:
             config.logger.info(
                 f"[extract_best] Critique improved score: {best_score:.4f} → {crit_score:.4f}"
@@ -1875,13 +1891,43 @@ def _build_critique_prompt(state: MCTSGraphState, script: str, rag_hints: str = 
     return prompt
 
 
+def _parse_critique_confidence(response_text: str, logger) -> tuple[float | None, str]:
+    """
+    Parse the $CONFIDENCE$...$END_CONFIDENCE$ block from a critique LLM response.
+    Expects a single decimal number in [0.0, 1.0]. Returns (confidence_float, raw_text).
+    confidence_float is None if the block is missing or doesn't contain a parseable
+    number; out-of-range values are clamped into [0.0, 1.0] (with a warning) rather
+    than discarded, since the model's intent (very low/very high) is still clear.
+    """
+    match = re.search(r"\$CONFIDENCE\$(.*?)\$END_CONFIDENCE\$", response_text, re.DOTALL)
+    if not match:
+        logger.warning("[_run_critique_llm] No $CONFIDENCE$ block found in critique response.")
+        return None, ""
+    raw_text = match.group(1).strip()
+    num_match = re.search(r"-?\d+(?:\.\d+)?", raw_text)
+    if not num_match:
+        logger.warning(f"[_run_critique_llm] Unparseable confidence value: {raw_text!r}")
+        return None, raw_text
+    confidence = float(num_match.group(0))
+    if not (0.0 <= confidence <= 1.0):
+        logger.warning(f"[_run_critique_llm] Confidence {confidence} out of [0,1], clamping.")
+        confidence = max(0.0, min(1.0, confidence))
+    return confidence, raw_text
+
+
 def _run_critique_llm(state: MCTSGraphState, script: str):
     """
     Build + send the critique prompt.
-    Returns (new_script, new_score, new_response, validation_passed, critique_plan, score_components).
-    Loads ground truth internally for scoring. score_components is the 4 raw
-    (unweighted) score_1 inputs (det_score_value mode only), or None.
+    Returns (new_script, new_score, new_response, validation_passed, critique_plan,
+             score_components, confidence, confidence_raw, llm_response).
+    Loads ground truth internally for scoring. score_components is the raw
+    (unweighted) score_1 inputs (det_score_value mode only), or None -- includes
+    "confidence" once confidence is parsed successfully.
     critique_plan is a List[str] parsed from $PLAN$...$END_PLAN$ block, or [] if not found.
+    confidence is the numeric value (clamped to [0.0, 1.0]) parsed from the
+    $CONFIDENCE$ block, or None if missing/unparseable. confidence_raw is the
+    raw text inside the block (pre-parse/clamp), or "" if the block is missing.
+    llm_response is the full raw text of the critique LLM call.
     """
     config = state["config"]
     target_file_location = state["target_file_location"]
@@ -1890,7 +1936,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 
     prompt = _build_critique_prompt(state, script, rag_hints="")
     if not prompt:
-        return script, state.get("current_score", 0.0), "Prompt build failed", False, [], None
+        return script, state.get("current_score", 0.0), "Prompt build failed", False, [], None, None, "", ""
 
     res = query_gpt(
         config.llm_client,
@@ -1902,6 +1948,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
         config.token_tracker,
         type="MCTS Critique",
     )
+    llm_response = res[0]
 
     # Parse $PLAN$...$END_PLAN$ block
     critique_plan: List[str] = []
@@ -1913,6 +1960,12 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
             if line.strip()
         ]
         config.logger.info(f"[_run_critique_llm] Parsed critique plan: {critique_plan}")
+
+    # Parse $CONFIDENCE$...$END_CONFIDENCE$ block
+    confidence, confidence_raw = _parse_critique_confidence(res[0], config.logger)
+    config.logger.info(
+        f"[_run_critique_llm] Parsed critique confidence: {confidence_raw!r} -> {confidence}"
+    )
 
     pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
     match = pattern.search(res[0])
@@ -1934,12 +1987,16 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
                     validation_mode=validation_mode,
                     reward_mode=reward_mode,
                     score_weights=state.get("score_weights"),
+                    confidence=confidence,
                 )
             except Exception:
                 new_score = 0.0
                 validation_passed = False
 
-    return new_script, new_score, new_response, validation_passed, critique_plan, score_components
+    return (
+        new_script, new_score, new_response, validation_passed, critique_plan,
+        score_components, confidence, confidence_raw, llm_response,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1969,9 +2026,10 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         f"critiquing script (score={state['current_score']:.4f})"
     )
 
-    new_script, new_score, new_response, critique_validation_passed, critique_plan, new_score_components = _run_critique_llm(
-        state, state["current_script"]
-    )
+    (
+        new_script, new_score, new_response, critique_validation_passed, critique_plan,
+        new_score_components, new_confidence, new_confidence_raw, new_llm_response,
+    ) = _run_critique_llm(state, state["current_script"])
 
     _crit_components_str = (
         "components={" + ", ".join(f"{k}={v}" for k, v in new_score_components.items()) + "}"
@@ -1979,7 +2037,8 @@ def mcts_critique(state: MCTSGraphState) -> dict:
     )
     config.logger.info(
         f"[mcts_critique] Iter {state['iteration']}: "
-        f"score {state['current_score']:.4f} → {new_score:.4f}, {_crit_components_str}"
+        f"score {state['current_score']:.4f} → {new_score:.4f}, "
+        f"confidence={new_confidence_raw!r} ({new_confidence}), {_crit_components_str}"
     )
 
     # Build critique_selection_path by walking/creating tree nodes for critique_plan,
@@ -2055,10 +2114,14 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         "best_score": best_score,
         "best_script": best_script,
         "best_operation_history": best_op_hist,
+        "critique_confidence": new_confidence if new_confidence is not None else 0.0,
+        "critique_confidence_raw": new_confidence_raw,
+        "critique_llm_response": new_llm_response,
         "log_messages": state["log_messages"]
         + [
             f"[CRITIQUE] iter={state['iteration']} "
             f"score_before={state['current_score']:.4f} score_after={new_score:.4f} "
+            f"confidence={new_confidence_raw!r} ({new_confidence}) "
             f"judge_verdict={judge_verdict} validation_passed={validation_passed} "
             f"critique_path_len={len(critique_selection_path)}"
         ],
@@ -2122,6 +2185,8 @@ def reuse_terminal_reward(state: MCTSGraphState) -> dict:
         # Clear stale critique state from previous iterations
         "critique_selection_path": [],
         "critique_score": 0.0,
+        "critique_confidence": 0.0,
+        "critique_confidence_raw": "",
         "critique_attempted": True,  # prevent critique from triggering on reused reward
         "log_messages": state["log_messages"]
         + [
@@ -2181,23 +2246,6 @@ def check_budget(state: MCTSGraphState) -> str:
             f"[check_budget] Validation passed at iter {state['iteration']} — stopping."
         )
         return "done"
-
-    # Stop if any leaf node (no children) has been visited >= 5 times.
-    # A leaf visited that many times means the same path keeps getting selected;
-    # further iterations are wasteful.
-    _root = state.get("root")
-    if _root is not None and _root.visits > 0:
-        _stack = list(_root.children.values())
-        while _stack:
-            _n = _stack.pop()
-            if not _n.children and _n.visits >= 5:
-                _op_label = _n.operation_history[-1] if _n.operation_history else "?"
-                config.logger.info(
-                    f"[check_budget] Leaf node saturated "
-                    f"(visits={_n.visits}>=5, op={_op_label!r}) — stopping early."
-                )
-                return "done"
-            _stack.extend(_n.children.values())
 
     no_improvement_count = state.get("no_improvement_count", 0)
     early_stopping = state.get("early_stopping", 5)

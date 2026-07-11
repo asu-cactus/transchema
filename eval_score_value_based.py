@@ -534,12 +534,29 @@ def _reduce_columns_for_scoring(df: pd.DataFrame, max_cols: int = MAX_COLS_FOR_S
 # Main scoring entry point
 # ---------------------------------------------------------------------------
 
-SCORE_1_COMPONENTS = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score")
-DEFAULT_SCORE_1_WEIGHTS = {k: 0.25 for k in SCORE_1_COMPONENTS}
+SCORE_1_COMPONENTS = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score", "confidence")
+DEFAULT_SCORE_1_WEIGHTS = {k: 0.2 for k in SCORE_1_COMPONENTS}
+
+
+def _weighted_avg_available(values: dict, weights: dict) -> float:
+    """Weighted average over whichever components are non-None in `values`.
+
+    Missing components (None) are dropped and the remaining weights are
+    renormalized so the result always stays in the same scale regardless of
+    which subset of components is available for a given call (e.g. confidence
+    is only available on critique calls, avg_col_score_1 only when per-column
+    data exists).
+    """
+    avail = {k: v for k, v in values.items() if v is not None}
+    if not avail:
+        return 0.0
+    w = {k: weights.get(k, DEFAULT_SCORE_1_WEIGHTS.get(k, 0.0)) for k in avail}
+    w_sum = sum(w.values()) or 1.0
+    return sum(w[k] * avail[k] for k in avail) / w_sum
 
 
 def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, precomputed_gt=None,
-                                    weights: dict | None = None):
+                                    weights: dict | None = None, confidence: float | None = None):
     """
     Drop-in replacement for relative_csv_score.
 
@@ -551,9 +568,15 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     4. true_combined_score = (fd_f1 + avg(column_score)) / 2
 
     weights: optional dict with keys fd_f1/avg_col_score_1/row_count_score/
-        max_missing_score controlling how those 4 components combine into
-        score_1 (see below). Defaults to DEFAULT_SCORE_1_WEIGHTS (0.25 each),
-        which reproduces the original unweighted score_1 exactly.
+        max_missing_score/confidence controlling how those components combine
+        into score_1 (see below). Defaults to DEFAULT_SCORE_1_WEIGHTS (0.2
+        each). Any component whose value is None (e.g. confidence, when not
+        supplied) is dropped and the remaining weights renormalized, so
+        omitting confidence reproduces the original 4-component score_1.
+
+    confidence: optional self-reported LLM confidence (0.0-1.0) that this
+        output matches the target, e.g. from mcts_critique's $CONFIDENCE$
+        block. None (default) excludes it from score_1 entirely.
 
     Returns the same 6-tuple as relative_csv_score:
         (fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict)
@@ -644,24 +667,28 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
             else:  # date_as_numeric, date_mismatch
                 _s1_vals.append(_cd.get("column_score", 0.0))
         _avg_col_score_1 = round(sum(_s1_vals) / len(_s1_vals), 4)
-        score_1 = round(
-            weights["fd_f1"] * fd_f1
-            + weights["avg_col_score_1"] * _avg_col_score_1
-            + weights["row_count_score"] * row_count_score
-            + weights["max_missing_score"] * max_missing_score,
-            4,
-        )
     else:
-        # avg_col_score_1 unavailable (no per-column data) -- renormalize
-        # over the remaining 3 components so e.g. equal weights (0.25 each)
-        # still reduce to a plain average of the 3, matching prior behavior.
+        # avg_col_score_1 unavailable (no per-column data) -- dropped below,
+        # remaining components' weights are renormalized automatically.
         _avg_col_score_1 = None
-        _w_fd, _w_row, _w_miss = weights["fd_f1"], weights["row_count_score"], weights["max_missing_score"]
-        _w_sum = _w_fd + _w_row + _w_miss
-        score_1 = round(
-            (_w_fd * fd_f1 + _w_row * row_count_score + _w_miss * max_missing_score) / _w_sum,
-            4,
-        )
+
+    # score_1: weighted average over whichever of the (up to) 5 components are
+    # available this call. confidence is only non-None on critique calls
+    # (self-reported LLM confidence from the $CONFIDENCE$ block); when absent,
+    # weights renormalize over the remaining 4, reproducing the original score_1.
+    score_1 = round(
+        _weighted_avg_available(
+            {
+                "fd_f1": fd_f1,
+                "avg_col_score_1": _avg_col_score_1,
+                "row_count_score": row_count_score,
+                "max_missing_score": max_missing_score,
+                "confidence": confidence,
+            },
+            weights,
+        ),
+        4,
+    )
 
     # score_2: full value-based score = (fd_f1 + avg_column_score + row_ratio) / 3.
     # Includes JS similarity, nunique/missing similarity, and row-count penalty.
@@ -685,6 +712,7 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     debug_dict["n_gen_full"]           = n_gen_full
     debug_dict["n_gen_complete"]       = n_gen_complete
     debug_dict["avg_col_score_1"]      = _avg_col_score_1
+    debug_dict["confidence"]           = confidence
     debug_dict["score_1"]              = score_1
     debug_dict["score_2"]              = score_2
     debug_dict["true_combined_score"]  = true_combined_score

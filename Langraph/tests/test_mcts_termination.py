@@ -126,7 +126,10 @@ class TestMCTSTermination(unittest.TestCase):
         self.assertEqual(updates["best_script"], "new_valid_script()")
         self.assertEqual(updates["best_operation_history"], ["NEW_PLAN", "NO_MORE_OPERATION"])
 
-    @patch("nodes._run_critique_llm", return_value=("crit_valid()", 0.8, "Success", True))
+    @patch(
+        "nodes._run_critique_llm",
+        return_value=("crit_valid()", 0.8, "Success", True, [], None, 0.9, "0.9", "raw response"),
+    )
     def test_critique_validation_true_promotes_script_even_on_lower_score(self, _mock_crit):
         state = _build_state(
             best_score=1.0,

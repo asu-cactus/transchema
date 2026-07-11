@@ -75,21 +75,29 @@ from rag_pipeline.local_rag_db import build_upper_bound_db, populate_from_global
 # ──────────────────────────────────────────────────────────────────────────────
 
 _SCORE_1_COMPONENT_ORDER = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score")
+_SCORE_1_COMPONENT_ORDER_WITH_CONFIDENCE = _SCORE_1_COMPONENT_ORDER + ("confidence",)
 
 
 def _parse_score_weights(raw: str | None) -> dict | None:
-    """Parse --score_weights ('fd_f1,avg_col_score_1,row_count_score,max_missing_score')
-    into a dict. Returns None (-> equal weights, unchanged default behavior)
-    when not provided."""
+    """Parse --score_weights into a dict. Accepts either 4 comma-separated values
+    ('fd_f1,avg_col_score_1,row_count_score,max_missing_score' -- confidence weight
+    defaults to DEFAULT_SCORE_1_WEIGHTS["confidence"]) or 5 (appending a confidence
+    weight: '...,max_missing_score,confidence'). Returns None (-> equal weights,
+    unchanged default behavior) when not provided."""
     if not raw:
         return None
     parts = [p.strip() for p in raw.split(",")]
-    if len(parts) != len(_SCORE_1_COMPONENT_ORDER):
+    if len(parts) == len(_SCORE_1_COMPONENT_ORDER):
+        order = _SCORE_1_COMPONENT_ORDER
+    elif len(parts) == len(_SCORE_1_COMPONENT_ORDER_WITH_CONFIDENCE):
+        order = _SCORE_1_COMPONENT_ORDER_WITH_CONFIDENCE
+    else:
         raise ValueError(
             f"--score_weights expects {len(_SCORE_1_COMPONENT_ORDER)} comma-separated "
-            f"values in order {_SCORE_1_COMPONENT_ORDER}, got {len(parts)}: {raw!r}"
+            f"values in order {_SCORE_1_COMPONENT_ORDER} (optionally +confidence, "
+            f"{len(_SCORE_1_COMPONENT_ORDER_WITH_CONFIDENCE)} total), got {len(parts)}: {raw!r}"
         )
-    return {k: float(v) for k, v in zip(_SCORE_1_COMPONENT_ORDER, parts)}
+    return {k: float(v) for k, v in zip(order, parts)}
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -908,6 +916,9 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "pre_critique_score": 0.0,
             "critique_selection_path": [],
             "critique_score": 0.0,
+            "critique_confidence": 0.0,
+            "critique_confidence_raw": "",
+            "critique_llm_response": "",
             # Stopping criteria
             "no_score_threshold": getattr(args, "no_score_threshold", False),
             # RAG support — active for upper_bound and global modes
@@ -1193,10 +1204,14 @@ if __name__ == "__main__":
         default=None,
         help=(
             "Only used with --reward det_score_value. Comma-separated weights "
-            "for the 4 score_1 components in order "
-            "fd_f1,avg_col_score_1,row_count_score,max_missing_score "
-            "(e.g. '0.1241,0.2487,0.3562,0.2710'). Default: None -> equal "
-            "weights (0.25 each), i.e. the original unweighted score_1."
+            "for the score_1 components in order "
+            "fd_f1,avg_col_score_1,row_count_score,max_missing_score"
+            "[,confidence] -- confidence is optional (5th value); when included "
+            "it weights the critique's self-reported $CONFIDENCE$ signal (a "
+            "0.0-1.0 float) into score_1 on mcts_critique calls. "
+            "(e.g. '0.1241,0.2487,0.3562,0.2710' or '0.2,0.2,0.2,0.2,0.2'). "
+            "Default: None -> equal weights (0.2 each across all 5, or 0.25 "
+            "each across the original 4 when confidence is unavailable)."
         ),
     )
     parser.add_argument(
