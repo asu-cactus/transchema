@@ -306,14 +306,33 @@ def build_aligned_dataframe(df_gen: pd.DataFrame, column_map: list) -> pd.DataFr
 # Per-column scoring
 # ---------------------------------------------------------------------------
 
+def _column_type_weight(column_type_weights: dict | None, type_key: str, weight_key: str) -> float:
+    """Look up a single per-column-type weight, falling back to
+    DEFAULT_COLUMN_TYPE_WEIGHTS when column_type_weights is None or doesn't
+    cover this type/key (so a partial override -- e.g. just "float" -- still
+    works, leaving the other types at their original hardcoded behavior)."""
+    override = (column_type_weights or {}).get(type_key, {})
+    if weight_key in override:
+        return override[weight_key]
+    return DEFAULT_COLUMN_TYPE_WEIGHTS[type_key][weight_key]
+
+
 def _compute_column_scores(df_aligned: pd.DataFrame, df_gt: pd.DataFrame,
                             pairs: list, column_map: list,
-                            df_gen: pd.DataFrame | None = None) -> dict:
+                            df_gen: pd.DataFrame | None = None,
+                            column_type_weights: dict | None = None) -> dict:
     """
     Compute a score for every GT column:
-      - Integer GT column   → (js_similarity + range_overlap + nunique_sim + missing_sim) / 4
-      - Float GT column     → 0.5 * (js_similarity + range_overlap)
-      - Categorical GT column → (cat_property_score + nunique_sim + missing_sim) / 3
+      - Integer GT column   → w_js*js_similarity + w_range*range_overlap + w_nunique*nunique_sim + w_missing*missing_sim
+      - Float GT column     → w_js*js_similarity + w_range*range_overlap
+      - ID GT column        → w_nunique*nunique_sim + w_missing*missing_sim
+      - Categorical GT column → w_prop*cat_property_score + w_nunique*nunique_sim + w_missing*missing_sim
+
+    Weights default to DEFAULT_COLUMN_TYPE_WEIGHTS (reproducing the original
+    hardcoded formulas exactly); column_type_weights overrides them per type,
+    e.g. {"float": {"js": 0.529, "range": 0.471}, "int": {...}, "id": {...}, "cat": {...}}.
+    A type missing from the override, or a key missing within a type's dict,
+    falls back to the default for just that piece.
 
     nunique_sim = 1 - |n_unique_gen/len_gen  - n_unique_gt/len_gt|  (fraction-based)
     missing_sim = 1 - |frac_missing_gen - frac_missing_gt|
@@ -377,7 +396,10 @@ def _compute_column_scores(df_aligned: pd.DataFrame, df_gt: pd.DataFrame,
                 cat_score   = _cat_property_score(gen_series, gt_series)
                 nunique_sim = _nunique_sim(gen_series_full, gt_series)
                 missing_sim = _missing_sim(gen_series_full, gt_series)
-                col_score   = round((cat_score + nunique_sim + missing_sim) / 3, 4)
+                w_prop    = _column_type_weight(column_type_weights, "cat", "prop")
+                w_nunique = _column_type_weight(column_type_weights, "cat", "nunique")
+                w_missing = _column_type_weight(column_type_weights, "cat", "missing")
+                col_score = round(w_prop * cat_score + w_nunique * nunique_sim + w_missing * missing_sim, 4)
                 per_column[gt_col] = {
                     "type":         "categorical",
                     "gen_col":      gen_col,
@@ -448,7 +470,9 @@ def _compute_column_scores(df_aligned: pd.DataFrame, df_gt: pd.DataFrame,
             js_similarity = None
             range_overlap = None
             w_norm        = None
-            column_score  = nunique_sim
+            id_w_nunique  = _column_type_weight(column_type_weights, "id", "nunique")
+            id_w_missing  = _column_type_weight(column_type_weights, "id", "missing")
+            column_score  = round(id_w_nunique * nunique_sim + id_w_missing * missing_sim, 4)
         else:
             # Wasserstein (debug only)
             w = wasserstein_distance(gen_vals, gt_vals)
@@ -461,15 +485,26 @@ def _compute_column_scores(df_aligned: pd.DataFrame, df_gt: pd.DataFrame,
         elif is_gt_integer:
             nunique_sim = _nunique_sim(gen_series_full, gt_series)
             missing_sim = _missing_sim(gen_series_full, gt_series)
-            # JS similarity gets 2× weight: it correctly penalises distribution
-            # shifts caused by self-union tricks (e.g. 2× SUM) whereas
-            # range_overlap only looks at endpoints and can reward inflated values.
-            column_score = round((2*js_similarity + range_overlap + nunique_sim + missing_sim) / 5, 4)
+            # Default weights give JS similarity 2x weight vs range_overlap: it
+            # correctly penalises distribution shifts caused by self-union tricks
+            # (e.g. 2x SUM) whereas range_overlap only looks at endpoints and can
+            # reward inflated values. See DEFAULT_COLUMN_TYPE_WEIGHTS["int"].
+            w_js      = _column_type_weight(column_type_weights, "int", "js")
+            w_range   = _column_type_weight(column_type_weights, "int", "range")
+            w_nunique = _column_type_weight(column_type_weights, "int", "nunique")
+            w_missing = _column_type_weight(column_type_weights, "int", "missing")
+            column_score = round(
+                w_js * js_similarity + w_range * range_overlap
+                + w_nunique * nunique_sim + w_missing * missing_sim, 4,
+            )
         else:
             nunique_sim = None
             missing_sim = None
-            # JS gets 2× weight vs range for same reason.
-            column_score = round((2*js_similarity + range_overlap) / 3, 4)
+            # Default weights give JS 2x weight vs range for the same reason.
+            # See DEFAULT_COLUMN_TYPE_WEIGHTS["float"].
+            w_js    = _column_type_weight(column_type_weights, "float", "js")
+            w_range = _column_type_weight(column_type_weights, "float", "range")
+            column_score = round(w_js * js_similarity + w_range * range_overlap, 4)
 
         per_column[gt_col] = {
             "type":                   "id" if is_id_col else "numeric",
@@ -537,6 +572,60 @@ def _reduce_columns_for_scoring(df: pd.DataFrame, max_cols: int = MAX_COLS_FOR_S
 SCORE_1_COMPONENTS = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score", "confidence")
 DEFAULT_SCORE_1_WEIGHTS = {k: 0.2 for k in SCORE_1_COMPONENTS}
 
+# ---------------------------------------------------------------------------
+# Per-column-type score weights (used inside _compute_column_scores to build
+# avg_col_score_1 / avg_column_score). These reproduce the ORIGINAL hardcoded
+# formulas exactly -- they're the fallback whenever a length/type isn't
+# covered by LENGTH_SCORE_WEIGHTS or an explicit override isn't supplied.
+#   float (non-integer numeric, non-id): (2*js + range) / 3
+#   int   (integer numeric, non-id):     (2*js + range + nunique + missing) / 5
+#   id:                                  nunique only (missing computed but unused)
+#   cat   (categorical):                 (prop + nunique + missing) / 3, equal thirds
+# ---------------------------------------------------------------------------
+DEFAULT_COLUMN_TYPE_WEIGHTS = {
+    "float": {"js": 2 / 3, "range": 1 / 3},
+    "int":   {"js": 2 / 5, "range": 1 / 5, "nunique": 1 / 5, "missing": 1 / 5},
+    "id":    {"nunique": 1.0, "missing": 0.0},
+    "cat":   {"prop": 1 / 3, "nunique": 1 / 3, "missing": 1 / 3},
+}
+
+# Per-length overrides for the top-level score_1 weights ("top", same 4 keys as
+# DEFAULT_SCORE_1_WEIGHTS minus confidence -- confidence keeps its own default
+# unless explicitly added here too) and the per-column-type weights above.
+# mcts_search.py auto-selects a case's entry by --length; an explicit
+# --score_weights CLI value still overrides "top" for that run.
+LENGTH_SCORE_WEIGHTS = {
+    1: {
+        # Structural weights (fd_f1/avg_col_score_1/row_count_score/max_missing_score)
+        # are the user-provided fd=.285/col=.288/row=.266/miss=.161 compressed by
+        # 0.75x to make room for an explicit 25% confidence share, so all 5 sum to
+        # 1.0 directly (no renormalization surprises): .285*.75=.21375, .288*.75=.216,
+        # .266*.75=.1995, .161*.75=.12075, confidence=.25.
+        # See analyze_run14_c8_confidence_vs_correctness.py -- at run14's effective
+        # ~16.7% confidence weight, case 8's correct JOIN pipeline (blended
+        # confidence 0.986) still lost to a wrong UNION+GROUP_BY pipeline that won
+        # on row_count_score; breakeven was calculated at ~23.6% confidence weight,
+        # so 25% flips that specific case.
+        "top":   {"fd_f1": 0.21375, "avg_col_score_1": 0.216, "row_count_score": 0.1995,
+                   "max_missing_score": 0.12075, "confidence": 0.25},
+        "float": {"js": 0.529, "range": 0.471},
+        "int":   {"js": 0.184, "range": 0.329, "nunique": 0.360, "missing": 0.127},
+        "id":    {"nunique": 0.637, "missing": 0.363},
+        "cat":   {"prop": 0.213, "nunique": 0.576, "missing": 0.211},
+    },
+}
+
+
+def get_length_score_weights(length: int | None) -> tuple[dict | None, dict | None]:
+    """Return (top_weights, column_type_weights) for `length`, or (None, None)
+    if that length has no entry in LENGTH_SCORE_WEIGHTS (callers should fall
+    back to DEFAULT_SCORE_1_WEIGHTS / DEFAULT_COLUMN_TYPE_WEIGHTS in that case)."""
+    entry = LENGTH_SCORE_WEIGHTS.get(length)
+    if not entry:
+        return None, None
+    column_type_weights = {k: v for k, v in entry.items() if k != "top"}
+    return entry.get("top"), (column_type_weights or None)
+
 
 def _weighted_avg_available(values: dict, weights: dict) -> float:
     """Weighted average over whichever components are non-None in `values`.
@@ -556,7 +645,8 @@ def _weighted_avg_available(values: dict, weights: dict) -> float:
 
 
 def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, precomputed_gt=None,
-                                    weights: dict | None = None, confidence: float | None = None):
+                                    weights: dict | None = None, confidence: float | None = None,
+                                    column_type_weights: dict | None = None):
     """
     Drop-in replacement for relative_csv_score.
 
@@ -577,6 +667,12 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     confidence: optional self-reported LLM confidence (0.0-1.0) that this
         output matches the target, e.g. from mcts_critique's $CONFIDENCE$
         block. None (default) excludes it from score_1 entirely.
+
+    column_type_weights: optional dict overriding how each per-column type
+        (float/int/id/cat) blends its own sub-metrics into that column's
+        column_score -- feeds avg_col_score_1 above. See
+        DEFAULT_COLUMN_TYPE_WEIGHTS / _compute_column_scores. None (default)
+        reproduces the original per-type formulas exactly.
 
     Returns the same 6-tuple as relative_csv_score:
         (fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict)
@@ -602,7 +698,10 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
         relative_csv_score(df_aligned, df_gt, precomputed_gt=precomputed_gt)
 
     pairs = [(col, col) for col in df_gt.columns if col in df_aligned.columns]
-    col_scores = _compute_column_scores(df_aligned, df_gt, pairs, column_map, df_gen=df_gen)
+    col_scores = _compute_column_scores(
+        df_aligned, df_gt, pairs, column_map, df_gen=df_gen,
+        column_type_weights=column_type_weights,
+    )
 
     avg_column_score = col_scores.get("avg_column_score")
 
@@ -637,40 +736,21 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
 
     # score_1: lightweight structural score =
     #   (fd_f1 + avg_col_score_1 + row_count_score + max_missing_score) / 4
-    #   per-column contribution:
-    #     numeric (float/int) → min(range_overlap, js_similarity) — pessimistic
-    #                           ("AND") ensemble: a column only scores well if
-    #                           BOTH signals agree. range_overlap alone can be
-    #                           fooled by envelope-matching tricks like
-    #                           (min+max)/2 that compress toward GT's endpoints
-    #                           without matching its true distribution — JS
-    #                           similarity catches that even when range_overlap
-    #                           doesn't, so min() lets JS veto a range_overlap
-    #                           false positive instead of being averaged away.
-    #     categorical         → cat_score (Jaccard-based min-hash property score)
-    #     id column           → nunique_sim
-    #     date                → column_score (unchanged)
+    #   avg_col_score_1 is the plain average of each column's `column_score`
+    #   (computed in _compute_column_scores, honoring column_type_weights --
+    #   float/int/id/cat sub-metric blends). Unified with avg_column_score/
+    #   score_2's per-column values as of the column_type_weights change --
+    #   previously score_1 used its own separate, non-configurable formula
+    #   (min(range_overlap, js_similarity) for numeric, raw nunique_sim for id,
+    #   raw cat_score for categorical, no missing_sim for either) that never
+    #   incorporated column_type_weights at all.
     # row_count_score / max_missing_score catch row-count blowups (e.g. reversed
     # merge direction) that row_ratio misses. No row_ratio penalty otherwise —
     # robust when row-count or JS penalties drag score_2 down.
-    _per_col = col_scores.get("per_column") or {}
-    if _per_col:
-        _s1_vals = []
-        for _cd in _per_col.values():
-            _ct = _cd.get("type", "")
-            if _ct == "numeric":
-                _s1_vals.append(min(_cd.get("range_overlap") or 0.0, _cd.get("js_similarity") or 0.0))
-            elif _ct == "id":
-                _s1_vals.append(_cd.get("nunique_sim") or 0.0)
-            elif _ct == "categorical":
-                _s1_vals.append(_cd.get("cat_score") or 0.0)
-            else:  # date_as_numeric, date_mismatch
-                _s1_vals.append(_cd.get("column_score", 0.0))
-        _avg_col_score_1 = round(sum(_s1_vals) / len(_s1_vals), 4)
-    else:
-        # avg_col_score_1 unavailable (no per-column data) -- dropped below,
-        # remaining components' weights are renormalized automatically.
-        _avg_col_score_1 = None
+    # avg_column_score (computed above from col_scores) IS avg_col_score_1 --
+    # both are the plain mean of each column's column_score. None when no
+    # per-column data exists, dropped below with weights renormalized.
+    _avg_col_score_1 = avg_column_score
 
     # score_1: weighted average over whichever of the (up to) 5 components are
     # available this call. confidence is only non-None on critique calls

@@ -17,7 +17,6 @@ Usage
         experiment_name="mcts_run",
         i_=0,
     )
-
 Key args fields
 ---------------
     args.mcts_iterations    int     MCTS budget (default: 10)
@@ -71,6 +70,7 @@ from state import MCTSGraphState
 from graph import build_mcts_graph
 from viz import write_action_trace, write_tree_viz
 from rag_pipeline.local_rag_db import build_upper_bound_db, populate_from_global_results
+from eval_score_value_based import get_length_score_weights
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -548,7 +548,13 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     cost_budget = getattr(args, "cost_budget", 0.0)
     validation = getattr(args, "validation", "hard_match")
     reward_mode = getattr(args, "reward", "score")
-    score_weights = _parse_score_weights(getattr(args, "score_weights", None))
+    # Dynamic per-length score weights: an explicit --score_weights CLI value
+    # always wins for the top-level (structural) weights; otherwise auto-select
+    # from LENGTH_SCORE_WEIGHTS by this case's --length. column_type_weights
+    # has no CLI override yet -- always auto-selected (None if length unlisted).
+    _cli_score_weights = _parse_score_weights(getattr(args, "score_weights", None))
+    _length_top_weights, column_type_weights = get_length_score_weights(length)
+    score_weights = _cli_score_weights or _length_top_weights
     join_flag = getattr(args, "join_flag", 0)
     aggregate_flag = getattr(args, "aggregate_flag", 0)
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
@@ -869,6 +875,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "validation_mode": validation,
             "reward_mode": reward_mode,
             "score_weights": score_weights,
+            "column_type_weights": column_type_weights,
             "experiment_name": experiment_name,
             "case_id": len_idx_target_idx,
             # Prompt extras
@@ -901,6 +908,10 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "current_score": 0.0,
             "current_response": "",
             "current_full_history": [],
+            "current_confidence": None,
+            # Pipeline confidence/frequency table (shared by simulate + critique,
+            # persists across iterations for this case like `root`)
+            "pipeline_confidence_stats": {},
             # Best result
             "best_script": "",
             "best_score": 0.0,
@@ -1101,7 +1112,7 @@ if __name__ == "__main__":
     import multiprocessing
     from datetime import datetime
 
-    _CASE_TIMEOUT = 600  # 10 minutes per case
+    _CASE_TIMEOUT = 300  # 20 minutes per case
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
@@ -1210,8 +1221,13 @@ if __name__ == "__main__":
             "it weights the critique's self-reported $CONFIDENCE$ signal (a "
             "0.0-1.0 float) into score_1 on mcts_critique calls. "
             "(e.g. '0.1241,0.2487,0.3562,0.2710' or '0.2,0.2,0.2,0.2,0.2'). "
-            "Default: None -> equal weights (0.2 each across all 5, or 0.25 "
-            "each across the original 4 when confidence is unavailable)."
+            "Default: None -> auto-select from LENGTH_SCORE_WEIGHTS "
+            "(eval_score_value_based.py) by this run's --length if that length "
+            "has an entry (also auto-selects per-column-type sub-metric "
+            "weights, no CLI override for those yet); otherwise equal weights "
+            "(0.2 each across all 5, or 0.25 each across the original 4 when "
+            "confidence is unavailable). Passing --score_weights explicitly "
+            "always overrides the length-based top-level default."
         ),
     )
     parser.add_argument(

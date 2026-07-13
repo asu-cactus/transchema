@@ -1,0 +1,79 @@
+========================================================================
+Loaded: Ollama 0.20.4
+========================================================================
+
+Ollama Host for this session http://sg235:11435
+
+To start the ollama server in the background run
+   ollama-start
+
+To stop the ollama server run
+   ollama-stop
+
+*************************************************
+NOTE Ollama will not run on a login node, start
+an interactive session to run ollama ie
+  interactive -G 1 -t 0-4:00
+That will start an session for 4 hours with a GPU
+*************************************************
+     
+time=2026-07-11T20:22:21.144-07:00 level=INFO source=routes.go:1744 msg="server config" env="map[CUDA_VISIBLE_DEVICES:0 GGML_VK_VISIBLE_DEVICES: GPU_DEVICE_ORDINAL:0 HIP_VISIBLE_DEVICES: HSA_OVERRIDE_GFX_VERSION: HTTPS_PROXY: HTTP_PROXY: NO_PROXY: OLLAMA_CONTEXT_LENGTH:0 OLLAMA_DEBUG:INFO OLLAMA_DEBUG_LOG_REQUESTS:false OLLAMA_EDITOR: OLLAMA_FLASH_ATTENTION:false OLLAMA_GPU_OVERHEAD:0 OLLAMA_HOST:http://sg235:11434 OLLAMA_KEEP_ALIVE:10m0s OLLAMA_KV_CACHE_TYPE: OLLAMA_LLM_LIBRARY: OLLAMA_LOAD_TIMEOUT:5m0s OLLAMA_MAX_LOADED_MODELS:0 OLLAMA_MAX_QUEUE:512 OLLAMA_MODELS:/scratch/jrtandel/.ollama/models OLLAMA_MULTIUSER_CACHE:false OLLAMA_NEW_ENGINE:false OLLAMA_NOHISTORY:false OLLAMA_NOPRUNE:false OLLAMA_NO_CLOUD:false OLLAMA_NUM_PARALLEL:1 OLLAMA_ORIGINS:[* http://localhost https://localhost http://localhost:* https://localhost:* http://127.0.0.1 https://127.0.0.1 http://127.0.0.1:* https://127.0.0.1:* http://0.0.0.0 https://0.0.0.0 http://0.0.0.0:* https://0.0.0.0:* app://* file://* tauri://* vscode-webview://* vscode-file://*] OLLAMA_REMOTES:[ollama.com] OLLAMA_SCHED_SPREAD:false OLLAMA_VULKAN:false ROCR_VISIBLE_DEVICES:0 http_proxy: https_proxy: no_proxy:]"
+time=2026-07-11T20:22:21.144-07:00 level=INFO source=routes.go:1746 msg="Ollama cloud disabled: false"
+time=2026-07-11T20:22:21.147-07:00 level=INFO source=images.go:499 msg="total blobs: 5"
+time=2026-07-11T20:22:21.148-07:00 level=INFO source=images.go:506 msg="total unused blobs removed: 0"
+time=2026-07-11T20:22:21.149-07:00 level=INFO source=routes.go:1802 msg="Listening on 10.139.126.235:11434 (version 0.20.4)"
+time=2026-07-11T20:22:21.161-07:00 level=INFO source=runner.go:67 msg="discovering available GPUs..."
+time=2026-07-11T20:22:21.161-07:00 level=WARN source=runner.go:485 msg="user overrode visible devices" CUDA_VISIBLE_DEVICES=0
+time=2026-07-11T20:22:21.161-07:00 level=WARN source=runner.go:485 msg="user overrode visible devices" ROCR_VISIBLE_DEVICES=0
+time=2026-07-11T20:22:21.161-07:00 level=WARN source=runner.go:485 msg="user overrode visible devices" GPU_DEVICE_ORDINAL=0
+time=2026-07-11T20:22:21.162-07:00 level=WARN source=runner.go:489 msg="if GPUs are not correctly discovered, unset and try again"
+time=2026-07-11T20:22:21.163-07:00 level=INFO source=server.go:444 msg="starting runner" cmd="/packages/apps/ollama/0.20.4/bin/ollama runner --ollama-engine --port 40855"
+time=2026-07-11T20:22:21.497-07:00 level=INFO source=server.go:444 msg="starting runner" cmd="/packages/apps/ollama/0.20.4/bin/ollama runner --ollama-engine --port 42725"
+time=2026-07-11T20:22:21.788-07:00 level=INFO source=runner.go:106 msg="experimental Vulkan support disabled.  To enable, set OLLAMA_VULKAN=1"
+time=2026-07-11T20:22:21.789-07:00 level=INFO source=server.go:444 msg="starting runner" cmd="/packages/apps/ollama/0.20.4/bin/ollama runner --ollama-engine --port 40709"
+time=2026-07-11T20:22:21.789-07:00 level=INFO source=server.go:444 msg="starting runner" cmd="/packages/apps/ollama/0.20.4/bin/ollama runner --ollama-engine --port 34151"
+time=2026-07-11T20:22:22.083-07:00 level=INFO source=types.go:42 msg="inference compute" id=GPU-e4eef2d2-3452-ccdb-6b82-1f4e70840ac7 filter_id="" library=CUDA compute=8.0 name=CUDA0 description="NVIDIA A100-SXM4-80GB" libdirs=ollama,cuda_v13 driver=13.2 pci_id=0000:01:00.0 type=discrete total="80.0 GiB" available="79.2 GiB"
+time=2026-07-11T20:22:22.083-07:00 level=INFO source=routes.go:1852 msg="vram-based default context" total_vram="80.0 GiB" default_num_ctx=262144
+time=2026-07-11T20:22:23.410-07:00 level=INFO source=server.go:444 msg="starting runner" cmd="/packages/apps/ollama/0.20.4/bin/ollama runner --ollama-engine --port 38641"
+time=2026-07-11T20:22:23.909-07:00 level=WARN source=server.go:169 msg="requested context size too large for model" num_ctx=262144 n_ctx_train=40960
+time=2026-07-11T20:22:23.909-07:00 level=INFO source=server.go:259 msg="enabling flash attention"
+time=2026-07-11T20:22:23.909-07:00 level=INFO source=server.go:444 msg="starting runner" cmd="/packages/apps/ollama/0.20.4/bin/ollama runner --ollama-engine --model /scratch/jrtandel/.ollama/models/blobs/sha256-3291abe70f16ee9682de7bfae08db5373ea9d6497e614aaad63340ad421d6312 --port 40087"
+time=2026-07-11T20:22:23.911-07:00 level=INFO source=sched.go:484 msg="system memory" total="503.5 GiB" free="474.2 GiB" free_swap="0 B"
+time=2026-07-11T20:22:23.911-07:00 level=INFO source=sched.go:491 msg="gpu memory" id=GPU-e4eef2d2-3452-ccdb-6b82-1f4e70840ac7 library=CUDA available="78.8 GiB" free="79.2 GiB" minimum="457.0 MiB" overhead="0 B"
+time=2026-07-11T20:22:23.911-07:00 level=INFO source=server.go:771 msg="loading model" "model layers"=65 requested=-1
+time=2026-07-11T20:22:23.926-07:00 level=INFO source=runner.go:1417 msg="starting ollama engine"
+time=2026-07-11T20:22:23.926-07:00 level=INFO source=runner.go:1452 msg="Server listening on 127.0.0.1:40087"
+time=2026-07-11T20:22:23.933-07:00 level=INFO source=runner.go:1290 msg=load request="{Operation:fit LoraPath:[] Parallel:1 BatchSize:512 FlashAttention:Enabled KvSize:40960 KvCacheType: NumThreads:48 GPULayers:65[ID:GPU-e4eef2d2-3452-ccdb-6b82-1f4e70840ac7 Layers:65(0..64)] MultiUserCache:false ProjectorPath: MainGPU:0 UseMmap:false}"
+time=2026-07-11T20:22:23.985-07:00 level=INFO source=ggml.go:136 msg="" architecture=qwen3 file_type=Q4_K_M name="Qwen3 32B" description="" num_tensors=707 num_key_values=28
+load_backend: loaded CPU backend from /packages/apps/ollama/0.20.4/lib/ollama/libggml-cpu-haswell.so
+ggml_cuda_init: GGML_CUDA_FORCE_MMQ:    no
+ggml_cuda_init: GGML_CUDA_FORCE_CUBLAS: no
+ggml_cuda_init: found 1 CUDA devices:
+  Device 0: NVIDIA A100-SXM4-80GB, compute capability 8.0, VMM: yes, ID: GPU-e4eef2d2-3452-ccdb-6b82-1f4e70840ac7
+load_backend: loaded CUDA backend from /packages/apps/ollama/0.20.4/lib/ollama/cuda_v13/libggml-cuda.so
+time=2026-07-11T20:22:24.222-07:00 level=INFO source=ggml.go:104 msg=system CPU.0.SSE3=1 CPU.0.SSSE3=1 CPU.0.AVX=1 CPU.0.AVX2=1 CPU.0.F16C=1 CPU.0.FMA=1 CPU.0.BMI2=1 CPU.0.LLAMAFILE=1 CPU.1.LLAMAFILE=1 CUDA.0.ARCHS=750,800,860,870,890,900,1000,1030,1100,1200,1210 CUDA.0.USE_GRAPHS=1 CUDA.0.PEER_MAX_BATCH_SIZE=128 compiler=cgo(gcc)
+time=2026-07-11T20:22:24.736-07:00 level=INFO source=runner.go:1290 msg=load request="{Operation:alloc LoraPath:[] Parallel:1 BatchSize:512 FlashAttention:Enabled KvSize:40960 KvCacheType: NumThreads:48 GPULayers:65[ID:GPU-e4eef2d2-3452-ccdb-6b82-1f4e70840ac7 Layers:65(0..64)] MultiUserCache:false ProjectorPath: MainGPU:0 UseMmap:false}"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=runner.go:1290 msg=load request="{Operation:commit LoraPath:[] Parallel:1 BatchSize:512 FlashAttention:Enabled KvSize:40960 KvCacheType: NumThreads:48 GPULayers:65[ID:GPU-e4eef2d2-3452-ccdb-6b82-1f4e70840ac7 Layers:65(0..64)] MultiUserCache:false ProjectorPath: MainGPU:0 UseMmap:false}"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=ggml.go:482 msg="offloading 64 repeating layers to GPU"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=ggml.go:489 msg="offloading output layer to GPU"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=ggml.go:494 msg="offloaded 65/65 layers to GPU"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=device.go:240 msg="model weights" device=CUDA0 size="18.4 GiB"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=device.go:245 msg="model weights" device=CPU size="417.3 MiB"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=device.go:251 msg="kv cache" device=CUDA0 size="10.0 GiB"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=device.go:262 msg="compute graph" device=CUDA0 size="404.0 MiB"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=device.go:267 msg="compute graph" device=CPU size="10.0 MiB"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=device.go:272 msg="total memory" size="29.2 GiB"
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=sched.go:561 msg="loaded runners" count=1
+time=2026-07-11T20:22:24.979-07:00 level=INFO source=server.go:1364 msg="waiting for llama runner to start responding"
+time=2026-07-11T20:22:24.982-07:00 level=INFO source=server.go:1398 msg="waiting for server to become available" status="llm server loading model"
+time=2026-07-11T20:22:57.804-07:00 level=INFO source=server.go:1402 msg="llama runner started in 33.89 seconds"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+time=2026-07-11T20:32:20.705-07:00 level=INFO source=server.go:1582 msg="aborting completion request due to client closing the connection"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+time=2026-07-11T20:42:20.889-07:00 level=INFO source=server.go:1582 msg="aborting completion request due to client closing the connection"
+time=2026-07-11T20:43:00.358-07:00 level=INFO source=server.go:1582 msg="aborting completion request due to client closing the connection"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+time=2026-07-11T20:52:21.014-07:00 level=INFO source=server.go:1582 msg="aborting completion request due to client closing the connection"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+time=2026-07-11T21:13:00.828-07:00 level=INFO source=server.go:1582 msg="aborting completion request due to client closing the connection"

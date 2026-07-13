@@ -106,6 +106,7 @@ class LLMClient:
         self.logger = logger
 
         ml = model.lower()
+        self._is_thinking_model = False
         if "qwen2.5" in ml:
             self.client = _ollama_openai_client()
             if "32b" in ml:
@@ -114,12 +115,14 @@ class LLMClient:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
         elif "qwen3" in ml:
             self.client = _ollama_openai_client()
+            self._is_thinking_model = True
             if "32b" in ml or "30b" in ml:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-32B")
             else:
                 self.encoding = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
         elif "deepseek-r1" in ml:
             self.client = _ollama_openai_client()
+            self._is_thinking_model = True
             # DeepSeek-R1 uses the same tokenizer as DeepSeek-V3
             self.encoding = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
         elif "mixtral" in ml:
@@ -230,7 +233,7 @@ class LLMClient:
                     presence_penalty=0.0,
                 )
             else:
-                return self.client.chat.completions.create(
+                kwargs = dict(
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
@@ -241,6 +244,12 @@ class LLMClient:
                     frequency_penalty=0.0,
                     presence_penalty=0.0,
                 )
+                if self._is_thinking_model:
+                    # Ollama-specific: skip the reasoning/"thinking" pass so the
+                    # full max_tokens budget goes to the actual code response
+                    # instead of being consumed by hidden reasoning tokens.
+                    kwargs["extra_body"] = {"think": False}
+                return self.client.chat.completions.create(**kwargs)
 
         response = _request_with_backoff()
 

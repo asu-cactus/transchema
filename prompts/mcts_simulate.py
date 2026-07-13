@@ -134,6 +134,14 @@ Examples of valid operation lines:
   GROUP_BY/AGGREGATE : group_by=[test_0.category] aggregations=[COUNT(test_0.id)]
   NO_MORE_OPERATION
 
+After the plan, rate your confidence that this COMPLETE pipeline's output will
+exactly match the target table. Output a single decimal number between 0.0
+(not confident at all) and 1.0 (certain) in the block below:
+
+$CONFIDENCE$
+0.0
+$END_CONFIDENCE$
+
 Then generate the Python script that implements the COMPLETE transformation from
 raw source tables to the final target CSV.
 

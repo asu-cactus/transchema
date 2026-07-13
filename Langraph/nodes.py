@@ -173,7 +173,7 @@ def _apply_symmetric_truncation(df_output, df_gt):
 
 def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue,
                         gt_cache_path: str = "", force_truncate: bool = False, weights: dict | None = None,
-                        confidence: float | None = None):
+                        confidence: float | None = None, column_type_weights: dict | None = None):
     """Subprocess worker: load CSVs and compute value_based score, put result in queue.
 
     Uses Jaccard-aligned column matching + value-based distribution scoring.
@@ -186,6 +186,9 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
     confidence: optional self-reported LLM confidence (0.0-1.0), forwarded to
         value_based_relative_csv_score as the 5th score_1 component. None
         (default) excludes it, reproducing the original 4-component score_1.
+    column_type_weights: optional per-column-type (float/int/id/cat) sub-metric
+        weights, forwarded to value_based_relative_csv_score. None reproduces
+        the original hardcoded per-type formulas.
     Puts a dict {"score": float, "components": {...} | None} in result_queue
     -- components are the raw (unweighted) score_1 inputs, logged
     regardless of which weights produced the score, so the score can be
@@ -224,7 +227,8 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
             df_output, df_gt, precomputed_gt = _apply_symmetric_truncation(df_output, df_gt)
 
         _, _, _, fd_f1, true_combined_score, debug_dict = value_based_relative_csv_score(
-            df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights, confidence=confidence
+            df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights, confidence=confidence,
+            column_type_weights=column_type_weights,
         )
         components = {
             "fd_f1": fd_f1,
@@ -240,7 +244,7 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
 
 def _value_score_with_timeout(target_file_location: str, ground_truth_location: str,
                               gt_cache_path: str = "", weights: dict | None = None,
-                              confidence: float | None = None):
+                              confidence: float | None = None, column_type_weights: dict | None = None):
     """Run value_based scoring in a child process with a hard timeout.
 
     Phase 1: score on the (possibly GT-truncated) tables.
@@ -249,6 +253,8 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
 
     confidence: optional self-reported LLM confidence (0.0-1.0), forwarded to
         value_based_relative_csv_score as the 5th score_1 component.
+    column_type_weights: optional per-column-type sub-metric weights, forwarded
+        to value_based_relative_csv_score.
 
     Returns (score, components) -- components is a dict of the raw
     (unweighted) score_1 inputs, or None on timeout/error.
@@ -257,7 +263,8 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
         q = multiprocessing.Queue()
         p = multiprocessing.Process(
             target=_value_score_worker,
-            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate, weights, confidence),
+            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate, weights,
+                  confidence, column_type_weights),
             daemon=True,
         )
         p.start()
@@ -289,6 +296,7 @@ def _score_and_validate_output(
     gt_cache_path: str = "",
     score_weights: dict | None = None,
     confidence: float | None = None,
+    column_type_weights: dict | None = None,
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
@@ -312,6 +320,10 @@ def _score_and_validate_output(
                 mcts_critique calls, which parse it from the $CONFIDENCE$
                 block. Folded into score_1 as its 5th component when
                 reward_mode="det_score_value"; ignored otherwise.
+    column_type_weights: optional per-column-type (float/int/id/cat) sub-metric
+                weights feeding avg_col_score_1, only used when
+                reward_mode="det_score_value". Defaults to the original
+                hardcoded per-type formulas.
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
@@ -335,7 +347,7 @@ def _score_and_validate_output(
     elif reward_mode == "det_score_value":
         score, components = _value_score_with_timeout(
             target_file_location, ground_truth_location, gt_cache_path,
-            weights=score_weights, confidence=confidence,
+            weights=score_weights, confidence=confidence, column_type_weights=column_type_weights,
         )
         return score, score >= _DET_SCORE_THRESHOLD, components
 
@@ -408,6 +420,68 @@ def _split_groupby_aggregate(history: List[str]) -> List[str]:
 
         result.append(step)  # unparseable — keep as-is
     return result
+
+
+def _parse_pipeline_confidence(response_text: str, logger, tag: str = "_parse_pipeline_confidence") -> tuple[float | None, str]:
+    """
+    Parse the $CONFIDENCE$...$END_CONFIDENCE$ block from a simulate/critique LLM
+    response. Expects a single decimal number in [0.0, 1.0]. Returns
+    (confidence_float, raw_text). confidence_float is None if the block is
+    missing or doesn't contain a parseable number; out-of-range values are
+    clamped into [0.0, 1.0] (with a warning) rather than discarded, since the
+    model's intent (very low/very high) is still clear.
+    """
+    match = re.search(r"\$CONFIDENCE\$(.*?)\$END_CONFIDENCE\$", response_text, re.DOTALL)
+    if not match:
+        logger.warning(f"[{tag}] No $CONFIDENCE$ block found in LLM response.")
+        return None, ""
+    raw_text = match.group(1).strip()
+    num_match = re.search(r"-?\d+(?:\.\d+)?", raw_text)
+    if not num_match:
+        logger.warning(f"[{tag}] Unparseable confidence value: {raw_text!r}")
+        return None, raw_text
+    confidence = float(num_match.group(0))
+    if not (0.0 <= confidence <= 1.0):
+        logger.warning(f"[{tag}] Confidence {confidence} out of [0,1], clamping.")
+        confidence = max(0.0, min(1.0, confidence))
+    return confidence, raw_text
+
+
+def _record_pipeline_confidence(
+    state: "MCTSGraphState", full_history: List[str], self_reported_confidence: float | None
+) -> float:
+    """
+    Update the case-wide pipeline confidence/frequency table with one more
+    occurrence of `full_history` (from either simulate or critique) and its
+    self-reported $CONFIDENCE$ value for this occurrence, then return the
+    blended confidence to use for scoring THIS occurrence:
+
+        blended = avg_self_reported_confidence(pipeline) * (1 - 0.5 ** occurrences(pipeline))
+
+    A single LLM confidence rating is unreliable on its own (limited context —
+    it can rate a bad pipeline as confidently as a good one). But when the
+    exact same full pipeline is independently regenerated across iterations
+    (by simulate and/or critique) AND is rated confidently each time, that
+    convergence is real signal. A pipeline seen once has its self-reported
+    confidence heavily discounted (occurrences=1 -> 0.5x multiplier);
+    repeated, consistently-confident pipelines approach their raw average
+    confidence as occurrences grow.
+
+    Mutates state["pipeline_confidence_stats"] in place (case-wide dict that
+    persists across iterations, like state["root"]).
+    """
+    key = tuple(_split_groupby_aggregate(full_history))
+    stats = state["pipeline_confidence_stats"].setdefault(
+        key, {"occurrences": 0, "conf_sum": 0.0, "conf_count": 0}
+    )
+    stats["occurrences"] += 1
+    if self_reported_confidence is not None:
+        stats["conf_sum"] += self_reported_confidence
+        stats["conf_count"] += 1
+
+    avg_conf = stats["conf_sum"] / stats["conf_count"] if stats["conf_count"] > 0 else 0.0
+    blended = avg_conf * (1 - 0.5 ** stats["occurrences"])
+    return round(blended, 4)
 
 
 def _merge_groupby_aggregate(history: List[str]) -> List[str]:
@@ -588,7 +662,10 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
     asks the LLM for each next operator and configures it, building sim_history
     one step at a time until NO_MORE_OPERATION, then generates Python code.
 
-    Returns (script: str, response: str, sim_history: List[str]).
+    Returns (script: str, response: str, sim_history: List[str],
+             confidence_raw: tuple[float | None, str]). This mode has no single
+    $CONFIDENCE$-bearing LLM call (the plan is built step-by-step), so
+    confidence_raw is always (None, "").
     """
     config = state["config"]
     rollout_history: List[str] = state["rollout_history"]
@@ -909,7 +986,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
         intermediate_scores=intermediate_scores,
         is_final=True,
     )
-    return script, response, sim_history
+    return script, response, sim_history, (None, "")
 
 
 def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
@@ -918,7 +995,10 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
     operation history, ask the LLM to generate a COMPLETE Python script in one
     shot via the 'mcts_simulate' prompt, then execute it.
 
-    Returns (script: str, response: str, full_history: List[str]).
+    Returns (script: str, response: str, full_history: List[str],
+             confidence_raw: tuple[float | None, str]) where confidence_raw is
+    (self_reported_confidence, raw_text) parsed from the $CONFIDENCE$ block --
+    blending into the case-wide pipeline confidence table happens in simulate().
     """
     config = state["config"]
     rollout_history: List[str] = state["rollout_history"]
@@ -1020,7 +1100,14 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
                 f"[simulate/pipeline] No $PLAN$ block found in LLM response (iter {state['iteration']})"
             )
 
-    return script, response, full_history
+    # Parse $CONFIDENCE$...$END_CONFIDENCE$ block from the last LLM response.
+    self_reported_confidence, confidence_raw = (None, "")
+    if res:
+        self_reported_confidence, confidence_raw = _parse_pipeline_confidence(
+            res[0], config.logger, tag="simulate/pipeline"
+        )
+
+    return script, response, full_history, (self_reported_confidence, confidence_raw)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1085,6 +1172,7 @@ def mcts_select(state: MCTSGraphState) -> dict:
         "current_script": "",
         "current_score": 0.0,
         "current_response": "",
+        "current_confidence": None,
         "critique_attempted": False,  # reset each iteration
         "log_messages": state["log_messages"]
         + [
@@ -1363,7 +1451,7 @@ def simulate(state: MCTSGraphState) -> dict:
     Pipeline-level  — original behaviour: one mcts_simulate LLM call completes
                       the whole pipeline + code in a single prompt.
 
-    Updates: current_script, current_response, current_full_history.
+    Updates: current_script, current_response, current_full_history, current_confidence.
     """
     config = state["config"]
     sim_mode = state.get("simulation_mode", "pipeline")
@@ -1386,9 +1474,9 @@ def simulate(state: MCTSGraphState) -> dict:
 
     try:
         if sim_mode == "operator":
-            script, response, full_history = _simulate_operator_level(state)
+            script, response, full_history, (self_reported_confidence, confidence_raw) = _simulate_operator_level(state)
         else:
-            script, response, full_history = _simulate_pipeline_level(state)
+            script, response, full_history, (self_reported_confidence, confidence_raw) = _simulate_pipeline_level(state)
     except CostBudgetExceeded as e:
         config.logger.warning(f"[simulate] {e} — stopping search.")
         return {
@@ -1396,20 +1484,33 @@ def simulate(state: MCTSGraphState) -> dict:
             "current_script": "",
             "current_response": "cost_budget_exhausted",
             "current_full_history": [],
+            "current_confidence": 0.0,
             "log_messages": state["log_messages"]
             + [f"[SIMULATE] iter={state['iteration']} COST_BUDGET_EXHAUSTED — no request sent"],
         }
 
     _result = "Success" if response == "Success" else "FAILED"
 
+    # Blend this occurrence into the case-wide pipeline confidence/frequency table
+    # (shared with critique) -- None if no plan was parsed.
+    confidence = (
+        _record_pipeline_confidence(state, full_history, self_reported_confidence)
+        if full_history else None
+    )
+
     return {
         "current_script": script,
         "current_response": response,
         "current_full_history": full_history,
+        # Raw blended value (may be None if no plan was parsed) -- execute_and_score
+        # forwards this as-is to scoring so a missing confidence is excluded/
+        # renormalized rather than treated as a real zero. See _weighted_avg_available.
+        "current_confidence": confidence,
         "log_messages": state["log_messages"]
         + [
             f"[SIMULATE] iter={state['iteration']} mode={sim_mode} result={_result} "
-            f"plan_steps={len(full_history)}"
+            f"plan_steps={len(full_history)} "
+            f"confidence: self_reported={confidence_raw!r} ({self_reported_confidence}) -> blended={confidence}"
         ],
     }
 
@@ -1457,6 +1558,8 @@ def execute_and_score(state: MCTSGraphState) -> dict:
                 reward_mode=reward_mode,
                 gt_cache_path=state.get("gt_score_cache_path", ""),
                 score_weights=state.get("score_weights"),
+                confidence=state.get("current_confidence"),
+                column_type_weights=state.get("column_type_weights"),
             )
             # --no_score_threshold: suppress early-stop for continuous score modes
             # so the search exhausts its full budget and picks the best at the end.
@@ -1891,30 +1994,6 @@ def _build_critique_prompt(state: MCTSGraphState, script: str, rag_hints: str = 
     return prompt
 
 
-def _parse_critique_confidence(response_text: str, logger) -> tuple[float | None, str]:
-    """
-    Parse the $CONFIDENCE$...$END_CONFIDENCE$ block from a critique LLM response.
-    Expects a single decimal number in [0.0, 1.0]. Returns (confidence_float, raw_text).
-    confidence_float is None if the block is missing or doesn't contain a parseable
-    number; out-of-range values are clamped into [0.0, 1.0] (with a warning) rather
-    than discarded, since the model's intent (very low/very high) is still clear.
-    """
-    match = re.search(r"\$CONFIDENCE\$(.*?)\$END_CONFIDENCE\$", response_text, re.DOTALL)
-    if not match:
-        logger.warning("[_run_critique_llm] No $CONFIDENCE$ block found in critique response.")
-        return None, ""
-    raw_text = match.group(1).strip()
-    num_match = re.search(r"-?\d+(?:\.\d+)?", raw_text)
-    if not num_match:
-        logger.warning(f"[_run_critique_llm] Unparseable confidence value: {raw_text!r}")
-        return None, raw_text
-    confidence = float(num_match.group(0))
-    if not (0.0 <= confidence <= 1.0):
-        logger.warning(f"[_run_critique_llm] Confidence {confidence} out of [0,1], clamping.")
-        confidence = max(0.0, min(1.0, confidence))
-    return confidence, raw_text
-
-
 def _run_critique_llm(state: MCTSGraphState, script: str):
     """
     Build + send the critique prompt.
@@ -1922,12 +2001,13 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
              score_components, confidence, confidence_raw, llm_response).
     Loads ground truth internally for scoring. score_components is the raw
     (unweighted) score_1 inputs (det_score_value mode only), or None -- includes
-    "confidence" once confidence is parsed successfully.
+    "confidence" once confidence is available.
     critique_plan is a List[str] parsed from $PLAN$...$END_PLAN$ block, or [] if not found.
-    confidence is the numeric value (clamped to [0.0, 1.0]) parsed from the
-    $CONFIDENCE$ block, or None if missing/unparseable. confidence_raw is the
-    raw text inside the block (pre-parse/clamp), or "" if the block is missing.
-    llm_response is the full raw text of the critique LLM call.
+    confidence is the BLENDED pipeline confidence (self-reported x frequency, see
+    _record_pipeline_confidence) used for scoring, or None if critique_plan was
+    unparseable. confidence_raw is the raw $CONFIDENCE$ text from THIS call
+    (pre-blend), or "" if the block is missing. llm_response is the full raw
+    text of the critique LLM call.
     """
     config = state["config"]
     target_file_location = state["target_file_location"]
@@ -1961,10 +2041,19 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
         ]
         config.logger.info(f"[_run_critique_llm] Parsed critique plan: {critique_plan}")
 
-    # Parse $CONFIDENCE$...$END_CONFIDENCE$ block
-    confidence, confidence_raw = _parse_critique_confidence(res[0], config.logger)
+    # Parse $CONFIDENCE$...$END_CONFIDENCE$ block (this call's self-reported value)
+    self_reported_confidence, confidence_raw = _parse_pipeline_confidence(
+        res[0], config.logger, tag="_run_critique_llm"
+    )
+    # Blend into the case-wide pipeline confidence/frequency table -- None if no
+    # plan was parsed (nothing to key the occurrence on).
+    confidence = (
+        _record_pipeline_confidence(state, critique_plan, self_reported_confidence)
+        if critique_plan else None
+    )
     config.logger.info(
-        f"[_run_critique_llm] Parsed critique confidence: {confidence_raw!r} -> {confidence}"
+        f"[_run_critique_llm] Confidence: self_reported={confidence_raw!r} "
+        f"({self_reported_confidence}) -> blended={confidence}"
     )
 
     pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
@@ -1988,6 +2077,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
                     reward_mode=reward_mode,
                     score_weights=state.get("score_weights"),
                     confidence=confidence,
+                    column_type_weights=state.get("column_type_weights"),
                 )
             except Exception:
                 new_score = 0.0
@@ -2182,6 +2272,7 @@ def reuse_terminal_reward(state: MCTSGraphState) -> dict:
         "current_script": node.best_script,
         "current_full_history": list(node.operation_history),
         "current_response": "Success" if node.best_script else "",
+        "current_confidence": None,
         # Clear stale critique state from previous iterations
         "critique_selection_path": [],
         "critique_score": 0.0,

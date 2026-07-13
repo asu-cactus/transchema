@@ -1,0 +1,170 @@
+[MCTS] Results will be written to: /home/jrtandel/transchema/Langraph/results_langraph/mcts_github_partial_l9_qwen3_32b_c35-39/mcts_github_partial_l9_qwen3_32b_c35-39_20260711_205724/results_summary.csv
+
+[MCTS] === length=9  id=35 ===
+get column map
+[MCTS] Case 35 TIMED OUT after 600s — killing
+[MCTS] CSV updated: /home/jrtandel/transchema/Langraph/results_langraph/mcts_github_partial_l9_qwen3_32b_c35-39/mcts_github_partial_l9_qwen3_32b_c35-39_20260711_205724/results_summary.csv
+
+[MCTS] === length=9  id=36 ===
+get column map
+get column map
+get column map
+get column map
+get column map
+[MCTS] Case 36 TIMED OUT after 600s — killing
+THEY ARE OF DIFFERNET LENGTH:  98042 1807910
+THEY ARE OF DIFFERNET LENGTH:  98042 1807910
+[two-phase mcts timeout] is_correct: training=False → test=False
+[MCTS] Case 36 timeout-recovered: is_correct=False, best_score=0.9229
+[MCTS] CSV updated: /home/jrtandel/transchema/Langraph/results_langraph/mcts_github_partial_l9_qwen3_32b_c35-39/mcts_github_partial_l9_qwen3_32b_c35-39_20260711_205724/results_summary.csv
+
+[MCTS] === length=9  id=37 ===
+get column map
+[MCTS] Case 37 TIMED OUT after 600s — killing
+[MCTS] CSV updated: /home/jrtandel/transchema/Langraph/results_langraph/mcts_github_partial_l9_qwen3_32b_c35-39/mcts_github_partial_l9_qwen3_32b_c35-39_20260711_205724/results_summary.csv
+
+[MCTS] === length=9  id=38 ===
+get column map
+[MCTS] Case 38 TIMED OUT after 600s — killing
+[MCTS] CSV updated: /home/jrtandel/transchema/Langraph/results_langraph/mcts_github_partial_l9_qwen3_32b_c35-39/mcts_github_partial_l9_qwen3_32b_c35-39_20260711_205724/results_summary.csv
+
+[MCTS] === length=9  id=39 ===
+get column map
+[MCTS] Case 39 FAILED:
+Traceback (most recent call last):
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_transports/default.py", line 69, in map_httpcore_exceptions
+    yield
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_transports/default.py", line 233, in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpcore/_sync/connection_pool.py", line 216, in handle_request
+    raise exc from None
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpcore/_sync/connection_pool.py", line 196, in handle_request
+    response = connection.handle_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpcore/_sync/connection.py", line 99, in handle_request
+    raise exc
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpcore/_sync/connection.py", line 76, in handle_request
+    stream = self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpcore/_sync/connection.py", line 122, in _connect
+    stream = self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpcore/_backends/sync.py", line 205, in connect_tcp
+    with map_exceptions(exc_map):
+  File "/home/jrtandel/.pyenv/versions/3.11.4/lib/python3.11/contextlib.py", line 155, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 973, in _request
+    response = self._client.send(
+               ^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_client.py", line 1015, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_transports/default.py", line 232, in handle_request
+    with map_httpcore_exceptions():
+  File "/home/jrtandel/.pyenv/versions/3.11.4/lib/python3.11/contextlib.py", line 155, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/httpx/_transports/default.py", line 86, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jrtandel/transchema/Langraph/mcts_search.py", line 1089, in _case_worker
+    result = mcts_search(
+             ^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/Langraph/mcts_search.py", line 943, in mcts_search
+    for _step_state in mcts_graph.stream(
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/langgraph/pregel/main.py", line 2967, in stream
+    for _ in runner.tick(
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/langgraph/pregel/_runner.py", line 207, in tick
+    run_with_retry(
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/langgraph/pregel/_retry.py", line 617, in run_with_retry
+    return task.proc.invoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 684, in invoke
+    input = context.run(step.invoke, input, config, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/langgraph/_internal/_runnable.py", line 426, in invoke
+    ret = self.func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/Langraph/nodes.py", line 1391, in simulate
+    script, response, full_history = _simulate_pipeline_level(state)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/Langraph/nodes.py", line 975, in _simulate_pipeline_level
+    res = query_gpt(
+          ^^^^^^^^^^
+  File "/home/jrtandel/transchema/auto_suggest_llm_util.py", line 1131, in query_gpt
+    res = llm_model.gpt(prompt_str)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/llm/llm_models.py", line 166, in gpt
+    return self.chatgpt([{"role": "user", "content": prompt}], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/llm/llm_models.py", line 160, in chatgpt
+    res = self._request_completion(messages, temperature, max_tokens, stop)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/llm/llm_models.py", line 245, in _request_completion
+    response = _request_with_backoff()
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/backoff/_sync.py", line 105, in retry
+    ret = target(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/llm/llm_models.py", line 233, in _request_with_backoff
+    return self.client.chat.completions.create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_utils/_utils.py", line 274, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/resources/chat/completions.py", line 668, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 1260, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 937, in request
+    return self._request(
+           ^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 997, in _request
+    return self._retry_request(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 1075, in _retry_request
+    return self._request(
+           ^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 997, in _request
+    return self._retry_request(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 1075, in _retry_request
+    return self._request(
+           ^^^^^^^^^^^^^^
+  File "/home/jrtandel/transchema/env/lib/python3.11/site-packages/openai/_base_client.py", line 1007, in _request
+    raise APIConnectionError(request=request) from err
+openai.APIConnectionError: Connection error.
+During task with name 'simulate' and id '70795deb-ca99-6a80-5160-532c0794bb8e'
+
+[MCTS] CSV updated: /home/jrtandel/transchema/Langraph/results_langraph/mcts_github_partial_l9_qwen3_32b_c35-39/mcts_github_partial_l9_qwen3_32b_c35-39_20260711_205724/results_summary.csv
+
+[MCTS] === Summary ===
+  id=35: None
+  id=36: None
+  id=37: None
+  id=38: None
+  id=39: None
+
+[MCTS] Results CSV: /home/jrtandel/transchema/Langraph/results_langraph/mcts_github_partial_l9_qwen3_32b_c35-39/mcts_github_partial_l9_qwen3_32b_c35-39_20260711_205724/results_summary.csv

@@ -1,0 +1,17 @@
+MCTS Tree Visualization — case 9_58
+============================================================
+
+[ROOT]  visits=  1  q=1.000  best=1.000
+    ├── GROUP_BY                   visits=  1  q=0.000  best=0.000
+    │       GROUP_BY : [code, name]
+    ├── GROUP_BY                   visits=  0  q=0.000  best=0.000
+    │       GROUP_BY : [Source9_58_0.code, Source9_58_0.name, Source9_58_1.code, Source9_58_1.name, Source9_58_2.code, Source9_58...
+    └── UNION                      visits=  1  q=1.000  best=1.000  · best path
+            UNION : [Source9_58_0, Source9_58_1, Source9_58_2, Source9_58_3, Source9_58_4, Source9_58_5, Source9_58_6, Source9_58...
+
+Legend
+  visits  number of simulations that passed through this node
+  q       average reward (total_reward / visits)
+  best    highest single reward seen from any simulation through this node
+  ·       on the path to the best result
+  ★       the node whose simulation produced the best overall result

@@ -37,6 +37,11 @@ class MCTSGraphState(TypedDict):
     score_weights: Any                # dict of fd_f1/avg_col_score_1/row_count_score/max_missing_score
                                        # (+optional confidence) weights for score_1 (det_score_value
                                        # mode only), or None = equal weights
+    column_type_weights: Any          # dict of per-column-type (float/int/id/cat) sub-metric weights
+                                       # feeding avg_col_score_1 (det_score_value mode only), or None =
+                                       # original hardcoded per-type formulas. Auto-selected by --length
+                                       # via eval_score_value_based.get_length_score_weights() unless
+                                       # overridden. See LENGTH_SCORE_WEIGHTS.
     experiment_name: str             # label for saved scripts
     case_id: str                     # e.g. "2_5" for length2_5
 
@@ -79,6 +84,18 @@ class MCTSGraphState(TypedDict):
     current_score: float             # calculate_score reward for this iteration
     current_response: str            # "Success" or error string from execute_python
     current_full_history: List[str]  # complete pipeline parsed from $PLAN$ block (may be [] if unparseable)
+    current_confidence: Any          # blended pipeline confidence (float) for this simulate call's full
+                                      # pipeline, or None if no plan was parsed. See _record_pipeline_confidence.
+
+    # ── Pipeline confidence/frequency (shared by simulate + critique) ──────────
+    # Case-wide dict {tuple(canonicalized full pipeline): {"occurrences", "conf_sum",
+    # "conf_count"}}, mutated in place across the whole search (like `root`).
+    # Tracks how often each exact full pipeline recurs (from simulate and/or
+    # critique) and the running average of its self-reported $CONFIDENCE$, so a
+    # single unreliable LLM rating gets discounted while repeated, consistently
+    # confident pipelines approach their raw average confidence. See
+    # _record_pipeline_confidence.
+    pipeline_confidence_stats: Any
 
     # ── Best result across all iterations ─────────────────────────────────────
     best_script: str

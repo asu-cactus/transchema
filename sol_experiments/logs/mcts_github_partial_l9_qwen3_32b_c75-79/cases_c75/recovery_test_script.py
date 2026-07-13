@@ -1,0 +1,46 @@
+import pandas as pd
+
+dfs = [
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_0.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_1.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_2.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_3.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_4.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_5.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_6.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_7.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_8.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_9.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_10.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_11.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_12.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_13.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_14.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_15.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_16.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_17.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_18.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_19.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_20.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_21.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_22.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_23.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_24.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_25.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_26.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_27.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_28.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_29.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_30.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_31.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_32.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_33.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_34.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_35.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_36.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_37.csv', index_col=0),
+    pd.read_csv('autopipeline-benchmarks/github-pipelines/length9_75/test_38.csv', index_col=0)
+]
+
+result = pd.concat(dfs, ignore_index=True)
+result.to_csv('autopipeline-benchmarks/github-pipelines/length9_75/target_multisource_mcts_recovery_test_val.csv')
