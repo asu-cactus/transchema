@@ -75,7 +75,7 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
 
     if no_of_source_tables == 1 and template_option == 4:
         prompt = f"""
-        You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_id}. 
+        You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_name}. 
         First, you must create {no_of_source_tables} source table with following {source_names} with only the given attributes: {source_data_schema}. 
         Please delete the table before creating it if the first table exists.
         Source table samples are as follows {sample_0}.
@@ -89,7 +89,7 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
         Please quote the returned SQL script between "```sql\n" and "\n```".
         """
     elif no_of_source_tables == 2 and template_option == 4:
-        prompt = f"""You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_id}. 
+        prompt = f"""You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_name}. 
         First, you must create the {no_of_source_tables} tables with following {source_names} with only the given attributes respectively: {source_data_schema}. 
         Please delete the table before creating it if the first table exists.
         First table samples are as follows {sample_0} and Second table samples are as follows {sample_1}.
@@ -103,7 +103,11 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
         Please quote the returned SQL script between "```sql\n" and "\n```". 
         """
     else:
-        print("choose different template option")
+        raise ValueError(
+            f"No prompt template for {no_of_source_tables} source table(s) with "
+            f"template_option={template_option}. Templates only cover 1-2 source "
+            f"tables; this case has {no_of_source_tables}."
+        )
     return prompt
 
 def gpt_auto_pipeline(json_file_path, target_data_name_to_find):
@@ -136,6 +140,12 @@ def main(*args, benchmark_dir=None):
         target_data_name_to_find = "Target" + str(length_id) + "_" + str(target_id)
         # Get JSON data for prompt
         target_data_names, source_data_names,source_data_schema, target_data_schema, target_data_description,samples = gpt_auto_pipeline(json_file_path,target_data_name_to_find)
+        if not target_data_names:
+            raise ValueError(
+                f"No case found for '{target_data_name_to_find}' in {json_file_path}. "
+                "Case IDs in this benchmark are not contiguous — check "
+                "autopipeline-benchmarks/github-pipelines/ or the JSON for valid IDs."
+            )
         no_of_source_tables = len(source_data_names)
         find_target_name_folder = convert_target_names(target_data_names[0])
         main_folder_name,sub_folder, test_0_path, test_1_path, target_path = access_auto_pipeline_dataset(

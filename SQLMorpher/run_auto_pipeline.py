@@ -10,6 +10,7 @@ Example:
 """
 
 import argparse
+import json
 import os
 import sys
 import traceback
@@ -93,7 +94,9 @@ def main():
     os.makedirs(args.log_dir, exist_ok=True)
 
     benchmark_dir = args.benchmark_dir or _BENCHMARK_DIRS[args.benchmark]
-    json_file_path = build_grouped_json(args.benchmark, args.transchema_data_dir)
+    json_file_path = build_grouped_json(
+        args.benchmark, args.transchema_data_dir, benchmark_dir=benchmark_dir
+    )
 
     # SQLMorpher executes generated SQL against a real Postgres instance, unlike
     # Transchema's Python-pipeline path. Fail fast with a clear message instead
@@ -114,6 +117,12 @@ def main():
         )
         sys.exit(1)
 
+    # Case IDs in this benchmark are NOT contiguous (e.g. length1_* only has
+    # 1, 2, 5, 7, 8, 12, 14, 15, 17, 19, 25, ...), so validate against the
+    # dataset upfront rather than letting missing cases fail loudly one by one.
+    with open(json_file_path) as f:
+        available_targets = set(json.load(f).keys())
+
     if args.cases:
         case_pairs = [(int(c.split("_")[0]), int(c.split("_")[1])) for c in args.cases]
     else:
@@ -123,6 +132,21 @@ def main():
             for tid in range(args.target_id, args.max_target_id + 1)
         ]
 
+    valid_case_pairs = []
+    skipped = []
+    for length, tid in case_pairs:
+        if f"Target{length}_{tid}" in available_targets:
+            valid_case_pairs.append((length, tid))
+        else:
+            skipped.append(f"{length}_{tid}")
+
+    if skipped:
+        print(f"Skipping {len(skipped)} case(s) not found in the dataset: {skipped}")
+    if not valid_case_pairs:
+        print("No valid cases to run. Exiting.")
+        sys.exit(1)
+
+    case_pairs = valid_case_pairs
     print(f"Model: {args.model} | Benchmark: {args.benchmark} | Cases: {case_pairs}")
 
     succeeded, failed = 0, 0
