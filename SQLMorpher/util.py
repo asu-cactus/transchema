@@ -33,17 +33,24 @@ def create_connection():
     return conn
 
 def extract_target_table_name(sql_query):
-    # Match the target table name after the third "CREATE TABLE" statement
-    create_matches = re.findall(r'CREATE\s+TABLE\s+(\w+)', sql_query, re.IGNORECASE)
+    # Table names may be quoted and/or schema-qualified (e.g. "public"."Target1_20"
+    # or public.target1_20), so tolerate optional quotes/schema prefix throughout.
+    _name = r'"?(?:\w+"?\.)?"?(\w+)"?'
+
+    create_matches = re.findall(rf'CREATE\s+TABLE\s+{_name}', sql_query, re.IGNORECASE)
 
     if len(create_matches) >= 3:
         return create_matches[2]  # Return the third occurrence of CREATE TABLE
+    if len(create_matches) == 2:
+        # Templates that only create a source table + target table (no separate
+        # validation table) — the target is the one created last.
+        return create_matches[-1]
 
-    # Match the target table name after the "INSERT INTO" statement
-    insert_match = re.search(r'INSERT\s+INTO\s+(\w+)', sql_query, re.IGNORECASE)
-
-    if insert_match:
-        return insert_match.group(1)  # Return the captured group (table name) after INSERT INTO
+    # Fall back to the *last* "INSERT INTO" statement, since the transform step
+    # (source -> target) is generated after any source-population INSERT/COPY.
+    insert_matches = re.findall(rf'INSERT\s+INTO\s+{_name}', sql_query, re.IGNORECASE)
+    if insert_matches:
+        return insert_matches[-1]
 
     return None  # Return None if no match is found
 

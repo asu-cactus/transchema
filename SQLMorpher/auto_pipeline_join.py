@@ -175,6 +175,15 @@ def main(*args, benchmark_dir=None):
         logging.info(f"gold gpt sql: {gpt_output}")
         # Execute the SQL script on the specified table
         sql_result = execute_sql(conn, gpt_output)
+        if isinstance(sql_result, str):
+            # execute_sql returns a plain string on failure (either a
+            # psycopg2 error, or "target table not identified"). Fail this
+            # case clearly instead of letting pd.DataFrame() crash on it.
+            logging.info(f"SQL execution failed for {target_data_name_to_find}: {sql_result}")
+            print(f"SQL execution failed for {target_data_name_to_find}: {sql_result}")
+            log_experiment_failed(target_data_names, target_data_name_to_find, iteration_count, [], [0.0])
+            target_id += 1
+            continue
         sql_result_df = pd.DataFrame(sql_result)
         logging.info(f"SQL Result: {sql_result}")
         logging.info(f"sql_result_df {sql_result_df}")
