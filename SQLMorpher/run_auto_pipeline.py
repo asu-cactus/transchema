@@ -17,6 +17,7 @@ import traceback
 import gpt
 from auto_pipeline_join import main as run_case
 from prepare_transchema_json import build_grouped_json
+from util import create_connection
 
 _BENCHMARK_DIRS = {
     "github": "../autopipeline-benchmarks/github-pipelines",
@@ -93,6 +94,25 @@ def main():
 
     benchmark_dir = args.benchmark_dir or _BENCHMARK_DIRS[args.benchmark]
     json_file_path = build_grouped_json(args.benchmark, args.transchema_data_dir)
+
+    # SQLMorpher executes generated SQL against a real Postgres instance, unlike
+    # Transchema's Python-pipeline path. Fail fast with a clear message instead
+    # of retrying/erroring per-case if Postgres isn't reachable.
+    try:
+        create_connection().close()
+    except Exception as e:
+        print(
+            "ERROR: could not connect to Postgres. SQLMorpher needs a running "
+            "Postgres server to execute generated SQL.\n"
+            f"  Details: {e}\n"
+            "  Configure the connection via env vars (defaults shown):\n"
+            "    SQLMORPHER_PG_HOST=localhost SQLMORPHER_PG_PORT=5432 "
+            "SQLMORPHER_PG_DBNAME=postgres SQLMORPHER_PG_USER=postgres "
+            "SQLMORPHER_PG_PASSWORD=***\n"
+            "  On CHPC, start/enable a local Postgres (e.g. via a module, "
+            "conda-installed postgres, or a container) before rerunning."
+        )
+        sys.exit(1)
 
     if args.cases:
         case_pairs = [(int(c.split("_")[0]), int(c.split("_")[1])) for c in args.cases]

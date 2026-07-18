@@ -2,6 +2,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 import psycopg2
 import csv
+import os
 import re
 import logging
 import json
@@ -14,13 +15,20 @@ def read_csv_file(file_path):
 
 
 def create_connection():
-    """ create a database connection to the PostgreSQL database """
+    """ create a database connection to the PostgreSQL database.
+
+    Connection params are read from env vars (with the old hardcoded values
+    as fallback defaults) so this doesn't require editing source to point at
+    a different Postgres instance:
+        SQLMORPHER_PG_DBNAME, SQLMORPHER_PG_USER, SQLMORPHER_PG_PASSWORD,
+        SQLMORPHER_PG_HOST, SQLMORPHER_PG_PORT
+    """
     conn = psycopg2.connect(
-        dbname="postgres",
-        user="postgres",
-        password="021111",
-        host="localhost",  # e.g., "localhost"
-        port="5432"  # e.g., "5432"
+        dbname=os.environ.get("SQLMORPHER_PG_DBNAME", "postgres"),
+        user=os.environ.get("SQLMORPHER_PG_USER", "postgres"),
+        password=os.environ.get("SQLMORPHER_PG_PASSWORD", "021111"),
+        host=os.environ.get("SQLMORPHER_PG_HOST", "localhost"),
+        port=os.environ.get("SQLMORPHER_PG_PORT", "5432"),
     )
     return conn
 
