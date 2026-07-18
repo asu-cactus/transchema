@@ -128,7 +128,7 @@ def gpt_auto_pipeline(json_file_path, target_data_name_to_find):
     return target_data_names, source_data_names,source_data_schema, target_data_schema, target_data_description,samples
 
 
-def main(*args):
+def main(*args, benchmark_dir=None):
     (json_file_path, template_option, target_id, max_target_id,length_id) = args
     conn = create_connection()
 
@@ -138,7 +138,9 @@ def main(*args):
         target_data_names, source_data_names,source_data_schema, target_data_schema, target_data_description,samples = gpt_auto_pipeline(json_file_path,target_data_name_to_find)
         no_of_source_tables = len(source_data_names)
         find_target_name_folder = convert_target_names(target_data_names[0])
-        main_folder_name,sub_folder, test_0_path, test_1_path, target_path = access_auto_pipeline_dataset(find_target_name_folder) 
+        main_folder_name,sub_folder, test_0_path, test_1_path, target_path = access_auto_pipeline_dataset(
+            find_target_name_folder, main_folder_name=benchmark_dir
+        )
         logging.info(f"target_data_name, Source_data_names: {target_data_names[0]}, {source_data_names}")
         logging.info(f"number of sources: {len(source_data_names)}")
         no_of_source_tables = len(source_data_names)

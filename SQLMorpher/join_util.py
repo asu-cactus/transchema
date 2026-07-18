@@ -20,14 +20,18 @@ def convert_target_names(target_names_str):
     converted_names_str = ', '.join(converted_names)
     return converted_names_str
 
-def access_auto_pipeline_dataset(sub_folder_name):
-    main_folder_name = "github-pipelines"
+def access_auto_pipeline_dataset(sub_folder_name, main_folder_name=None):
+    """Resolve paths for an Auto-Pipeline case. `main_folder_name` should point
+    at the benchmark root (e.g. ../autopipeline-benchmarks/github-pipelines);
+    defaults to a local `github-pipelines` folder for backward compatibility."""
+    if main_folder_name is None:
+        main_folder_name = "github-pipelines"
     main_folder_name = os.path.abspath(main_folder_name)
-    sub_folder = f"{main_folder_name}\{sub_folder_name}\\"
-    test_0 = f"{sub_folder}test_0.csv"
-    test_1 = f"{sub_folder}test_1.csv"
-    target = f"{sub_folder}target.csv"
-    return main_folder_name,sub_folder, test_0, test_1, target
+    sub_folder = os.path.join(main_folder_name, sub_folder_name) + os.sep
+    test_0 = os.path.join(sub_folder, "test_0.csv")
+    test_1 = os.path.join(sub_folder, "test_1.csv")
+    target = os.path.join(sub_folder, "target.csv")
+    return main_folder_name, sub_folder, test_0, test_1, target
 
 def read_csv_target(target):
     gold_target = []
