@@ -73,36 +73,13 @@ def _synthesize_case_rows(length, case_id, case_dir):
     return rows
 
 
-def _augment_with_disk_cases(grouped, benchmark_dir):
-    """Adds synthesized entries for any length{L}_{id} folder on disk that
-    isn't already covered by the metadata JSON."""
-    benchmark_dir = os.path.abspath(benchmark_dir)
-    if not os.path.isdir(benchmark_dir):
-        return grouped, 0
-
-    added = 0
-    for entry in sorted(os.listdir(benchmark_dir)):
-        match = _CASE_DIR_RE.match(entry)
-        if not match:
-            continue
-        length, case_id = match.groups()
-        target_data_name = f"Target{length}_{case_id}"
-        if target_data_name in grouped:
-            continue
-        case_dir = os.path.join(benchmark_dir, entry)
-        rows = _synthesize_case_rows(length, case_id, case_dir)
-        if rows:
-            grouped[target_data_name] = rows
-            added += 1
-
-    return grouped, added
-
-
-def build_grouped_json(benchmark="github", transchema_data_dir="../data", cache_dir=".",
-                        benchmark_dir=None, augment_from_disk=True):
+def build_grouped_json(benchmark="github", transchema_data_dir="../data", cache_dir="."):
     """Returns the path to a grouped JSON file for `benchmark`, building it
-    from Transchema's flat JSON (plus, optionally, synthesized entries for any
-    on-disk cases missing from that JSON) if not already cached."""
+    from Transchema's flat JSON if not already cached. This does NOT scan the
+    benchmark folders (that would mean reading CSVs across all ~700 cases /
+    several GB every time the cache needs rebuilding). Use
+    `ensure_cases_available` afterwards to lazily synthesize metadata for only
+    the specific case(s) you're about to run."""
     src_name = _BENCHMARK_JSON[benchmark]
     src_path = os.path.join(transchema_data_dir, src_name)
     out_path = os.path.join(cache_dir, f"auto-pipeline-{benchmark}.json")
@@ -117,17 +94,43 @@ def build_grouped_json(benchmark="github", transchema_data_dir="../data", cache_
     for row in rows:
         grouped[row["Target Data Name"]].append(row)
 
-    if augment_from_disk:
-        benchmark_dir = benchmark_dir or _BENCHMARK_DIRS[benchmark]
-        grouped, added = _augment_with_disk_cases(grouped, benchmark_dir)
-        if added:
-            print(f"Synthesized metadata for {added} case(s) present on disk but missing from {src_path}")
-
     with open(out_path, "w") as f:
         json.dump(grouped, f, indent=2)
 
     print(f"Wrote grouped JSON for benchmark='{benchmark}' to {out_path}")
     return out_path
+
+
+def ensure_cases_available(json_file_path, case_pairs, benchmark_dir):
+    """For each (length, case_id) not already present in `json_file_path`,
+    synthesizes its metadata from that single case's CSVs on disk (cheap: one
+    folder at a time, not a scan of the whole benchmark) and appends it to the
+    JSON in place. Returns the set of case IDs (e.g. '1_20') that still
+    couldn't be resolved (missing on disk too)."""
+    with open(json_file_path, "r") as f:
+        grouped = json.load(f)
+
+    benchmark_dir = os.path.abspath(benchmark_dir)
+    added = 0
+    unresolved = set()
+    for length, case_id in case_pairs:
+        target_data_name = f"Target{length}_{case_id}"
+        if target_data_name in grouped:
+            continue
+        case_dir = os.path.join(benchmark_dir, f"length{length}_{case_id}")
+        rows = _synthesize_case_rows(length, case_id, case_dir)
+        if rows:
+            grouped[target_data_name] = rows
+            added += 1
+        else:
+            unresolved.add(f"{length}_{case_id}")
+
+    if added:
+        with open(json_file_path, "w") as f:
+            json.dump(grouped, f, indent=2)
+        print(f"Synthesized metadata for {added} case(s) directly from disk (not present in the metadata JSON)")
+
+    return unresolved
 
 
 if __name__ == "__main__":
@@ -136,10 +139,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare Transchema JSON for SQLMorpher")
     parser.add_argument("--benchmark", choices=list(_BENCHMARK_JSON), default="github")
     parser.add_argument("--transchema-data-dir", default="../data")
-    parser.add_argument("--benchmark-dir", default=None)
-    parser.add_argument("--no-augment-from-disk", dest="augment_from_disk", action="store_false")
     args = parser.parse_args()
-    build_grouped_json(
-        args.benchmark, args.transchema_data_dir,
-        benchmark_dir=args.benchmark_dir, augment_from_disk=args.augment_from_disk,
-    )
+    build_grouped_json(args.benchmark, args.transchema_data_dir)

@@ -10,14 +10,16 @@ Example:
 """
 
 import argparse
-import json
 import os
 import sys
 import traceback
+import urllib.error
+import urllib.request
 
 import gpt
 from auto_pipeline_join import main as run_case
-from prepare_transchema_json import build_grouped_json
+from llm_client import _is_ollama_model, _OLLAMA_BASE_URL
+from prepare_transchema_json import build_grouped_json, ensure_cases_available
 from util import create_connection
 
 _BENCHMARK_DIRS = {
@@ -84,8 +86,40 @@ def get_parser():
     return parser
 
 
+def _check_ollama_reachable(timeout=5):
+    """Pings the Ollama server's /api/tags endpoint. Returns (ok, message)."""
+    base = _OLLAMA_BASE_URL.rsplit("/v1", 1)[0]
+    try:
+        with urllib.request.urlopen(f"{base}/api/tags", timeout=timeout) as resp:
+            return resp.status == 200, None
+    except urllib.error.URLError as e:
+        return False, str(e)
+    except Exception as e:
+        return False, str(e)
+
+
 def main():
     args = get_parser().parse_args()
+
+    # Fail fast with a clear message if the model needs Ollama and it isn't
+    # reachable, instead of hanging silently through several minutes of
+    # connection retries (which can look like the terminal "crashed").
+    if _is_ollama_model(args.model):
+        ok, err = _check_ollama_reachable()
+        if not ok:
+            print(
+                f"ERROR: Ollama server not reachable at {_OLLAMA_BASE_URL} for model "
+                f"'{args.model}'.\n"
+                f"  Details: {err}\n"
+                "  Start it first, e.g.:\n"
+                "    ollama serve &\n"
+                "    ollama pull " + args.model + "\n"
+                "  On CHPC: if you're on a login node, run this inside an interactive "
+                "job (e.g. `salloc` / `srun --pty bash`) instead — login nodes often "
+                "kill or throttle long-running/foreground processes, which can look "
+                "like the terminal 'crashing' with no Python error at all."
+            )
+            sys.exit(1)
 
     # Route the configured model through gpt.py's LLM client (OpenAI or Ollama).
     os.environ["SQLMORPHER_MODEL"] = args.model
@@ -94,9 +128,9 @@ def main():
     os.makedirs(args.log_dir, exist_ok=True)
 
     benchmark_dir = args.benchmark_dir or _BENCHMARK_DIRS[args.benchmark]
-    json_file_path = build_grouped_json(
-        args.benchmark, args.transchema_data_dir, benchmark_dir=benchmark_dir
-    )
+    # Cheap: just loads/copies Transchema's flat JSON into grouped form, no
+    # disk scanning of the (700-case, 3.4GB) benchmark folder.
+    json_file_path = build_grouped_json(args.benchmark, args.transchema_data_dir)
 
     # SQLMorpher executes generated SQL against a real Postgres instance, unlike
     # Transchema's Python-pipeline path. Fail fast with a clear message instead
@@ -117,12 +151,6 @@ def main():
         )
         sys.exit(1)
 
-    # Case IDs in this benchmark are NOT contiguous (e.g. length1_* only has
-    # 1, 2, 5, 7, 8, 12, 14, 15, 17, 19, 25, ...), so validate against the
-    # dataset upfront rather than letting missing cases fail loudly one by one.
-    with open(json_file_path) as f:
-        available_targets = set(json.load(f).keys())
-
     if args.cases:
         case_pairs = [(int(c.split("_")[0]), int(c.split("_")[1])) for c in args.cases]
     else:
@@ -132,16 +160,19 @@ def main():
             for tid in range(args.target_id, args.max_target_id + 1)
         ]
 
-    valid_case_pairs = []
-    skipped = []
-    for length, tid in case_pairs:
-        if f"Target{length}_{tid}" in available_targets:
-            valid_case_pairs.append((length, tid))
-        else:
-            skipped.append(f"{length}_{tid}")
+    # Case IDs in this benchmark are NOT contiguous (e.g. length1_* only has
+    # 1, 2, 5, 7, 8, 12, 14, 15, 17, 19, 25, ...) and the metadata JSON only
+    # covers a subset of the cases that actually exist on disk. Rather than
+    # scanning the whole (700-case, 3.4GB) benchmark folder, only synthesize
+    # metadata for the specific cases requested here — one folder at a time.
+    unresolved = ensure_cases_available(json_file_path, case_pairs, benchmark_dir)
 
-    if skipped:
-        print(f"Skipping {len(skipped)} case(s) not found in the dataset: {skipped}")
+    valid_case_pairs = [
+        (length, tid) for length, tid in case_pairs if f"{length}_{tid}" not in unresolved
+    ]
+
+    if unresolved:
+        print(f"Skipping {len(unresolved)} case(s) not found in the dataset or on disk: {sorted(unresolved)}")
     if not valid_case_pairs:
         print("No valid cases to run. Exiting.")
         sys.exit(1)
