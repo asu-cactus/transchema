@@ -24,6 +24,22 @@ def chat_with_gpt(prompt, ifsql=True, max_tokens=4096):
     else:
         return complete_response
 
+def _strip_sql_fence(text):
+    """Extracts SQL from a (possibly partial/duplicated) markdown response.
+    Handles a well-formed ```sql ... ``` block, a block missing its closing
+    fence (still mid-generation), or plain unfenced SQL."""
+    if "```sql" in text:
+        text = text.split("```sql", 1)[1]
+        if "```" in text:
+            text = text.split("```", 1)[0]
+        return text.strip()
+    if "```" in text:
+        parts = text.split("```")
+        if len(parts) >= 2:
+            return parts[1].strip()
+    return text.strip()
+
+
 def gpt4_sql_script(prompt, total_tokens, max_tokens_per_request=4096):
     start_time = time.time()
     timeout = 30
@@ -38,12 +54,20 @@ def gpt4_sql_script(prompt, total_tokens, max_tokens_per_request=4096):
         # Update the prompt for the next iteration
         prompt += partial_script
 
+        # Stop as soon as we have a complete fenced block instead of
+        # continuing to badger the model until `total_tokens` "words" —
+        # for smaller/local models the response is done long before that
+        # word-count heuristic is satisfied, and further calls just make it
+        # ramble or repeat itself.
+        if "```sql" in sql_script and sql_script.count("```") >= 2:
+            break
+
         if time.time() - start_time > timeout:
             logging.info(f"Timeout reached. Current script length:, {len(sql_script.split())}")
             logging.info(f"GPT-4 SQL PROMPT: {prompt}")
             logging.info(f"Final gpt4 sql script : {sql_script}")
             break
-    return sql_script
+    return _strip_sql_fence(sql_script)
 
 
 def token_usage_summary():
