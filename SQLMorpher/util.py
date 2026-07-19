@@ -141,8 +141,8 @@ def numerical_similarity(value1, value2, threshold=1e-10):
     if value1 in (0.0, None) and value2 in (0.0, None):
         return 1.0
     try:
-        float_value1 = float(set(value1))
-        float_value2 = float(set(value2))
+        float_value1 = float(value1)
+        float_value2 = float(value2)
         return 1.0 if abs(float_value1 - float_value2) <= threshold else 0.0
     except (ValueError, TypeError):
         return 0.0

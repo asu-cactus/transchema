@@ -58,10 +58,14 @@ def validation(sql_result, ground_truth, tolerance=1e-10):
     validation_error = ""
 
     if len(sql_result) != len(ground_truth):
-        return 0.0, False, ['first length'], validation_error
-    elif len(sql_result) != len(ground_truth) or len(sql_result.columns) != len(ground_truth.columns):
+        validation_error = (
+            f"Different number of rows: generated={len(sql_result)}, "
+            f"expected={len(ground_truth)}."
+        )
+        return 0.0, False, ["row_count_mismatch"], validation_error
+    elif len(sql_result.columns) != len(ground_truth.columns):
         validation_error = "Different number of rows or columns in the results and ground truth."
-        return 0.0, False, ["missmatch"], validation_error
+        return 0.0, False, ["column_count_mismatch"], validation_error
 
     # Initialize a list to store similarity scores
     similarity_scores = []
@@ -73,9 +77,15 @@ def validation(sql_result, ground_truth, tolerance=1e-10):
         sql_column = sql_result.iloc[:, col_index].apply(lambda x: str(x) if pd.notna(x) else '0.0').tolist()
         truth_column = ground_truth.iloc[:, col_index].apply(lambda x: str(x) if pd.notna(x) else '0.0').tolist()
 
-        # Determine whether columns can be treated as numerical
-        is_sql_numeric = sql_result.iloc[:, col_index].apply(lambda x: isinstance(x, (int, float))).all()
-        is_truth_numeric = ground_truth.iloc[:, col_index].apply(lambda x: isinstance(x, (int, float))).all()
+        # PostgreSQL numeric values commonly arrive as Decimal objects, so
+        # isinstance(x, (int, float)) incorrectly classified them as text.
+        # Coercion handles int/float/Decimal/numeric strings consistently.
+        is_sql_numeric = pd.to_numeric(
+            sql_result.iloc[:, col_index], errors="coerce"
+        ).notna().all()
+        is_truth_numeric = pd.to_numeric(
+            ground_truth.iloc[:, col_index], errors="coerce"
+        ).notna().all()
 
         if is_sql_numeric and is_truth_numeric:
             similarity_type = "numerical"

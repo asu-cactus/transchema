@@ -91,6 +91,12 @@ def get_parser():
         default="logs-sqlmorpher",
         help="Directory to write run logs to.",
     )
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=5,
+        help="Maximum LLM generate/execute/validate attempts per case.",
+    )
     return parser
 
 
@@ -207,6 +213,7 @@ def main():
                 case_id,
                 length,
                 benchmark_dir=benchmark_dir,
+                max_iterations=args.max_iterations,
             )
             all_results.extend(case_results or [])
         except Exception:

@@ -154,7 +154,7 @@ def gpt_auto_pipeline(json_file_path, target_data_name_to_find):
     return target_data_names, source_data_names,source_data_schema, target_data_schema, target_data_description,samples
 
 
-def main(*args, benchmark_dir=None):
+def main(*args, benchmark_dir=None, max_iterations=5):
     """Returns a list of (case_path, is_correct, case_accuracy) for every case
     attempted, so callers can report a real validation success rate instead of
     just whether an exception was raised."""
@@ -193,6 +193,19 @@ def main(*args, benchmark_dir=None):
             except Exception as e:
                 logging.info(f"Could not read real schema for {source_path}: {e}")
 
+        # The target's leading CSV index is only a serialization artifact and
+        # is not part of the logical target schema. Normalize this on every
+        # run so stale synthesized JSON caches cannot reintroduce it.
+        try:
+            real_target_schema, _ = read_schema_and_samples(target_path)
+            logical_target_schema = [
+                col for col in real_target_schema
+                if not str(col).startswith("Unnamed:")
+            ]
+            target_data_schema[0] = str(logical_target_schema)
+        except Exception as e:
+            logging.info(f"Could not read real target schema for {target_path}: {e}")
+
         logging.info(f"target_data_name, Source_data_names: {target_data_names[0]}, {source_data_names}")
         logging.info(f"number of sources: {len(source_data_names)}")
         no_of_source_tables = len(source_data_names)
@@ -200,60 +213,108 @@ def main(*args, benchmark_dir=None):
         logging.info(f"target data schema:{target_data_schema}")
         # Create a list to store similarity scores of each iteration
         all_similarity_scores = []
-
-        # Iterative Prompt Optimization and Validation
-        iteration_count = 0
-        validation_table_created = False
         accuracy_list = []
-        # Run the experiment
-        chatgpt_prompt = generate_prompt_auto_pipeline(no_of_source_tables,source_data_names,
-                                                           target_data_names,source_data_schema, target_data_schema,
-                                                           target_data_description,samples,test_0_path,test_1_path,sub_folder,template_option)
-  
-        logging.info(f"final prompt: {chatgpt_prompt}")
-        #gpt_output = chat_with_gpt(chatgpt_prompt)
-        total_tokens=10000
-        gpt_output = gpt4_sql_script(chatgpt_prompt, total_tokens)
-        logging.info(f"gold gpt sql: {gpt_output}")
-        # Execute the SQL script on the specified table
-        sql_result = execute_sql(conn, gpt_output)
-        if isinstance(sql_result, str):
-            # execute_sql returns a plain string on failure (either a
-            # psycopg2 error, or "target table not identified"). Fail this
-            # case clearly instead of letting pd.DataFrame() crash on it.
-            logging.info(f"SQL execution failed for {target_data_name_to_find}: {sql_result}")
-            print(f"SQL execution failed for {target_data_name_to_find}: {sql_result}")
-            log_experiment_failed(target_data_names, target_data_name_to_find, iteration_count, [], [0.0])
-            results.append((f"{length_id}_{target_id}", False, 0.0))
-            target_id += 1
-            continue
-        sql_result_df = pd.DataFrame(sql_result)
-        logging.info(f"SQL Result: {sql_result}")
-        logging.info(f"sql_result_df {sql_result_df}")
-        sql_result_df_sort = sql_result_df.sort_values(by=list(sql_result_df.columns))
-        logging.info(f"sql_result_df_sort {sql_result_df_sort}")
-        
-        logging.info(f"target path: {target_path}")
-        logging.info(f"{main_folder_name}{sub_folder}{target_data_name_to_find}_result.csv")
-        if (validation_table_created == False):
-            gold_target_csv = read_csv_target(target_path)
-            gold_target_csv_pd = pd.read_csv(target_path)
-            gold_target_csv_df = pd.DataFrame(gold_target_csv_pd)
-            logging.info(f"gold_target_csv_df {gold_target_csv_df}")
-            gold_target_csv_df_sort = gold_target_csv_df.sort_values(by=list(gold_target_csv_df.columns))
-            logging.info(f"gold_target_csv_df_sort {gold_target_csv_df_sort}")
-            validation_table_created = True
-        # Validate the ChatGPT generated SQL script
-        logging.info(f"validation_table_created: {validation_table_created}")
-        case_accuracy, is_correct, similarity_scores, validation_error = validation(sql_result_df_sort,gold_target_csv_df_sort)
-        accuracy_list.append(case_accuracy)
-        all_similarity_scores.append(similarity_scores)
-        logging.info(f"is_correct and similarity_score: {is_correct} {similarity_scores}")
 
-        if is_correct:
-            log_experiment_success(target_data_names, target_data_name_to_find, iteration_count)
-        else:
-            log_experiment_failed(target_data_names, target_data_name_to_find, iteration_count, all_similarity_scores,accuracy_list)
+        base_prompt = generate_prompt_auto_pipeline(
+            no_of_source_tables, source_data_names, target_data_names,
+            source_data_schema, target_data_schema, target_data_description,
+            samples, test_0_path, test_1_path, sub_folder, template_option
+        )
+
+        # Benchmark CSVs contain a pandas-generated leading index column
+        # ("Unnamed: 0"), but the benchmark target schema intentionally omits
+        # it. Compare against the logical target table, not that serialization
+        # artifact; otherwise every otherwise-correct result has one fewer
+        # column and can never pass.
+        gold_target_csv_df = pd.read_csv(target_path, low_memory=False)
+        unnamed_columns = [
+            col for col in gold_target_csv_df.columns
+            if str(col).startswith("Unnamed:")
+        ]
+        if unnamed_columns:
+            gold_target_csv_df.drop(columns=unnamed_columns, inplace=True)
+        gold_target_csv_df_sort = gold_target_csv_df.sort_values(
+            by=list(gold_target_csv_df.columns)
+        ).reset_index(drop=True)
+        logging.info(f"gold_target_csv_df_sort {gold_target_csv_df_sort}")
+
+        retry_feedback = ""
+        is_correct = False
+        case_accuracy = 0.0
+
+        for iteration_count in range(1, max_iterations + 1):
+            print(
+                f"Attempt {iteration_count}/{max_iterations} for "
+                f"{target_data_name_to_find}"
+            )
+            chatgpt_prompt = base_prompt + retry_feedback
+            logging.info(f"final prompt attempt {iteration_count}: {chatgpt_prompt}")
+
+            gpt_output = gpt4_sql_script(chatgpt_prompt, total_tokens=10000)
+            logging.info(f"generated SQL attempt {iteration_count}: {gpt_output}")
+            sql_result = execute_sql(conn, gpt_output)
+
+            if isinstance(sql_result, str):
+                accuracy_list.append(0.0)
+                all_similarity_scores.append(["sql_execution_error"])
+                print(
+                    f"SQL execution failed for {target_data_name_to_find} "
+                    f"(attempt {iteration_count}/{max_iterations}): {sql_result}"
+                )
+                retry_feedback = f"""
+
+The previous SQL attempt failed to execute.
+Previous SQL:
+```sql
+{gpt_output}
+```
+PostgreSQL error:
+{sql_result}
+Return a complete corrected SQL script. Follow all original constraints.
+"""
+                continue
+
+            sql_result_df = pd.DataFrame(sql_result)
+            sql_result_df_sort = sql_result_df.sort_values(
+                by=list(sql_result_df.columns)
+            ).reset_index(drop=True)
+            logging.info(f"sql_result_df_sort {sql_result_df_sort}")
+
+            case_accuracy, is_correct, similarity_scores, validation_error = validation(
+                sql_result_df_sort, gold_target_csv_df_sort
+            )
+            accuracy_list.append(case_accuracy)
+            all_similarity_scores.append(similarity_scores)
+            logging.info(
+                f"attempt={iteration_count} is_correct={is_correct} "
+                f"similarity={similarity_scores} error={validation_error}"
+            )
+
+            if is_correct:
+                log_experiment_success(
+                    target_data_names, target_data_name_to_find, iteration_count
+                )
+                break
+
+            retry_feedback = f"""
+
+The previous SQL executed, but its result did not match the required target.
+Previous SQL:
+```sql
+{gpt_output}
+```
+Validation feedback: {validation_error or similarity_scores}
+Generated result shape: {sql_result_df.shape}
+Expected result shape: {gold_target_csv_df.shape}
+Return a complete revised SQL script that corrects the transformation. Follow
+all original constraints. Do not return only a patch or explanation.
+"""
+
+        if not is_correct:
+            log_experiment_failed(
+                target_data_names, target_data_name_to_find, max_iterations,
+                all_similarity_scores, accuracy_list
+            )
 
         results.append((f"{length_id}_{target_id}", bool(is_correct), case_accuracy))
         target_id = target_id + 1
