@@ -83,10 +83,20 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
         "COPY <table> FROM '<absolute path>' WITH (FORMAT csv, HEADER true);"
     )
 
+    _safe_types = (
+        "IMPORTANT: the sample rows below are only a small preview — the full CSV file "
+        "being loaded may contain longer text values than these samples suggest. Do NOT "
+        "infer a tightly-sized type like VARCHAR(3) from the samples (e.g. picking "
+        "VARCHAR(3) because a sample value is 'Sun' would break on a real value like "
+        "'Thur'). For any text/string column, use TEXT (or a generously-sized VARCHAR, "
+        "e.g. VARCHAR(255)) instead of guessing an exact character length."
+    )
+
     if no_of_source_tables == 1 and template_option == 4:
         prompt = f"""
         You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_name}. 
         {_no_psql_meta}
+        {_safe_types}
         First, you must create {no_of_source_tables} source table with following {source_names} with only the given attributes: {source_data_schema}. 
         Please delete the table before creating it if the first table exists.
         Source table samples are as follows {sample_0}.
@@ -101,6 +111,7 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
     elif no_of_source_tables == 2 and template_option == 4:
         prompt = f"""You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_name}. 
         {_no_psql_meta}
+        {_safe_types}
         First, you must create the {no_of_source_tables} tables with following {source_names} with only the given attributes respectively: {source_data_schema}. 
         Please delete the table before creating it if the first table exists.
         First table samples are as follows {sample_0} and Second table samples are as follows {sample_1}.

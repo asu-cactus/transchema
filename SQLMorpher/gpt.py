@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import time
 
 from llm_client import LLMClient, default_tracker
@@ -33,6 +34,21 @@ def _strip_psql_meta_commands(text):
     )
 
 
+_VARCHAR_RE = re.compile(r"\b(?:CHARACTER\s+VARYING|VARCHAR)\s*\(\s*\d+\s*\)", re.IGNORECASE)
+
+
+def _widen_varchar_columns(text):
+    """Widens any VARCHAR(n)/CHARACTER VARYING(n) to TEXT.
+
+    The model only sees a handful of sample rows when picking column types,
+    so a tightly-sized VARCHAR(n) inferred from those samples routinely fails
+    with "value too long for type character varying(n)" once the full CSV
+    (with longer values the model never saw) is loaded. This is a mechanical
+    safety net independent of whether the model follows the prompt's
+    instruction to prefer TEXT."""
+    return _VARCHAR_RE.sub("TEXT", text)
+
+
 def _strip_sql_fence(text):
     """Extracts SQL from a (possibly partial/duplicated) markdown response.
     Handles a well-formed ```sql ... ``` block, a block missing its closing
@@ -45,7 +61,9 @@ def _strip_sql_fence(text):
         parts = text.split("```")
         if len(parts) >= 2:
             text = parts[1]
-    return _strip_psql_meta_commands(text).strip()
+    text = _strip_psql_meta_commands(text)
+    text = _widen_varchar_columns(text)
+    return text.strip()
 
 
 def gpt4_sql_script(prompt, total_tokens, max_tokens_per_request=4096):
