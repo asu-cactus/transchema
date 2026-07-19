@@ -73,32 +73,42 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
     sample_0 = sample_i.get("sample_0")
     sample_1 = sample_i.get("sample_1")
 
+    _no_psql_meta = (
+        "IMPORTANT: this script will be executed programmatically over a database "
+        "driver connection (psycopg2), NOT through the interactive `psql` shell. "
+        "Only output standard SQL statements. Do NOT use `psql` meta-commands "
+        "(anything starting with a backslash, e.g. \\copy, \\set, \\i) — those only "
+        "work inside the interactive psql client and will fail here. To load a CSV "
+        "file, use the standard SQL statement: "
+        "COPY <table> FROM '<absolute path>' WITH (FORMAT csv, HEADER true);"
+    )
+
     if no_of_source_tables == 1 and template_option == 4:
         prompt = f"""
         You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_name}. 
+        {_no_psql_meta}
         First, you must create {no_of_source_tables} source table with following {source_names} with only the given attributes: {source_data_schema}. 
         Please delete the table before creating it if the first table exists.
         Source table samples are as follows {sample_0}.
-        Second, insert the entire csv file with headers from given paths {test_0_path} the {no_of_source_tables} source table respectively (treat empty value as NULL):
+        Second, load the entire csv file with headers from the given path {test_0_path} into the {no_of_source_tables} source table respectively (treat empty value as NULL), using the SQL COPY statement described above:
         Third, you must create a target table named {target_name} with only the given attributes: {target_data_schema}. 
         Please delete the table before creating it if the first table exists.
         Hint-1: {target_data_description}
         Finally, insert all rows from the source table into only one {target_name}, note that the selection clause in the insert statement should ignore attributes that are not needed.
-        Also COPY the SQL result into a f"{sub_folder}{target_name}_result.csv" file. Use client-side facility such as psql's copy.
         Please don't remove the any table, because we need it for validation.
         Please quote the returned SQL script between "```sql\n" and "\n```".
         """
     elif no_of_source_tables == 2 and template_option == 4:
         prompt = f"""You are a SQL developer. Please generate a Postgres sql script to convert the {no_of_source_tables} source table to be consistent with the format of the target table {target_name}. 
+        {_no_psql_meta}
         First, you must create the {no_of_source_tables} tables with following {source_names} with only the given attributes respectively: {source_data_schema}. 
         Please delete the table before creating it if the first table exists.
         First table samples are as follows {sample_0} and Second table samples are as follows {sample_1}.
-        Second, insert the entire csv file with headers from given paths {test_0_path} and {test_1_path} into the {no_of_source_tables} tables respectively (treat empty value as NULL):
+        Second, load the entire csv files with headers from the given paths {test_0_path} and {test_1_path} into the {no_of_source_tables} tables respectively (treat empty value as NULL), using the SQL COPY statement described above:
         Third, you must create a target table named {target_name} with only the given attributes: {target_data_schema}. 
         Please delete the table before creating it if the first table exists.
         Hint-1: {target_data_description}
         Finally, join all rows from the {no_of_source_tables} tables into only one {target_name}, note that the selection clause in the insert statement should ignore attributes that are not needed.
-        Also COPY the SQL result into a f"{sub_folder}{target_name}_result.csv" file. Use client-side facility such as psql's copy.
         Please don't remove the any table, because we need it for validation.
         Please quote the returned SQL script between "```sql\n" and "\n```". 
         """

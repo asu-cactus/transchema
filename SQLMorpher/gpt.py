@@ -24,6 +24,15 @@ def chat_with_gpt(prompt, ifsql=True, max_tokens=4096):
     else:
         return complete_response
 
+def _strip_psql_meta_commands(text):
+    """Drops any `psql`-only meta-command lines (\\copy, \\set, \\i, ...) that
+    a model may emit despite instructions not to — those aren't valid SQL and
+    will fail when run over a plain DB-API connection (e.g. psycopg2)."""
+    return "\n".join(
+        line for line in text.splitlines() if not line.strip().startswith("\\")
+    )
+
+
 def _strip_sql_fence(text):
     """Extracts SQL from a (possibly partial/duplicated) markdown response.
     Handles a well-formed ```sql ... ``` block, a block missing its closing
@@ -32,12 +41,11 @@ def _strip_sql_fence(text):
         text = text.split("```sql", 1)[1]
         if "```" in text:
             text = text.split("```", 1)[0]
-        return text.strip()
-    if "```" in text:
+    elif "```" in text:
         parts = text.split("```")
         if len(parts) >= 2:
-            return parts[1].strip()
-    return text.strip()
+            text = parts[1]
+    return _strip_psql_meta_commands(text).strip()
 
 
 def gpt4_sql_script(prompt, total_tokens, max_tokens_per_request=4096):
