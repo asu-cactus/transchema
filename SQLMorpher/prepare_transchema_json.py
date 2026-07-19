@@ -73,6 +73,27 @@ def _synthesize_case_rows(length, case_id, case_dir):
     return rows
 
 
+def list_cases_on_disk(benchmark_dir, lengths=None):
+    """Lists all (length, case_id) pairs found on disk under benchmark_dir
+    (just directory names — cheap, no CSV reads). If `lengths` is given,
+    restricts to those length(s)."""
+    benchmark_dir = os.path.abspath(benchmark_dir)
+    if not os.path.isdir(benchmark_dir):
+        return []
+
+    lengths = set(lengths) if lengths is not None else None
+    pairs = []
+    for entry in sorted(os.listdir(benchmark_dir)):
+        match = _CASE_DIR_RE.match(entry)
+        if not match:
+            continue
+        length, case_id = int(match.group(1)), int(match.group(2))
+        if lengths is not None and length not in lengths:
+            continue
+        pairs.append((length, case_id))
+    return sorted(pairs)
+
+
 def build_grouped_json(benchmark="github", transchema_data_dir="../data", cache_dir="."):
     """Returns the path to a grouped JSON file for `benchmark`, building it
     from Transchema's flat JSON if not already cached. This does NOT scan the

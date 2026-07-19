@@ -19,7 +19,7 @@ import urllib.request
 import gpt
 from auto_pipeline_join import main as run_case
 from llm_client import _is_ollama_model, _OLLAMA_BASE_URL
-from prepare_transchema_json import build_grouped_json, ensure_cases_available
+from prepare_transchema_json import build_grouped_json, ensure_cases_available, list_cases_on_disk
 from util import create_connection
 
 _BENCHMARK_DIRS = {
@@ -42,7 +42,15 @@ def get_parser():
         nargs="+",
         default=None,
         help="Explicit list of case IDs to run, e.g. --cases 1_17 4_31. "
-             "Overrides --len_id / --target_id / --max_target_id.",
+             "Overrides --len_id / --target_id / --max_target_id / --all.",
+    )
+    parser.add_argument(
+        "--all",
+        dest="run_all",
+        action="store_true",
+        help="Run every case found on disk for lengths in [--len_id, --max_len_id], "
+             "instead of a --target_id/--max_target_id range. Useful for measuring "
+             "an actual success rate across the benchmark.",
     )
     parser.add_argument(
         "--benchmark",
@@ -153,6 +161,12 @@ def main():
 
     if args.cases:
         case_pairs = [(int(c.split("_")[0]), int(c.split("_")[1])) for c in args.cases]
+    elif args.run_all:
+        lengths = range(args.len_id, args.max_len_id + 1)
+        case_pairs = list_cases_on_disk(benchmark_dir, lengths=lengths)
+        if not case_pairs:
+            print(f"No case folders found on disk under {benchmark_dir} for lengths {list(lengths)}.")
+            sys.exit(1)
     else:
         case_pairs = [
             (length, tid)
@@ -180,12 +194,13 @@ def main():
     case_pairs = valid_case_pairs
     print(f"Model: {args.model} | Benchmark: {args.benchmark} | Cases: {case_pairs}")
 
-    succeeded, failed = 0, 0
+    all_results = []  # (case_path, is_correct, case_accuracy)
+    errored = []
     for length, case_id in case_pairs:
         case_path = f"{length}_{case_id}"
         print(f"\n=== Running case {case_path} ===")
         try:
-            run_case(
+            case_results = run_case(
                 json_file_path,
                 args.template_option,
                 case_id,
@@ -193,13 +208,24 @@ def main():
                 length,
                 benchmark_dir=benchmark_dir,
             )
-            succeeded += 1
+            all_results.extend(case_results or [])
         except Exception:
-            failed += 1
-            print(f"Case {case_path} failed:\n{traceback.format_exc()}")
+            errored.append(case_path)
+            print(f"Case {case_path} errored:\n{traceback.format_exc()}")
 
-    print(f"\nDone. {succeeded} case(s) succeeded, {failed} case(s) failed.")
-    print("Token usage / cost summary:", gpt.token_usage_summary())
+    correct = sum(1 for _, is_correct, _ in all_results if is_correct)
+    attempted = len(all_results)
+    avg_accuracy = (sum(acc for _, _, acc in all_results) / attempted) if attempted else 0.0
+
+    print(f"\n=== Summary ===")
+    print(f"Attempted: {attempted} | Correct: {correct} | Errored (exception): {len(errored)}")
+    if attempted:
+        print(f"Success rate: {correct}/{attempted} ({100 * correct / attempted:.1f}%) | Avg column accuracy: {avg_accuracy:.3f}")
+    if errored:
+        print(f"Cases that raised an exception (not just failed validation): {errored}")
+    for case_path, is_correct, acc in all_results:
+        print(f"  {case_path}: {'CORRECT' if is_correct else 'incorrect'} (accuracy={acc:.2f})")
+    print("\nToken usage / cost summary:", gpt.token_usage_summary())
 
 
 if __name__ == "__main__":

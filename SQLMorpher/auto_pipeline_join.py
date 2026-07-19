@@ -154,8 +154,12 @@ def gpt_auto_pipeline(json_file_path, target_data_name_to_find):
 
 
 def main(*args, benchmark_dir=None):
+    """Returns a list of (case_path, is_correct, case_accuracy) for every case
+    attempted, so callers can report a real validation success rate instead of
+    just whether an exception was raised."""
     (json_file_path, template_option, target_id, max_target_id,length_id) = args
     conn = create_connection()
+    results = []
 
     while target_id <= max_target_id:
         target_data_name_to_find = "Target" + str(length_id) + "_" + str(target_id)
@@ -203,6 +207,7 @@ def main(*args, benchmark_dir=None):
             logging.info(f"SQL execution failed for {target_data_name_to_find}: {sql_result}")
             print(f"SQL execution failed for {target_data_name_to_find}: {sql_result}")
             log_experiment_failed(target_data_names, target_data_name_to_find, iteration_count, [], [0.0])
+            results.append((f"{length_id}_{target_id}", False, 0.0))
             target_id += 1
             continue
         sql_result_df = pd.DataFrame(sql_result)
@@ -233,10 +238,12 @@ def main(*args, benchmark_dir=None):
         else:
             log_experiment_failed(target_data_names, target_data_name_to_find, iteration_count, all_similarity_scores,accuracy_list)
 
+        results.append((f"{length_id}_{target_id}", bool(is_correct), case_accuracy))
         target_id = target_id + 1
 
     print("All similarity scores saved to all_similarity_scores.log.")
     conn.close()
+    return results
 
 
 if __name__ == "__main__":
