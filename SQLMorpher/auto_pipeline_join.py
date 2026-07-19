@@ -63,12 +63,13 @@ def create_sample_i(samples):
     return sample_i
 
 def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,source_data_schema,
-                                  target_data_schema,target_data_description,samples,test_0_path,test_1_path,
-                                  sub_folder,template_option):
+                                  target_data_schema,target_data_samples,target_data_description,
+                                  samples,test_0_path,test_1_path,sub_folder,template_option):
     target_name = target_name[0] 
     no_of_source_tables = no_of_source_tables
     source_data_schema = source_data_schema
     target_data_schema = target_data_schema[0]
+    target_data_sample = target_data_samples[0]
     target_data_description = target_data_description[0]
     sample_i = create_sample_i(samples)
     sample_0 = sample_i.get("sample_0")
@@ -104,6 +105,7 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
         Second, load the entire csv file with headers from the given path {test_0_path} into the {no_of_source_tables} source table respectively (treat empty value as NULL), using the SQL COPY statement described above:
         Third, you must create a target table named {target_name} with only the given attributes: {target_data_schema}. 
         Please delete the table before creating it if the first table exists.
+        Representative target rows are: {target_data_sample}
         Hint-1: {target_data_description}
         Finally, insert all rows from the source table into only one {target_name}, note that the selection clause in the insert statement should ignore attributes that are not needed.
         Please don't remove the any table, because we need it for validation.
@@ -119,6 +121,7 @@ def generate_prompt_auto_pipeline(no_of_source_tables,source_names,target_name,s
         Second, load the entire csv files with headers from the given paths {test_0_path} and {test_1_path} into the {no_of_source_tables} tables respectively (treat empty value as NULL), using the SQL COPY statement described above:
         Third, you must create a target table named {target_name} with only the given attributes: {target_data_schema}. 
         Please delete the table before creating it if the first table exists.
+        Representative target rows are: {target_data_sample}
         Hint-1: {target_data_description}
         Finally, join all rows from the {no_of_source_tables} tables into only one {target_name}, note that the selection clause in the insert statement should ignore attributes that are not needed.
         Please don't remove the any table, because we need it for validation.
@@ -139,6 +142,7 @@ def gpt_auto_pipeline(json_file_path, target_data_name_to_find):
     source_data_names = []
     source_data_schema = []
     target_data_schema = []
+    target_data_samples = []
     target_data_description = []
     samples = []
     for target_key, target_values in data_list.items():
@@ -148,10 +152,14 @@ def gpt_auto_pipeline(json_file_path, target_data_name_to_find):
                 source_data_names.append(target_value.get("Source Data Name"))
                 source_data_schema.append(target_value.get("Source Data Schema"))
                 target_data_schema.append(target_value.get("Target Data Schema"))
+                target_data_samples.append(target_value.get("Target Data Sample", ""))
                 target_data_description.append(target_value.get("Target Data Description"))
                 samples.append(target_value.get("3 Samples of Source Data"))
                 #ground_truth_sql_result.append(target_value.get("Ground Truth SQL"))
-    return target_data_names, source_data_names,source_data_schema, target_data_schema, target_data_description,samples
+    return (
+        target_data_names, source_data_names, source_data_schema,
+        target_data_schema, target_data_samples, target_data_description, samples
+    )
 
 
 def main(*args, benchmark_dir=None, max_iterations=5):
@@ -165,7 +173,11 @@ def main(*args, benchmark_dir=None, max_iterations=5):
     while target_id <= max_target_id:
         target_data_name_to_find = "Target" + str(length_id) + "_" + str(target_id)
         # Get JSON data for prompt
-        target_data_names, source_data_names,source_data_schema, target_data_schema, target_data_description,samples = gpt_auto_pipeline(json_file_path,target_data_name_to_find)
+        (
+            target_data_names, source_data_names, source_data_schema,
+            target_data_schema, target_data_samples, target_data_description,
+            samples
+        ) = gpt_auto_pipeline(json_file_path, target_data_name_to_find)
         if not target_data_names:
             raise ValueError(
                 f"No case found for '{target_data_name_to_find}' in {json_file_path}. "
@@ -217,8 +229,9 @@ def main(*args, benchmark_dir=None, max_iterations=5):
 
         base_prompt = generate_prompt_auto_pipeline(
             no_of_source_tables, source_data_names, target_data_names,
-            source_data_schema, target_data_schema, target_data_description,
-            samples, test_0_path, test_1_path, sub_folder, template_option
+            source_data_schema, target_data_schema, target_data_samples,
+            target_data_description, samples, test_0_path, test_1_path,
+            sub_folder, template_option
         )
 
         # Benchmark CSVs contain a pandas-generated leading index column

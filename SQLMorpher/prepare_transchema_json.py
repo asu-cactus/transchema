@@ -3,12 +3,10 @@ into the grouped-by-target format that `auto_pipeline_join.gpt_auto_pipeline`
 expects (dict: Target Data Name -> list of rows), so SQLMorpher can run on the
 exact same dataset as Transchema without touching Excel files.
 
-The benchmark folders on disk (autopipeline-benchmarks/{benchmark}-pipelines/
-length{L}_{id}/) contain every case, but Transchema's metadata JSON
-(chatgpt_github_ms.json etc.) only covers a subset of them (e.g. 42/100 for
-length1). For any case that exists on disk but is missing from the JSON, we
-synthesize the same fields (schema, samples) directly from the CSVs so
-SQLMorpher can still build a prompt for it.
+Transchema splits metadata between single-source/single-step (`*_ss.json`) and
+multi-source (`*_ms.json`) files. They must be merged for full benchmark
+coverage. For the rare case that exists on disk but is missing from both, we
+synthesize the same fields (schema, samples) directly from its CSVs.
 """
 
 import glob
@@ -20,8 +18,8 @@ from collections import defaultdict
 import pandas as pd
 
 _BENCHMARK_JSON = {
-    "github": "chatgpt_github_ms.json",
-    "monteprep": "chatgpt_monteprep_ms.json",
+    "github": ("chatgpt_github_ss.json", "chatgpt_github_ms.json"),
+    "monteprep": ("chatgpt_monteprep_ss.json", "chatgpt_monteprep_ms.json"),
 }
 
 _BENCHMARK_DIRS = {
@@ -58,6 +56,15 @@ def _synthesize_case_rows(length, case_id, case_dir):
     target_data_name = f"Target{length}_{case_id}"
     try:
         target_schema, target_samples = _read_schema_and_samples(target_path)
+        keep_indices = [
+            i for i, col in enumerate(target_schema)
+            if not str(col).startswith("Unnamed:")
+        ]
+        target_schema = [target_schema[i] for i in keep_indices]
+        target_samples = [
+            [row[i] for i in keep_indices]
+            for row in target_samples
+        ]
     except Exception:
         return []
 
@@ -105,20 +112,26 @@ def list_cases_on_disk(benchmark_dir, lengths=None):
 
 def build_grouped_json(benchmark="github", transchema_data_dir="../data", cache_dir="."):
     """Returns the path to a grouped JSON file for `benchmark`, building it
-    from Transchema's flat JSON if not already cached. This does NOT scan the
+    from Transchema's flat SS + MS JSON files. This does NOT scan the
     benchmark folders (that would mean reading CSVs across all ~700 cases /
     several GB every time the cache needs rebuilding). Use
     `ensure_cases_available` afterwards to lazily synthesize metadata for only
-    the specific case(s) you're about to run."""
-    src_name = _BENCHMARK_JSON[benchmark]
-    src_path = os.path.join(transchema_data_dir, src_name)
+    the specific case(s) you're about to run.
+
+    Rebuilding this small grouped cache every invocation is intentional: older
+    versions only included the MS file and may have cached lossy synthesized
+    rows for cases whose authoritative metadata lives in the SS file.
+    """
+    src_paths = [
+        os.path.join(transchema_data_dir, name)
+        for name in _BENCHMARK_JSON[benchmark]
+    ]
     out_path = os.path.join(cache_dir, f"auto-pipeline-{benchmark}.json")
 
-    if os.path.exists(out_path) and os.path.getmtime(out_path) >= os.path.getmtime(src_path):
-        return out_path
-
-    with open(src_path, "r") as f:
-        rows = json.load(f)
+    rows = []
+    for src_path in src_paths:
+        with open(src_path, "r") as f:
+            rows.extend(json.load(f))
 
     grouped = defaultdict(list)
     for row in rows:
