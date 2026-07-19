@@ -32,11 +32,20 @@ _BENCHMARK_DIRS = {
 _CASE_DIR_RE = re.compile(r"^length(\d+)_(\d+)$")
 
 
-def _read_schema_and_samples(csv_path, n_samples=3):
+def read_schema_and_samples(csv_path, n_samples=3):
+    """Reads the real column headers + a few sample rows directly from a CSV
+    on disk. Used both to synthesize metadata for cases missing from
+    Transchema's JSON, and to override that JSON's (sometimes index-column-
+    stripped) schema so it always matches exactly what a raw SQL `COPY` of
+    the file would see."""
     df = pd.read_csv(csv_path, low_memory=False, nrows=200)
     schema = list(df.columns)
     samples = df.head(n_samples).values.tolist()
     return schema, samples
+
+
+# Kept as a private alias for backwards compatibility within this module.
+_read_schema_and_samples = read_schema_and_samples
 
 
 def _synthesize_case_rows(length, case_id, case_dir):

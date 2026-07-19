@@ -7,6 +7,7 @@ from util import (create_connection, execute_sql, print_experiment_settings,
 from join_util import convert_target_names,access_auto_pipeline_dataset,read_csv_target
 from gpt import chat_with_gpt, gpt4_sql_script
 from join import validation
+from prepare_transchema_json import read_schema_and_samples
 import logging
 from io import StringIO
 
@@ -176,6 +177,22 @@ def main(*args, benchmark_dir=None):
         main_folder_name,sub_folder, test_0_path, test_1_path, target_path = access_auto_pipeline_dataset(
             find_target_name_folder, main_folder_name=benchmark_dir
         )
+
+        # Transchema's metadata JSON strips pandas' unnamed index column from
+        # "Source Data Schema" (fine for its own pandas-based pipeline, which
+        # can just drop that column). SQLMorpher instead has the model write a
+        # raw SQL `COPY ... FROM <csv>`, which loads the file byte-for-byte —
+        # so the CREATE TABLE column count MUST match the real file exactly,
+        # or COPY fails with "extra data after last expected column". Override
+        # the schema/samples shown to the model with what's actually on disk.
+        for i, source_path in enumerate([test_0_path, test_1_path][:no_of_source_tables]):
+            try:
+                real_schema, real_samples = read_schema_and_samples(source_path)
+                source_data_schema[i] = str(real_schema)
+                samples[i] = str(real_samples)
+            except Exception as e:
+                logging.info(f"Could not read real schema for {source_path}: {e}")
+
         logging.info(f"target_data_name, Source_data_names: {target_data_names[0]}, {source_data_names}")
         logging.info(f"number of sources: {len(source_data_names)}")
         no_of_source_tables = len(source_data_names)
