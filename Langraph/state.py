@@ -7,7 +7,7 @@ and new children are added directly to the node objects without
 needing to update the `root` key in the state dict on every step.
 """
 
-from typing import Any, List
+from typing import Any, List, Optional
 from typing_extensions import TypedDict
 
 
@@ -42,6 +42,10 @@ class MCTSGraphState(TypedDict):
                                        # original hardcoded per-type formulas. Auto-selected by --length
                                        # via eval_score_value_based.get_length_score_weights() unless
                                        # overridden. See LENGTH_SCORE_WEIGHTS.
+    credibility_k: Any                 # float smoothing constant for credibility_weight =
+                                       # occurrences / (occurrences + credibility_k), auto-selected by
+                                       # --length via get_length_score_weights() alongside score_weights/
+                                       # column_type_weights. No CLI override (length-based only).
     experiment_name: str             # label for saved scripts
     case_id: str                     # e.g. "2_5" for length2_5
 
@@ -62,6 +66,7 @@ class MCTSGraphState(TypedDict):
     max_iterations: int              # hard budget cap (safety limit; ignored when cost_budget > 0)
     max_depth: int                   # hard cap on tree depth; nodes at this depth are forced leaves
     early_stopping: int              # stop if best_score doesn't improve for this many iters; 0 = disabled
+    same_leaf_stopping: int          # stop if the same leaf is selected this many consecutive times; 0 = disabled
     cost_budget: float               # max USD to spend per case; 0.0 = disabled (use iteration mode)
     cost_budget_exhausted: bool      # True once LLMClient blocked a request due to budget; triggers immediate stop
     terminal_found: bool             # True once a NO_MORE_OPERATION node has been simulated
@@ -86,6 +91,9 @@ class MCTSGraphState(TypedDict):
     current_full_history: List[str]  # complete pipeline parsed from $PLAN$ block (may be [] if unparseable)
     current_confidence: Any          # blended pipeline confidence (float) for this simulate call's full
                                       # pipeline, or None if no plan was parsed. See _record_pipeline_confidence.
+    current_credibility_weight: Any  # occurrences/(occurrences+k) for this simulate call's full pipeline
+                                      # (same occurrence count _record_pipeline_confidence tracks), or None
+                                      # if no plan was parsed.
 
     # ── Pipeline confidence/frequency (shared by simulate + critique) ──────────
     # Case-wide dict {tuple(canonicalized full pipeline): {"occurrences", "conf_sum",
@@ -103,6 +111,7 @@ class MCTSGraphState(TypedDict):
     best_operation_history: List[str]
     no_improvement_count: int        # consecutive iterations without best_score improvement
     latest_script: str               # most recently executed script regardless of score
+    last_selected_leaf: Any          # MCTSNode selected by mcts_select this iteration (check its .visits for same_leaf_stopping)
 
     # ── Simulation mode ───────────────────────────────────────────────────────
     simulation_mode: str                 # "pipeline" (default) | "operator"
@@ -122,6 +131,8 @@ class MCTSGraphState(TypedDict):
                                           # component. 0.0 if missing/unparseable.
     critique_confidence_raw: str         # raw text inside the $CONFIDENCE$ block (pre-parse/clamp),
                                           # or "" if missing/unparseable
+    critique_credibility_weight: float   # occurrences/(occurrences+k) for the critique's plan, folded
+                                          # into score_1 as its 6th component. 0.0 if no plan was parsed.
     critique_llm_response: str           # full raw text of the critique LLM call, for logging/analysis
 
     # ── Stopping criteria ─────────────────────────────────────────────────────
@@ -134,6 +145,12 @@ class MCTSGraphState(TypedDict):
     # Path to the per-case SQLite DB built from similar retrieved cases.
     # Empty string means RAG is disabled for this run.
     local_rag_db_path: str
+
+    # Normalized 8-dim structural feature vector for the current task, used only
+    # by --rag curated_pipeline to re-rank prefix-matched hints by cosine
+    # similarity (see rag_pipeline.local_rag_db.get_rag_hints). None for every
+    # other RAG mode.
+    local_rag_query_vector: Optional[List[float]]
 
     # ── GT scoring cache ──────────────────────────────────────────────────────
     # Path to a JSON file with pre-computed GT-side FDs and self-column-map count.

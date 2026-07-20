@@ -42,7 +42,6 @@ python3 Langraph/mcts_search.py \
     --target_length      3 \
     --mcts_iterations    40 \
     --early_stopping      0 \
-    --same_leaf_stopping  5 \
     --mcts_critique_mode  simulate \
     --validation          autopipeline \
     --reward              det_score_value \
