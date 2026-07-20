@@ -173,7 +173,8 @@ def _apply_symmetric_truncation(df_output, df_gt):
 
 def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue,
                         gt_cache_path: str = "", force_truncate: bool = False, weights: dict | None = None,
-                        confidence: float | None = None, column_type_weights: dict | None = None):
+                        confidence: float | None = None, column_type_weights: dict | None = None,
+                        credibility_weight: float | None = None):
     """Subprocess worker: load CSVs and compute value_based score, put result in queue.
 
     Uses Jaccard-aligned column matching + value-based distribution scoring.
@@ -181,14 +182,18 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
     both df_gt and df_output are truncated symmetrically before scoring.
 
     weights: optional score_1 component weights (fd_f1/avg_col_score_1/
-        row_count_score/max_missing_score/confidence), forwarded to
-        value_based_relative_csv_score. Defaults to equal weights there.
+        row_count_score/max_missing_score/confidence/credibility_weight),
+        forwarded to value_based_relative_csv_score. Defaults to equal
+        weights there.
     confidence: optional self-reported LLM confidence (0.0-1.0), forwarded to
         value_based_relative_csv_score as the 5th score_1 component. None
         (default) excludes it, reproducing the original 4-component score_1.
     column_type_weights: optional per-column-type (float/int/id/cat) sub-metric
         weights, forwarded to value_based_relative_csv_score. None reproduces
         the original hardcoded per-type formulas.
+    credibility_weight: optional pipeline-frequency-based credibility signal
+        (0.0-1.0), forwarded to value_based_relative_csv_score as the 6th
+        score_1 component. None (default) excludes it.
     Puts a dict {"score": float, "components": {...} | None} in result_queue
     -- components are the raw (unweighted) score_1 inputs, logged
     regardless of which weights produced the score, so the score can be
@@ -228,7 +233,7 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
 
         _, _, _, fd_f1, true_combined_score, debug_dict = value_based_relative_csv_score(
             df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights, confidence=confidence,
-            column_type_weights=column_type_weights,
+            column_type_weights=column_type_weights, credibility_weight=credibility_weight,
         )
         components = {
             "fd_f1": fd_f1,
@@ -236,6 +241,7 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
             "row_count_score": debug_dict.get("row_count_score"),
             "max_missing_score": debug_dict.get("max_missing_score"),
             "confidence": debug_dict.get("confidence"),
+            "credibility_weight": debug_dict.get("credibility_weight"),
         }
         result_queue.put({"score": true_combined_score, "components": components})
     except Exception:
@@ -244,7 +250,8 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
 
 def _value_score_with_timeout(target_file_location: str, ground_truth_location: str,
                               gt_cache_path: str = "", weights: dict | None = None,
-                              confidence: float | None = None, column_type_weights: dict | None = None):
+                              confidence: float | None = None, column_type_weights: dict | None = None,
+                              credibility_weight: float | None = None):
     """Run value_based scoring in a child process with a hard timeout.
 
     Phase 1: score on the (possibly GT-truncated) tables.
@@ -255,6 +262,9 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
         value_based_relative_csv_score as the 5th score_1 component.
     column_type_weights: optional per-column-type sub-metric weights, forwarded
         to value_based_relative_csv_score.
+    credibility_weight: optional pipeline-frequency-based credibility signal
+        (0.0-1.0), forwarded to value_based_relative_csv_score as the 6th
+        score_1 component.
 
     Returns (score, components) -- components is a dict of the raw
     (unweighted) score_1 inputs, or None on timeout/error.
@@ -264,7 +274,7 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
         p = multiprocessing.Process(
             target=_value_score_worker,
             args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate, weights,
-                  confidence, column_type_weights),
+                  confidence, column_type_weights, credibility_weight),
             daemon=True,
         )
         p.start()
@@ -297,6 +307,7 @@ def _score_and_validate_output(
     score_weights: dict | None = None,
     confidence: float | None = None,
     column_type_weights: dict | None = None,
+    credibility_weight: float | None = None,
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
@@ -313,8 +324,9 @@ def _score_and_validate_output(
     gt_cache_path: path to pre-computed GT JSON cache; passed to subprocess workers to
                    skip per-iteration FD mining and self-column-map on ground truth.
     score_weights: optional score_1 component weights (fd_f1/avg_col_score_1/
-                   row_count_score/max_missing_score/confidence), only used when
-                   reward_mode="det_score_value". Defaults to equal weights.
+                   row_count_score/max_missing_score/confidence/credibility_weight),
+                   only used when reward_mode="det_score_value". Defaults to
+                   equal weights.
     confidence: optional self-reported LLM confidence (0.0-1.0) that the
                 output matches the target -- only meaningful (non-None) on
                 mcts_critique calls, which parse it from the $CONFIDENCE$
@@ -324,6 +336,11 @@ def _score_and_validate_output(
                 weights feeding avg_col_score_1, only used when
                 reward_mode="det_score_value". Defaults to the original
                 hardcoded per-type formulas.
+    credibility_weight: optional pipeline-frequency-based credibility signal
+                (0.0-1.0), computed from the case-wide pipeline occurrence
+                count (see _record_pipeline_confidence/_credibility_weight_from_occurrences).
+                Folded into score_1 as its 6th component when
+                reward_mode="det_score_value"; ignored otherwise.
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
@@ -348,6 +365,7 @@ def _score_and_validate_output(
         score, components = _value_score_with_timeout(
             target_file_location, ground_truth_location, gt_cache_path,
             weights=score_weights, confidence=confidence, column_type_weights=column_type_weights,
+            credibility_weight=credibility_weight,
         )
         return score, score >= _DET_SCORE_THRESHOLD, components
 
@@ -449,12 +467,15 @@ def _parse_pipeline_confidence(response_text: str, logger, tag: str = "_parse_pi
 
 def _record_pipeline_confidence(
     state: "MCTSGraphState", full_history: List[str], self_reported_confidence: float | None
-) -> float:
+) -> tuple[float, int]:
     """
     Update the case-wide pipeline confidence/frequency table with one more
     occurrence of `full_history` (from either simulate or critique) and its
-    self-reported $CONFIDENCE$ value for this occurrence, then return the
-    blended confidence to use for scoring THIS occurrence:
+    self-reported $CONFIDENCE$ value for this occurrence, then return
+    (blended_confidence, occurrences) -- occurrences is this pipeline's
+    updated case-wide count, also used by callers to compute
+    credibility_weight = occurrences / (occurrences + k) (see
+    get_length_score_weights' per-length `k`).
 
         blended = avg_self_reported_confidence(pipeline) * (1 - 0.5 ** occurrences(pipeline))
 
@@ -481,7 +502,15 @@ def _record_pipeline_confidence(
 
     avg_conf = stats["conf_sum"] / stats["conf_count"] if stats["conf_count"] > 0 else 0.0
     blended = avg_conf * (1 - 0.5 ** stats["occurrences"])
-    return round(blended, 4)
+    return round(blended, 4), stats["occurrences"]
+
+
+def _credibility_weight_from_occurrences(occurrences: int, k: float | None) -> float | None:
+    """credibility_weight = occurrences / (occurrences + k). None if k isn't
+    configured for this case's length (see get_length_score_weights)."""
+    if k is None:
+        return None
+    return round(occurrences / (occurrences + k), 4)
 
 
 def _merge_groupby_aggregate(history: List[str]) -> List[str]:
@@ -571,6 +600,7 @@ def _simulate_get_python(
     rag_hints = get_rag_hints(
         state.get("local_rag_db_path", ""),
         _rag_op_history,
+        query_vector=state.get("local_rag_query_vector"),
     )
     if rag_hints:
         config.logger.info(
@@ -702,6 +732,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
             rag_hints_step = get_rag_hints(
                 state.get("local_rag_db_path", ""),
                 sim_history,
+                query_vector=state.get("local_rag_query_vector"),
             )
             if rag_hints_step:
                 config.logger.info(
@@ -1007,6 +1038,7 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
     rag_hints = get_rag_hints(
         state.get("local_rag_db_path", ""),
         rollout_history,
+        query_vector=state.get("local_rag_query_vector"),
     )
     if rag_hints:
         config.logger.info(
@@ -1164,6 +1196,7 @@ def mcts_select(state: MCTSGraphState) -> dict:
 
     return {
         "selected_node": node,
+        "last_selected_leaf": node,
         "selection_path": path,
         "rollout_history": list(node.operation_history),
         "rollout_step": len(node.operation_history),
@@ -1251,6 +1284,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         rag_hints = get_rag_hints(
             state.get("local_rag_db_path", ""),
             rollout_history,
+            query_vector=state.get("local_rag_query_vector"),
         )
     if rag_hints:
         config.logger.info(
@@ -1485,6 +1519,7 @@ def simulate(state: MCTSGraphState) -> dict:
             "current_response": "cost_budget_exhausted",
             "current_full_history": [],
             "current_confidence": 0.0,
+            "current_credibility_weight": 0.0,
             "log_messages": state["log_messages"]
             + [f"[SIMULATE] iter={state['iteration']} COST_BUDGET_EXHAUSTED — no request sent"],
         }
@@ -1493,10 +1528,11 @@ def simulate(state: MCTSGraphState) -> dict:
 
     # Blend this occurrence into the case-wide pipeline confidence/frequency table
     # (shared with critique) -- None if no plan was parsed.
-    confidence = (
-        _record_pipeline_confidence(state, full_history, self_reported_confidence)
-        if full_history else None
-    )
+    if full_history:
+        confidence, occurrences = _record_pipeline_confidence(state, full_history, self_reported_confidence)
+        credibility_weight = _credibility_weight_from_occurrences(occurrences, state.get("credibility_k"))
+    else:
+        confidence, occurrences, credibility_weight = None, 0, None
 
     return {
         "current_script": script,
@@ -1506,11 +1542,13 @@ def simulate(state: MCTSGraphState) -> dict:
         # forwards this as-is to scoring so a missing confidence is excluded/
         # renormalized rather than treated as a real zero. See _weighted_avg_available.
         "current_confidence": confidence,
+        "current_credibility_weight": credibility_weight,
         "log_messages": state["log_messages"]
         + [
             f"[SIMULATE] iter={state['iteration']} mode={sim_mode} result={_result} "
             f"plan_steps={len(full_history)} "
-            f"confidence: self_reported={confidence_raw!r} ({self_reported_confidence}) -> blended={confidence}"
+            f"confidence: self_reported={confidence_raw!r} ({self_reported_confidence}) -> blended={confidence}, "
+            f"credibility_weight: occurrences={occurrences} -> {credibility_weight}"
         ],
     }
 
@@ -1560,6 +1598,7 @@ def execute_and_score(state: MCTSGraphState) -> dict:
                 score_weights=state.get("score_weights"),
                 confidence=state.get("current_confidence"),
                 column_type_weights=state.get("column_type_weights"),
+                credibility_weight=state.get("current_credibility_weight"),
             )
             # --no_score_threshold: suppress early-stop for continuous score modes
             # so the search exhausts its full budget and picks the best at the end.
@@ -1880,7 +1919,7 @@ def extract_best(state: MCTSGraphState) -> dict:
             f"[extract_best] Running 'best' mode critique on final script "
             f"(score={best_score:.4f})"
         )
-        crit_script, crit_score, _, _, _, _, _, _, _ = _run_critique_llm(state, best_script)
+        crit_script, crit_score, _, _, _, _, _, _, _, _ = _run_critique_llm(state, best_script)
         if crit_score > best_score:
             config.logger.info(
                 f"[extract_best] Critique improved score: {best_score:.4f} → {crit_score:.4f}"
@@ -1998,16 +2037,18 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
     """
     Build + send the critique prompt.
     Returns (new_script, new_score, new_response, validation_passed, critique_plan,
-             score_components, confidence, confidence_raw, llm_response).
+             score_components, confidence, confidence_raw, credibility_weight, llm_response).
     Loads ground truth internally for scoring. score_components is the raw
     (unweighted) score_1 inputs (det_score_value mode only), or None -- includes
-    "confidence" once confidence is available.
+    "confidence"/"credibility_weight" once available.
     critique_plan is a List[str] parsed from $PLAN$...$END_PLAN$ block, or [] if not found.
     confidence is the BLENDED pipeline confidence (self-reported x frequency, see
     _record_pipeline_confidence) used for scoring, or None if critique_plan was
     unparseable. confidence_raw is the raw $CONFIDENCE$ text from THIS call
-    (pre-blend), or "" if the block is missing. llm_response is the full raw
-    text of the critique LLM call.
+    (pre-blend), or "" if the block is missing. credibility_weight is
+    occurrences/(occurrences+k) for this same pipeline occurrence, or None if
+    critique_plan was unparseable or this length has no k configured.
+    llm_response is the full raw text of the critique LLM call.
     """
     config = state["config"]
     target_file_location = state["target_file_location"]
@@ -2016,7 +2057,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 
     prompt = _build_critique_prompt(state, script, rag_hints="")
     if not prompt:
-        return script, state.get("current_score", 0.0), "Prompt build failed", False, [], None, None, "", ""
+        return script, state.get("current_score", 0.0), "Prompt build failed", False, [], None, None, "", None, ""
 
     res = query_gpt(
         config.llm_client,
@@ -2047,13 +2088,15 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
     )
     # Blend into the case-wide pipeline confidence/frequency table -- None if no
     # plan was parsed (nothing to key the occurrence on).
-    confidence = (
-        _record_pipeline_confidence(state, critique_plan, self_reported_confidence)
-        if critique_plan else None
-    )
+    if critique_plan:
+        confidence, occurrences = _record_pipeline_confidence(state, critique_plan, self_reported_confidence)
+        credibility_weight = _credibility_weight_from_occurrences(occurrences, state.get("credibility_k"))
+    else:
+        confidence, occurrences, credibility_weight = None, 0, None
     config.logger.info(
         f"[_run_critique_llm] Confidence: self_reported={confidence_raw!r} "
-        f"({self_reported_confidence}) -> blended={confidence}"
+        f"({self_reported_confidence}) -> blended={confidence}, "
+        f"credibility_weight: occurrences={occurrences} -> {credibility_weight}"
     )
 
     pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
@@ -2078,6 +2121,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
                     score_weights=state.get("score_weights"),
                     confidence=confidence,
                     column_type_weights=state.get("column_type_weights"),
+                    credibility_weight=credibility_weight,
                 )
             except Exception:
                 new_score = 0.0
@@ -2085,7 +2129,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
 
     return (
         new_script, new_score, new_response, validation_passed, critique_plan,
-        score_components, confidence, confidence_raw, llm_response,
+        score_components, confidence, confidence_raw, credibility_weight, llm_response,
     )
 
 
@@ -2118,7 +2162,7 @@ def mcts_critique(state: MCTSGraphState) -> dict:
 
     (
         new_script, new_score, new_response, critique_validation_passed, critique_plan,
-        new_score_components, new_confidence, new_confidence_raw, new_llm_response,
+        new_score_components, new_confidence, new_confidence_raw, new_credibility_weight, new_llm_response,
     ) = _run_critique_llm(state, state["current_script"])
 
     _crit_components_str = (
@@ -2206,12 +2250,14 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         "best_operation_history": best_op_hist,
         "critique_confidence": new_confidence if new_confidence is not None else 0.0,
         "critique_confidence_raw": new_confidence_raw,
+        "critique_credibility_weight": new_credibility_weight if new_credibility_weight is not None else 0.0,
         "critique_llm_response": new_llm_response,
         "log_messages": state["log_messages"]
         + [
             f"[CRITIQUE] iter={state['iteration']} "
             f"score_before={state['current_score']:.4f} score_after={new_score:.4f} "
             f"confidence={new_confidence_raw!r} ({new_confidence}) "
+            f"credibility_weight={new_credibility_weight} "
             f"judge_verdict={judge_verdict} validation_passed={validation_passed} "
             f"critique_path_len={len(critique_selection_path)}"
         ],
@@ -2273,11 +2319,13 @@ def reuse_terminal_reward(state: MCTSGraphState) -> dict:
         "current_full_history": list(node.operation_history),
         "current_response": "Success" if node.best_script else "",
         "current_confidence": None,
+        "current_credibility_weight": None,
         # Clear stale critique state from previous iterations
         "critique_selection_path": [],
         "critique_score": 0.0,
         "critique_confidence": 0.0,
         "critique_confidence_raw": "",
+        "critique_credibility_weight": 0.0,
         "critique_attempted": True,  # prevent critique from triggering on reused reward
         "log_messages": state["log_messages"]
         + [
@@ -2313,11 +2361,13 @@ def check_budget(state: MCTSGraphState) -> str:
       - Always stop on validation_passed.
       - Stop when cumulative cost >= cost_budget.
       - If early_stopping > 0, also stop on score plateau.
+      - If same_leaf_stopping > 0, also stop once any one leaf's total visit count reaches it.
       - Iteration cap (max_iterations) is ignored.
 
     Iteration mode (cost_budget == 0, original behavior):
       - Always stop on validation_passed.
       - Stop on score plateau (early_stopping iterations with no improvement).
+      - Stop once any one leaf's total visit count reaches same_leaf_stopping (if enabled).
       - Stop on hard iteration cap (max_iterations).
     """
     config = state["config"]
@@ -2340,7 +2390,21 @@ def check_budget(state: MCTSGraphState) -> str:
 
     no_improvement_count = state.get("no_improvement_count", 0)
     early_stopping = state.get("early_stopping", 5)
+    same_leaf_stopping = state.get("same_leaf_stopping", 0)
     cost_budget = state.get("cost_budget", 0.0)
+
+    # Optional: stop once any single leaf has accumulated this many total visits
+    # (not necessarily consecutive) — a sign the search keeps returning to the
+    # same plan instead of finding new ones. MCTSNode.visits is the node's
+    # all-time visit count, so this is a simple threshold check, not a counter
+    # we maintain ourselves.
+    _last_leaf = state.get("last_selected_leaf")
+    if same_leaf_stopping > 0 and _last_leaf is not None and _last_leaf.visits >= same_leaf_stopping:
+        config.logger.info(
+            f"[check_budget] Leaf visited {_last_leaf.visits} times total "
+            f"(same_leaf_stopping={same_leaf_stopping}) — stopping early."
+        )
+        return "done"
 
     if cost_budget > 0.0:
         # ── Cost-budget mode ──────────────────────────────────────────────

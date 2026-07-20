@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS local_context (
     target_schema       TEXT,   -- column names/types as plain text
     target_examples     TEXT,   -- sample rows as plain text (token-capped by caller)
     source_schemas      TEXT,   -- JSON: {"test_0": "col_a INT, col_b STR", ...}
-    source_examples     TEXT    -- JSON: {"test_0": "row1\\nrow2\\n...", ...}
+    source_examples     TEXT,   -- JSON: {"test_0": "row1\\nrow2\\n...", ...}
+    feature_vector       TEXT    -- JSON array of floats (z-scored + L2-normalized), or NULL
 )
 """
 
@@ -83,6 +84,7 @@ def insert_case(
     target_examples: str,
     source_schemas: Dict[str, str],
     source_examples: Dict[str, str],
+    feature_vector: Optional[List[float]] = None,
 ) -> None:
     """Insert one retrieved case into the local DB.
 
@@ -98,6 +100,10 @@ def insert_case(
         target_examples:     Sample target rows as plain text (caller token-caps).
         source_schemas:      {table_name: "col_a TYPE, col_b TYPE, ..."}.
         source_examples:     {table_name: "row1\\nrow2\\n..."}.
+        feature_vector:      Optional structural feature vector (already normalized
+                             by the caller), stored as JSON for later cosine-similarity
+                             re-ranking in get_rag_hints(). None for modes that don't
+                             use feature-vector matching.
     """
     conn = sqlite3.connect(db_path)
     conn.execute(
@@ -105,8 +111,8 @@ def insert_case(
         INSERT INTO local_context
             (case_id, folder_path, schema_sim_score, abstract_pipeline,
              full_pipeline_steps, target_schema, target_examples,
-             source_schemas, source_examples)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             source_schemas, source_examples, feature_vector)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             case_id,
@@ -118,6 +124,7 @@ def insert_case(
             target_examples,
             json.dumps(source_schemas),
             json.dumps(source_examples),
+            json.dumps(feature_vector) if feature_vector is not None else None,
         ),
     )
     conn.commit()
@@ -387,6 +394,21 @@ def _flexible_prefix_match(
     return ri if ri < len(rag_abstract) else None
 
 
+# ── Feature-vector similarity ─────────────────────────────────────────────────
+
+
+def _cosine_similarity(a: List[float], b: List[float]) -> float:
+    """Cosine similarity between two equal-length vectors. 0.0 if either is empty/zero."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(y * y for y in b) ** 0.5
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
 # ── Hint query ────────────────────────────────────────────────────────────────
 
 
@@ -394,6 +416,7 @@ def get_rag_hints(
     db_path: str,
     operation_history: List[str],
     top_k: int = 3,
+    query_vector: Optional[List[float]] = None,
 ) -> str:
     """Return a formatted hint block for the mcts_expand prompt.
 
@@ -405,6 +428,12 @@ def get_rag_hints(
         db_path:           Path to the per-case SQLite DB.
         operation_history: The MCTS path so far (configured step strings).
         top_k:             Maximum number of matched examples to include.
+        query_vector:       Optional normalized structural feature vector for the
+                            current task. When given, ALL prefix matches are
+                            collected first and re-ranked by cosine similarity
+                            against each row's stored feature_vector (rows without
+                            one sort last), instead of taking the first top_k in
+                            schema_sim_score order. None preserves prior behavior.
 
     Returns:
         A multi-line string ready for direct injection into the mcts_expand
@@ -430,8 +459,19 @@ def get_rag_hints(
         next_idx = _flexible_prefix_match(current_abstract, abstract)
         if next_idx is not None:
             matched.append((row, next_idx))
-        if len(matched) >= top_k:
+        if query_vector is None and len(matched) >= top_k:
             break
+
+    if query_vector is not None and matched:
+        def _sim_key(item: tuple) -> float:
+            row = item[0]
+            raw_fv = row["feature_vector"]
+            if not raw_fv:
+                return -1.0  # no stored vector -> sorts last
+            return _cosine_similarity(query_vector, json.loads(raw_fv))
+
+        matched.sort(key=_sim_key, reverse=True)
+        matched = matched[:top_k]
 
     if not matched:
         return ""

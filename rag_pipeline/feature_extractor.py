@@ -447,3 +447,96 @@ def load_source_target_from_folder(folder_path: Path) -> Tuple[List[pd.DataFrame
         except Exception:
             pass
     return source_dfs, target_df
+
+
+# ---------------------------------------------------------------------------
+# 8-dim curated-pipeline query features (mirrors extract_pipeline_features.py,
+# the script used to compute the same 8 features for the 656-pipeline corpus)
+# ---------------------------------------------------------------------------
+
+PIPELINE_QUERY_FEATURE_NAMES = [
+    "n_inputs",
+    "max_row_ratio",
+    "min_row_ratio",
+    "missing_ratio_target",
+    "cat_ratio_inputs",
+    "num_ratio_inputs",
+    "cat_ratio_target",
+    "num_ratio_target",
+]
+
+
+def _is_numeric_col(series: pd.Series) -> bool:
+    return pd.api.types.is_numeric_dtype(series)
+
+
+def _col_type_ratios(df: pd.DataFrame) -> Tuple[float, float]:
+    """Return (cat_ratio, num_ratio) for a single DataFrame's columns."""
+    ncols = len(df.columns)
+    if ncols == 0:
+        return 0.0, 0.0
+    num_count = sum(1 for i in range(ncols) if _is_numeric_col(df.iloc[:, i]))
+    return (ncols - num_count) / ncols, num_count / ncols
+
+
+def _combined_type_ratios(dfs: List[pd.DataFrame]) -> Tuple[float, float]:
+    """cat/num ratios across all columns of all DataFrames combined."""
+    total_cols = sum(len(df.columns) for df in dfs)
+    if total_cols == 0:
+        return 0.0, 0.0
+    num_count = sum(
+        sum(1 for i in range(len(df.columns)) if _is_numeric_col(df.iloc[:, i]))
+        for df in dfs
+    )
+    return (total_cols - num_count) / total_cols, num_count / total_cols
+
+
+def _missing_ratio(df: pd.DataFrame) -> float:
+    """Fraction of null cells in a DataFrame."""
+    total = df.shape[0] * df.shape[1]
+    return float(df.isnull().sum().sum()) / total if total > 0 else 0.0
+
+
+def compute_pipeline_query_features(
+    source_dfs: List[pd.DataFrame],
+    target_df: Optional[pd.DataFrame],
+) -> List[float]:
+    """Compute the 8-dim raw feature vector for the curated-pipeline RAG mode.
+
+    Same feature definitions as the corpus-side extraction (n_inputs,
+    max/min row ratio vs target, missing ratio in target, cat/num column
+    ratios in inputs and target), so the live query vector lands in the same
+    raw feature space as pipeline_features_656.csv before normalization.
+
+    Raises ValueError if target_df is missing/empty or source_dfs is empty —
+    callers should catch this the same way other --rag branches already
+    handle retrieval failures (RAG disabled for this case, not fatal).
+    """
+    if not source_dfs:
+        raise ValueError("compute_pipeline_query_features: no source DataFrames")
+    if target_df is None or target_df.empty:
+        raise ValueError("compute_pipeline_query_features: missing/empty target DataFrame")
+
+    target_rows = len(target_df)
+    if target_rows == 0:
+        raise ValueError("compute_pipeline_query_features: target has 0 rows")
+
+    input_rows = [len(df) for df in source_dfs]
+
+    n_inputs = float(len(source_dfs))
+    max_row_ratio = max(input_rows) / target_rows
+    min_row_ratio = min(input_rows) / target_rows
+    missing_ratio_target = _missing_ratio(target_df)
+    cat_ratio_inputs, num_ratio_inputs = _combined_type_ratios(source_dfs)
+    cat_ratio_target, num_ratio_target = _col_type_ratios(target_df)
+
+    return [
+        n_inputs,
+        max_row_ratio,
+        min_row_ratio,
+        missing_ratio_target,
+        cat_ratio_inputs,
+        num_ratio_inputs,
+        cat_ratio_target,
+        num_ratio_target,
+    ]

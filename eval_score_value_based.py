@@ -569,8 +569,9 @@ def _reduce_columns_for_scoring(df: pd.DataFrame, max_cols: int = MAX_COLS_FOR_S
 # Main scoring entry point
 # ---------------------------------------------------------------------------
 
-SCORE_1_COMPONENTS = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score", "confidence")
-DEFAULT_SCORE_1_WEIGHTS = {k: 0.2 for k in SCORE_1_COMPONENTS}
+SCORE_1_COMPONENTS = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score", "confidence",
+                      "credibility_weight")
+DEFAULT_SCORE_1_WEIGHTS = {k: 1.0 / len(SCORE_1_COMPONENTS) for k in SCORE_1_COMPONENTS}
 
 # ---------------------------------------------------------------------------
 # Per-column-type score weights (used inside _compute_column_scores to build
@@ -589,42 +590,108 @@ DEFAULT_COLUMN_TYPE_WEIGHTS = {
     "cat":   {"prop": 1 / 3, "nunique": 1 / 3, "missing": 1 / 3},
 }
 
-# Per-length overrides for the top-level score_1 weights ("top", same 4 keys as
-# DEFAULT_SCORE_1_WEIGHTS minus confidence -- confidence keeps its own default
-# unless explicitly added here too) and the per-column-type weights above.
-# mcts_search.py auto-selects a case's entry by --length; an explicit
-# --score_weights CLI value still overrides "top" for that run.
+# Per-length overrides for the top-level score_1 weights ("top", all 6
+# SCORE_1_COMPONENTS keys) and the per-column-type weights above, plus a
+# per-length credibility smoothing constant "k" (see
+# Langraph/nodes.py's pipeline_confidence_stats/_record_pipeline_confidence --
+# credibility_weight = occurrences / (occurrences + k)). mcts_search.py
+# auto-selects a case's entry by --length; an explicit --score_weights CLI
+# value still overrides "top" for that run (k and column_type_weights are
+# only ever chosen by length -- there's no CLI override for those).
+#
+# L1/L2/L3/L4/L5/L9 entries below come from
+# fit_full_nonlinear_weights_leave_one_length_out.py's leave-one-length-out
+# fit: each length's numbers were fit on the OTHER 5 lengths only and
+# validated (via argmax-is-correct accuracy) on that length's own held-out
+# cases -- see that script's module docstring for the full training-process
+# writeup (RankNet-style pairwise ranking loss, Adam + selective weight_decay,
+# softplus-reparameterized k, early-stopping on held-out validation LOSS).
+# "top" values are normalized to sum to 1 (matching this dict's existing
+# style); column_type_weights sub-groups are each normalized to sum to 1 per
+# type (required -- _compute_column_scores takes a RAW weighted sum with no
+# internal renormalization, unlike "top" which _weighted_avg_available
+# renormalizes automatically regardless of scale).
 LENGTH_SCORE_WEIGHTS = {
     1: {
-        # Structural weights (fd_f1/avg_col_score_1/row_count_score/max_missing_score)
-        # are the user-provided fd=.285/col=.288/row=.266/miss=.161 compressed by
-        # 0.75x to make room for an explicit 25% confidence share, so all 5 sum to
-        # 1.0 directly (no renormalization surprises): .285*.75=.21375, .288*.75=.216,
-        # .266*.75=.1995, .161*.75=.12075, confidence=.25.
-        # See analyze_run14_c8_confidence_vs_correctness.py -- at run14's effective
-        # ~16.7% confidence weight, case 8's correct JOIN pipeline (blended
-        # confidence 0.986) still lost to a wrong UNION+GROUP_BY pipeline that won
-        # on row_count_score; breakeven was calculated at ~23.6% confidence weight,
-        # so 25% flips that specific case.
-        "top":   {"fd_f1": 0.21375, "avg_col_score_1": 0.216, "row_count_score": 0.1995,
-                   "max_missing_score": 0.12075, "confidence": 0.25},
-        "float": {"js": 0.529, "range": 0.471},
-        "int":   {"js": 0.184, "range": 0.329, "nunique": 0.360, "missing": 0.127},
-        "id":    {"nunique": 0.637, "missing": 0.363},
-        "cat":   {"prop": 0.213, "nunique": 0.576, "missing": 0.211},
+        "top": {"fd_f1": 0.1752, "avg_col_score_1": 0.35771, "row_count_score": 0.23998,
+                 "max_missing_score": 0.08797, "confidence": -0.01614, "credibility_weight": 0.15528},
+        "float": {"js": 0.4773, "range": 0.5227},
+        "int":   {"js": 0.2207, "range": 0.3653, "nunique": 0.3477, "missing": 0.0664},
+        "id":    {"nunique": 0.9148, "missing": 0.0852},
+        "cat":   {"prop": 0.1313, "nunique": 0.7563, "missing": 0.1124},
+        "k": 2.6425,
+    },
+    2: {
+        "top": {"fd_f1": 0.11582, "avg_col_score_1": 0.41229, "row_count_score": 0.2254,
+                 "max_missing_score": 0.11808, "confidence": 0.01399, "credibility_weight": 0.11441},
+        "float": {"js": 0.5102, "range": 0.4898},
+        "int":   {"js": 0.4094, "range": 0.2571, "nunique": 0.2452, "missing": 0.0884},
+        "id":    {"nunique": 0.8748, "missing": 0.1252},
+        "cat":   {"prop": 0.2412, "nunique": 0.6398, "missing": 0.119},
+        "k": 2.7589,
+    },
+    3: {
+        "top": {"fd_f1": 0.12588, "avg_col_score_1": 0.43462, "row_count_score": 0.21801,
+                 "max_missing_score": 0.1052, "confidence": 0.00504, "credibility_weight": 0.11126},
+        "float": {"js": 0.3097, "range": 0.6903},
+        "int":   {"js": 0.4087, "range": 0.307, "nunique": 0.2423, "missing": 0.042},
+        "id":    {"nunique": 0.8831, "missing": 0.1169},
+        "cat":   {"prop": 0.293, "nunique": 0.6398, "missing": 0.0673},
+        "k": 2.2345,
+    },
+    4: {
+        "top": {"fd_f1": 0.13836, "avg_col_score_1": 0.40502, "row_count_score": 0.20895,
+                 "max_missing_score": 0.10939, "confidence": 0.01696, "credibility_weight": 0.12132},
+        "float": {"js": 0.4891, "range": 0.5109},
+        "int":   {"js": 0.3322, "range": 0.3237, "nunique": 0.2647, "missing": 0.0794},
+        "id":    {"nunique": 0.9232, "missing": 0.0768},
+        "cat":   {"prop": 0.3166, "nunique": 0.5837, "missing": 0.0996},
+        "k": 2.1836,
+    },
+    5: {
+        "top": {"fd_f1": 0.14558, "avg_col_score_1": 0.41187, "row_count_score": 0.18839,
+                 "max_missing_score": 0.11193, "confidence": 0.01052, "credibility_weight": 0.13172},
+        "float": {"js": 0.4797, "range": 0.5203},
+        "int":   {"js": 0.3788, "range": 0.3072, "nunique": 0.2505, "missing": 0.0635},
+        "id":    {"nunique": 0.9557, "missing": 0.0443},
+        "cat":   {"prop": 0.3166, "nunique": 0.5715, "missing": 0.1119},
+        "k": 2.2913,
+    },
+    9: {
+        "top": {"fd_f1": 0.14659, "avg_col_score_1": 0.39365, "row_count_score": 0.21572,
+                 "max_missing_score": 0.09799, "confidence": 0.01772, "credibility_weight": 0.12834},
+        "float": {"js": 0.4057, "range": 0.5943},
+        "int":   {"js": 0.3421, "range": 0.3438, "nunique": 0.2344, "missing": 0.0798},
+        "id":    {"nunique": 0.9029, "missing": 0.0971},
+        "cat":   {"prop": 0.3527, "nunique": 0.5696, "missing": 0.0777},
+        "k": 2.3711,
     },
 }
 
+# Fallback for any length with NO entry above (a genuinely new/unseen length,
+# e.g. L6) -- trained on ALL 6 known lengths pooled together (no held-out
+# length), since there's no length-specific data to validate against for a
+# brand-new one. Best available generalization rather than falling back to
+# equal weights / no confidence / no credibility.
+ALL_DATA_SCORE_WEIGHTS = {
+    "top": {"fd_f1": 0.1346, "avg_col_score_1": 0.40781, "row_count_score": 0.21544,
+             "max_missing_score": 0.09711, "confidence": 0.03007, "credibility_weight": 0.11497},
+    "float": {"js": 0.4735, "range": 0.5265},
+    "int":   {"js": 0.329, "range": 0.3349, "nunique": 0.2732, "missing": 0.0629},
+    "id":    {"nunique": 0.9026, "missing": 0.0974},
+    "cat":   {"prop": 0.3162, "nunique": 0.5981, "missing": 0.0857},
+    "k": 2.3158,
+}
 
-def get_length_score_weights(length: int | None) -> tuple[dict | None, dict | None]:
-    """Return (top_weights, column_type_weights) for `length`, or (None, None)
-    if that length has no entry in LENGTH_SCORE_WEIGHTS (callers should fall
-    back to DEFAULT_SCORE_1_WEIGHTS / DEFAULT_COLUMN_TYPE_WEIGHTS in that case)."""
-    entry = LENGTH_SCORE_WEIGHTS.get(length)
-    if not entry:
-        return None, None
-    column_type_weights = {k: v for k, v in entry.items() if k != "top"}
-    return entry.get("top"), (column_type_weights or None)
+
+def get_length_score_weights(length: int | None) -> tuple[dict, dict, float]:
+    """Return (top_weights, column_type_weights, k) for `length`. Falls back to
+    ALL_DATA_SCORE_WEIGHTS (fit on every known length pooled together) when
+    `length` has no entry in LENGTH_SCORE_WEIGHTS -- e.g. a brand-new length
+    with no history of its own to fit against."""
+    entry = LENGTH_SCORE_WEIGHTS.get(length, ALL_DATA_SCORE_WEIGHTS)
+    column_type_weights = {k: v for k, v in entry.items() if k not in ("top", "k")}
+    return entry.get("top"), (column_type_weights or None), entry.get("k")
 
 
 def _weighted_avg_available(values: dict, weights: dict) -> float:
@@ -646,7 +713,8 @@ def _weighted_avg_available(values: dict, weights: dict) -> float:
 
 def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, precomputed_gt=None,
                                     weights: dict | None = None, confidence: float | None = None,
-                                    column_type_weights: dict | None = None):
+                                    column_type_weights: dict | None = None,
+                                    credibility_weight: float | None = None):
     """
     Drop-in replacement for relative_csv_score.
 
@@ -658,15 +726,23 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     4. true_combined_score = (fd_f1 + avg(column_score)) / 2
 
     weights: optional dict with keys fd_f1/avg_col_score_1/row_count_score/
-        max_missing_score/confidence controlling how those components combine
-        into score_1 (see below). Defaults to DEFAULT_SCORE_1_WEIGHTS (0.2
-        each). Any component whose value is None (e.g. confidence, when not
-        supplied) is dropped and the remaining weights renormalized, so
-        omitting confidence reproduces the original 4-component score_1.
+        max_missing_score/confidence/credibility_weight controlling how those
+        components combine into score_1 (see below). Defaults to
+        DEFAULT_SCORE_1_WEIGHTS (equal share each). Any component whose value
+        is None (e.g. confidence or credibility_weight, when not supplied) is
+        dropped and the remaining weights renormalized, so omitting either
+        reproduces the original 4-component score_1.
 
     confidence: optional self-reported LLM confidence (0.0-1.0) that this
         output matches the target, e.g. from mcts_critique's $CONFIDENCE$
         block. None (default) excludes it from score_1 entirely.
+
+    credibility_weight: optional pipeline-frequency-based credibility signal
+        (0.0-1.0), typically computed upstream as
+        occurrences / (occurrences + k) from the case-wide pipeline
+        occurrence count (see Langraph/nodes.py's pipeline_confidence_stats
+        and get_length_score_weights' per-length `k`). None (default)
+        excludes it from score_1 entirely.
 
     column_type_weights: optional dict overriding how each per-column type
         (float/int/id/cat) blends its own sub-metrics into that column's
@@ -752,10 +828,13 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     # per-column data exists, dropped below with weights renormalized.
     _avg_col_score_1 = avg_column_score
 
-    # score_1: weighted average over whichever of the (up to) 5 components are
+    # score_1: weighted average over whichever of the (up to) 6 components are
     # available this call. confidence is only non-None on critique calls
-    # (self-reported LLM confidence from the $CONFIDENCE$ block); when absent,
-    # weights renormalize over the remaining 4, reproducing the original score_1.
+    # (self-reported LLM confidence from the $CONFIDENCE$ block); credibility_weight
+    # is only non-None once a pipeline occurrence count is available (see
+    # Langraph/nodes.py's pipeline_confidence_stats). When either is absent,
+    # weights renormalize over the remaining components, reproducing the
+    # original score_1.
     score_1 = round(
         _weighted_avg_available(
             {
@@ -764,6 +843,7 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
                 "row_count_score": row_count_score,
                 "max_missing_score": max_missing_score,
                 "confidence": confidence,
+                "credibility_weight": credibility_weight,
             },
             weights,
         ),
@@ -793,6 +873,7 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     debug_dict["n_gen_complete"]       = n_gen_complete
     debug_dict["avg_col_score_1"]      = _avg_col_score_1
     debug_dict["confidence"]           = confidence
+    debug_dict["credibility_weight"]   = credibility_weight
     debug_dict["score_1"]              = score_1
     debug_dict["score_2"]              = score_2
     debug_dict["true_combined_score"]  = true_combined_score

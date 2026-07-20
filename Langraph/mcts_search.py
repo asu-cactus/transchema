@@ -77,6 +77,12 @@ from eval_score_value_based import get_length_score_weights
 _SCORE_1_COMPONENT_ORDER = ("fd_f1", "avg_col_score_1", "row_count_score", "max_missing_score")
 _SCORE_1_COMPONENT_ORDER_WITH_CONFIDENCE = _SCORE_1_COMPONENT_ORDER + ("confidence",)
 
+# Established per-length max_depth convention (NOT pipeline length for L9 -- capped
+# deliberately low; see run_rag_det_score_run{15,19,21,24,27}_l*.sh and
+# CURATED_PIPELINE_RAG_README.md). Auto-selected by --length unless --max_depth is
+# passed explicitly on the CLI.
+MAX_DEPTH_BY_LENGTH = {1: 2, 2: 2, 3: 3, 4: 4, 5: 5, 6: 2, 9: 2}
+
 
 def _parse_score_weights(raw: str | None) -> dict | None:
     """Parse --score_weights into a dict. Accepts either 4 comma-separated values
@@ -543,17 +549,25 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     anon_flag = args.anon_flag
     fd_flag = args.fd_flag
     max_iterations = getattr(args, "mcts_iterations", 10)
-    max_depth = getattr(args, "max_depth", 15)
+    # Dynamic per-length max_depth: an explicit --max_depth CLI value always
+    # wins; otherwise auto-select from MAX_DEPTH_BY_LENGTH by this case's
+    # --length (matches the established convention -- L9 uses max_depth=2,
+    # NOT 9 -- documented in CURATED_PIPELINE_RAG_README.md), falling back to
+    # 15 for any length not in that table.
+    _cli_max_depth = getattr(args, "max_depth", None)
+    max_depth = _cli_max_depth if _cli_max_depth is not None else MAX_DEPTH_BY_LENGTH.get(length, 15)
     early_stopping = getattr(args, "early_stopping", 5)
+    same_leaf_stopping = getattr(args, "same_leaf_stopping", 0)
     cost_budget = getattr(args, "cost_budget", 0.0)
     validation = getattr(args, "validation", "hard_match")
     reward_mode = getattr(args, "reward", "score")
     # Dynamic per-length score weights: an explicit --score_weights CLI value
     # always wins for the top-level (structural) weights; otherwise auto-select
-    # from LENGTH_SCORE_WEIGHTS by this case's --length. column_type_weights
-    # has no CLI override yet -- always auto-selected (None if length unlisted).
+    # from LENGTH_SCORE_WEIGHTS by this case's --length. column_type_weights and
+    # credibility_k have no CLI override -- always auto-selected (falling back
+    # to ALL_DATA_SCORE_WEIGHTS if length is unlisted -- see get_length_score_weights).
     _cli_score_weights = _parse_score_weights(getattr(args, "score_weights", None))
-    _length_top_weights, column_type_weights = get_length_score_weights(length)
+    _length_top_weights, column_type_weights, credibility_k = get_length_score_weights(length)
     score_weights = _cli_score_weights or _length_top_weights
     join_flag = getattr(args, "join_flag", 0)
     aggregate_flag = getattr(args, "aggregate_flag", 0)
@@ -740,6 +754,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         # ── Auto-build upper-bound RAG DB from ground-truth CSV ──────────
         _rag_mode = getattr(args, "rag", "")
         _local_rag_db = getattr(args, "local_rag_db", "")
+        _local_rag_query_vector = None
         if _rag_mode == "upper_bound" and not _local_rag_db:
             _gt_csv = getattr(args, "gt_csv", "ground_truth_pipelines.csv")
             _auto_db_path = f"/tmp/rag_upper_bound_{len_idx_target_idx}.db"
@@ -863,6 +878,49 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                         f"{_tb.format_exc()}"
                     )
 
+        # ── Curated-pipeline RAG: static 656-pipeline library, feature-vector tie-break ──
+        if _rag_mode == "curated_pipeline":
+            _curated_db_path = getattr(args, "curated_pipeline_db", "")
+            _curated_norm_stats_path = getattr(args, "curated_pipeline_norm_stats", "")
+            if not _curated_db_path or not os.path.exists(_curated_db_path):
+                logger.warning(
+                    f"[RAG] curated_pipeline: DB not found at {_curated_db_path!r} — "
+                    "RAG disabled for this case. Run rag_pipeline/build_curated_pipeline_db.py first."
+                )
+            else:
+                try:
+                    from pathlib import Path as _Path
+                    from rag_pipeline.feature_extractor import (
+                        compute_pipeline_query_features,
+                        load_norm_stats,
+                        load_source_target_from_folder,
+                        zscore_normalize,
+                    )
+
+                    _task_folder = _Path(main_folder) / f"length{len_idx_target_idx}"
+                    _source_dfs, _target_df = load_source_target_from_folder(_task_folder)
+                    _raw_vec = compute_pipeline_query_features(_source_dfs, _target_df)
+
+                    _stats = load_norm_stats(_curated_norm_stats_path)
+                    _normed = zscore_normalize(_raw_vec, _stats)
+                    _qnorm = sum(x * x for x in _normed) ** 0.5
+                    if _qnorm > 0:
+                        _normed = [x / _qnorm for x in _normed]
+
+                    _local_rag_db = _curated_db_path
+                    _local_rag_query_vector = _normed
+                    logger.info(
+                        f"[RAG] curated_pipeline: query vector computed for case "
+                        f"{len_idx_target_idx} from {len(_source_dfs)} source table(s) "
+                        f"-> {_curated_db_path}"
+                    )
+                except Exception:
+                    import traceback as _tb
+                    logger.warning(
+                        f"[RAG] curated_pipeline retrieval failed — RAG disabled for this case.\n"
+                        f"{_tb.format_exc()}"
+                    )
+
         # ── Build initial MCTS state ──────────────────────────────────────
         root = MCTSNode(operation_history=[], parent=None, operator_type=None)
 
@@ -876,6 +934,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "reward_mode": reward_mode,
             "score_weights": score_weights,
             "column_type_weights": column_type_weights,
+            "credibility_k": credibility_k,
             "experiment_name": experiment_name,
             "case_id": len_idx_target_idx,
             # Prompt extras
@@ -891,6 +950,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "max_iterations": max_iterations,
             "max_depth": max_depth,
             "early_stopping": early_stopping,
+            "same_leaf_stopping": same_leaf_stopping,
             "cost_budget": cost_budget,
             "cost_budget_exhausted": False,
             "terminal_found": False,
@@ -909,6 +969,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "current_response": "",
             "current_full_history": [],
             "current_confidence": None,
+            "current_credibility_weight": None,
             # Pipeline confidence/frequency table (shared by simulate + critique,
             # persists across iterations for this case like `root`)
             "pipeline_confidence_stats": {},
@@ -918,6 +979,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "best_operation_history": [],
             "no_improvement_count": 0,
             "latest_script": "",
+            "last_selected_leaf": None,
             # Critique
             "simulation_mode": getattr(args, "simulation_mode", "pipeline"),
             "intermediate_materialization": intermediate_materialization,
@@ -929,11 +991,13 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "critique_score": 0.0,
             "critique_confidence": 0.0,
             "critique_confidence_raw": "",
+            "critique_credibility_weight": 0.0,
             "critique_llm_response": "",
             # Stopping criteria
             "no_score_threshold": getattr(args, "no_score_threshold", False),
             # RAG support — active for upper_bound and global modes
-            "local_rag_db_path": _local_rag_db if _rag_mode in ("upper_bound", "global", "global_feature") else "",
+            "local_rag_db_path": _local_rag_db if _rag_mode in ("upper_bound", "global", "global_feature", "curated_pipeline") else "",
+            "local_rag_query_vector": _local_rag_query_vector if _rag_mode == "curated_pipeline" else None,
             # GT scoring cache — pre-computed FDs and self-col-map to skip per-iteration recomputation
             "gt_score_cache_path": _gt_score_cache_path,
             # Logging
@@ -1112,7 +1176,7 @@ if __name__ == "__main__":
     import multiprocessing
     from datetime import datetime
 
-    _CASE_TIMEOUT = 300  # 20 minutes per case
+    _CASE_TIMEOUT = 600  # 15 minutes per case
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
@@ -1143,11 +1207,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_depth",
         type=int,
-        default=15,
+        default=None,
         help=(
-            "Hard cap on tree depth (default: 15). Nodes at this depth are treated as forced leaves: "
+            "Hard cap on tree depth. Nodes at this depth are treated as forced leaves: "
             "they are simulated once and their cached reward is reused on subsequent selections. "
-            "They never spawn children regardless of how many iterations remain."
+            "They never spawn children regardless of how many iterations remain. "
+            "Omit to auto-select by --length from MAX_DEPTH_BY_LENGTH (L1=2, L2=2, L3=3, "
+            "L4=4, L5=5, L6=2, L9=2 -- L9 is NOT max_depth=9; falls back to 15 for an "
+            "unlisted length). Passing this flag explicitly always overrides the auto-selection."
         ),
     )
     parser.add_argument(
@@ -1163,6 +1230,10 @@ if __name__ == "__main__":
     parser.add_argument("--early_stopping", type=int, default=5,
                         help="Stop if best_score does not improve for this many consecutive iterations (default: 5); "
                              "set to 0 to disable plateau stopping in cost-budget mode")
+    parser.add_argument("--same_leaf_stopping", type=int, default=0,
+                        help="Stop once any single leaf's total visit count reaches this many "
+                             "(not necessarily consecutive; default: 0 = disabled); "
+                             "e.g. 5 stops once a leaf has been visited 5 times overall")
     parser.add_argument(
         "--cost_budget",
         type=float,
@@ -1320,7 +1391,7 @@ if __name__ == "__main__":
         "--rag",
         type=str,
         default="",
-        choices=["upper_bound", "global", "global_feature"],
+        choices=["upper_bound", "global", "global_feature", "curated_pipeline"],
         help=(
             "Enable RAG-augmented prompts.  "
             "'upper_bound' injects hints from a pre-built local SQLite DB "
@@ -1328,6 +1399,10 @@ if __name__ == "__main__":
             "'global' uses schema-embedding retrieval (supply --global_rag_db).  "
             "'global_feature' uses 22-dim structural feature retrieval "
             "(supply --global_feature_rag_db).  "
+            "'curated_pipeline' prefix-matches against a static library of 656 "
+            "deduplicated pipelines, breaking ties by cosine similarity on an "
+            "8-dim structural feature vector (supply --curated_pipeline_db / "
+            "--curated_pipeline_norm_stats, or use the defaults).  "
             "Omit to disable RAG entirely."
         ),
     )
@@ -1372,6 +1447,25 @@ if __name__ == "__main__":
             "rag_pipeline/ingest_global_feature_db.py "
             "(e.g. rag_pipeline/db/global_features). "
             "Required when --rag global_feature."
+        ),
+    )
+    parser.add_argument(
+        "--curated_pipeline_db",
+        type=str,
+        default="rag_pipeline/db/curated_pipeline_656.db",
+        help=(
+            "Path to the static curated-pipeline SQLite DB built by "
+            "rag_pipeline/build_curated_pipeline_db.py. Used when --rag curated_pipeline."
+        ),
+    )
+    parser.add_argument(
+        "--curated_pipeline_norm_stats",
+        type=str,
+        default="rag_pipeline/db/curated_pipeline_features.norm_stats.json",
+        help=(
+            "Path to the norm stats JSON (mean/std fit once on the 656-pipeline "
+            "corpus) used to normalize the live query's 8-dim feature vector. "
+            "Used when --rag curated_pipeline."
         ),
     )
     args = parser.parse_args()
