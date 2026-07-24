@@ -36,7 +36,7 @@ def chat_with_gpt(prompt, ifsql=True, max_tokens=4096, model=DEFAULT_MODEL, retu
         kwargs["max_tokens"] = max_tokens
 
     start = time.time()
-    response = client.chat.completions.create(**kwargs)
+    response = _get_client(model).chat.completions.create(**kwargs)
     latency = time.time() - start
 
     complete_response = response.choices[0].message.content
@@ -355,3 +355,13 @@ def generate_prompt(json_file_path, template_option,output_table,output_sql,sour
     #print(f"Ground Truth SQL Query: {ground_truth}")
 
     return prompt, ground_truth, target_data_name
+
+def _is_oss_model(model: str) -> bool:
+    oss_prefixes = ("qwen", "deepseek", "mixtral", "llama")
+    return any(model.lower().startswith(p) for p in oss_prefixes)
+
+def _get_client(model: str) -> OpenAI:
+    if _is_oss_model(model):
+        base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        return OpenAI(base_url=base_url, api_key="ollama")
+    return client
