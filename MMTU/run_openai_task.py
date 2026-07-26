@@ -92,6 +92,13 @@ def query_request(client, model, prompt, temperature=1.0, timeout=90):
     }
 
 
+def parse_case_id(test_case):
+    match = re.match(r"^length(\d+)_(\d+)$", test_case)
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
 def load_task_rows(mmtu_jsonl_path, task, dataset=None, length=None):
     rows = []
     with open(mmtu_jsonl_path) as f:
@@ -108,6 +115,18 @@ def load_task_rows(mmtu_jsonl_path, task, dataset=None, length=None):
                     continue
             rows.append(row)
     return rows
+
+
+def select_batch(rows, batch_size, batch_index):
+    # Case IDs aren't contiguous within a length (MMTU's curated set skips
+    # some of the raw benchmark's ~100 cases per length), so slicing by raw
+    # numeric --id_start/--id_end (mcts_search.py's convention) would give
+    # uneven batch sizes. Instead: sort by actual existing (length, case_id),
+    # then slice by position -- guarantees exactly batch_size per batch
+    # (remainder on the last one), independent of gaps.
+    keyed = sorted(rows, key=lambda r: parse_case_id(json.loads(r["metadata"])["test_case"]) or (0, 0))
+    start = batch_index * batch_size
+    return keyed[start:start + batch_size]
 
 
 def load_done_metadata(output_file):
@@ -141,7 +160,11 @@ def main():
     parser.add_argument("--n_parallel", type=int, default=4, help="Number of concurrent request threads")
     parser.add_argument("--limit", type=int, default=None, help="Only run the first N rows (smoke test)")
     parser.add_argument("--timeout", type=float, default=None, help="Per-request timeout in seconds (default: 90 for OpenAI, $TRANSCHEMA_OLLAMA_HTTP_TIMEOUT [3600s] for Ollama/Qwen models)")
+    parser.add_argument("--batch_size", type=int, default=None, help="Cases per batch (use with --batch_index; sorted by actual existing case ID, not raw numeric range, since IDs aren't contiguous within a length)")
+    parser.add_argument("--batch_index", type=int, default=None, help="0-indexed batch to run (use with --batch_size)")
     args = parser.parse_args()
+
+    assert (args.batch_size is None) == (args.batch_index is None), "--batch_size and --batch_index must be used together"
 
     if is_ollama_model(args.model):
         # Ollama uses a placeholder key -- no real OpenAI credentials needed.
@@ -159,6 +182,12 @@ def main():
         scope += f", length={args.length}"
     print(f"Loaded {len(rows)} rows for {scope}")
     assert rows, f"No rows found for {scope}. Check the task/dataset name."
+
+    if args.batch_size is not None:
+        n_batches = -(-len(rows) // args.batch_size)  # ceil
+        assert 0 <= args.batch_index < n_batches, f"batch_index must be in [0, {n_batches}) for batch_size={args.batch_size} over {len(rows)} rows"
+        rows = select_batch(rows, args.batch_size, args.batch_index)
+        print(f"Batch {args.batch_index}/{n_batches - 1}: {len(rows)} rows")
 
     if args.limit is not None:
         rows = rows[:args.limit]
