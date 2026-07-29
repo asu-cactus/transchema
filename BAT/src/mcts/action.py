@@ -27,6 +27,12 @@ class MCTSAction:
     def create_children_nodes(self, node: "MCTSNode", llm_kwargs: Dict[str, Any], logger=None) -> List["MCTSNode"]:
         raise NotImplementedError()
 
+# Consecutive-error cap for the generate_response retry loops below - without
+# this, a persistent API error (bad request, model misconfig) spins the while
+# loop forever, since responses on error are error-message strings, not node
+# candidates, and never make `nodes` grow.
+_MAX_CONSECUTIVE_GEN_ERRORS = 5
+
 
 class SchemaMatchAction(MCTSAction):
     """
@@ -46,6 +52,7 @@ class SchemaMatchAction(MCTSAction):
         prompt = get_schema_match_prompt(table_schema_dict=table_schema, hint=hint)
 
         nodes = []
+        consecutive_errors = 0
         while len(nodes) < llm_kwargs["n"]:
             new_max_gen_nums = llm_kwargs["n"] - len(nodes)
             responses, error = node.llm_client.generate_response(prompt, n=new_max_gen_nums)
@@ -54,6 +61,11 @@ class SchemaMatchAction(MCTSAction):
                     logger.warning(f"Error generating schema match response: {responses}")
                 else:
                     print(f"Error generating schema match response: {responses}")
+                consecutive_errors += 1
+                if consecutive_errors >= _MAX_CONSECUTIVE_GEN_ERRORS:
+                    break
+                continue
+            consecutive_errors = 0
             for resp in responses:
                 response = resp["content"]
                 child_node = copy.deepcopy(node)
@@ -109,7 +121,7 @@ class IdentifyColumnFunctionsAction(MCTSAction):
                 logger.warning(f"Error generating identify column functions response: {responses}")
             else:
                 print(f"Error generating identify column functions response: {responses}")
-        contents = list(set([resp["content"] for resp in responses]))
+        contents = list(set([resp["content"] for resp in responses])) if not error else []
         nodes = []
         for response in contents:
             child_node = copy.deepcopy(node)
@@ -144,6 +156,7 @@ class TransformationAction(MCTSAction):
         prompt = get_transformation_prompt(table_schema_dict=table_schema, hint=hint)
         
         nodes = []
+        consecutive_errors = 0
         while len(nodes) < llm_kwargs["n"]:
             new_max_gen_nums = llm_kwargs["n"] - len(nodes)
             responses, error = node.llm_client.generate_response(prompt, n=new_max_gen_nums)
@@ -152,6 +165,11 @@ class TransformationAction(MCTSAction):
                     logger.warning(f"Error generating transformation response: {responses}")
                 else:
                     print(f"Error generating transformation response: {responses}")
+                consecutive_errors += 1
+                if consecutive_errors >= _MAX_CONSECUTIVE_GEN_ERRORS:
+                    break
+                continue
+            consecutive_errors = 0
             for resp in responses:
                 response = resp["content"]
                 child_node = copy.deepcopy(node)
@@ -217,6 +235,7 @@ class TransformationRevisionAction(MCTSAction):
         hint = f"\n\nHere are my previous thoughts:\n{previous_thoughts}" if previous_thoughts else ""
         prompt = get_transformation_revision_prompt(table_schema_dict=table_schema, hint=hint, original_code=orginal_code, error_message=error_message, exec_result=execution_result)
         nodes = []
+        consecutive_errors = 0
         while len(nodes) < llm_kwargs["n"]:
             new_llm_kwargs = copy.deepcopy(llm_kwargs)
             new_llm_kwargs["n"] = llm_kwargs["n"] - len(nodes)
@@ -226,6 +245,11 @@ class TransformationRevisionAction(MCTSAction):
                     logger.warning(f"Error generating transformation revision response: {responses}")
                 else:
                     print(f"Error generating transformation revision response: {responses}")
+                consecutive_errors += 1
+                if consecutive_errors >= _MAX_CONSECUTIVE_GEN_ERRORS:
+                    break
+                continue
+            consecutive_errors = 0
             for resp in responses:
                 response = resp["content"]
                 child_node = copy.deepcopy(node)
