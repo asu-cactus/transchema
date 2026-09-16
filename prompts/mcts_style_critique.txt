@@ -45,6 +45,8 @@ The operation sequence must use EXACT format (copy-paste style):
 - JOIN: "JOIN : [[Table1, Table2]] columns=[[Table1.col, Table2.col]]"
 - UNION: "UNION : [Table1, Table2, ...]"
 - GROUP_BY/AGGREGATE: 'GROUP_BY/AGGREGATE : "group_by" = [col1, col2], "aggregations" = [AGG_FUNC(col), ...]'
+- PIVOT / UNPIVOT: "PIVOT" or "UNPIVOT" (no configuration)
+- COLUMN_TRANSFORM: "COLUMN_TRANSFORM : [out_a = Table1.col1, out_b = SUM(Table1.col2, Table1.col3), out_c = FORMAT(Table1.dt, 'pattern'), out_d = EXTRACT(MONTH FROM Table1.dt), out_e = UPPER(TRIM(Table1.name))]"
 - End with: "NO_MORE_OPERATION"
 
 Please quote the Python script between one single "```python" and "```".

@@ -97,7 +97,7 @@ class TestMCTSTermination(unittest.TestCase):
         state = _build_state(best_score=0.99)
         self.assertEqual(check_budget(state), "iterate")
 
-    @patch("nodes._score_and_validate_output", return_value=(0.42, True))
+    @patch("nodes._score_and_validate_output", return_value=(0.42, True, None))
     def test_validation_true_exits_same_iteration_path(self, _mock_eval):
         state = _build_state(config=_DummyConfig(mcts_critique_mode="simulate"))
 
@@ -111,7 +111,7 @@ class TestMCTSTermination(unittest.TestCase):
         self.assertEqual(state_after_backprop["iteration"], 1)
         self.assertEqual(check_budget(state_after_backprop), "done")
 
-    @patch("nodes._score_and_validate_output", return_value=(1.0, True))
+    @patch("nodes._score_and_validate_output", return_value=(1.0, True, None))
     def test_validation_true_promotes_current_script_even_on_tie(self, _mock_eval):
         state = _build_state(
             best_score=1.0,
@@ -128,7 +128,7 @@ class TestMCTSTermination(unittest.TestCase):
 
     @patch(
         "nodes._run_critique_llm",
-        return_value=("crit_valid()", 0.8, "Success", True, [], None, 0.9, "0.9", "raw response"),
+        return_value=("crit_valid()", 0.8, "Success", True, [], None, 0.9, "0.9", 0.5, "raw response"),
     )
     def test_critique_validation_true_promotes_script_even_on_lower_score(self, _mock_crit):
         state = _build_state(

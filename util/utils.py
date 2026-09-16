@@ -10,6 +10,57 @@ import csv
 import re
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Benchmark resolution -- single source of truth.
+#
+# The benchmark -> on-disk-root ternary used to be copy-pasted at 7 call sites across
+# critique_data.py and methods/{single_step_cot,multi_step,critique}.py. mcts_search.py
+# hit the failure mode that invites: when smart_building_v2 was added there, two copies
+# were missed, so a recovered script silently validated against github-pipelines'
+# unrelated target.csv. Resolving here means a new benchmark is one edit, not seven.
+
+
+BENCHMARK_ROOTS = {
+    "github": "autopipeline-benchmarks/github-pipelines",
+    "monteprep": "autopipeline-benchmarks/monteprep-pipelines",
+    "smart_building_v2": "autopipeline-benchmarks/smartbuilding-pipelines-v2-split",
+}
+
+BENCHMARK_CHOICES = tuple(BENCHMARK_ROOTS)
+
+
+def resolve_main_folder(benchmark: str | None) -> str:
+    """Map a --benchmark value to its pipelines root. Unknown/None -> github."""
+    return BENCHMARK_ROOTS.get(benchmark or "github", BENCHMARK_ROOTS["github"])
+
+
+def resolve_case_json(benchmark: str | None, file_count: int) -> str:
+    """Map (benchmark, source-file count) to the case-metadata JSON.
+
+    smart_building_v2 is single-source only, so it has no _ms variant -- passing a
+    file_count > 1 there still resolves to the ss file rather than a missing path.
+    """
+    bm = benchmark or "github"
+    if bm == "smart_building_v2":
+        return "data/chatgpt_smartbuilding_v2_ss.json"
+    stem = "monteprep" if bm == "monteprep" else "github"
+    return f"data/chatgpt_{stem}_{'ms' if file_count > 1 else 'ss'}.json"
+
+
+def drop_leading_index_col_if_present(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop the first column only if it's a throwaway pandas index column
+    (unnamed, or literally "Unnamed: 0"), in place, and return df.
+
+    github/monteprep target.csv files carry a leading index column like this;
+    smartbuilding target.csv files do not (their first column is real data,
+    e.g. "CST"/"date") and must be left untouched.
+    """
+    first_col = str(df.columns[0])
+    if first_col == "" or first_col.startswith("Unnamed:"):
+        df.drop(columns=df.columns[0], axis=1, inplace=True)
+    return df
+
+
 def convert_if_number(s):
     if s is None:
         return None

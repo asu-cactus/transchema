@@ -118,7 +118,24 @@ def find_or_create_path(root: ReconNode, ops: list) -> list:
 
 # ---------------------------------------------------------------------------
 # GROUP_BY/AGGREGATE splitting (mirrors nodes.py _split_groupby_aggregate)
+# and legacy column-operator canonicalisation (mirrors _canonicalize_column_ops)
 # ---------------------------------------------------------------------------
+
+# COLUMN_AGGREGATION / FORMAT_DATETIME / PROJECT were merged into COLUMN_TRANSFORM.
+# Logs written before the merge still name them, so rewrite on read to keep replays
+# of old and new runs directly comparable.
+_LEGACY_COLUMN_OPS = ("COLUMN_AGGREGATION", "FORMAT_DATETIME", "PROJECT")
+
+
+def _canon_column_op(step: str) -> str:
+    """Rewrite a pre-merge column-level step to COLUMN_TRANSFORM, payload intact."""
+    for legacy in _LEGACY_COLUMN_OPS:
+        if step == legacy:
+            return "COLUMN_TRANSFORM"
+        if step.startswith(f"{legacy} :"):
+            # Swap only the operator name; keep the " : <payload>" tail verbatim.
+            return "COLUMN_TRANSFORM" + step[len(legacy):]
+    return step
 
 _GBA_RE1_GB  = re.compile(r'"group_by"\s*=\s*(\[.*?\])')
 _GBA_RE1_AGG = re.compile(r'"aggregations"\s*=\s*(\[.*\])\s*$', re.DOTALL)
@@ -127,9 +144,11 @@ _GBA_RE2_AGG = re.compile(r'aggregations=(\[.*\])\s*$', re.DOTALL)
 
 
 def _split_gba(history: list) -> list:
-    """Split GROUP_BY/AGGREGATE steps into separate GROUP_BY + AGGREGATE nodes."""
+    """Split GROUP_BY/AGGREGATE steps into separate GROUP_BY + AGGREGATE nodes,
+    and canonicalise pre-merge column-level operator names to COLUMN_TRANSFORM."""
     result = []
     for step in history:
+        step = _canon_column_op(step)
         if "GROUP_BY/AGGREGATE" not in step:
             result.append(step)
             continue

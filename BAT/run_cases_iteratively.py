@@ -10,6 +10,11 @@ import logging
 import shutil
 from datetime import datetime
 
+# Absolute path to the BAT/ directory itself, so this script works regardless
+# of which machine/user account the repo is checked out under (e.g. this
+# local machine vs. Sol, where the home directory structure differs).
+BAT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Configuration
 # Default configuration
 BASE_PATH = "/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/monteprep-pipelines"
@@ -22,6 +27,8 @@ END_NUM = 100
 LOG_DIR = "logs"
 CLEANUP_RESULTS = True  # Clean up intermediate result JSON files after evaluation
 VALIDATION = "hard_match"  # "hard_match" (evaluator's own similarity) or "autopipeline" (validation.hard_match.compare_tables_matching, matches mcts_search.py --validation autopipeline)
+MODEL_NAME = "gpt-4.1-mini"  # must be a key in BAT/src/llm/config.py's MODELS dict (e.g. "o4-mini")
+CASES = None  # explicit list of case numbers; overrides START_NUM/END_NUM when set
 
 def setup_logging():
     """Setup logging configuration"""
@@ -47,7 +54,7 @@ def run_command(cmd, description, logger):
     try:
         result = subprocess.run(
             cmd,
-            cwd="/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+            cwd=BAT_DIR,
             capture_output=True,
             text=True,
             timeout=3600  # 1 hour timeout per case
@@ -74,7 +81,7 @@ def cleanup_case_results(case_id, logger):
         return
 
     result_json = os.path.join(
-        "/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+        BAT_DIR,
         RESULT_DIR,
         f"length{LENGTH_TYPE}",
         f"{case_id}.json"
@@ -93,7 +100,7 @@ def append_to_master_csv(case_result, logger):
         return False
 
     master_csv = os.path.join(
-        "/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+        BAT_DIR,
         PREDICT_DIR,
         f"master_results_{LENGTH_TYPE}.csv"
     )
@@ -122,7 +129,7 @@ def get_case_result_from_evaluator(case_num, logger):
 
     # Use per-length temporary file to avoid parallel write conflicts
     csv_file = os.path.join(
-        "/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+        BAT_DIR,
         PREDICT_DIR,
         f"case_by_case_summary_length{LENGTH_TYPE}.csv"
     )
@@ -155,7 +162,8 @@ def process_case(case_num, logger):
         "--length_type", str(LENGTH_TYPE),
         "--start_num", str(case_num),
         "--end_num", str(case_num + 1),
-        "--log_path", os.path.join(LOG_DIR, f"mcts_{case_id}.txt")
+        "--log_path", os.path.join(LOG_DIR, f"mcts_{case_id}.txt"),
+        "--model_name", MODEL_NAME
     ]
 
     if not run_command(main_cmd, f"MCTS for {case_id}", logger):
@@ -172,7 +180,7 @@ def process_case(case_num, logger):
         "--start_num", str(case_num),
         "--end_num", str(case_num + 1),
         "--data_type", DATA_TYPE,
-        "--model_name", "gpt-4.1-mini",
+        "--model_name", MODEL_NAME,
         "--validation", VALIDATION
     ]
 
@@ -182,12 +190,12 @@ def process_case(case_num, logger):
 
     # Step 3: Rename evaluator's CSV to per-length name to avoid parallel write conflicts
     generic_csv = os.path.join(
-        "/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+        BAT_DIR,
         PREDICT_DIR,
         "case_by_case_summary.csv"
     )
     length_specific_csv = os.path.join(
-        "/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+        BAT_DIR,
         PREDICT_DIR,
         f"case_by_case_summary_length{LENGTH_TYPE}.csv"
     )
@@ -216,8 +224,9 @@ def process_case(case_num, logger):
 
 def main(length_type=LENGTH_TYPE, start_num=START_NUM, end_num=END_NUM,
          base_path=BASE_PATH, result_dir=RESULT_DIR, predict_dir=PREDICT_DIR,
-         validation=VALIDATION, cleanup_results=CLEANUP_RESULTS):
-    global LENGTH_TYPE, START_NUM, END_NUM, BASE_PATH, RESULT_DIR, PREDICT_DIR, VALIDATION, CLEANUP_RESULTS
+         validation=VALIDATION, cleanup_results=CLEANUP_RESULTS,
+         model_name=MODEL_NAME, cases=CASES):
+    global LENGTH_TYPE, START_NUM, END_NUM, BASE_PATH, RESULT_DIR, PREDICT_DIR, VALIDATION, CLEANUP_RESULTS, MODEL_NAME, CASES
     LENGTH_TYPE = length_type
     START_NUM = start_num
     END_NUM = end_num
@@ -226,17 +235,20 @@ def main(length_type=LENGTH_TYPE, start_num=START_NUM, end_num=END_NUM,
     PREDICT_DIR = predict_dir
     VALIDATION = validation
     CLEANUP_RESULTS = cleanup_results
+    MODEL_NAME = model_name
+    CASES = cases
 
     logger, log_file = setup_logging()
     logger.info(f"Starting iterative case processing")
-    logger.info(f"Range: {START_NUM}-{END_NUM}, Length type: {LENGTH_TYPE}")
+    case_list = CASES if CASES else list(range(START_NUM, END_NUM))
+    logger.info(f"Cases: {case_list if CASES else f'{START_NUM}-{END_NUM}'}, Length type: {LENGTH_TYPE}, Model: {MODEL_NAME}")
     logger.info(f"Log file: {log_file}")
 
     successful_cases = []
     failed_cases = []
 
     # Process each case (results saved incrementally to master CSV)
-    for case_num in range(START_NUM, END_NUM):
+    for case_num in case_list:
         try:
             result = process_case(case_num, logger)
             if result:
@@ -261,7 +273,7 @@ def main(length_type=LENGTH_TYPE, start_num=START_NUM, end_num=END_NUM,
 
     # Results already saved incrementally to master CSV
     master_csv = os.path.join(
-        "/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+        BAT_DIR,
         PREDICT_DIR,
         f"master_results_{LENGTH_TYPE}.csv"
     )
@@ -273,7 +285,7 @@ def main(length_type=LENGTH_TYPE, start_num=START_NUM, end_num=END_NUM,
 
         # Auto-archive results to safe location
         archive_dir = os.path.join(
-            "/home/asurite.ad.asu.edu/jrtandel/transchema/BAT",
+            BAT_DIR,
             "results_archive"
         )
         os.makedirs(archive_dir, exist_ok=True)
@@ -308,6 +320,10 @@ if __name__ == "__main__":
                          help="Validation strategy passed to the evaluator (default: hard_match).")
     parser.add_argument("--no_cleanup", action="store_true",
                          help="Keep the intermediate per-case result JSON files instead of deleting them after evaluation.")
+    parser.add_argument("--model_name", type=str, default=MODEL_NAME,
+                         help="Model to use for MCTS generation and cost lookup; must be a key in BAT/src/llm/config.py's MODELS dict (e.g. o4-mini).")
+    parser.add_argument("--cases", nargs='+', type=int, default=None,
+                         help="Explicit list of case numbers to process (e.g. specific failed cases to retry), overriding --start_num/--end_num.")
     args = parser.parse_args()
 
     main(
@@ -318,5 +334,7 @@ if __name__ == "__main__":
         result_dir=args.result_dir,
         predict_dir=args.predict_dir,
         validation=args.validation,
-        cleanup_results=not args.no_cleanup
+        cleanup_results=not args.no_cleanup,
+        model_name=args.model_name,
+        cases=args.cases
     )

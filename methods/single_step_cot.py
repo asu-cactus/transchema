@@ -1,13 +1,15 @@
 import time
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching
-from util.utils import get_test_info, execute_python, make_test_validation_script
+from util.utils import get_test_info, execute_python, make_test_validation_script, resolve_main_folder, resolve_case_json, drop_leading_index_col_if_present
 from test_scope import get_test_cases_ids
 from methods.multi_step import Config, get_python_response
+from hints.rule_hints import compute_case_rule_hints
 
 from log_util.log_util import create_logger
-from eval_score_value_based import value_based_relative_csv_score_timed
+from eval_score.cot_score import cot_value_based_score
 from rag_pipeline.local_rag_db import build_upper_bound_db, get_rag_hints
+from rag_pipeline.cot_rag import build_curated_rag
 import pandas as pd
 import os
 import traceback
@@ -53,7 +55,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
     model = args.model
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
     data_split = getattr(args, "data_split", "test")
     # Counting files starting with data_split prefix in this subfolder (root only, no subdirs)
@@ -64,10 +66,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
         if file.startswith(data_split)
     )
 
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+    json_file_path = resolve_case_json(benchmark, file_count)
 
     log_dir = log_dir_
 
@@ -139,6 +138,32 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
             except Exception:
                 logger.warning(f"[sscot RAG] failed to build/query RAG DB:\n{traceback.format_exc()}")
 
+        # Curated-pipeline RAG. This arm produces the whole plan in one shot, so there
+        # is no prefix to match on: the empty history matches every corpus pipeline and
+        # the cosine re-rank returns the --rag_topk structurally most similar cases.
+        elif rag_mode == "curated_pipeline":
+            curated = build_curated_rag(
+                args, directory, len_idx_target_idx,
+                data_split=data_split, logger=logger,
+            )
+            sscot_rag_hints = curated.hints_for([])
+            if not sscot_rag_hints:
+                logger.info(f"[curated RAG] no examples retrieved for {length}_{id_}")
+
+        # Depth-0 rule-engine candidates, computed once per case (cached in
+        # hints/rule_hints.py). The pipeline-driven arm has a single code-gen prompt,
+        # so get_python_response is the only place these are consumed.
+        rule_hint_candidates = None
+        if getattr(args, "rule_hints", False):
+            rule_hint_candidates = compute_case_rule_hints(
+                source_data_name_list,
+                directory,
+                len_idx_target_idx,
+                logger=logger,
+                top_k=getattr(args, "rule_hints_top_k", 3),
+                data_split=data_split,
+            )
+
         config = Config(
             target_data_name=target_data_name,
             target_data_schema=target_data_schema,
@@ -166,6 +191,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
             past_context=past_context_str,
             rag_hints=sscot_rag_hints,
             data_split=data_split,
+            rule_hint_candidates=rule_hint_candidates,
         )
 
 
@@ -173,7 +199,9 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
         target_file_location = (
             f"{main_folder}/length{len_idx_target_idx}/target_multisource_cot.csv"
         )
-        script, response, _ = get_python_response([], 0, target_file_location, config)
+        script, response, _, self_reported_confidence = get_python_response(
+            [], 0, target_file_location, config
+        )
 
         if response == "Success":
             # save file here
@@ -203,9 +231,17 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
                     print("".join(traceback.format_exc()))
                     is_correct = False
                 try:
-                    _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(df_our_response, df_ground_truth)
-                except Exception as e:
-                    print("".join(traceback.format_exc()))
+                    _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = cot_value_based_score(
+                        df_our_response,
+                        df_ground_truth,
+                        length=length,
+                        confidence=self_reported_confidence,
+                    )
+                except Exception:
+                    logger.warning(
+                        f"Score computation failed for {length}_{id_}, leaving score=0:"
+                        f"\n{traceback.format_exc()}"
+                    )
             except Exception as e:
                 print("".join(traceback.format_exc()))
                 case_accuracy = 0
@@ -222,7 +258,7 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
             try:
                 df_test = pd.read_csv(test_output, low_memory=False)
                 df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
-                df_gt_test.drop(columns=df_gt_test.columns[0], axis=1, inplace=True)
+                drop_leading_index_col_if_present(df_gt_test)
                 _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
                 print(f"[two-phase sscot] is_correct: training={is_correct} → test={test_is_correct}")
                 is_correct = test_is_correct

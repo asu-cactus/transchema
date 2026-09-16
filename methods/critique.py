@@ -8,14 +8,17 @@ import tiktoken
 from pathlib import Path
 from typing import Optional, Union
 from hints.hint_v3 import get_column_equivalence
-from hints.hints_static import get_hints_section, CRITIQUE_HINT_IDS
+from hints.hints_static import (get_hints_section, CRITIQUE_HINT_IDS,
+                                hints_for_benchmark, smartbuilding_override_for)
+from hints.rule_hints import compute_case_rule_hints, format_rule_hints
 from auto_suggest_llm_util import (
     get_source,
     get_target_samples,
     get_filtered_functional_dependency,
 )
-from eval_score_value_based import value_based_relative_csv_score_timed
-from util.utils import execute_python, get_test_info, make_test_validation_script
+from eval_score.cot_score import cot_value_based_score
+from methods.multi_step import CONFIDENCE_INSTRUCTION, parse_confidence
+from util.utils import execute_python, get_test_info, make_test_validation_script, resolve_main_folder, resolve_case_json, drop_leading_index_col_if_present
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
@@ -25,6 +28,7 @@ os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
 from rag_pipeline.local_rag_db import build_upper_bound_db, get_rag_hints
+from rag_pipeline.cot_rag import build_curated_rag
 from rag_pipeline.feature_extractor import (
     FEATURE_DIM,
     compute_from_data,
@@ -163,7 +167,7 @@ def critique(
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     # Benchmark selector: github | monteprep (need this early for target_location_critique)
     benchmark = getattr(args, "benchmark", "github")
-    main_folder_early = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    main_folder_early = resolve_main_folder(benchmark)
     len_id_early = length
     target_id_early = id_
     len_idx_target_idx_early = str(len_id_early) + "_" + str(target_id_early)
@@ -189,7 +193,14 @@ def critique(
     query = query.replace("$CSV_SAVE_PATH$", target_location_critique)
 
     if args.static_hints:
-        query = query.replace("$STATIC_HINTS$", get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered"))
+        # Hint #29 ("always add index_col=0") is wrong on smart_building, whose first
+        # column is real data -- following it makes the critique re-emit a script that
+        # eats that column and produces no output at all.
+        _hint_dir = main_folder_early
+        query = query.replace("$STATIC_HINTS$",
+                              get_hints_section(hints_for_benchmark(CRITIQUE_HINT_IDS, _hint_dir),
+                                                fmt="numbered")
+                              + smartbuilding_override_for(_hint_dir))
     else:
         query = query.replace("$STATIC_HINTS$", "")
 
@@ -217,7 +228,7 @@ def critique(
         gt_csv = getattr(args, "gt_csv", "ground_truth_pipelines.csv")
         db_path = f"/tmp/rag_upper_bound_{length}_{id_}.db"
         try:
-            benchmark_folder = "autopipeline-benchmarks/monteprep-pipelines" if getattr(args, "benchmark", "github") == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+            benchmark_folder = resolve_main_folder(getattr(args, "benchmark", "github"))
             build_upper_bound_db(
                     case_id=f"{length}_{id_}",
                     case_folder=os.path.join(benchmark_folder, f"length{length}_{id_}"),
@@ -227,14 +238,15 @@ def critique(
             rag_hint_block = get_rag_hints(db_path, [])
         except Exception:
             pass
-    query = query.replace("$RAG_HINTS$", rag_hint_block)
+    # The $RAG_HINTS$ substitution happens further down, after logger/data_split/
+    # main_folder exist, so the curated_pipeline mode can log and honour the split.
 
     log_dir = log_dir_
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
     data_split = getattr(args, "data_split", "test")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with data_split prefix in this subfolder
     file_count = sum(
@@ -244,10 +256,7 @@ def critique(
     )
 
     ##print(file_count)
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+    json_file_path = resolve_case_json(benchmark, file_count)
 
     len_id = length
     target_id = id_
@@ -278,6 +287,25 @@ def critique(
         logger.info(f"JUDGE_CALL: judge={args.judge} verdict=INCORRECT reason=(none)")
 
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
+
+    # ── Curated-pipeline RAG for the critique prompt ──────────────────────────
+    # Retrieved with an EMPTY prefix, i.e. the top-k structurally most similar complete
+    # pipelines, rather than prefix-matching the plan being critiqued. Two reasons:
+    #   * the critique reviews a FINISHED pipeline, so "what operation comes next after
+    #     this prefix" is the wrong question -- a similar complete pipeline is the
+    #     useful reference;
+    #   * crit() receives operation_history as str(list), not a list, and multi_step's
+    #     GROUP_BY entries carry no "GROUP_BY/AGGREGATE : " prefix, so
+    #     step_to_abstract would bin them as "other" and match nothing anyway.
+    if getattr(args, "rag", "none") == "curated_pipeline":
+        curated = build_curated_rag(
+            args, main_folder, len_idx_target_idx, data_split=data_split, logger=logger
+        )
+        rag_hint_block = curated.hints_for([])
+        if not rag_hint_block:
+            logger.info(f"[curated RAG] no critique examples retrieved for {len_idx_target_idx}")
+
+    query = query.replace("$RAG_HINTS$", rag_hint_block)
 
     rag_db = None
     feature_rag_db = None
@@ -313,12 +341,36 @@ def critique(
         source_samples_list,
     ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
 
+    # ── Rule-engine hints ─────────────────────────────────────────────────────
+    # The critique template has no $RULE_HINTS$ placeholder (and it is shared with the
+    # MCTS-side prompts, so adding one is off-limits), hence the append. The generation
+    # prompts already get these; without this the critique is the only stage reasoning
+    # without them. compute_case_rule_hints is cached per (case, split), so the work was
+    # already done by the generation stage and this costs nothing.
+    if getattr(args, "rule_hints", False):
+        try:
+            _rule = compute_case_rule_hints(
+                source_data_name_list, main_folder, len_idx_target_idx,
+                logger=logger, top_k=getattr(args, "rule_hints_top_k", 3),
+                data_split=data_split,
+            )
+            query += format_rule_hints(_rule)
+        except Exception as exc:
+            logger.warning(f"[rule_hints] critique hint generation failed: {exc}")
+
     # get model encoding
     if args.model == "gpt-4.1-mini":
         # According to https://github.com/openai/tiktoken/issues/395
         encoding = tiktoken.get_encoding("o200k_base")
     elif args.model == "o4-mini" or args.model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
+    elif args.model.lower().startswith("dmx-"):
+        from llm.llm_models import dmx_encoding
+        encoding = dmx_encoding(args.model)
+    elif "gpt-oss" in args.model.lower():
+        # tiktoken.encoding_for_model() has no entry for gpt-oss and raises KeyError.
+        from llm.llm_models import gpt_oss_encoding
+        encoding = gpt_oss_encoding()
     else:
         encoding = tiktoken.encoding_for_model(args.model)
 
@@ -367,7 +419,7 @@ def critique(
     )
     try:
         df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
-        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+        drop_leading_index_col_if_present(df_ground_truth)
         query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
         if args.critique_type in ("history", "mcts_style"):
             query = replace_history_info(query, operation_history)
@@ -380,7 +432,11 @@ def critique(
                 for src_name in source_data_name_list:
                     try:
                         src_path = f"{main_folder}/length{len_idx_target_idx}/{src_name}"
-                        source_dfs.append(pd.read_csv(src_path, index_col=0, low_memory=False))
+                        # index_col=0 would swallow a REAL first column: 99 of 105
+                        # smartbuilding sources start with data (Strata_ID, datetime),
+                        # unlike github's where it is always a throwaway index.
+                        source_dfs.append(drop_leading_index_col_if_present(
+                            pd.read_csv(src_path, low_memory=False)))
                     except Exception:
                         pass
                 dist_section = build_column_distribution_section(df_ground_truth, df_generated, source_dfs=source_dfs)
@@ -613,6 +669,12 @@ def critique(
 
         query = query.replace("$FEW_SHOT_EXAMPLES$", few_shot_prompt)
 
+    # The confidence block goes on whichever call actually produces the script: for
+    # mcts_style that is this one, otherwise it is the refinement call below.
+    crit_confidence = None
+    if args.critique_type == "mcts_style":
+        query += CONFIDENCE_INSTRUCTION
+
     res = llm_client.gpt(query)
 
     logger.info(query)
@@ -622,6 +684,7 @@ def critique(
 
     # For mcts_style critique, skip the refinement step to match MCTS behavior (single LLM call)
     if args.critique_type == "mcts_style":
+        crit_confidence, _ = parse_confidence(res[0], logger=logger, tag="critique")
         # Extract and execute the script from the first critique response directly
         pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
         match = pattern.search(res[0])
@@ -648,7 +711,10 @@ def critique(
             python_code = ""
         query_generator = """Based on the LLM response, can you refine the python code."""
         if args.static_hints:
-            query_generator += "\n\n" + get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered") + "\n"
+            query_generator += ("\n\n"
+                                + get_hints_section(hints_for_benchmark(CRITIQUE_HINT_IDS, main_folder),
+                                                    fmt="numbered")
+                                + smartbuilding_override_for(main_folder) + "\n")
         query_generator += """
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
@@ -668,7 +734,12 @@ def critique(
             res=res,
         )
 
+        query_generator += CONFIDENCE_INSTRUCTION
+
         res_gen = llm_client.gpt(query_generator)
+        crit_confidence, _ = parse_confidence(
+            res_gen[0], logger=logger, tag="critique_refine"
+        )
 
         pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
         match = pattern.search(res_gen[0])
@@ -761,14 +832,21 @@ def critique(
                 similarity_scores,
                 shared_columns,
             ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
-            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(sorted_df_critique, sorted_df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = cot_value_based_score(
+                sorted_df_critique, sorted_df_ground_truth,
+                length=len_id, confidence=crit_confidence,
+            )
         else:
-            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = value_based_relative_csv_score_timed(df_critique, df_ground_truth)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = cot_value_based_score(
+                df_critique, df_ground_truth,
+                length=len_id, confidence=crit_confidence,
+            )
         logger.info(is_correct)
 
     except Exception as e:
         is_correct = False
         score = 0
+        logger.warning(f"Critique scoring/validation failed, leaving score=0: {e}")
         print("".join(traceback.format_exc()))
 
     # Two-phase validation: score on training output, is_correct on test output
@@ -781,7 +859,7 @@ def critique(
             try:
                 df_test = pd.read_csv(test_output, low_memory=False)
                 df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
-                df_gt_test.drop(columns=df_gt_test.columns[0], axis=1, inplace=True)
+                drop_leading_index_col_if_present(df_gt_test)
                 _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
                 print(f"[two-phase crit] is_correct: training={is_correct} → test={test_is_correct}")
                 is_correct = test_is_correct

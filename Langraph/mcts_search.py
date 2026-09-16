@@ -37,6 +37,7 @@ Key args fields
     args.few_shot           int     few-shot examples flag (default 0)
 """
 
+import glob
 import json
 import json
 import multiprocessing
@@ -54,15 +55,16 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import tiktoken
 
 from auto_suggest_llm_util import get_source, get_filtered_functional_dependency
+from hints.hints_static import is_smartbuilding_dir
 from llm.llm_models import LLMClient, TokenUsageTracker
 from log_util.log_util import create_logger
 from test_scope import get_test_cases_ids
-from util.utils import get_test_info, make_test_validation_script
+from util.utils import get_test_info, make_test_validation_script, drop_leading_index_col_if_present
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 
 from mcts_node import MCTSNode
@@ -71,6 +73,24 @@ from graph import build_mcts_graph
 from viz import write_action_trace, write_tree_viz
 from rag_pipeline.local_rag_db import build_upper_bound_db, populate_from_global_results
 from eval_score_value_based import get_length_score_weights
+
+
+def _resolve_main_folder(benchmark: str) -> str:
+    """Single source of truth for benchmark -> on-disk pipelines root.
+
+    Was previously duplicated inline at 3 separate call sites (the main search
+    path here, plus both timeout-recovery blocks) -- the two recovery-path
+    copies were missed when smart_building_v2 support was added, so a
+    timed-out smart_building_v2 case would silently validate its recovered
+    script against github-pipelines' (unrelated) target.csv instead of the
+    real one. Centralizing here so a future new benchmark only needs updating
+    in one place.
+    """
+    if benchmark == "monteprep":
+        return "autopipeline-benchmarks/monteprep-pipelines"
+    if benchmark == "smart_building_v2":
+        return "autopipeline-benchmarks/smartbuilding-pipelines-v2-split"
+    return "autopipeline-benchmarks/github-pipelines"
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -82,6 +102,52 @@ _SCORE_1_COMPONENT_ORDER_WITH_CONFIDENCE = _SCORE_1_COMPONENT_ORDER + ("confiden
 # CURATED_PIPELINE_RAG_README.md). Auto-selected by --length unless --max_depth is
 # passed explicitly on the CLI.
 MAX_DEPTH_BY_LENGTH = {1: 2, 2: 2, 3: 3, 4: 4, 5: 5, 6: 2, 9: 2}
+
+# Smart building pins max_depth for EVERY length, overriding both
+# MAX_DEPTH_BY_LENGTH and an explicit --max_depth. Its ground-truth pipelines are
+# column-level work rather than a deep relational plan, so the nominal "length" of a
+# case says nothing useful about how many operators the tree needs.
+#
+# History: with COLUMN_AGGREGATION / FORMAT_DATETIME / PROJECT as three separate
+# operators, that work was a CHAIN of column-level steps and so needed depth to
+# express at all -- 3 and 2 at 40 iterations / 300s gave 0/21 and 1/21 correct
+# scripts, and this was raised to 5 with a 600s budget to give the search room.
+# Those three are now one COLUMN_TRANSFORM step, so the chain collapses to a single
+# node and the depth that was buying nothing but permutations of the same
+# transformation can come back down.
+#
+# 3 leaves room for a relational step (JOIN/UNION or GROUP_BY -> AGGREGATE) before
+# the column step, which 2 would not. Re-tune from the action traces: if plans are
+# reaching the target in one COLUMN_TRANSFORM, 2 is enough.
+SMARTBUILDING_MAX_DEPTH = 3
+
+
+def _count_scoring_errors(log_dir: str, length, case_id) -> int:
+    """How many scoring/validation exceptions execute_and_score swallowed for this case.
+
+    execute_and_score (Langraph/nodes.py) wraps _score_and_validate_output in a broad
+    `except Exception` that only logs a warning, leaving validation_passed False and
+    the reward unchanged -- so a scoring bug looks exactly like a wrong script. The
+    case runs in a child process, so the count is recovered from its log rather than
+    plumbed through MCTSGraphState (which a timed-out or OOM-killed case never
+    returns anyway).
+
+    Scoped to this case's own log files -- create_logger() names them
+    "{length}_target{case_id}_MCTS_{timestamp}.log" -- so batch mode, where log_dir
+    is shared across cases, does not aggregate other cases' failures. Returns 0 if
+    the log is unreadable: this is a diagnostic and must never break the results row.
+    """
+    if not log_dir or not os.path.isdir(log_dir):
+        return 0
+    try:
+        pattern = os.path.join(log_dir, f"{length}_target{case_id}_MCTS_*.log")
+        total = 0
+        for path in glob.glob(pattern):
+            with open(path, errors="ignore") as fh:
+                total += fh.read().count("Scoring/validation failed")
+        return total
+    except Exception:
+        return 0
 
 
 def _parse_score_weights(raw: str | None) -> dict | None:
@@ -151,139 +217,32 @@ class Config:
     reward_mode: str          # "score" | "det_score_value" | "validation" | "partial"
     intermediate_materialization: bool  # True = materialize + score at each operator step
     data_split: str = "test"           # "test" or "training" — which CSV prefix to load
-    hint_groupby_fd_candidate: Optional[str] = None   # FD-derived GROUP BY step, pre-computed once
-    hint_groupby_v3_candidate: Optional[str] = None   # hints_v3-derived GROUP BY step, pre-computed once
+    hint_groupby_v3_candidates: Optional[dict] = None  # unified GROUP BY static precompute (individual_columns, fd_keys, source_columns, target_columns)
+    hint_join_v3_candidates: Optional[List[dict]] = None                # ranked static (evidence+name_score) JOIN candidates, pre-computed once
+    hint_join_v3_source_columns: Optional[Dict[str, List[str]]] = None  # table -> column list, for necessity resolution
+    hint_join_v3_target_columns: Optional[List[str]] = None             # target column list, necessity denominator
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# FD-based GROUP BY candidate — computed once per case with a hard timeout
+# hints_v3 GROUP BY static candidates — computed once per case with a hard
+# timeout. Unified formula (leftness + combined_dvr_delta + fd_score) replaces
+# the former two disconnected mechanisms (FD-only candidate, hints_v3-tiered
+# candidate) — see GROUP_BY_RANKING_DESIGN_README.md. Note: unlike the old FD
+# worker, this doesn't retry via fdtool.fdtool on analyze_functional_dependencies
+# crashes — accepted gap, fd_keys is just empty for those cases.
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _fd_groupby_worker(
-    target_file: str,
-    source_name_list: List[str],
-    source_schema_list: List[str],
-    result_queue: "multiprocessing.Queue",
-) -> None:
-    """Subprocess worker: run FD analysis on target table and return a configured
-    GROUP_BY step string, or None if no keys are found / an error occurs."""
-    try:
-        import os, sys
-        _here = os.path.dirname(os.path.abspath(__file__))
-        _root = os.path.dirname(_here)
-        _eval_score = os.path.join(_root, "eval_score")
-        for _p in (_root, _eval_score):
-            if _p not in sys.path:
-                sys.path.insert(0, _p)
-
-        import pandas as pd
-        from auto_suggest_llm_util import get_filtered_functional_dependency
-
-        df = pd.read_csv(target_file, low_memory=False)
-        df = df.drop(df.columns[0], axis=1)
-
-        keys, _fds = get_filtered_functional_dependency(df)
-
-        # Fallback: quality.quality.analyze_functional_dependencies crashes on some
-        # tables (TypeError inside GetFDs).  When that happens, get_filtered_functional_dependency
-        # silently returns [] — retry with fdtool.main from eval_score/ which is more robust.
-        if not keys:
-            try:
-                import fdtool.fdtool as _fdtool
-                from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FTE
-                _df_s = df.sample(n=min(1000, len(df)), replace=False).iloc[:, :15]
-                with ThreadPoolExecutor(max_workers=1) as _ex:
-                    _fut = _ex.submit(_fdtool.main, _df_s)
-                    try:
-                        _FDs, _E, _raw_keys = _fut.result(timeout=30)
-                    except _FTE:
-                        _raw_keys = []
-                # Take only singleton keys (single-column) at column position 0 or string dtype.
-                for _k in _raw_keys:
-                    if len(_k) == 1:
-                        _col = _k[0]
-                        if df.columns.get_loc(_col) == 0 or df[_col].dtype == "object":
-                            keys = [_col]
-                            break
-            except Exception:
-                pass
-
-        if not keys:
-            result_queue.put(None)
-            return
-
-        # Resolve each key column to its source table (table.col format).
-        # Falls back to bare column name if not found in any source schema.
-        def _find_source_table(col: str) -> Optional[str]:
-            for tname, schema in zip(source_name_list, source_schema_list):
-                col_names = [p.strip().split()[0] for p in schema.split(",") if p.strip()]
-                if col in col_names:
-                    return tname
-            return None
-
-        qualified = []
-        for col in keys:
-            tbl = _find_source_table(col)
-            qualified.append(f"{tbl}.{col}" if tbl else col)
-
-        result_queue.put(f"GROUP_BY : [{', '.join(qualified)}]")
-    except Exception:
-        result_queue.put(None)
-
-
-def _compute_fd_groupby_candidate(
-    target_file: str,
-    source_name_list: List[str],
-    source_schema_list: List[str],
-    logger,
-    timeout: int = 60,
-) -> Optional[str]:
-    """Run FD analysis on the target table to derive GROUP BY key columns.
-
-    Executes in a subprocess with a hard *timeout* (default 60 s) to guard
-    against cases where the FD algorithm takes very long on wide/large tables.
-    The result is returned as a fully configured MCTS step string, e.g.:
-        "GROUP_BY : [Source1_9_0.zipcode, Source1_9_0.AGI_STUB]"
-    Returns None if analysis times out, finds no keys, or errors.
-    """
-    result_queue: multiprocessing.Queue = multiprocessing.Queue()
-    proc = multiprocessing.Process(
-        target=_fd_groupby_worker,
-        args=(target_file, source_name_list, source_schema_list, result_queue),
-    )
-    proc.start()
-    proc.join(timeout=timeout)
-
-    if proc.is_alive():
-        logger.warning(
-            f"[FD GROUP BY] Timed out after {timeout}s — skipping FD candidate"
-        )
-        proc.terminate()
-        proc.join()
-        return None
-
-    if not result_queue.empty():
-        result = result_queue.get()
-        if result:
-            logger.info(f"[FD GROUP BY] Candidate computed: {result[:120]}")
-        return result
-    return None
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# hints_v3 GROUP BY candidate — computed once per case with a hard timeout
-# ──────────────────────────────────────────────────────────────────────────────
-
-
-def _hints_v3_groupby_worker(
+def _hints_v3_groupby_static_worker(
     source_name_list: List[str],
     directory: str,
     len_idx_target_idx: str,
     result_queue: "multiprocessing.Queue",
 ) -> None:
-    """Subprocess worker: run hints_v3 statistical checks and return a configured
-    GROUP_BY step string, or None if no columns qualify / an error occurs."""
+    """Subprocess worker: dtype-gate + leftness + target name-match for every
+    source column, plus raw multi-column FD determinant extraction on the
+    target table. necessity's counterpart here (combined_dvr_delta's
+    intermediate side) is NOT computed here — resolved lazily in nodes.py."""
     try:
         import os, sys
         _here = os.path.dirname(os.path.abspath(__file__))
@@ -292,31 +251,24 @@ def _hints_v3_groupby_worker(
             sys.path.insert(0, _root)
 
         import hints.hint_v3 as _h3
-        cols = _h3.get_groupby_hint_columns(source_name_list, directory, len_idx_target_idx)
-        if cols:
-            result_queue.put(f"GROUP_BY : [{', '.join(cols)}]")
-        else:
-            result_queue.put(None)
+        result = _h3.compute_groupby_static_candidates(source_name_list, directory, len_idx_target_idx)
+        result_queue.put(result if result and result.get("individual_columns") else None)
     except Exception:
         result_queue.put(None)
 
 
-def _compute_hints_v3_groupby_candidate(
+def _compute_hints_v3_groupby_static_candidates(
     source_name_list: List[str],
     directory: str,
     len_idx_target_idx: str,
     logger,
     timeout: int = 30,
-) -> Optional[str]:
-    """Run hints_v3 statistical GROUP BY checks with a hard *timeout* (default 30 s).
-
-    hints_v3 reads CSV files and evaluates column-level statistical properties;
-    this can be slow on large tables.  The subprocess is hard-killed if it
-    exceeds the timeout so it never delays MCTS operations.
-    """
+) -> Optional[dict]:
+    """Run hints_v3 statistical GROUP BY gate+scoring with a hard *timeout*
+    (default 30 s). Mirrors _compute_hints_v3_join_candidates exactly."""
     result_queue: multiprocessing.Queue = multiprocessing.Queue()
     proc = multiprocessing.Process(
-        target=_hints_v3_groupby_worker,
+        target=_hints_v3_groupby_static_worker,
         args=(source_name_list, directory, len_idx_target_idx, result_queue),
     )
     proc.start()
@@ -324,7 +276,7 @@ def _compute_hints_v3_groupby_candidate(
 
     if proc.is_alive():
         logger.warning(
-            f"[hints_v3 GROUP BY] Timed out after {timeout}s — skipping v3 candidate"
+            f"[hints_v3 GROUP BY] Timed out after {timeout}s — skipping v3 GROUP BY candidates"
         )
         proc.terminate()
         proc.join()
@@ -333,7 +285,63 @@ def _compute_hints_v3_groupby_candidate(
     if not result_queue.empty():
         result = result_queue.get()
         if result:
-            logger.info(f"[hints_v3 GROUP BY] Candidate computed: {result[:120]}")
+            logger.info(f"[hints_v3 GROUP BY] {len(result['individual_columns'])} individual columns, {len(result.get('fd_keys', []))} FD keys computed")
+        return result
+    return None
+
+
+def _hints_v3_join_worker(
+    source_name_list: List[str],
+    directory: str,
+    len_idx_target_idx: str,
+    result_queue: "multiprocessing.Queue",
+) -> None:
+    """Subprocess worker: run join_check_1 gate + evidence/name_score across
+    all pairwise source-table column combinations. necessity is NOT computed
+    here (it's per-search-state, resolved lazily in nodes.py)."""
+    try:
+        import os, sys
+        _here = os.path.dirname(os.path.abspath(__file__))
+        _root = os.path.dirname(_here)
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+
+        import hints.hint_v3 as _h3
+        result = _h3.compute_join_static_candidates(source_name_list, directory, len_idx_target_idx)
+        result_queue.put(result if result and result.get("candidates") else None)
+    except Exception:
+        result_queue.put(None)
+
+
+def _compute_hints_v3_join_candidates(
+    source_name_list: List[str],
+    directory: str,
+    len_idx_target_idx: str,
+    logger,
+    timeout: int = 30,
+) -> Optional[dict]:
+    """Run hints_v3 statistical JOIN gate+scoring with a hard *timeout*
+    (default 30 s). Mirrors _compute_hints_v3_groupby_static_candidates exactly."""
+    result_queue: multiprocessing.Queue = multiprocessing.Queue()
+    proc = multiprocessing.Process(
+        target=_hints_v3_join_worker,
+        args=(source_name_list, directory, len_idx_target_idx, result_queue),
+    )
+    proc.start()
+    proc.join(timeout=timeout)
+
+    if proc.is_alive():
+        logger.warning(
+            f"[hints_v3 JOIN] Timed out after {timeout}s — skipping v3 JOIN candidates"
+        )
+        proc.terminate()
+        proc.join()
+        return None
+
+    if not result_queue.empty():
+        result = result_queue.get()
+        if result:
+            logger.info(f"[hints_v3 JOIN] {len(result['candidates'])} candidates computed")
         return result
     return None
 
@@ -351,7 +359,6 @@ def _gt_score_cache_worker(
     """Subprocess worker: compute GT-side FDs and self-column-map count, write to JSON."""
     try:
         import json, os, sys
-        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
         _here = os.path.dirname(os.path.abspath(__file__))
         _root = os.path.dirname(_here)
@@ -361,39 +368,29 @@ def _gt_score_cache_worker(
                 sys.path.insert(0, _p)
 
         import pandas as pd
-        import fdtool.fdtool as _fdtool
         import column_map_utils
         from column_map_utils import get_column_map
+        from score import _run_fdtool, MAX_FD_COLS
 
-        MAX_FD_COLS    = 52
-        FD_TIMEOUT     = 60
-        _MAX_SCORE_COLS = 20
-        _MAX_FD_ROWS    = 2000
-
-        def _run_fdtool_local(df):
-            """Returns (FDs, E, keys, timed_out)."""
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_fdtool.main, df)
-                try:
-                    result = future.result(timeout=FD_TIMEOUT)
-                    return result[0], result[1], result[2], False
-                except FuturesTimeoutError:
-                    return [], [], [], True
+        FD_TIMEOUT       = 30  # per-attempt budget; two attempts total (see below)
+        _MAX_SCORE_COLS  = 15  # Phase-2 fallback column cap
+        _MAX_FD_ROWS     = 2000
 
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        df_gt = drop_leading_index_col_if_present(df_gt)
 
-        # Phase 1: try FD mining on the full table (no column/row caps).
-        FDs_b, E_b, keys_b, fd_timed_out = _run_fdtool_local(df_gt.iloc[:, :MAX_FD_COLS])
+        # Phase 1: FD mining on the full table (no column/row caps beyond the
+        # blanket MAX_FD_COLS safety cap), 30s. Phase 2, only if Phase 1 times
+        # out: reduce to 15 cols + 2000 rows and retry, another 30s. Worst case
+        # 60s total for this worker (see _compute_gt_score_cache's timeout).
+        FDs_b, E_b, keys_b, fd_timed_out = _run_fdtool(df_gt.iloc[:, :MAX_FD_COLS], timeout=FD_TIMEOUT)
 
         col_indices = None   # None → no reduction was needed
         max_fd_rows = None
 
         if fd_timed_out:
-            # Phase 2: FD timed out — reduce to 20 evenly-spaced cols + 2000 rows and retry.
-            _n   = len(df_gt.columns)
             df_gt = df_gt.iloc[:_MAX_FD_ROWS, :_MAX_SCORE_COLS]
-            FDs_b, E_b, keys_b, _ = _run_fdtool_local(df_gt.iloc[:, :MAX_FD_COLS])
+            FDs_b, E_b, keys_b, _ = _run_fdtool(df_gt.iloc[:, :MAX_FD_COLS], timeout=FD_TIMEOUT)
             col_indices = list(range(_MAX_SCORE_COLS))
             max_fd_rows = _MAX_FD_ROWS
 
@@ -436,13 +433,15 @@ def _compute_gt_score_cache(
     ground_truth_location: str,
     cache_path: str,
     logger,
-    timeout: int = 90,
+    timeout: int = 65,
 ) -> bool:
     """Pre-compute GT-side FDs and self-column-map count; write result to *cache_path*.
 
     Runs in a subprocess so slow GT tables (wide schemas, many FDs) never block
-    MCTS startup.  The internal fdtool already has a 60 s thread timeout, so 90 s
-    here gives it room to finish gracefully and still write the cache file.
+    MCTS startup. _gt_score_cache_worker does its own two-phase FD mining (full
+    table, then a 15-col/2000-row truncated retry if that times out), each
+    phase strictly capped at 30s -- so 60s worst case for the worker itself.
+    65s here gives a small buffer for subprocess spawn/communication overhead.
 
     Returns True if the cache was written successfully, False otherwise.
     """
@@ -450,6 +449,10 @@ def _compute_gt_score_cache(
     proc = multiprocessing.Process(
         target=_gt_score_cache_worker,
         args=(ground_truth_location, cache_path, result_queue),
+        # _gt_score_cache_worker spawns its own child process for FD mining
+        # (eval_score/score.py's _run_fdtool) -- a daemonic process can't have
+        # children, so this parent must not be daemonic either.
+        daemon=False,
     )
     proc.start()
     proc.join(timeout=timeout)
@@ -493,7 +496,7 @@ def _ascii_tree(root: Any, iteration: int) -> str:
         line = (
             prefix + connector
             + f"{label}  "
-            + f"v={node.visits}  q={node.q_value:.3f}  "
+            + f"v={node.visits}  q={node.q_value:.3f}  prior={node.prior:.3f}  "
             + f"Σr={node.total_reward:.3f}  score={node.best_score:.3f}"
             + tags
         )
@@ -554,8 +557,16 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     # --length (matches the established convention -- L9 uses max_depth=2,
     # NOT 9 -- documented in CURATED_PIPELINE_RAG_README.md), falling back to
     # 15 for any length not in that table.
+    # An explicit --max_depth always wins (e.g. a one-off depth experiment on a
+    # subset of cases). Otherwise smart building defaults to SMARTBUILDING_MAX_DEPTH
+    # for every length; everything else falls back to MAX_DEPTH_BY_LENGTH.
     _cli_max_depth = getattr(args, "max_depth", None)
-    max_depth = _cli_max_depth if _cli_max_depth is not None else MAX_DEPTH_BY_LENGTH.get(length, 15)
+    if _cli_max_depth is not None:
+        max_depth = _cli_max_depth
+    elif is_smartbuilding_dir(_resolve_main_folder(getattr(args, "benchmark", "github"))):
+        max_depth = SMARTBUILDING_MAX_DEPTH
+    else:
+        max_depth = MAX_DEPTH_BY_LENGTH.get(length, 15)
     early_stopping = getattr(args, "early_stopping", 5)
     same_leaf_stopping = getattr(args, "same_leaf_stopping", 0)
     cost_budget = getattr(args, "cost_budget", 0.0)
@@ -577,11 +588,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     llm_judge = getattr(args, "llm_judge", "none")
     benchmark = getattr(args, "benchmark", "github")
     data_split = getattr(args, "data_split", "test")
-    main_folder = (
-        "autopipeline-benchmarks/monteprep-pipelines"
-        if benchmark == "monteprep"
-        else "autopipeline-benchmarks/github-pipelines"
-    )
+    main_folder = _resolve_main_folder(benchmark)
 
     # ── Case path and data file selection ──────────────────────────────────
     len_id = length
@@ -623,6 +630,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         )
         if benchmark == "monteprep":
             json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
+        elif benchmark == "smart_building_v2":
+            json_file_path = "data/chatgpt_smartbuilding_v2_ss.json"
         else:
             json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
 
@@ -673,6 +682,9 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                 _enc = tiktoken.get_encoding("o200k_base")
             elif model in ("o4-mini", "o3"):
                 _enc = tiktoken.get_encoding("cl100k_base")
+            elif "gpt-oss" in model.lower():
+                from llm.llm_models import gpt_oss_encoding
+                _enc = gpt_oss_encoding()
             else:
                 _enc = tiktoken.encoding_for_model(model)
         except Exception:
@@ -688,7 +700,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
         if fd_flag:
             try:
                 df_gt_fd = pd.read_csv(ground_truth_location, low_memory=False)
-                df_gt_fd = df_gt_fd.drop(columns=df_gt_fd.columns[0], axis=1)
+                df_gt_fd = drop_leading_index_col_if_present(df_gt_fd)
                 df_gt_fd = df_gt_fd.sample(
                     n=min(1000, df_gt_fd.shape[0]), replace=False
                 ).iloc[:, :15]
@@ -729,27 +741,33 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             data_split=data_split,
         )
 
-        # ── Heuristic GROUP BY candidates (computed once, cached in config) ────
-        # Both run regardless of fd_flag / hint_source.  Hard timeouts prevent
-        # slow tables from eating into the MCTS iteration budget.
-
-        # FD-based: keys from target table functional-dependency analysis (60 s)
-        config.hint_groupby_fd_candidate = _compute_fd_groupby_candidate(
-            target_file=ground_truth_location,
-            source_name_list=source_data_name_list,
-            source_schema_list=source_data_schema_list,
-            logger=logger,
-            timeout=60,
-        )
-
-        # hints_v3-based: statistical column checks on source tables (30 s)
-        config.hint_groupby_v3_candidate = _compute_hints_v3_groupby_candidate(
+        # ── Unified GROUP BY static candidates (computed once, cached in config) ──
+        # Runs regardless of fd_flag / hint_source. Hard timeout prevents slow
+        # tables from eating into the MCTS iteration budget. Replaces the former
+        # two disconnected mechanisms (FD-only candidate, hints_v3-tiered
+        # candidate) — see GROUP_BY_RANKING_DESIGN_README.md.
+        config.hint_groupby_v3_candidates = _compute_hints_v3_groupby_static_candidates(
             source_name_list=source_data_name_list,
             directory=config_directory,
             len_idx_target_idx=len_idx_target_idx,
             logger=logger,
             timeout=30,
         )
+
+        # hints_v3-based: JOIN gate + evidence/name_score, static per case (30 s)
+        # necessity is resolved per-node in nodes.py against the real partial-
+        # pipeline schema, not here.
+        _join_v3_result = _compute_hints_v3_join_candidates(
+            source_name_list=source_data_name_list,
+            directory=config_directory,
+            len_idx_target_idx=len_idx_target_idx,
+            logger=logger,
+            timeout=30,
+        )
+        if _join_v3_result:
+            config.hint_join_v3_candidates = _join_v3_result["candidates"]
+            config.hint_join_v3_source_columns = _join_v3_result["source_columns"]
+            config.hint_join_v3_target_columns = _join_v3_result["target_columns"]
 
         # ── Auto-build upper-bound RAG DB from ground-truth CSV ──────────
         _rag_mode = getattr(args, "rag", "")
@@ -1105,7 +1123,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                 )
                 df_output = pd.read_csv(target_file_location, low_memory=False)
                 df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-                df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                df_gt = drop_leading_index_col_if_present(df_gt)
                 _, is_correct, _, _ = validate_fn(df_output, df_gt)
             except Exception:
                 logger.warning(
@@ -1127,7 +1145,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                 try:
                     df_test = pd.read_csv(test_output, low_memory=False)
                     df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
-                    df_gt_test = df_gt_test.drop(columns=df_gt_test.columns[0], axis=1)
+                    df_gt_test = drop_leading_index_col_if_present(df_gt_test)
                     _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
                     print(f"[two-phase mcts] is_correct: training={is_correct} → test={test_is_correct}")
                     is_correct = test_is_correct
@@ -1176,7 +1194,6 @@ if __name__ == "__main__":
     import multiprocessing
     from datetime import datetime
 
-    _CASE_TIMEOUT = 600  # 15 minutes per case
 
     parser = argparse.ArgumentParser(description="MCTS schema transformation search")
     parser.add_argument(
@@ -1338,11 +1355,19 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
+        "--case_timeout",
+        type=int,
+        default=300,
+        help="Hard wall-clock budget per case in seconds (default 300). The case "
+             "process is killed at this point and whatever the search found so far "
+             "goes through the timeout-recovery path.",
+    )
+    parser.add_argument(
         "--benchmark",
         type=str,
         default="github",
-        choices=["github", "monteprep"],
-        help="Benchmark dataset: 'github' or 'monteprep'.",
+        choices=["github", "monteprep", "smart_building_v2"],
+        help="Benchmark dataset: 'github', 'monteprep', or 'smart_building_v2'.",
     )
     parser.add_argument(
         "--data_split",
@@ -1497,6 +1522,13 @@ if __name__ == "__main__":
         "timestamp",
         "status",
         "error",
+        # Count of scoring/validation exceptions swallowed by execute_and_score's
+        # broad `except Exception` (Langraph/nodes.py). Those leave
+        # validation_passed False and the reward unchanged, which is
+        # indistinguishable from "the script produced a wrong answer" -- so a
+        # non-zero value here means is_correct=False may be a scoring failure
+        # rather than a genuinely incorrect script. Must stay 0.
+        "scoring_errors",
     ]
     with open(results_csv_path, "w", newline="") as _f:
         csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writeheader()
@@ -1520,10 +1552,10 @@ if __name__ == "__main__":
             args=(args, length, case_id, log_dir_, args.experiment_name, _result_queue),
         )
         _proc.start()
-        _proc.join(timeout=_CASE_TIMEOUT)
+        _proc.join(timeout=args.case_timeout)
 
         if _proc.is_alive():
-            print(f"[MCTS] Case {case_id} TIMED OUT after {_CASE_TIMEOUT}s — killing")
+            print(f"[MCTS] Case {case_id} TIMED OUT after {args.case_timeout}s — killing")
             _proc.terminate()
             _proc.join()
             results[case_id] = None
@@ -1539,11 +1571,7 @@ if __name__ == "__main__":
                     _best_score = _ckpt.get("best_score", 0.0)
                     _best_op_hist = _ckpt.get("best_operation_history", "")
                     if _best_script:
-                        _mf = (
-                            "autopipeline-benchmarks/monteprep-pipelines"
-                            if args.benchmark == "monteprep"
-                            else "autopipeline-benchmarks/github-pipelines"
-                        )
+                        _mf = _resolve_main_folder(args.benchmark)
                         _target_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts.csv"
                         _gt_file = f"{_mf}/length{length}_{case_id}/target.csv"
                         from util.utils import execute_python
@@ -1557,7 +1585,7 @@ if __name__ == "__main__":
                         if _exec_result == "Success":
                             _df_out = pd.read_csv(_target_file, low_memory=False)
                             _df_gt = pd.read_csv(_gt_file, low_memory=False)
-                            _df_gt = _df_gt.drop(columns=_df_gt.columns[0], axis=1)
+                            _df_gt = drop_leading_index_col_if_present(_df_gt)
                             _, _is_correct, _, _ = _validate_fn(_df_out, _df_gt)
                             # Two-phase: override is_correct with test-data validation.
                             # Use a recovery-specific output path to avoid race conditions
@@ -1581,7 +1609,7 @@ if __name__ == "__main__":
                                     try:
                                         _df_test = pd.read_csv(_test_file, low_memory=False)
                                         _df_gt2 = pd.read_csv(_gt_file, low_memory=False)
-                                        _df_gt2 = _df_gt2.drop(columns=_df_gt2.columns[0], axis=1)
+                                        _df_gt2 = drop_leading_index_col_if_present(_df_gt2)
                                         _, _test_is_correct, _, _ = _validate_fn(_df_test, _df_gt2)
                                         print(f"[two-phase mcts timeout] is_correct: training={_is_correct} → test={_test_is_correct}")
                                         _is_correct = _test_is_correct
@@ -1599,12 +1627,12 @@ if __name__ == "__main__":
                                 "case_id": case_label,
                                 "is_correct": _is_correct,
                                 "cost": "N/A",
-                                "latency_seconds": _CASE_TIMEOUT,
+                                "latency_seconds": args.case_timeout,
                                 "best_score": round(_best_score, 4),
                                 "operation_history": _best_op_hist,
                                 "timestamp": _ts,
                                 "status": "timeout_recovered",
-                                "error": f"Timed out after {_CASE_TIMEOUT}s; best script validated",
+                                "error": f"Timed out after {args.case_timeout}s; best script validated",
                             }
                     os.remove(_checkpoint_file)
                 except Exception as _e:
@@ -1615,12 +1643,12 @@ if __name__ == "__main__":
                     "case_id": case_label,
                     "is_correct": False,
                     "cost": "N/A",
-                    "latency_seconds": _CASE_TIMEOUT,
+                    "latency_seconds": args.case_timeout,
                     "best_score": "N/A",
                     "operation_history": "",
                     "timestamp": _ts,
                     "status": "timeout",
-                    "error": f"Timed out after {_CASE_TIMEOUT}s",
+                    "error": f"Timed out after {args.case_timeout}s",
                 }
         elif not _result_queue.empty():
             _status, _payload = _result_queue.get()
@@ -1673,11 +1701,7 @@ if __name__ == "__main__":
                     _best_score  = _ckpt.get("best_score", 0.0)
                     _best_op_hist = _ckpt.get("best_operation_history", "")
                     if _best_script:
-                        _mf = (
-                            "autopipeline-benchmarks/monteprep-pipelines"
-                            if args.benchmark == "monteprep"
-                            else "autopipeline-benchmarks/github-pipelines"
-                        )
+                        _mf = _resolve_main_folder(args.benchmark)
                         _target_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts.csv"
                         _gt_file = f"{_mf}/length{length}_{case_id}/target.csv"
                         from util.utils import execute_python
@@ -1691,7 +1715,7 @@ if __name__ == "__main__":
                         if _exec_result == "Success":
                             _df_out = pd.read_csv(_target_file, low_memory=False)
                             _df_gt  = pd.read_csv(_gt_file, low_memory=False)
-                            _df_gt  = _df_gt.drop(columns=_df_gt.columns[0], axis=1)
+                            _df_gt = drop_leading_index_col_if_present(_df_gt)
                             _, _is_correct, _, _ = _validate_fn(_df_out, _df_gt)
                             if _data_split == "training":
                                 _test_file = f"{_mf}/length{length}_{case_id}/target_multisource_mcts_recovery_test_val.csv"
@@ -1711,7 +1735,7 @@ if __name__ == "__main__":
                                     try:
                                         _df_test = pd.read_csv(_test_file, low_memory=False)
                                         _df_gt2  = pd.read_csv(_gt_file, low_memory=False)
-                                        _df_gt2  = _df_gt2.drop(columns=_df_gt2.columns[0], axis=1)
+                                        _df_gt2 = drop_leading_index_col_if_present(_df_gt2)
                                         _, _test_is_correct, _, _ = _validate_fn(_df_test, _df_gt2)
                                         print(f"[two-phase mcts oom] is_correct: training={_is_correct} → test={_test_is_correct}")
                                         _is_correct = _test_is_correct
@@ -1752,6 +1776,16 @@ if __name__ == "__main__":
                     "status": "error",
                     "error": f"Process exited with code {_exitcode}",
                 }
+        # Surface swallowed scoring/validation exceptions for every status path
+        # (correct/incorrect, timeout, timeout_recovered, oom_recovered, error).
+        _row["scoring_errors"] = _count_scoring_errors(log_dir_, length, case_id)
+        if _row["scoring_errors"]:
+            print(
+                f"[MCTS] WARNING: case {case_label} swallowed "
+                f"{_row['scoring_errors']} scoring/validation exception(s) -- "
+                f"is_correct={_row['is_correct']} may reflect a scoring failure, "
+                f"not a wrong script. See {log_dir_}"
+            )
         with open(results_csv_path, "a", newline="") as _f:
             csv.DictWriter(_f, fieldnames=_CSV_FIELDS).writerow(_row)
         print(f"[MCTS] CSV updated: {results_csv_path}")

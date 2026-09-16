@@ -39,6 +39,85 @@ def _ollama_openai_client():
     )
 
 
+# ASU Research Computing hosts open-weight models behind an OpenAI-compatible API.
+# The key comes from $OPENSOURCE_API_KEY; the endpoint can be overridden for testing.
+_ASU_BASE_URL = os.environ.get("ASU_OPENAI_BASE_URL", "https://openai.rc.asu.edu/v1")
+
+# Model-name substrings routed to the ASU endpoint. The endpoint serves ~50 models;
+# add a marker here to route another one.
+ASU_MODEL_MARKERS = ("gpt-oss",)
+
+# gpt-oss is a reasoning model: its hidden reasoning is billed against max_tokens, so a
+# caller asking for max_tokens=4096 of CODE can get back an empty message when reasoning
+# eats the whole budget (observed with reasoning_effort=high: finish_reason=length,
+# content=""). This headroom is added on top of the caller's max_tokens so the answer
+# keeps the budget the caller intended. Override with TRANSCHEMA_REASONING_HEADROOM.
+_REASONING_HEADROOM = int(os.environ.get("TRANSCHEMA_REASONING_HEADROOM", "8192"))
+
+# Optional low|medium|high. Unset = the server's default. Higher effort is slower and
+# spends more of the headroom above.
+_REASONING_EFFORT = os.environ.get("TRANSCHEMA_REASONING_EFFORT", "").strip().lower() or None
+
+
+# Microsoft DMX PayGo models, reached through an SSH tunnel to the collaborator's Azure VM,
+# where a small proxy adds the Azure token (see dmx_proxy.py on the VM). Select them with a
+# "dmx-" prefix, e.g. --model dmx-deepseek-v4-flash; the prefix is stripped before sending.
+# The prefix keeps dmx-gpt-oss-120b from being routed to the ASU endpoint above.
+_DMX_BASE_URL = os.environ.get("DMX_OPENAI_BASE_URL", "http://localhost:8000/v1")
+DMX_PREFIX = "dmx-"
+
+
+def is_dmx_model(model):
+    return (model or "").lower().startswith(DMX_PREFIX)
+
+
+def is_asu_model(model):
+    ml = (model or "").lower()
+    return not is_dmx_model(model) and any(marker in ml for marker in ASU_MODEL_MARKERS)
+
+
+def gpt_oss_encoding():
+    """Tokenizer for gpt-oss. tiktoken.encoding_for_model() raises KeyError for it.
+    o200k_harmony is o200k_base plus chat special tokens, so for counting plain prompt
+    text o200k_base is identical; use harmony when the installed tiktoken has it."""
+    try:
+        return tiktoken.get_encoding("o200k_harmony")
+    except ValueError:
+        return tiktoken.get_encoding("o200k_base")
+
+
+def dmx_encoding(model):
+    """Tokenizer for prompt-length counting with DMX models. DeepSeek-V4 has no tiktoken
+    entry; the DeepSeek-V3 tokenizer is used as a close approximation."""
+    if "gpt-oss" in model.lower():
+        return gpt_oss_encoding()
+    return AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
+
+
+def _dmx_openai_client():
+    return OpenAI(
+        base_url=_DMX_BASE_URL,
+        api_key="unused",  # the proxy on the VM adds the real Azure token
+        timeout=httpx.Timeout(connect=60.0, read=_OLLAMA_READ_TIMEOUT, write=120.0, pool=60.0),
+    )
+
+
+def _asu_openai_client():
+    api_key = os.environ.get("OPENSOURCE_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OPENSOURCE_API_KEY is not set, so the ASU open-source model endpoint cannot be "
+            "used. Export it before running. Note that the stock ~/.bashrc returns early for "
+            "non-interactive shells, so an export placed below that guard is invisible to "
+            "scripts launched via nohup/sbatch/bash -c."
+        )
+    return OpenAI(
+        base_url=_ASU_BASE_URL,
+        api_key=api_key,
+        timeout=httpx.Timeout(connect=60.0, read=_OLLAMA_READ_TIMEOUT, write=120.0, pool=60.0),
+    )
+
+
 class CostBudgetExceeded(Exception):
     """Raised before an LLM request when the accumulated cost has already reached the budget."""
     pass
@@ -107,6 +186,7 @@ class LLMClient:
 
         ml = model.lower()
         self._is_thinking_model = False
+        self._is_reasoning_model = False
         if "qwen2.5" in ml:
             self.client = _ollama_openai_client()
             if "32b" in ml:
@@ -129,6 +209,14 @@ class LLMClient:
             self.client = _ollama_openai_client()
             # Mixtral uses the Mistral tokenizer
             self.encoding = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
+        elif is_dmx_model(model):
+            self.client = _dmx_openai_client()
+            self._is_reasoning_model = True
+            self.encoding = dmx_encoding(model)
+        elif is_asu_model(model):
+            self.client = _asu_openai_client()
+            self._is_reasoning_model = True
+            self.encoding = gpt_oss_encoding()
         else:
             self.client = openai.OpenAI(api_key=openai.api_key)
             if model == "gpt-4.1-mini":
@@ -141,6 +229,8 @@ class LLMClient:
 
         _base = str(getattr(self.client, "base_url", "") or "")
         self._uses_ollama = "11434" in _base or "ollama" in _base.lower()
+        self._uses_asu = is_asu_model(model)
+        self._uses_dmx = is_dmx_model(model)
 
     def __repr__(self):
         return f"LLMClient(model={self.model}, tracker={self.tracker})"
@@ -154,7 +244,11 @@ class LLMClient:
     def chatgpt(self, messages, temperature=None, max_tokens=4096, n=1, stop=None):
         """Sends chat requests to the model and returns the responses."""
         if temperature is None:
-            temperature = 0.0 if "4.1" in self.model else 1.0
+            # o3/o4-mini only accept temperature=1.0, hence the name check. gpt-oss must NOT
+            # fall into that branch: replaying the same code-gen prompt, temperature 1.0 gave
+            # a compilable script 1/3 times (prose spliced into code, runaway reasoning to the
+            # token cap) vs 3/3 at 0.0, which was also ~2x faster.
+            temperature = 0.0 if ("4.1" in self.model or self._uses_asu or self._uses_dmx) else 1.0
         outputs = []
         while n > 0:
             cnt = min(n, 20)  # Ensure at most 20 requests per batch
@@ -221,6 +315,20 @@ class LLMClient:
         )
         def _request_with_backoff():
 
+            if self._uses_dmx:
+                # Azure's v1 API takes max_completion_tokens; the budget includes reasoning.
+                kwargs = dict(
+                    model=self.model[len(DMX_PREFIX):],
+                    messages=messages,
+                    temperature=temperature,
+                    max_completion_tokens=max_tokens + _REASONING_HEADROOM,
+                )
+                if stop is not None:
+                    kwargs["stop"] = stop
+                if _REASONING_EFFORT:
+                    kwargs["reasoning_effort"] = _REASONING_EFFORT
+                return self.client.chat.completions.create(**kwargs)
+
             if self.model == "o4-mini" or self.model == "o3":
                 return self.client.chat.completions.create(
                     model=self.model,
@@ -244,6 +352,10 @@ class LLMClient:
                     frequency_penalty=0.0,
                     presence_penalty=0.0,
                 )
+                if self._is_reasoning_model:
+                    kwargs["max_tokens"] = max_tokens + _REASONING_HEADROOM
+                    if _REASONING_EFFORT:
+                        kwargs["reasoning_effort"] = _REASONING_EFFORT
                 if self._is_thinking_model:
                     # Ollama-specific: skip the reasoning/"thinking" pass so the
                     # full max_tokens budget goes to the actual code response
@@ -264,6 +376,17 @@ class LLMClient:
                 getattr(usage, "prompt_tokens", None) if usage else None,
                 getattr(usage, "completion_tokens", None) if usage else None,
             )
+
+        if (self._uses_asu or self._uses_dmx) and response.choices:
+            choice = response.choices[0]
+            if choice.finish_reason == "length" and not (choice.message.content or "").strip():
+                self.logger.warning(
+                    "%s hit its token cap during reasoning and returned no content "
+                    "(completion_tokens=%s). Raise TRANSCHEMA_REASONING_HEADROOM or lower "
+                    "TRANSCHEMA_REASONING_EFFORT.",
+                    self.model,
+                    getattr(response.usage, "completion_tokens", None) if response.usage else None,
+                )
 
         self.tracker.add_usage(
             self.model,

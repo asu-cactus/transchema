@@ -1,8 +1,10 @@
 import os
+import signal
 import traceback
 import argparse
 import json
 import csv
+import glob
 import pdb
 import shutil
 import time
@@ -15,12 +17,14 @@ from methods.single_step_cot import single_step_cot
 from methods.critique import critique
 from log_util.log_util import setup_logging, create_logger
 from judges import judge, build_nl_score_interpretation
-from eval_score_value_based import value_based_relative_csv_score_timed
+from eval_score.cot_score import cot_value_based_score
 from validation.fuzzy_match import compare_tables_fuzzy
 from llm.llm_models import LLMClient, TokenUsageTracker, CostBudgetExceeded
+from util.utils import resolve_main_folder, resolve_case_json, BENCHMARK_CHOICES, drop_leading_index_col_if_present
 
 
-def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=None, reward_mode="score"):
+def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=None,
+                             reward_mode="score", length=None, confidence=None):
     """Return (nl_score, generated_samples, score, timing_dict) for a given attempt.
 
     If precomputed=(df_gen, fd_f1, col_ratio, true_combined_score, debug_dict) is
@@ -46,12 +50,12 @@ def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=Non
             t0 = time.time()
             df_gen = pd.read_csv(generated_path, low_memory=False)
             df_gt = pd.read_csv(gt_path, low_memory=False)
-            df_gt.drop(columns=df_gt.columns[0], axis=1, inplace=True)
+            drop_leading_index_col_if_present(df_gt)
             timing['csv_load_ms'] = (time.time() - t0) * 1000
 
             t0 = time.time()
             _, col_ratio, _, fd_f1, true_combined_score, debug_dict = \
-                value_based_relative_csv_score_timed(df_gen, df_gt)
+                cot_value_based_score(df_gen, df_gt, length=length, confidence=confidence)
             timing['relative_score_ms'] = (time.time() - t0) * 1000
 
         nl_score = build_nl_score_interpretation(fd_f1, col_ratio, true_combined_score, debug_dict)
@@ -70,7 +74,7 @@ def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=Non
             if precomputed is not None:
                 t0 = time.time()
                 df_gt = pd.read_csv(gt_path, low_memory=False)
-                df_gt.drop(columns=df_gt.columns[0], axis=1, inplace=True)
+                drop_leading_index_col_if_present(df_gt)
                 timing['csv_load_ms'] = (time.time() - t0) * 1000
 
             # Use fuzzy column-match ratio: matched_cols / total_target_cols
@@ -80,27 +84,42 @@ def _compute_attempt_context(generated_path, gt_path, n_samples, precomputed=Non
         else:
             score = true_combined_score
     except Exception:
-        pass
+        # Previously a bare `pass`, which is how a two-month-old scoring regression
+        # stayed invisible: every failure looked like a legitimate score of 0.0.
+        print(f"[attempt-context] failed for {generated_path}, leaving score=0:\n"
+              f"{traceback.format_exc()}")
 
     timing['total_ms'] = (time.time() - context_start) * 1000
     return nl_score, generated_samples, score, timing
 
 
 def format_past_attempts(past_attempts):
-    """Format a list of past failed attempt dicts into a context string for prompts."""
+    """Format a list of past attempt dicts into a context string for prompts.
+
+    Each attempt may carry a "label" describing which attempt it is ("best scoring
+    attempt", "most recent attempt", ...). ReAct-CoT passes two blocks per critique
+    round -- the best-scoring attempt and the most recent one -- so the label cannot be
+    hardcoded to "best scoring attempt" the way it used to be: one of the two is not the
+    best, and mislabelling it tells the model the opposite of the truth.
+    """
     if not past_attempts:
         return ""
     lines = ["--- Past Attempt(s) from Previous Iteration(s) ---"]
     for attempt in past_attempts:
-        lines.append(f"\n[Iteration {attempt['iteration']}] Score: {attempt['score']:.4f}")
+        label = attempt.get("label", "best scoring attempt")
+        # Existing callers pass an int iteration number; ReAct-CoT passes a descriptive
+        # string ("Best so far", "Most recent"). Keep the old rendering for ints.
+        it = attempt["iteration"]
+        heading = f"Iteration {it}" if isinstance(it, int) else str(it)
+        lines.append(f"\n[{heading}] Score: {attempt['score']:.4f}")
         lines.append(f"Operations Tried: {attempt['operation_history']}")
         if attempt.get("generated_samples"):
-            lines.append("Generated Data (best scoring attempt):")
+            lines.append(f"Generated Data ({label}):")
             lines.append(attempt["generated_samples"])
         if attempt.get("nl_score"):
             lines.append("Score Analysis:")
             lines.append(attempt["nl_score"])
-        lines.append("Generated Code (best scoring attempt):")
+        lines.append(f"Generated Code ({label}):")
         lines.append("```python")
         lines.append(attempt["code"])
         lines.append("```")
@@ -202,11 +221,7 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
     critique_path = f"{args.result_directory}/critique.csv"
 
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = (
-        "autopipeline-benchmarks/monteprep-pipelines"
-        if benchmark == "monteprep"
-        else "autopipeline-benchmarks/github-pipelines"
-    )
+    main_folder = resolve_main_folder(benchmark)
     code_path = f"{main_folder}/length{length}_{id_}/python_recovered.py"
 
     attempts = []  # list of {"code": ..., "score": ..., "type": ...}
@@ -222,7 +237,8 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
         except Exception:
             pass
         nl_score, generated_samples, reward_score, score_timing = _compute_attempt_context(
-            generated_path, gt_path, args.target_length, precomputed=extras, reward_mode=reward_mode
+            generated_path, gt_path, args.target_length, precomputed=extras,
+            reward_mode=reward_mode, length=length
         )
         generated_csv_head = ""
         if extras is not None:
@@ -356,6 +372,185 @@ def crit(args, length, id_, operation_history, past_context_str="", judge_reason
     print("Failed!")
     print(result)
     return result, attempts
+
+
+def _critique_result_path(args, main_folder_base, case_path):
+    """The CSV that critique reads as 'the resulting table' for this mode.
+
+    Mirrors methods/critique.py::get_result_path, which is fixed per mode rather than
+    per round -- so ReAct-CoT has to overwrite it between rounds (see
+    _run_critique_rounds) or every round would critique the ORIGINAL generation output.
+    """
+    base = f"{main_folder_base}/length{case_path}"
+    if getattr(args, "intermediate_materialization", False):
+        return None  # materialization picks the newest intermediate itself; leave it alone
+    if getattr(args, "single_step_cot", False):
+        return f"{base}/target_multisource_cot.csv"
+    return f"{base}/target_multisource.csv"
+
+
+def _run_critique_rounds(args, length, case, main_folder_base, case_path,
+                         operation_history, past_context_str, judge_reason, budget,
+                         ms_score, ms_code, ms_nl_score, ms_generated_samples,
+                         on_round=None):
+    """Run up to --critique-rounds critique rounds over a single generation.
+
+    Round 1 is exactly the existing single critique call, so --critique-rounds 1 (the
+    default) is a no-op relative to previous behaviour.
+
+    From round 2 on, each round is given the best-scoring attempt so far AND the most
+    recent one via $PAST_ITERATION_CONTEXT$ (the critique prompt never receives code any
+    other way -- it works from $OPERATIONS$ plus the result table). The best attempt's
+    output CSV is also staged over the path critique reads, so $RES_SCHEMA$/$RES_EXAMPLES$
+    describe the attempt being corrected rather than the original generation output --
+    without that the rounds do not actually chain.
+
+    Rounds stop as soon as the best score reaches SCORE_DONE_THRESHOLD, the same
+    criterion that decides whether critique runs at all.
+
+    Returns (crit_info, attempts) exactly like crit(), where crit_info is the round that
+    produced the best score and attempts is every critique attempt across all rounds.
+    """
+    rounds = max(1, int(getattr(args, "critique_rounds", 1) or 1))
+    result_path = _critique_result_path(args, main_folder_base, case_path)
+    crit_out = f"{main_folder_base}/length{case_path}/target_multisource_critique_history.csv"
+
+    # Stop after this many consecutive rounds that fail to beat the best score so far.
+    # Reuses --early-stopping (default 5); --no-early-stopping disables it. With
+    # --critique-rounds set high (40), this plateau check -- not the round cap -- is what
+    # normally ends a case, so the budget is spent only while refinement is still paying.
+    no_improve_limit = (None if getattr(args, "no_early_stopping", False)
+                        else getattr(args, "early_stopping", 5))
+    no_improve = 0
+
+    all_attempts = []
+    # Two different "bests", previously conflated into one variable:
+    #   best_score  -- best across the generation attempt AND every critique round;
+    #                  drives the stop check and which attempt is fed back as context.
+    #   best_round_* -- best among the CRITIQUE rounds only; crit_info must be a critique
+    #                  result, so this is what gets returned.
+    # Collapsing them made round 1 unconditionally become "best" even when it scored
+    # BELOW the generation attempt, so later rounds were told a worse attempt was best.
+    best_info = None
+    best_round_score = -1.0
+    best_score = ms_score
+    best_csv = None                     # None => generation output already in place
+    best_ctx = {
+        "iteration": "Best so far (generation)",
+        "label": "best scoring attempt",
+        "operation_history": str(operation_history),
+        "code": ms_code, "score": ms_score,
+        "nl_score": ms_nl_score, "generated_samples": ms_generated_samples,
+    }
+    latest_ctx = None
+
+    for rnd in range(1, rounds + 1):
+        if rnd > 1:
+            if best_score >= SCORE_DONE_THRESHOLD:
+                print(f"[critique] round {rnd}: best score {best_score:.4f} >= "
+                      f"{SCORE_DONE_THRESHOLD} — stopping")
+                break
+            if no_improve_limit is not None and no_improve >= no_improve_limit:
+                print(f"[critique] round {rnd}: no score improvement for "
+                      f"{no_improve} rounds — stopping")
+                break
+            # Stage the attempt being corrected so $RES_*$ describes it, not the original.
+            if result_path and best_csv and os.path.exists(best_csv):
+                try:
+                    shutil.copy2(best_csv, result_path)
+                except Exception as exc:
+                    print(f"[critique] round {rnd}: could not stage {best_csv}: {exc}")
+            blocks = [best_ctx] + ([latest_ctx] if latest_ctx is not None else [])
+            past_context_str = format_past_attempts(blocks)
+
+        crit_info, attempts = crit(
+            args, length, case, operation_history, past_context_str,
+            judge_reason=judge_reason, budget=budget,
+        )
+        all_attempts.extend(attempts)
+
+        # Archive this round's output; critique overwrites one fixed CSV every round.
+        round_csv = (f"{main_folder_base}/length{case_path}"
+                     f"/target_multisource_critique_round{rnd}.csv")
+        if os.path.exists(crit_out):
+            try:
+                shutil.copy2(crit_out, round_csv)
+            except Exception:
+                round_csv = None
+        else:
+            round_csv = None
+
+        # Persist this round immediately. The driver's _CASE_TIMEOUT KILLS the worker,
+        # and the case record used to be written only after ALL rounds finished -- so a
+        # timeout threw away every completed round, including ones that had already
+        # produced a correct result (26 L6 cases were lost that way, 0 of them leaving a
+        # JSON). Flushing per round means a kill costs at most the round in flight.
+        if on_round is not None:
+            try:
+                on_round(attempts)
+            except Exception as exc:
+                print(f"[critique] round {rnd}: flush failed: {exc}")
+
+        top = max(attempts, key=lambda a: a["score"]) if attempts else None
+        round_score = top["score"] if top else 0.0
+        print(f"[critique] round {rnd}/{rounds}: score={round_score:.4f} "
+              f"correct={bool(crit_info[0])} (best so far {best_score:.4f})")
+
+        if best_info is None or round_score > best_round_score:
+            best_info, best_round_score = crit_info, round_score
+        if round_score > best_score:
+            # Only stage/report a round as overall-best when it actually beats the
+            # generation attempt too.
+            no_improve = 0
+            best_score, best_csv = round_score, round_csv
+            if top is not None:
+                best_ctx = {
+                    "iteration": f"Best so far (critique round {rnd})",
+                    "label": "best scoring attempt",
+                    "operation_history": str(operation_history),
+                    "code": top.get("code", ""), "score": round_score,
+                    "nl_score": top.get("nl_score", ""),
+                    "generated_samples": top.get("generated_samples", ""),
+                }
+        else:
+            no_improve += 1
+
+        if top is not None:
+            latest_ctx = {
+                "iteration": f"Most recent (critique round {rnd})",
+                "label": "most recent attempt",
+                "operation_history": str(operation_history),
+                "code": top.get("code", ""), "score": round_score,
+                "nl_score": top.get("nl_score", ""),
+                "generated_samples": top.get("generated_samples", ""),
+            }
+
+        # NO break on crit_info[0]. That flag is the ground-truth test verdict, and
+        # stopping on it would let the answer decide when to stop searching -- an oracle
+        # a real deployment does not have, which would also make the round counts (and
+        # therefore the cost) unreproducible without labels. Rounds end only on
+        # score-visible signals: score >= SCORE_DONE_THRESHOLD, the no-improvement
+        # plateau, the round cap, or the per-case timeout.
+
+    # Restore the best round's output so downstream validation/scoring sees it.
+    if best_csv and os.path.exists(best_csv):
+        try:
+            shutil.copy2(best_csv, crit_out)
+        except Exception:
+            pass
+
+    # Drop every per-round archive now that the best one has been restored. These exist
+    # ONLY to let the best round be recovered at the end; keeping them was an unbounded
+    # leak -- one CSV per round per case, ~6 rounds/case at up to 1MB each, which filled
+    # a 12GB filesystem partway through a 598-case sweep and killed the driver.
+    for stale in glob.glob(f"{main_folder_base}/length{case_path}"
+                           f"/target_multisource_critique_round*.csv"):
+        try:
+            os.remove(stale)
+        except OSError:
+            pass
+
+    return (best_info if best_info is not None else crit_info), all_attempts
 
 
 def get_parser():
@@ -621,8 +816,8 @@ def get_parser():
         "--benchmark",
         type=str,
         default="github",
-        choices=["github", "monteprep"],
-        help="Benchmark dataset: 'github' or 'monteprep'.",
+        choices=list(BENCHMARK_CHOICES),
+        help="Benchmark dataset: 'github', 'monteprep', or 'smart_building_v2'.",
     )
     parser.add_argument(
         "--data_split",
@@ -641,8 +836,41 @@ def get_parser():
         "--rag",
         type=str,
         default="none",
-        choices=["none", "upper_bound"],
-        help="RAG mode: 'none' (default) or 'upper_bound' (local SQLite DB from gt_csv).",
+        choices=["none", "upper_bound", "curated_pipeline"],
+        help="RAG mode: 'none' (default), 'upper_bound' (local SQLite DB from gt_csv), "
+             "or 'curated_pipeline' (the static 656-pipeline corpus mcts_search uses: "
+             "prefix-match the plan so far, then re-rank by cosine similarity on an "
+             "8-dim structural feature vector). For --single_step_cot there is no plan "
+             "yet, so the empty prefix matches everything and the re-rank returns the "
+             "--rag_topk structurally most similar cases; the operator-driven arm "
+             "re-retrieves before each step as MCTS does.",
+    )
+
+    parser.add_argument(
+        "--curated_pipeline_db",
+        type=str,
+        default="rag_pipeline/db/curated_pipeline_656.db",
+        help="Path to the static curated-pipeline SQLite corpus. Used when "
+             "--rag curated_pipeline.",
+    )
+
+    parser.add_argument(
+        "--rag_max_tokens",
+        type=int,
+        default=8000,
+        help="Token budget for the retrieved curated-RAG block. Some corpus rows carry "
+             "very large embedded samples (one is 143k tokens), so examples are dropped "
+             "from the least-similar end until the block fits rather than overflowing "
+             "the prompt.",
+    )
+
+    parser.add_argument(
+        "--curated_pipeline_norm_stats",
+        type=str,
+        default="rag_pipeline/db/curated_pipeline_features.norm_stats.json",
+        help="Per-dimension mean/std the corpus feature vectors were normalized with, "
+             "so a new query vector lands in the same space. Used when "
+             "--rag curated_pipeline.",
     )
 
     parser.add_argument(
@@ -659,6 +887,19 @@ def get_parser():
         default=None,
         help="Number of full ms+critique iterations per case. Defaults to 1 unless --budget is set. "
              "In iterations >=2, past operation history, code, and score are injected into prompts.",
+    )
+
+    parser.add_argument(
+        "--critique-rounds",
+        dest="critique_rounds",
+        type=int,
+        default=1,
+        help="ReAct-style refinement: run generation ONCE, then up to N critique rounds "
+             "on its output. Each round is told the best-scoring attempt so far and the "
+             "most recent one (code, score, output samples, score analysis), and rounds "
+             "stop as soon as the score reaches the done threshold. Distinct from "
+             "--iterative, which repeats generation+critique as a unit. Default 1 "
+             "reproduces the single-critique behaviour exactly.",
     )
 
     parser.add_argument(
@@ -705,6 +946,25 @@ def get_parser():
     )
 
     parser.add_argument(
+        "--rule-hints",
+        dest="rule_hints",
+        action="store_true",
+        default=False,
+        help="Inject the MCTS rule engine's top-ranked JOIN and GROUP_BY candidates "
+             "into the prompts as hints (see hints/rule_hints.py). Ranked once per "
+             "case at depth 0, so no extra LLM calls are made.",
+    )
+
+    parser.add_argument(
+        "--rule-hints-top-k",
+        dest="rule_hints_top_k",
+        type=int,
+        default=3,
+        help="How many rule-engine candidates of each type (JOIN, GROUP_BY) to inject. "
+             "Defaults to 3, matching MCTS's _RULE_INJECT_TOP_K.",
+    )
+
+    parser.add_argument(
         "--memory_granularity",
         type=str,
         default="summary",
@@ -733,7 +993,19 @@ def get_parser():
     return parser
 
 
-_CASE_TIMEOUT = 600  # 20 minutes per case
+_CASE_TIMEOUT = 600  # 10 minutes per case
+
+# Score at or above which an attempt is treated as done: critique is skipped and the
+# iteration loop stops. 1.0 means "only a perfect score counts as done".
+#
+# This was 0.9, which misfires badly under --data_split training: the benchmark ships no
+# training-side target, so the training output is scored against target.csv (the GT
+# pipeline's output on the TEST sources) and a CORRECT script tops out around ~0.91.
+# Wrong-but-close outputs therefore land in 0.90-0.95 routinely, clear the gate, and are
+# declared done without ever being critiqued. Measured on L3: 6 such misfires in the
+# materialization arm vs 2 in plain -- materialization produces closer-but-still-wrong
+# output, so it was penalised precisely for improving.
+SCORE_DONE_THRESHOLD = 1.0
 
 
 def _flush_json(case_record, json_path):
@@ -750,12 +1022,17 @@ def _flush_json(case_record, json_path):
 def _critique_case_worker(args, length, case, result_queue):
     """Runs one SSCoT/multistep+critique case fully in a child process."""
     try:
+        # Become a process-group leader so the driver can kill this worker AND every
+        # process it started. The worker is non-daemon (it must spawn the scorer, which
+        # in turn spawns the FD tool), so killing it alone leaves those grandchildren
+        # orphaned onto init, spinning at 100% CPU on large tables until the machine is
+        # rebooted. Killing the group takes the whole tree down.
+        try:
+            os.setsid()
+        except OSError:
+            pass  # already a group leader
         case_path = f"{length}_{case}"
-        main_folder_base = (
-            "autopipeline-benchmarks/monteprep-pipelines"
-            if getattr(args, "benchmark", "github") == "monteprep"
-            else "autopipeline-benchmarks/github-pipelines"
-        )
+        main_folder_base = resolve_main_folder(getattr(args, "benchmark", "github"))
         code_path = f"{main_folder_base}/length{case_path}/python_recovered.py"
 
         # Resolve num_iterations: explicit flag > budget mode > default
@@ -852,7 +1129,6 @@ def _critique_case_worker(args, length, case, result_queue):
                 # Determine whether to enact critique using the configured judge
                 judge_reason = ""
                 reward_mode = getattr(args, "reward", "score")
-                _SCORE_THRESHOLD = 0.9
 
                 # Always compute score upfront; used to gate critique when reward="score"
                 try:
@@ -862,13 +1138,15 @@ def _critique_case_worker(args, length, case, result_queue):
                         args.target_length,
                         precomputed=ms_extras,
                         reward_mode=reward_mode,
+                        length=length,
                     )
                 except Exception:
                     ms_nl_score, ms_generated_samples, ms_score, ms_score_timing = "", [], 0.0, {}
 
                 if reward_mode == "score":
-                    enact_critique = ms_score < _SCORE_THRESHOLD
-                    print(f"[iter {iter_num}] ms_score={ms_score:.4f} — {'running critique' if enact_critique else 'skipping critique (score >= 0.9)'}")
+                    enact_critique = ms_score < SCORE_DONE_THRESHOLD
+                    print(f"[iter {iter_num}] ms_score={ms_score:.4f} — "
+                          f"{'running critique' if enact_critique else f'skipping critique (score >= {SCORE_DONE_THRESHOLD})'}")
                 else:
                     enact_critique = not result[1]
                     if args.judge != "gt":
@@ -877,7 +1155,7 @@ def _critique_case_worker(args, length, case, result_queue):
                         try:
                             df_generated = pd.read_csv(df_generated_path, low_memory=False)
                             df_ground_truth = pd.read_csv(df_ground_truth_path, low_memory=False)
-                            df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+                            drop_leading_index_col_if_present(df_ground_truth)
                             is_correct, judge_reason = judge(df_generated, df_ground_truth, args.judge, _llm_client, logger=_case_logger)
                             enact_critique = not is_correct
                         except CostBudgetExceeded as e:
@@ -916,8 +1194,8 @@ def _critique_case_worker(args, length, case, result_queue):
                     _flush_json(case_record, json_path)
 
                     # Stopping criterion 3: Score threshold reached
-                    if ms_score >= 0.9:
-                        print(f"[iter {iter_num}] Stopping: score {ms_score:.4f} >= 0.9 threshold.")
+                    if ms_score >= SCORE_DONE_THRESHOLD:
+                        print(f"[iter {iter_num}] Stopping: score {ms_score:.4f} >= {SCORE_DONE_THRESHOLD} threshold.")
                         break
 
                     # Stopping criterion 2: Early stopping (no improvement plateau)
@@ -971,9 +1249,56 @@ def _critique_case_worker(args, length, case, result_queue):
                     except Exception:
                         pass
 
+                # Build the iteration record NOW, with the generation attempt and an
+                # empty critique list, and hand _run_critique_rounds a closure that
+                # appends each round and flushes. If the worker is killed by
+                # _CASE_TIMEOUT mid-loop, everything completed so far is already on disk.
+                _crit_records = []
+                _iter_rec = {
+                    "iteration": iter_num,
+                    "ms": {
+                        "is_correct": bool(ms_info[0]),
+                        "score": ms_score,
+                        "cost": ms_info[4] if len(ms_info) > 4 else 0.0,
+                        "latency": ms_info[5] if len(ms_info) > 5 else 0.0,
+                        "nl_score": ms_nl_score,
+                        "generated_samples": ms_generated_samples,
+                        "code": code,
+                        "generated_csv_head": ms_csv_head,
+                        "score_calculation_time_ms": ms_score_timing,
+                    },
+                    "critiques": _crit_records,
+                    "execution_timing_ms": {
+                        "multi_step": ms_execution_time_ms,
+                        "critique": 0.0,
+                    },
+                }
+                case_record["iterations"].append(_iter_rec)
+                _flush_json(case_record, json_path)
+
+                def _flush_round(attempts, _rec=_crit_records, _cr=case_record, _jp=json_path):
+                    _rec.extend({
+                        "type": a["type"],
+                        "is_correct": bool(a["is_correct"]),
+                        "score": a["score"],
+                        "cost": a["cost"],
+                        "latency": a["latency"],
+                        "nl_score": a.get("nl_score", ""),
+                        "generated_samples": a.get("generated_samples", ""),
+                        "code": a["code"],
+                        "score_calculation_time_ms": a.get("score_calculation_time_ms", {}),
+                    } for a in attempts)
+                    _flush_json(_cr, _jp)
+
                 crit_start_time = time.time()
                 try:
-                    crit_info, crit_attempts = crit(args, length, case, operation_history, past_context_str, judge_reason=judge_reason, budget=budget)
+                    crit_info, crit_attempts = _run_critique_rounds(
+                        args, length, case, main_folder_base, case_path,
+                        operation_history, past_context_str, judge_reason, budget,
+                        ms_score=ms_score, ms_code=code, ms_nl_score=ms_nl_score,
+                        ms_generated_samples=ms_generated_samples,
+                        on_round=_flush_round,
+                    )
                 except CostBudgetExceeded as e:
                     print(f"[iter {iter_num}] Stopping: {e}")
                     _flush_json(case_record, json_path)
@@ -989,41 +1314,9 @@ def _critique_case_worker(args, length, case, result_queue):
                     print("Success!")
                     succeeded = True
 
-                # Record this iteration in the case JSON
-                # (reward_mode, ms_nl_score, ms_score, ms_score_timing already computed above)
-                case_record["iterations"].append({
-                    "iteration": iter_num,
-                    "ms": {
-                        "is_correct": bool(ms_info[0]),
-                        "score": ms_score,
-                        "cost": ms_info[4] if len(ms_info) > 4 else 0.0,
-                        "latency": ms_info[5] if len(ms_info) > 5 else 0.0,
-                        "nl_score": ms_nl_score,
-                        "generated_samples": ms_generated_samples,
-                        "code": code,
-                        "generated_csv_head": ms_csv_head,
-                        "score_calculation_time_ms": ms_score_timing,
-                    },
-                    "critiques": [
-                        {
-                            "type": a["type"],
-                            "is_correct": bool(a["is_correct"]),
-                            "score": a["score"],
-                            "cost": a["cost"],
-                            "latency": a["latency"],
-                            "nl_score": a.get("nl_score", ""),
-                            "generated_samples": a.get("generated_samples", ""),
-                            "code": a["code"],
-                            "score_calculation_time_ms": a.get("score_calculation_time_ms", {}),
-                        }
-                        for a in crit_attempts
-                    ],
-                    "execution_timing_ms": {
-                        "multi_step": ms_execution_time_ms,
-                        "critique": crit_execution_time_ms,
-                    },
-                })
-
+                # The record was appended before the rounds and each round flushed into
+                # it as it completed; only the critique timing is still outstanding.
+                _iter_rec["execution_timing_ms"]["critique"] = crit_execution_time_ms
                 _flush_json(case_record, json_path)
 
                 # Accumulate past attempt context for the next iteration (if any remain and plain mode is disabled)
@@ -1053,8 +1346,8 @@ def _critique_case_worker(args, length, case, result_queue):
                 iter_best_score = max([ms_score] + [a["score"] for a in crit_attempts])
 
                 # Stopping criterion 3: Score threshold reached
-                if iter_best_score >= 0.9:
-                    print(f"[iter {iter_num}] Stopping: score {iter_best_score:.4f} >= 0.9 threshold.")
+                if iter_best_score >= SCORE_DONE_THRESHOLD:
+                    print(f"[iter {iter_num}] Stopping: score {iter_best_score:.4f} >= {SCORE_DONE_THRESHOLD} threshold.")
                     break
 
                 # Stopping criterion 2: Early stopping (no improvement plateau)
@@ -1136,18 +1429,42 @@ if __name__ == "__main__":
         case_path = f"{length}_{case}"
 
         _result_queue = multiprocessing.Queue()
+        # NOT daemon: the worker itself starts child processes (score timeout,
+        # rule-hint precompute), and daemonic processes are not allowed to have
+        # children. A daemon worker made every value_based score call raise
+        # AssertionError into a bare `except`, silently yielding score = 0.0.
         _proc = multiprocessing.Process(
             target=_critique_case_worker,
             args=(args, length, case, _result_queue),
-            daemon=True,
+            daemon=False,
         )
         _proc.start()
         _proc.join(timeout=_CASE_TIMEOUT)
 
         if _proc.is_alive():
             print(f"[TIMEOUT] Case {case_path} exceeded {_CASE_TIMEOUT}s — killing process")
+            # Kill the worker's whole process group, not just the worker: it spawns a
+            # scorer, which spawns the FD tool. Killing only the worker leaves those
+            # running forever as orphans. Read the pgid BEFORE terminate(), while the
+            # process still exists.
+            try:
+                _pgid = os.getpgid(_proc.pid)
+            except OSError:
+                _pgid = None
+
             _proc.terminate()
-            _proc.join()
+            _proc.join(timeout=30)
+            if _proc.is_alive():
+                print(f"[TIMEOUT] Case {case_path} ignored terminate() — sending SIGKILL")
+                _proc.kill()
+                _proc.join()
+
+            if _pgid is not None and _pgid != os.getpgid(0):
+                try:
+                    os.killpg(_pgid, signal.SIGKILL)
+                    print(f"[TIMEOUT] Case {case_path} — killed process group {_pgid}")
+                except (OSError, ProcessLookupError):
+                    pass  # group already gone
         elif not _result_queue.empty():
             _status, _payload = _result_queue.get()
             if _status == "ok":

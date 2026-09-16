@@ -30,7 +30,8 @@ import os
 import re
 import sys
 import traceback
-from typing import Any, Dict, List
+from itertools import combinations
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -48,6 +49,7 @@ if _EVAL_SCORE not in sys.path:
 
 from judges import judge as llm_judge_fn, build_nl_score_interpretation
 from rag_pipeline.local_rag_db import get_rag_hints
+import hints.hint_v3 as hint_v3
 
 from auto_suggest_llm_util import (
     get_mcts_candidates,
@@ -65,23 +67,27 @@ from mcts_node import (
     OPERATOR_TYPES,
     EXPAND_OPERATOR_TYPES,
     STRUCTURAL_EXPAND_OPS,
-    AGGREGATE_MAX_CHILDREN,
+    POST_AGGREGATE_EXPAND_OPS,
 )
 from state import MCTSGraphState
-from util.utils import execute_python
+from util.utils import execute_python, drop_leading_index_col_if_present
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.fuzzy_match import compare_tables_fuzzy
 
 # Maximum tree selection depth (used in mcts_select only)
 _MAX_SELECT_DEPTH = 15
-# Minimum reward needed on a GROUP_BY subtree to trigger reaggregation_needed
-_REAGGREGATION_REWARD_THRESHOLD = 0.5
 # Maximum code-generation retries inside simulate
 _MAX_CODE_TRIALS = 5
 # Maximum operator steps in one operator-level simulation rollout
 _MAX_SIMULATE_STEPS = 15
-# Hard timeout (seconds) for the full scoring + validation call
-_SCORE_TIMEOUT = 60
+# Hard timeout (seconds) for the full scoring + validation call.
+# relative_csv_score() now does its own two-phase FD mining per side (full
+# table, then a truncated retry if that times out), each phase capped at
+# eval_score/score.py's FD_TIMEOUT (30s) -- so one side can take up to 60s
+# worst case, and a call needing fresh FD mining on both the generated output
+# and the ground truth (GT cache unavailable) can take up to 120s. Sized to
+# cover that plus subprocess spawn/communication overhead.
+_SCORE_TIMEOUT = 2 * (2 * 30) + 20
 
 
 def _score_worker(target_file_location: str, ground_truth_location: str, result_queue,
@@ -97,7 +103,7 @@ def _score_worker(target_file_location: str, ground_truth_location: str, result_
     try:
         df_output = pd.read_csv(target_file_location, low_memory=False)
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        df_gt = drop_leading_index_col_if_present(df_gt)
 
         precomputed_gt = None
         if gt_cache_path and os.path.exists(gt_cache_path):
@@ -140,7 +146,10 @@ def _score_with_timeout(target_file_location: str, ground_truth_location: str,
     p = multiprocessing.Process(
         target=_score_worker,
         args=(target_file_location, ground_truth_location, q, gt_cache_path),
-        daemon=True,
+        # relative_csv_score() spawns its own child process for FD mining
+        # (eval_score/score.py's _run_fdtool) -- a daemonic process can't have
+        # children, so this parent must not be daemonic either.
+        daemon=False,
     )
     p.start()
     p.join(timeout=_SCORE_TIMEOUT)
@@ -154,32 +163,19 @@ def _score_with_timeout(target_file_location: str, ground_truth_location: str,
         return 0.0
 
 
-_MAX_SCORE_COLS = 20
-_MAX_SCORE_ROWS = 2000
-
-
-def _apply_symmetric_truncation(df_output, df_gt):
-    """Truncate both tables to 20 evenly-spaced GT cols + 2000 rows each.
-    Returns (df_output_truncated, df_gt_truncated, precomputed_gt=None).
-    precomputed_gt is None so FDs are recomputed on the truncated GT.
-    """
-    if len(df_gt.columns) > _MAX_SCORE_COLS:
-        df_gt = df_gt.iloc[:_MAX_SCORE_ROWS, :_MAX_SCORE_COLS]
-    else:
-        df_gt = df_gt.iloc[:_MAX_SCORE_ROWS]
-    df_output = df_output.iloc[:_MAX_SCORE_ROWS]
-    return df_output, df_gt, None  # precomputed_gt=None → recompute on truncated GT
-
-
 def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue,
-                        gt_cache_path: str = "", force_truncate: bool = False, weights: dict | None = None,
+                        gt_cache_path: str = "", weights: dict | None = None,
                         confidence: float | None = None, column_type_weights: dict | None = None,
                         credibility_weight: float | None = None):
     """Subprocess worker: load CSVs and compute value_based score, put result in queue.
 
     Uses Jaccard-aligned column matching + value-based distribution scoring.
-    If the cache recorded GT was reduced (col_indices set), or force_truncate=True,
-    both df_gt and df_output are truncated symmetrically before scoring.
+    If the cache recorded GT was reduced (col_indices set), both df_gt and
+    df_output are truncated to the same columns/rows before scoring. FD-mining
+    timeouts are handled internally by relative_csv_score() (two-phase: full
+    table, then a truncated retry), so no outer truncate-and-retry is needed
+    here -- a timeout of the whole worker process is treated as a genuine
+    failure, not a signal to retry smaller.
 
     weights: optional score_1 component weights (fd_f1/avg_col_score_1/
         row_count_score/max_missing_score/confidence/credibility_weight),
@@ -202,11 +198,9 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
     try:
         df_output = pd.read_csv(target_file_location, low_memory=False)
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        df_gt = drop_leading_index_col_if_present(df_gt)
 
         precomputed_gt = None
-        col_indices = None
-        max_fd_rows = None
 
         if gt_cache_path and os.path.exists(gt_cache_path):
             try:
@@ -226,10 +220,6 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
                 }
             except Exception:
                 precomputed_gt = None
-
-        if force_truncate and col_indices is None:
-            # Scoring timed out on the full table — truncate both symmetrically
-            df_output, df_gt, precomputed_gt = _apply_symmetric_truncation(df_output, df_gt)
 
         _, _, _, fd_f1, true_combined_score, debug_dict = value_based_relative_csv_score(
             df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights, confidence=confidence,
@@ -254,9 +244,9 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
                               credibility_weight: float | None = None):
     """Run value_based scoring in a child process with a hard timeout.
 
-    Phase 1: score on the (possibly GT-truncated) tables.
-    Phase 2: if Phase 1 times out, retry with symmetric truncation of both tables
-             (20 evenly-spaced GT cols + 2000 rows each) so scoring always completes.
+    FD-mining timeouts are handled internally by relative_csv_score() (full
+    table, then a truncated retry) -- this outer timeout only needs to catch
+    a genuinely stuck/broken worker, not do its own truncate-and-retry.
 
     confidence: optional self-reported LLM confidence (0.0-1.0), forwarded to
         value_based_relative_csv_score as the 5th score_1 component.
@@ -269,33 +259,27 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
     Returns (score, components) -- components is a dict of the raw
     (unweighted) score_1 inputs, or None on timeout/error.
     """
-    def _run(force_truncate: bool):
-        q = multiprocessing.Queue()
-        p = multiprocessing.Process(
-            target=_value_score_worker,
-            args=(target_file_location, ground_truth_location, q, gt_cache_path, force_truncate, weights,
-                  confidence, column_type_weights, credibility_weight),
-            daemon=True,
-        )
-        p.start()
-        p.join(timeout=_SCORE_TIMEOUT)
-        if p.is_alive():
-            p.terminate()
-            p.join()
-            return None, None, True  # timed out
-        try:
-            result = q.get_nowait()
-            return result["score"], result["components"], False
-        except Exception:
-            return 0.0, None, False
-
-    score, components, timed_out = _run(force_truncate=False)
-    if timed_out:
-        # Phase 2: truncate both tables symmetrically and retry
-        score, components, _ = _run(force_truncate=True)
-        if score is None:
-            score = 0.0
-    return score, components
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(
+        target=_value_score_worker,
+        args=(target_file_location, ground_truth_location, q, gt_cache_path, weights,
+              confidence, column_type_weights, credibility_weight),
+        # relative_csv_score() spawns its own child process for FD mining
+        # (eval_score/score.py's _run_fdtool) -- a daemonic process can't have
+        # children, so this parent must not be daemonic either.
+        daemon=False,
+    )
+    p.start()
+    p.join(timeout=_SCORE_TIMEOUT)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return 0.0, None
+    try:
+        result = q.get_nowait()
+        return result["score"], result["components"]
+    except Exception:
+        return 0.0, None
 
 
 def _score_and_validate_output(
@@ -344,7 +328,7 @@ def _score_and_validate_output(
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-    df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+    df_gt = drop_leading_index_col_if_present(df_gt)
 
     _SCORE_THRESHOLD = 0.9  # default stopping threshold
     # det_score_value uses a stricter 1.0 threshold to avoid false-positive early stops
@@ -387,6 +371,11 @@ def _parse_op_type(step: str) -> str:
          "GROUP_BY : [col1, col2]"  → "GROUP_BY"
          "AGGREGATE : [COUNT(col)]" → "AGGREGATE"
          "NO_MORE_OPERATION"        → "NO_MORE_OPERATION"
+    COLUMN_TRANSFORM needs no special case: the trailing split() handles it, and
+    it does not collide with the "AGGREGATE :" prefix test above.  (Neither did
+    the pre-merge COLUMN_AGGREGATION, which also started "COLUMN_".)  Legacy
+    COLUMN_AGGREGATION / FORMAT_DATETIME / PROJECT steps are rewritten upstream
+    by _canonicalize_column_ops, so they do not reach here in normal operation.
     """
     if step == "NO_MORE_OPERATION":
         return "NO_MORE_OPERATION"
@@ -397,6 +386,46 @@ def _parse_op_type(step: str) -> str:
     if step.startswith("AGGREGATE :"):
         return "AGGREGATE"
     return step.split(":")[0].strip()
+
+
+# Pre-merge column-level operator names → the unified operator. See
+# _LEGACY_OPERATOR_ALIASES in auto_suggest_llm_util.py for the same mapping applied
+# at candidate-parse time; this one covers histories arriving from simulation,
+# critique and replayed logs.
+_LEGACY_COLUMN_OPS = ("COLUMN_AGGREGATION", "FORMAT_DATETIME", "PROJECT")
+
+
+def _canonicalize_column_ops(history: List[str]) -> List[str]:
+    """Rewrite pre-merge column-level steps to COLUMN_TRANSFORM.
+
+    COLUMN_AGGREGATION, FORMAT_DATETIME and PROJECT were three special cases of the
+    same row-preserving column map and are now one COLUMN_TRANSFORM operator. Their
+    configuration payloads were already a bracketed "target = expr" list (PROJECT
+    used "source -> target", which the execution prompt still accepts), so only the
+    operator name ahead of the colon changes — the payload is passed through
+    untouched.
+
+    Applied wherever a history enters the tree from outside the expansion layer
+    (simulation, critique, replayed logs), so a stale operator name does not create
+    a tree child keyed under a vocabulary that no longer exists.
+
+    Steps that do not start with a legacy name are returned unchanged.
+    """
+    result: List[str] = []
+    for step in history:
+        for legacy in _LEGACY_COLUMN_OPS:
+            if step == legacy:
+                result.append("COLUMN_TRANSFORM")
+                break
+            if step.startswith(f"{legacy} :"):
+                # Swap only the operator name; the " : <payload>" tail is kept
+                # exactly as-is (slicing at len(legacy), NOT len(legacy)+1, or the
+                # separator is duplicated into "COLUMN_TRANSFORM :: ...").
+                result.append("COLUMN_TRANSFORM" + step[len(legacy):])
+                break
+        else:
+            result.append(step)
+    return result
 
 
 def _split_groupby_aggregate(history: List[str]) -> List[str]:
@@ -491,7 +520,7 @@ def _record_pipeline_confidence(
     Mutates state["pipeline_confidence_stats"] in place (case-wide dict that
     persists across iterations, like state["root"]).
     """
-    key = tuple(_split_groupby_aggregate(full_history))
+    key = tuple(_canonicalize_column_ops(_split_groupby_aggregate(full_history)))
     stats = state["pipeline_confidence_stats"].setdefault(
         key, {"occurrences": 0, "conf_sum": 0.0, "conf_count": 0}
     )
@@ -548,7 +577,9 @@ def _find_or_create_path(root: MCTSNode, critique_history: List[str]) -> List[MC
     """
     Walk the tree from root, reusing existing child nodes where the step string
     matches, and creating new MCTSNode children where it doesn't. Returns the
-    full path [root, ..., leaf].
+    path [root, ..., leaf] — leaf is the deepest node actually reached, which
+    may be shorter than `steps` if a parent was already at MAX_CHILDREN and
+    the step didn't match an existing child (see below).
 
     NO_MORE_OPERATION steps are stripped before walking — terminal markers from
     simulation output must never become tree nodes.
@@ -562,9 +593,16 @@ def _find_or_create_path(root: MCTSNode, critique_history: List[str]) -> List[MC
         child_history = steps[: i + 1]
         if step in node.children:
             node = node.children[step]
-        else:
+        elif len(node.children) < MCTSNode.MAX_CHILDREN:
             op_type = _parse_op_type(step)
             node = node.add_child(step, child_history, operator_type=op_type)
+        else:
+            # node is already at the cap and this exact step isn't one of its
+            # existing children — never exceed MAX_CHILDREN. Stop the walk
+            # here; state["best_score"]/["best_script"] tracking (separate
+            # from tree nodes) still captures the critique/simulate result,
+            # just without a dedicated tree slot for this specific variant.
+            break
         path.append(node)
     return path
 
@@ -682,6 +720,148 @@ def _simulate_get_python(
         )
 
     return script, response
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Partial-pipeline execution — for ranking hints_v3 JOIN candidates against the
+# real intermediate schema at a search node (not simulation/scoring; see
+# prompts/partial_pipeline_execution.py for why this can't reuse
+# _simulate_get_python — that path lets the LLM extend/complete the plan).
+# ──────────────────────────────────────────────────────────────────────────────
+
+_PARTIAL_PIPELINE_TABLE_CACHE: Dict[tuple, Tuple[Optional[pd.DataFrame], bool]] = {}
+
+
+def _execute_partial_pipeline_only(
+    rollout_history: List[str],
+    csv_save_path: str,
+    state: "MCTSGraphState",
+) -> str:
+    """Ask the LLM to generate code implementing EXACTLY rollout_history (no
+    more, no less), execute it, retry up to _MAX_CODE_TRIALS times on error.
+    Returns 'Success' or the last error string.
+    """
+    config = state["config"]
+    error_str = ""
+    response = ""
+    for trial in range(_MAX_CODE_TRIALS):
+        try:
+            prompt = get_prompt(
+                prompt_type="partial_pipeline_execute",
+                max_tokens=config.token_limit,
+                model=config.model,
+                allowed_operation_list=OPERATOR_TYPES,
+                operation_history=rollout_history,
+                target_data_name=config.target_data_name,
+                target_data_schema="",
+                target_samples="",
+                file_count=config.file_count,
+                source_data_name_list=config.source_data_name_list,
+                source_data_schema_list=config.source_data_schema_list,
+                directory=config.directory,
+                len_idx_target_idx=config.len_idx_target_idx,
+                error_string=error_str,
+                csv_save_path=csv_save_path,
+                data_split=getattr(config, "data_split", "test"),
+            )
+        except Exception:
+            config.logger.warning(
+                f"[partial_exec] get_prompt failed (trial {trial}): "
+                f"{traceback.format_exc()}"
+            )
+            break
+
+        res = query_gpt(
+            config.llm_client,
+            config.model,
+            [prompt],
+            config.q_count,
+            config.logger,
+            config.cost_summary,
+            config.token_tracker,
+            type="MCTS Partial Pipeline Exec",
+        )
+
+        pattern = re.compile(r"```[Pp]ython(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res[0])
+        if not match:
+            error_str += "No valid Python code block found in LLM response.\n"
+            config.logger.warning(f"[partial_exec] No code block (trial {trial})")
+            continue
+
+        script = match.group(1).strip()
+        response = execute_python(script)
+        error_str += response + "\n"
+        config.logger.info(f"[partial_exec] trial {trial}: {response}")
+
+        if response == "Success":
+            break
+
+    return response
+
+
+def _get_partial_pipeline_table(
+    rollout_history: List[str],
+    state: "MCTSGraphState",
+) -> Tuple[Optional[pd.DataFrame], bool]:
+    """Get the REAL dataframe of the pipeline as built so far, by asking the
+    LLM to generate + execute code for EXACTLY rollout_history (nothing more).
+    Returns (df, True) on success, (None, False) if code generation/execution
+    failed — callers should skip ranking for this call rather than trust a
+    stale/unknown state.
+
+    Shared by JOIN's necessity (schema only, via _get_partial_pipeline_schema
+    below) and GROUP BY's combined_dvr_delta (needs row data) — one execution,
+    one cache, regardless of which operator type is being ranked at a node.
+    """
+    if not rollout_history:
+        return pd.DataFrame(), True  # tree root: mapping = 0, nothing executed yet
+
+    key = tuple(rollout_history)
+    if key in _PARTIAL_PIPELINE_TABLE_CACHE:
+        return _PARTIAL_PIPELINE_TABLE_CACHE[key]
+
+    config = state["config"]
+    scratch_csv = (
+        f"{config.directory}/length{config.len_idx_target_idx}"
+        f"/join_rank_scratch_{len(rollout_history)}_{abs(hash(key))}.csv"
+    )
+    response = _execute_partial_pipeline_only(rollout_history, scratch_csv, state)
+    result: Tuple[Optional[pd.DataFrame], bool] = (None, False)
+    if response == "Success" and os.path.exists(scratch_csv):
+        try:
+            df = pd.read_csv(scratch_csv, low_memory=False)
+            result = (df, True)
+        except Exception:
+            config.logger.warning(
+                f"[partial_exec] Failed to read scratch CSV {scratch_csv}: "
+                f"{traceback.format_exc()}"
+            )
+    # The scratch file's only purpose is to get its contents into `result`
+    # (cached in-memory below) — leaving it on disk serves nothing and, left
+    # unchecked across many candidates/cases/iterations, silently fills the
+    # benchmark data directories. Remove it once read (or on any leftover
+    # partial/failed write), regardless of whether the read succeeded.
+    if os.path.exists(scratch_csv):
+        try:
+            os.remove(scratch_csv)
+        except OSError:
+            config.logger.warning(
+                f"[partial_exec] Failed to remove scratch CSV {scratch_csv}: "
+                f"{traceback.format_exc()}"
+            )
+    _PARTIAL_PIPELINE_TABLE_CACHE[key] = result
+    return result
+
+
+def _get_partial_pipeline_schema(
+    rollout_history: List[str],
+    state: "MCTSGraphState",
+) -> Tuple[Optional[set], bool]:
+    """Thin wrapper over _get_partial_pipeline_table for callers (JOIN's
+    necessity) that only need the column schema, not row data."""
+    df, ok = _get_partial_pipeline_table(rollout_history, state)
+    return (set(df.columns) if ok else None), ok
 
 
 def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
@@ -958,6 +1138,16 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
             elif operation == "UNPIVOT":
                 configured_step = "UNPIVOT"
 
+            elif operation in ("COLUMN_TRANSFORM",) + _LEGACY_COLUMN_OPS:
+                # COLUMN_TRANSFORM has no dedicated configure prompt yet, so
+                # operator-mode simulation records the bare step and lets code-gen
+                # infer the columns. Keeping the step (rather than falling through to
+                # the skip below) preserves the plan; a configure prompt in
+                # prompts/configuration_prompts.py is the follow-up.
+                # The legacy names are accepted so a model still emitting the
+                # pre-merge vocabulary is normalised here rather than skipped.
+                configured_step = "COLUMN_TRANSFORM"
+
             else:
                 config.logger.warning(
                     f"[simulate/op] Unknown operator '{operation}' at step {step} — skipping"
@@ -988,7 +1178,7 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                     try:
                         df_interm = pd.read_csv(interm_csv, low_memory=False)
                         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-                        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                        df_gt = drop_leading_index_col_if_present(df_gt)
                         _, col_ratio_s, _, fd_f1_s, true_combined_s, debug_dict_s = \
                             value_based_relative_csv_score_timed(df_interm, df_gt)
                         nl_score_s = build_nl_score_interpretation(
@@ -1149,8 +1339,9 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
 
 def mcts_select(state: MCTSGraphState) -> dict:
     """
-    Tree Policy (UCB1): walk from root until we reach a node that either
-      (a) has untried operator types (not fully expanded), or
+    Tree Policy (UCB1 + prior-based FPU): walk from root until we reach a node that either
+      (a) is not fully expanded (fewer than MAX_CHILDREN children, and not
+          saturated), or
       (b) is terminal (NO_MORE_OPERATION leaf).
 
     Updates: selected_node, selection_path, rollout_history, rollout_step,
@@ -1170,21 +1361,6 @@ def mcts_select(state: MCTSGraphState) -> dict:
         and node.is_fully_expanded()
         and node.children                # safety: has at least one child
     ):
-        # A promising GROUP_BY node may have reaggregation_needed set by backprop.
-        # Stop here to add more AGGREGATE variants instead of descending.
-        if (
-            node.operator_type == "GROUP_BY"
-            and node.reaggregation_needed
-            and len(node.children) < AGGREGATE_MAX_CHILDREN
-        ):
-            node.reaggregation_needed = False
-            config.logger.info(
-                f"[MCTS Select] Iter {state['iteration']}: "
-                f"GROUP_BY reaggregation triggered at depth={len(path)-1} "
-                f"({len(node.children)}/{AGGREGATE_MAX_CHILDREN} AGGREGATE children) — "
-                f"stopping to expand more variants"
-            )
-            break
         node = node.best_child()
         path.append(node)
 
@@ -1219,43 +1395,604 @@ def mcts_select(state: MCTSGraphState) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_OPERATOR_CONFIG_LAMBDA = 0.5  # tunable: S(o,c) = λ·S_LLM + (1-λ)·S_rule
+# Number of candidates requested from the LLM per expand call — independent
+# of MCTSNode.MAX_CHILDREN (the tree's per-node child cap). The LLM's
+# response is a ranked list; the distinct operator types in first-appearance
+# order become this call's type-priority order (see _type_priority_order).
+_EXPAND_LLM_K = 3
+# Split of the LLM's signal between "which operator TYPE" and "which CONFIG
+# of that type" (must sum to 1.0):
+#   S_LLM = _W_TYPE * S_type + _W_CONFIG * S_config
+# _W_TYPE is the share a candidate earns purely for belonging to a type the
+# LLM endorsed — so a rule-engine-proposed config of the LLM's top type
+# scores _W_TYPE (0.8) rather than 0, while an exact config match still
+# reaches 1.0. Because S_type is itself rank-normalised over the types the
+# LLM named, this credit degrades automatically for lower-ranked types
+# (0.8 for rank 1 of 5, 0.64 for rank 2, ...) instead of being one flat
+# hand-tuned constant.
+_W_TYPE = 0.8
+_W_CONFIG = 0.2
+# Cap on how many RULE-ONLY candidates (s_llm == 0.0, i.e. never proposed by
+# the LLM) from one operator type's pool are eligible to be admitted. LLM-
+# sourced candidates (s_llm > 0, "both" or "llm-only") are never capped here.
+# Without this, a type whose rule engine returns a large ranked list (e.g.
+# GROUP_BY's per-column statistical scoring can return 80+ candidates) could
+# use up all of a node's remaining room by itself once it's this call's
+# highest-priority type.
+_RULE_INJECT_TOP_K = 3
+
+
+def _type_priority_order(candidates: List[Tuple[str, str]]) -> List[str]:
+    """Distinct operator types from the LLM's ranked candidate list, in
+    first-appearance order (dedup, order-preserving). E.g.
+    [(GROUP_BY,a),(GROUP_BY,b),(JOIN,c)] -> ["GROUP_BY", "JOIN"]. This is the
+    type-priority order next_operator_step fills a node's remaining child
+    slots in — types not mentioned here get no turn this call.
+    """
+    order: List[str] = []
+    seen: set = set()
+    for op_type, _cfg in candidates:
+        if op_type not in seen:
+            seen.add(op_type)
+            order.append(op_type)
+    return order
+
+
+def _cap_rule_only_candidates(
+    ranked: List[Tuple[str, float, float, float, float]],
+    top_k: int = _RULE_INJECT_TOP_K,
+) -> List[Tuple[str, float, float, float, float]]:
+    """Filter one operator type's scored pool (as returned by
+    _score_operator_type_pool, sorted best-first by `combined`): keep every
+    LLM-proposed candidate uncapped, keep only the first `top_k` rule-only
+    candidates. Preserves input order (already score-sorted), so "first
+    top_k rule-only" is "top_k by score."
+
+    Rule-only is detected via S_config == 0.0, NOT S_llm: since S_llm now
+    carries the type-level term (_W_TYPE * S_type), a rule-only candidate of
+    an LLM-endorsed type has S_llm > 0. S_config is the part that is non-zero
+    only when the LLM proposed that exact config.
+    """
+    kept: List[Tuple[str, float, float, float, float]] = []
+    rule_only_kept = 0
+    for cfg, s_llm, s_rule, combined, s_config in ranked:
+        if s_config == 0.0:
+            if rule_only_kept >= top_k:
+                continue
+            rule_only_kept += 1
+        kept.append((cfg, s_llm, s_rule, combined, s_config))
+    return kept
+
+
+def _rank_join_v3_candidates(
+    config, rollout_history: List[str], state: "MCTSGraphState"
+) -> List[Tuple[str, float]]:
+    """Combine the precomputed static (evidence, name_score) JOIN candidates
+    with a freshly-computed necessity term against the REAL current schema
+    (via _get_partial_pipeline_schema). All candidates share the same
+    rollout_history, so the partial-pipeline execution only runs once here,
+    not once per candidate. Returns [(configured_step, score), ...] sorted
+    best-first, or [] if hints_v3 JOIN candidates weren't computed for this
+    case, or if the current schema couldn't be reliably determined.
+    """
+    static_candidates = getattr(config, "hint_join_v3_candidates", None)
+    source_columns = getattr(config, "hint_join_v3_source_columns", None)
+    target_columns = getattr(config, "hint_join_v3_target_columns", None)
+    if not static_candidates or not source_columns or target_columns is None:
+        return []
+
+    current_schema, is_reliable = _get_partial_pipeline_schema(rollout_history, state)
+    if not is_reliable:
+        return []
+
+    scored = []
+    for cand in static_candidates:
+        t1, c1, t2, c2 = cand["t1"], cand["c1"], cand["t2"], cand["c2"]
+        t1_cols = set(source_columns.get(t1, []))
+        t2_cols = set(source_columns.get(t2, []))
+        # What this candidate would add to the schema: the union of both
+        # tables' columns, minus whatever's already present. Deliberately
+        # NOT "classify which side is new" — a table's join-key column will
+        # almost always already overlap current_schema (that's what makes it
+        # joinable), which would wrongly mark an unjoined table as "not new"
+        # if its other columns were checked via any-overlap instead of a
+        # plain set difference.
+        new_cols = (t1_cols | t2_cols) - current_schema
+
+        nec = hint_v3.necessity(new_cols, current_schema, target_columns)
+        final = (cand["evidence"] + cand["name_score"] + nec) / 3.0
+        cfg = f"JOIN : [[{t1}, {t2}]] columns=[[{t1}.{c1}, {t2}.{c2}]]"
+        scored.append((cfg, final))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored
+
+
+_GROUPBY_COMBO_TOP_N = 5    # how many top individual columns feed heuristic combinations
+_GROUPBY_COMBO_MAX_SIZE = 2  # max columns per heuristic combination
+
+
+def _resolve_intermediate_table_for_groupby(
+    rollout_history: List[str], state: "MCTSGraphState", config
+) -> Tuple[Optional[pd.DataFrame], bool]:
+    """Depth-0 fallback + real-execution resolution for GROUP BY's
+    combined_dvr_delta (GROUP_BY_RANKING_DESIGN_README.md): use the real
+    executed intermediate table once a JOIN/UNION has happened in
+    rollout_history; before that (nothing to execute yet), fall back to the
+    sole source table, or whichever source table overlaps the target schema
+    most (hint_v3.best_overlapping_table, same technique get_union_hints uses).
+    """
+    has_join_or_union = any(
+        _parse_op_type(step) in ("JOIN", "UNION") for step in rollout_history
+    )
+    if has_join_or_union:
+        return _get_partial_pipeline_table(rollout_history, state)
+
+    try:
+        tables = hint_v3.load_tables(
+            config.directory, config.source_data_name_list, config.len_idx_target_idx
+        )
+    except Exception:
+        return None, False
+    if not tables:
+        return None, False
+    if len(tables) == 1:
+        return next(iter(tables.values())), True
+
+    groupby_static = getattr(config, "hint_groupby_v3_candidates", None) or {}
+    target_columns = groupby_static.get("target_columns", [])
+    best_table = hint_v3.best_overlapping_table(tables, target_columns)
+    if best_table is None:
+        return None, False
+    return tables[best_table], True
+
+
+def _rank_groupby_v3_candidates(
+    config, rollout_history: List[str], state: "MCTSGraphState"
+) -> List[Tuple[str, float]]:
+    """Unified GROUP BY ranking: one formula (leftness_prior_combined +
+    combined_dvr_delta + groupby_fd_score, averaged) for every candidate,
+    regardless of whether it came from the hint_v3 statistical pool or the
+    FD algorithm — no path split (see GROUP_BY_RANKING_DESIGN_README.md).
+    Returns [(configured_step, score), ...] sorted best-first, or [] if
+    hints_v3 GROUP BY candidates weren't computed for this case, or if the
+    intermediate table couldn't be resolved.
+    """
+    static = getattr(config, "hint_groupby_v3_candidates", None)
+    if not static:
+        return []
+    individual_columns = static.get("individual_columns", [])
+    fd_keys = static.get("fd_keys", set())
+    source_columns = static.get("source_columns", {})
+    target_columns = static.get("target_columns", [])
+    if not individual_columns or not target_columns:
+        return []
+
+    intermediate_df, is_reliable = _resolve_intermediate_table_for_groupby(
+        rollout_history, state, config
+    )
+    if not is_reliable or intermediate_df is None:
+        return []
+
+    try:
+        target_file = os.path.join(
+            config.directory, f"length{config.len_idx_target_idx}", "target.csv"
+        )
+        target_df = pd.read_csv(target_file, low_memory=False)
+        # Name-based, not positional: smart_building targets start with REAL data
+        # (datetime/cst), so an unconditional drop removes a target column and
+        # corrupts the S_rule ranking these candidates are ordered by.
+        target_df = drop_leading_index_col_if_present(target_df)
+    except Exception:
+        return []
+
+    def _score(entries):
+        # entries: list of (t, c, leftness, matched_target_col)
+        leftness_prior = sum(1 - li for _, _, li, _ in entries) / len(entries)
+        source_cols = [c for _, c, _, _ in entries]
+        matched = [mt for _, _, _, mt in entries]
+        if any(mt is None for mt in matched) or not set(source_cols).issubset(
+            set(intermediate_df.columns)
+        ):
+            dvr_delta = 0.0
+        else:
+            try:
+                dvr_delta = hint_v3.combined_dvr_delta(
+                    intermediate_df, target_df, source_cols, matched
+                )
+            except Exception:
+                dvr_delta = 0.0
+        fd = hint_v3.groupby_fd_score(source_cols, fd_keys)
+        return (leftness_prior + dvr_delta + fd) / 3.0
+
+    scored: List[Tuple[str, float]] = []
+
+    # Individual columns — the hint_v3 statistical pool
+    for entry in individual_columns:
+        s = _score([(entry["t"], entry["c"], entry["leftness"], entry["matched_target_col"])])
+        cfg = f"GROUP_BY : [{entry['t']}.{entry['c']}]"
+        scored.append((cfg, s))
+
+    # Bounded heuristic combinations of the top individual columns
+    top_n = sorted(individual_columns, key=lambda e: e["leftness"])[:_GROUPBY_COMBO_TOP_N]
+    for combo_size in range(2, _GROUPBY_COMBO_MAX_SIZE + 1):
+        for combo in combinations(top_n, combo_size):
+            entries = [(e["t"], e["c"], e["leftness"], e["matched_target_col"]) for e in combo]
+            s = _score(entries)
+            cols_str = ", ".join(f"{e['t']}.{e['c']}" for e in combo)
+            scored.append((f"GROUP_BY : [{cols_str}]", s))
+
+    # FD-discovered determinant sets — added directly as their own candidates,
+    # resolved to source tables so they can be formatted as a configured_step
+    col_lookup = {(e["t"], e["c"]): e for e in individual_columns}
+    for fd_key in fd_keys:
+        resolved = []
+        ok = True
+        for col_name in fd_key:
+            found = None
+            for tname, cols in source_columns.items():
+                if col_name in cols:
+                    found = (tname, col_name)
+                    break
+            if found is None:
+                ok = False
+                break
+            resolved.append(found)
+        if not ok:
+            continue
+        entries = []
+        for t, c in resolved:
+            e = col_lookup.get((t, c))
+            leftness = e["leftness"] if e else 0.5
+            matched = e["matched_target_col"] if e else (c if c in target_columns else None)
+            entries.append((t, c, leftness, matched))
+        s = _score(entries)
+        cols_str = ", ".join(f"{t}.{c}" for t, c in resolved)
+        scored.append((f"GROUP_BY : [{cols_str}]", s))
+
+    # The FD-discovered path and the heuristic-combination path can
+    # independently produce the exact same column set (e.g. an FD pair that
+    # also happens to fall within the top-N leftness combo pool) — dedupe by
+    # configured_step, keeping the first (score is identical either way since
+    # it's the same entries scored the same way).
+    seen_cfgs = set()
+    deduped: List[Tuple[str, float]] = []
+    for cfg, s in scored:
+        if cfg in seen_cfgs:
+            continue
+        seen_cfgs.add(cfg)
+        deduped.append((cfg, s))
+
+    deduped.sort(key=lambda x: x[1], reverse=True)
+    return deduped
+
+
+def _parse_groupby_columns(groupby_cfg: str) -> set:
+    # "GROUP_BY : [t1.c1, t1.c2]" -> {"c1", "c2"} (bare column names — a
+    # group-by key shouldn't also be an aggregation target, regardless of
+    # which table it came from).
+    m = re.search(r"\[(.*)\]", groupby_cfg, re.DOTALL)
+    if not m:
+        return set()
+    cols = set()
+    for part in m.group(1).split(","):
+        part = part.strip()
+        if not part:
+            continue
+        cols.add(part.split(".")[-1])
+    return cols
+
+
+def _parse_aggregate_pairs(aggregate_cfg: str) -> List[Tuple[str, str, str]]:
+    # "AGGREGATE : [SUM(t1.c1), COUNT DISTINCT(t2.c2)]" ->
+    # [("SUM", "t1", "c1"), ("COUNT", "t2", "c2")] — normalizes multi-word
+    # function names (e.g. "COUNT DISTINCT") down to their base function.
+    pairs = []
+    for func_raw, col_ref in re.findall(r"([A-Za-z_]+(?:\s+[A-Za-z_]+)?)\(([^)]+)\)", aggregate_cfg):
+        func = func_raw.strip().split()[0].upper()
+        col_ref = col_ref.strip()
+        if "." in col_ref:
+            table, col = col_ref.rsplit(".", 1)
+        else:
+            table, col = "", col_ref
+        pairs.append((func, table, col))
+    return pairs
+
+
+def _rank_aggregate_by_llm_only(
+    candidates: List[Tuple[str, str]],
+) -> List[Tuple[str, str, float, float, float]]:
+    """Fallback ranking when the real S_rule can't be computed (no rollout
+    history, or the intermediate/target table couldn't be resolved): S_rule=0
+    for everything, degrading to pure LLM rank order — same convention
+    _score_operator_type_pool uses for operator types with no rule engine.
+    """
+    k = len(candidates)
+    scored = []
+    for rank, (op, cfg) in enumerate(candidates, start=1):
+        s_llm = (k - rank + 1) / k if k > 0 else 0.0
+        combined = _OPERATOR_CONFIG_LAMBDA * s_llm
+        scored.append((op, cfg, s_llm, 0.0, combined))
+    return scored
+
+
+def _compute_aggregation_evidence(
+    rollout_history: List[str],
+    state: "MCTSGraphState",
+    config,
+) -> str:
+    """Render hint_v3's distribution-based aggregation evidence for the GROUP
+    BY key already committed in rollout_history[-1], for injection into the
+    AGGREGATE expand prompt. Returns "" if the intermediate or target table
+    can't be resolved, so the prompt simply omits the block.
+    """
+    if not rollout_history:
+        return ""
+    try:
+        group_by_cols = _parse_groupby_columns(rollout_history[-1])
+        if not group_by_cols:
+            return ""
+
+        intermediate_df, is_reliable = _resolve_intermediate_table_for_groupby(
+            rollout_history[:-1], state, config
+        )
+        if not is_reliable or intermediate_df is None:
+            return ""
+
+        target_file = os.path.join(
+            config.directory, f"length{config.len_idx_target_idx}", "target.csv"
+        )
+        target_df = pd.read_csv(target_file, low_memory=False)
+        # Name-based, not positional: smart_building targets start with REAL data
+        # (datetime/cst), so an unconditional drop removes a target column and
+        # corrupts the S_rule ranking these candidates are ordered by.
+        target_df = drop_leading_index_col_if_present(target_df)
+
+        return hint_v3.get_aggregation_distribution_hints(
+            intermediate_df, target_df, group_by_cols
+        )
+    except Exception:
+        config.logger.warning(
+            f"[expand] aggregation evidence failed: {traceback.format_exc()}"
+        )
+        return ""
+
+
+def _rerank_aggregate_llm_candidates(
+    candidates: List[Tuple[str, str]],
+    rollout_history: List[str],
+    state: "MCTSGraphState",
+    config,
+) -> List[Tuple[str, str, float, float, float]]:
+    """Score the LLM's own AGGREGATE proposals using
+    S(o,c) = λ·S_LLM + (1-λ)·S_rule, where S_rule is
+    aggregation_condition_bucket/score (dtype + magnitude-ratio conditions
+    against the real pre-GROUP_BY intermediate table and target) and S_LLM is
+    derived from the LLM's own rank position among these candidates. No new
+    candidates injected, no new LLM call.
+
+    Returns [(op, cfg, s_llm, s_rule, combined), ...] sorted best-first —
+    same shape as _score_operator_type_pool, so AGGREGATE candidates feed the
+    same unified pooling/prior logic as every other operator type. Falls back
+    to LLM-rank-only scoring (_rank_aggregate_by_llm_only) if the intermediate
+    or target table can't be resolved.
+    """
+    if not rollout_history or not candidates:
+        return _rank_aggregate_by_llm_only(candidates)
+
+    group_by_cols = _parse_groupby_columns(rollout_history[-1])
+
+    intermediate_df, is_reliable = _resolve_intermediate_table_for_groupby(
+        rollout_history[:-1], state, config
+    )
+    if not is_reliable or intermediate_df is None:
+        return _rank_aggregate_by_llm_only(candidates)
+
+    try:
+        target_file = os.path.join(
+            config.directory, f"length{config.len_idx_target_idx}", "target.csv"
+        )
+        target_df = pd.read_csv(target_file, low_memory=False)
+        # Name-based, not positional: smart_building targets start with REAL data
+        # (datetime/cst), so an unconditional drop removes a target column and
+        # corrupts the S_rule ranking these candidates are ordered by.
+        target_df = drop_leading_index_col_if_present(target_df)
+    except Exception:
+        return _rank_aggregate_by_llm_only(candidates)
+
+    bucket_cache: Dict[str, set] = {}
+
+    def _pair_score(func: str, col: str) -> float:
+        if col in group_by_cols:
+            return 0.0
+        if col not in bucket_cache:
+            # Name-based match, not hint_v3.match()'s value-overlap check —
+            # aggregation deliberately changes values (that's the point of
+            # SUM/COUNT/etc.), so a genuine (source, target) aggregation pair
+            # will usually share NO overlapping values; only the column name
+            # is expected to persist across the transformation.
+            if col not in intermediate_df.columns or col not in target_df.columns:
+                bucket_cache[col] = set()
+            else:
+                bucket_cache[col] = hint_v3.aggregation_condition_bucket(
+                    intermediate_df[col], target_df[col]
+                )
+        return hint_v3.aggregation_condition_score(bucket_cache[col], func)
+
+    def _s_rule(op_type: str, cfg: str) -> float:
+        if op_type != "AGGREGATE":
+            return 0.0
+        pairs = _parse_aggregate_pairs(cfg)
+        if not pairs:
+            return 0.0
+        return sum(_pair_score(func, col) for func, _table, col in pairs) / len(pairs)
+
+    k = len(candidates)
+    scored = []
+    for rank, (op, cfg) in enumerate(candidates, start=1):
+        s_rule = _s_rule(op, cfg)
+        s_llm = (k - rank + 1) / k if k > 0 else 0.0
+        combined = (
+            _OPERATOR_CONFIG_LAMBDA * s_llm + (1 - _OPERATOR_CONFIG_LAMBDA) * s_rule
+        )
+        scored.append((op, cfg, s_llm, s_rule, combined))
+    scored.sort(key=lambda x: x[4], reverse=True)
+    return scored
+
+
+def _group_llm_candidates_by_type(candidates: List[Tuple[str, str]]) -> Dict[str, List[str]]:
+    # Preserves the LLM's rank order within each operator type.
+    by_type: Dict[str, List[str]] = {}
+    for op_type, cfg in candidates:
+        by_type.setdefault(op_type, []).append(cfg)
+    return by_type
+
+
+def _score_operator_type_pool(
+    op_type: str,
+    llm_cfgs: List[str],
+    config,
+    rollout_history: List[str],
+    state: "MCTSGraphState",
+    s_type: float = 0.0,
+) -> List[Tuple[str, float, float, float, float]]:
+    """Build the unified LLM+rule pool for one operator type and score every
+    candidate via S(o,c) = λ·S_LLM + (1-λ)·S_rule. S_rule comes from the FULL
+    rule ranking for types with a rule engine (JOIN, GROUP_BY), not just its
+    top-K, so an LLM-proposed candidate already in the rule's internal
+    ranking gets its real score rather than a 0 fallback. Types with no rule
+    engine get S_rule=0 for everything, degrading to pure LLM rank order.
+
+    S_LLM is decomposed into the LLM's two independent signals — WHICH TYPE
+    and WHICH CONFIG — instead of being all-or-nothing:
+
+        S_LLM(c) = _W_TYPE * s_type  +  _W_CONFIG * S_config(c)
+
+    where s_type (passed in by the caller) is the type's own priority rank
+    score (M - r + 1)/M over the M distinct types the LLM named, and
+    S_config(c) is the same rank normalisation applied WITHIN this type —
+    (k - rank + 1)/k for a config the LLM actually proposed, 0 otherwise.
+
+    This is what lets a rule-engine-proposed config of a type the LLM
+    endorsed earn partial LLM credit (_W_TYPE * s_type) rather than a flat 0,
+    while an exact config match still reaches the full 1.0, and a type the
+    LLM never named still scores 0. The credit degrades naturally with the
+    type's rank, so it needs no separately tuned constant.
+
+    Logs the LLM's raw list, the rule engine's own standalone ranking (before
+    any merging), and the final merged+scored pool with each candidate's
+    source (llm-only / rule-only / both) — so the transformation from "what
+    the LLM suggested" + "what the rule engine suggested" to "what the tree
+    ended up with" is visible in the logs, not just the end result.
+
+    Returns [(cfg, S_llm, S_rule, S_combined, S_config), ...] sorted
+    best-first by S_combined. S_config is carried through so callers can tell
+    a rule-only candidate (S_config == 0) from an LLM-proposed one even
+    though S_llm is now non-zero for both.
+    """
+    if op_type == "JOIN":
+        rule_ranked = _rank_join_v3_candidates(config, rollout_history, state)
+    elif op_type == "GROUP_BY":
+        rule_ranked = _rank_groupby_v3_candidates(config, rollout_history, state)
+    else:
+        rule_ranked = []
+
+    config.logger.info(f"[expand/{op_type}] LLM proposed (rank order): {llm_cfgs}")
+    config.logger.info(
+        f"[expand/{op_type}] rule engine proposed (top 5 of {len(rule_ranked)}, "
+        f"standalone, before merge): "
+        f"{[(cfg, round(s, 3)) for cfg, s in rule_ranked[:5]]}"
+    )
+
+    rule_score = dict(rule_ranked)
+    k = len(llm_cfgs)
+    llm_rank = {cfg: rank for rank, cfg in enumerate(llm_cfgs, start=1)}
+
+    pool_cfgs = set(llm_cfgs) | set(rule_score)
+    scored = []
+    for cfg in pool_cfgs:
+        s_rule = rule_score.get(cfg, 0.0)
+        s_config = (k - llm_rank[cfg] + 1) / k if cfg in llm_rank and k > 0 else 0.0
+        s_llm = _W_TYPE * s_type + _W_CONFIG * s_config
+        combined = (
+            _OPERATOR_CONFIG_LAMBDA * s_llm + (1 - _OPERATOR_CONFIG_LAMBDA) * s_rule
+        )
+        source = (
+            "both" if cfg in llm_rank and cfg in rule_score
+            else "llm-only" if cfg in llm_rank
+            else "rule-only"
+        )
+        scored.append((cfg, s_llm, s_rule, combined, s_config, source))
+
+    scored.sort(key=lambda x: x[3], reverse=True)
+
+    config.logger.info(
+        f"[expand/{op_type}] merged+scored pool ({len(scored)} candidates, "
+        f"S_type={s_type:.2f}): "
+        + "; ".join(
+            f"{cfg[:60]} [{source}] S_cfg={s_config:.2f} S_llm={s_llm:.2f} "
+            f"S_rule={s_rule:.2f} S={combined:.3f}"
+            for cfg, s_llm, s_rule, combined, s_config, source in scored[:10]
+        )
+        + (f" ... (+{len(scored) - 10} more)" if len(scored) > 10 else "")
+    )
+
+    return [
+        (cfg, s_llm, s_rule, combined, s_config)
+        for cfg, s_llm, s_rule, combined, s_config, _ in scored
+    ]
+
+
 def next_operator_step(state: MCTSGraphState) -> dict:
     """
     EXPANSION (Option B — batch expand, single simulate):
-    One mcts_expand LLM call returns k ranked candidates. ALL new candidates
-    are immediately added to the tree as children (0 visits each). Only the
-    LLM's #1 priority candidate is simulated this iteration; the rest wait
-    for future UCB1 selection.
+    One mcts_expand LLM call returns up to _EXPAND_LLM_K ranked candidates
+    (independent of MAX_CHILDREN). The distinct operator TYPES in the order
+    they first appear in that ranking define this call's type-priority order
+    (see _type_priority_order). Types are filled one at a time in that order —
+    each type's own LLM-proposed candidates plus (if it has a rule engine)
+    the rule engine's top _RULE_INJECT_TOP_K rule-only candidates, scored with
+    S(o,c) = λ·S_LLM + (1-λ)·S_rule and sorted within the type — until the
+    node's remaining room (MAX_CHILDREN total) is used up. A lower-priority
+    type is never touched once room runs out, even if one of its candidates
+    would have scored higher in raw S(o,c) than an admitted higher-priority
+    candidate.
 
     Logic
     -----
-    1. Ask the LLM for MAX_CHILDREN candidates (always, to fill all slots).
-       NO_MORE_OPERATION is excluded from the allowed operators here so expansion
-       always grows the tree — only simulation and critique may terminate a plan.
-    2. Add every candidate whose configured_step is not already a child.
-    3. If GROUP_BY is in the uncovered operator types, also inject one deterministic
-       hint-driven GROUP_BY candidate from hints_v3 statistical checks (runs always,
-       regardless of hint_source — reads source CSVs directly, no LLM call).
-    4. If no new configs were added, mark node saturated.
-    5. Simulate only candidates[0] (top priority), whether it is new or existing.
-    6. Ultimate fallback (empty/unparseable response): saturate silently, re-simulate
-       from existing prefix.
+    1. Ask the LLM for _EXPAND_LLM_K candidates. NO_MORE_OPERATION is excluded
+       from the allowed operators here so expansion always grows the tree —
+       only simulation and critique may terminate a plan.
+    2. Derive type-priority order from the LLM's own ranking, then walk types
+       in that order, admitting each type's scored+capped candidates (in
+       score order) until MAX_CHILDREN is reached. No per-type quota beyond
+       the rule-only cap — a single type can use up all remaining room.
+    3. If nothing was admitted, mark node saturated.
+    4. Simulate the single best-scored candidate among everything actually
+       admitted this call (never a candidate that didn't make the cut).
+    5. Ultimate fallback (empty/unparseable response, or nothing admitted):
+       saturate silently, re-simulate from existing prefix.
     """
     config = state["config"]
     rollout_history: List[str] = state["rollout_history"]
     selected_node: MCTSNode = state["selected_node"]
     selection_path: List[MCTSNode] = state["selection_path"]
 
-    # Always ask for MAX_CHILDREN candidates so we can fill all tree slots at once.
-    k = MCTSNode.MAX_CHILDREN
+    # Fixed candidate-request size, independent of MAX_CHILDREN (the tree cap).
+    k = _EXPAND_LLM_K
 
     # Determine whether this is a forced AGGREGATE expansion (parent is GROUP_BY)
     # or a standard structural expansion.
-    # • GROUP_BY parent  → only AGGREGATE is valid next; use aggregation expand prompt.
-    # • All other nodes  → propose only structural op types not yet covered as children,
-    #                       so each type gets exactly one attempt before the node is
-    #                       considered fully expanded.
+    # • GROUP_BY parent   → only AGGREGATE is valid next; use aggregation expand prompt.
+    # • AGGREGATE parent  → every structural type EXCEPT GROUP_BY (grouping an
+    #                        already-aggregated table is never valid; this is what
+    #                        produced GROUP_BY→AGGREGATE→GROUP_BY chains).
+    # • All other nodes   → every structural op type is always offered, regardless
+    #                        of whether one already has a child — multiple children
+    #                        of the same type competing purely on score is the point.
     is_groupby_expansion = (selected_node.operator_type == "GROUP_BY")
+    is_post_aggregate = (selected_node.operator_type == "AGGREGATE")
     explored_steps = list(selected_node.children.keys())  # configs already in tree
 
     if is_groupby_expansion:
@@ -1263,12 +2000,9 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         expand_ops = ["AGGREGATE"]
     else:
         expand_prompt_type = "mcts_expand"
-        covered_op_types = {c.operator_type for c in selected_node.children.values()}
-        expand_ops = [op for op in STRUCTURAL_EXPAND_OPS if op not in covered_op_types]
-        if not expand_ops:
-            # Safety guard: all types already covered — shouldn't reach here in
-            # normal flow since is_fully_expanded() would have been True.
-            expand_ops = list(STRUCTURAL_EXPAND_OPS)
+        expand_ops = list(
+            POST_AGGREGATE_EXPAND_OPS if is_post_aggregate else STRUCTURAL_EXPAND_OPS
+        )
         # NO_MORE_OPERATION is intentionally NOT offered here — expansion should
         # always grow the tree; only simulation/critique may terminate a plan
         # (the simulate prompt explicitly handles "no more steps needed").
@@ -1320,6 +2054,10 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             data_split=getattr(config, "data_split", "test"),
             rag_hints=rag_hints,
             explored_steps=explored_steps,
+            agg_evidence=(
+                _compute_aggregation_evidence(rollout_history, state, config)
+                if is_groupby_expansion else ""
+            ),
         )
     except Exception:
         config.logger.warning(
@@ -1354,54 +2092,76 @@ def next_operator_step(state: MCTSGraphState) -> dict:
         f"candidates={[(op, cfg[:50]) for op, cfg in candidates]}"
     )
 
-    # ── Batch-add all new candidates to the tree ──────────────────────────
-    # Children are keyed by the FULL configured_step string.
+    # ── Build the type-priority-ordered candidate list: S(o,c) = λ·S_LLM + (1-λ)·S_rule ──
+    # GROUP_BY parent → AGGREGATE is the only type (rerank, no new LLM call).
+    # Any other parent → type_priority is the distinct operator types in the
+    # order the LLM's own ranked response first mentions them; types it never
+    # mentions get no turn this call. Within each type, candidates (LLM's own
+    # plus, for JOIN/GROUP_BY, the rule engine's top _RULE_INJECT_TOP_K
+    # rule-only candidates) are scored and kept in score order. Concatenating
+    # per type in priority order (NOT a global cross-type sort) makes type
+    # priority win first, S(o,c) only break ties/order within a type.
+    # Each entry also carries the banded `prior` stored on the child node:
+    #     prior = (N - r)/N + S_combined/N          (N = len(STRUCTURAL_EXPAND_OPS))
+    # Rank r occupies the band [(N-r)/N, (N-r+1)/N], exactly 1/N wide, and
+    # S_combined ∈ [0,1] always lands inside that one band — so ANY candidate
+    # of a higher-priority type outranks EVERY candidate of a lower-priority
+    # type, while S_combined orders candidates within a type. The AGGREGATE
+    # branch has a single type, so it needs no banding and uses S_combined
+    # directly (its children are only ever compared against each other).
+    # Entries: (prior, combined, cfg, op_type, s_llm, s_rule).
+    ordered_candidates: List[Tuple[float, float, str, str, float, float]] = []
+    _n_band = len(STRUCTURAL_EXPAND_OPS)
+
+    if is_groupby_expansion:
+        if candidates:
+            for op_type, cfg, s_llm, s_rule, combined in _rerank_aggregate_llm_candidates(
+                candidates, rollout_history, state, config
+            ):
+                ordered_candidates.append((combined, combined, cfg, op_type, s_llm, s_rule))
+    else:
+        llm_by_type = _group_llm_candidates_by_type(candidates)
+        type_priority = _type_priority_order(candidates)
+        _m_types = len(type_priority)
+        for rank, op_type in enumerate(type_priority, start=1):
+            s_type = (_m_types - rank + 1) / _m_types if _m_types else 0.0
+            ranked = _score_operator_type_pool(
+                op_type, llm_by_type.get(op_type, []), config, rollout_history, state,
+                s_type=s_type,
+            )
+            for cfg, s_llm, s_rule, combined, _s_cfg in _cap_rule_only_candidates(ranked):
+                prior = (_n_band - rank) / _n_band + combined / _n_band
+                ordered_candidates.append((prior, combined, cfg, op_type, s_llm, s_rule))
+
+    # ── Admit candidates in type-priority order until MAX_CHILDREN is hit ───
+    # No eviction of existing children — once full, anything later in
+    # ordered_candidates (whether a lower-priority type or a lower-scored
+    # config of the current type) is simply never admitted this call. A
+    # candidate that already matches an existing child costs no room but is
+    # still recorded as admitted (eligible for the simulation-target pick).
     existing_configs: set = set(selected_node.children.keys())
     new_configs_added: List[str] = []
+    admitted: List[Tuple[float, float, str, str, float, float]] = []
+    room = MCTSNode.MAX_CHILDREN - len(selected_node.children)
 
-    for op_type, cfg in candidates:
-        if cfg not in existing_configs:
-            child_history = rollout_history + [cfg]
-            selected_node.add_child(cfg, child_history, operator_type=op_type)
-            new_configs_added.append(cfg)
-            existing_configs.add(cfg)  # keep local set consistent
-            config.logger.info(
-                f"[expand] Iter {state['iteration']}: added child op={op_type} "
-                f"cfg={cfg[:60]} "
-                f"(tree now has {len(selected_node.children)} children)"
-            )
-
-    # ── FD-based GROUP BY candidate (pre-computed from target table keys) ────
-    # Injected first (before LLM and hints_v3) so it gets simulated first when
-    # it is new. Derived from functional-dependency analysis of the target table.
-    _fd_cfg_new: Optional[str] = None  # set when FD candidate is freshly added this iter
-    if not is_groupby_expansion and "GROUP_BY" in expand_ops:
-        fd_cfg = getattr(config, "hint_groupby_fd_candidate", None)
-        if fd_cfg and fd_cfg not in existing_configs:
-            child_history = rollout_history + [fd_cfg]
-            selected_node.add_child(fd_cfg, child_history, operator_type="GROUP_BY")
-            new_configs_added.append(fd_cfg)
-            existing_configs.add(fd_cfg)
-            _fd_cfg_new = fd_cfg
-            config.logger.info(
-                f"[expand] Iter {state['iteration']}: added FD-based GROUP_BY "
-                f"cfg={fd_cfg[:100]}"
-            )
-
-    # ── hints_v3 GROUP_BY candidate ───────────────────────────────────────────
-    # Added after FD candidate (lower priority). Derived from statistical checks
-    # on source data. Pre-computed once at case start (30 s timeout).
-    if not is_groupby_expansion and "GROUP_BY" in expand_ops:
-        hint_cfg = getattr(config, "hint_groupby_v3_candidate", None)
-        if hint_cfg and hint_cfg not in existing_configs:
-            child_history = rollout_history + [hint_cfg]
-            selected_node.add_child(hint_cfg, child_history, operator_type="GROUP_BY")
-            new_configs_added.append(hint_cfg)
-            existing_configs.add(hint_cfg)
-            config.logger.info(
-                f"[expand] Iter {state['iteration']}: added hints_v3 GROUP_BY "
-                f"cfg={hint_cfg[:100]}"
-            )
+    for prior, combined, cfg, op_type, s_llm, s_rule in ordered_candidates:
+        if cfg in existing_configs:
+            admitted.append((prior, combined, cfg, op_type, s_llm, s_rule))
+            continue
+        if room <= 0:
+            break
+        child_history = rollout_history + [cfg]
+        selected_node.add_child(cfg, child_history, operator_type=op_type, prior=prior)
+        new_configs_added.append(cfg)
+        existing_configs.add(cfg)
+        admitted.append((prior, combined, cfg, op_type, s_llm, s_rule))
+        room -= 1
+        config.logger.info(
+            f"[expand] Iter {state['iteration']}: added {op_type} "
+            f"cfg={cfg[:100]} S_llm={s_llm:.2f} S_rule={s_rule:.2f} "
+            f"S={combined:.3f} prior={prior:.3f} "
+            f"(tree now has {len(selected_node.children)} children)"
+        )
 
     # Saturation: LLM returned no new configs — mark so selection descends past this node
     if not new_configs_added and candidates:
@@ -1411,33 +2171,21 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             f"node marked saturated"
         )
 
-    # ── Simulation target priority: FD candidate > LLM #1 > fallback ─────────
-    # If an FD candidate was freshly added this iteration, simulate it first.
-    # Otherwise fall back to the LLM's top-ranked candidate.
-    if _fd_cfg_new:
-        chosen_op, chosen_cfg = "GROUP_BY", _fd_cfg_new
-        new_history = rollout_history + [chosen_cfg]
-        new_node = selected_node.children[chosen_cfg]
-        config.logger.info(
-            f"[expand] Iter {state['iteration']}: simulating FD-based GROUP_BY first "
-            f"| cfg={chosen_cfg[:80]} "
-            f"({len(new_configs_added)} new child(ren) added this iteration)"
+    # ── Simulation target: the single best-scored candidate ACTUALLY ADMITTED ──
+    # (never a candidate that lost out on room — by construction that can no
+    # longer happen, since admitted only ever grows via the loop above.)
+    if admitted:
+        # Ranked by the banded prior, so the LLM's type priority is respected
+        # here too — a lower-priority type's candidate can never be simulated
+        # over a higher-priority type's, whatever their raw S_combined.
+        _best_prior, _best_combined, chosen_cfg, chosen_op, _best_s_llm, _best_s_rule = max(
+            admitted, key=lambda a: a[0]
         )
-    elif candidates:
-        chosen_op, chosen_cfg = candidates[0]
+        new_node = selected_node.children[chosen_cfg]
         new_history = rollout_history + [chosen_cfg]
-
-        # Navigate to the top-priority child (guaranteed to exist after batch-add above)
-        if chosen_cfg not in selected_node.children:
-            new_node = selected_node.add_child(
-                chosen_cfg, new_history, operator_type=chosen_op
-            )
-        else:
-            new_node = selected_node.children[chosen_cfg]
-
         config.logger.info(
-            f"[expand] Iter {state['iteration']}: simulating LLM top-priority op={chosen_op} "
-            f"| cfg={chosen_cfg[:80]} "
+            f"[expand] Iter {state['iteration']}: simulating best-scored op={chosen_op} "
+            f"| cfg={chosen_cfg[:80]} S={_best_combined:.3f} prior={_best_prior:.3f} "
             f"({len(new_configs_added)} new child(ren) added this iteration)"
         )
     else:
@@ -1616,7 +2364,7 @@ def execute_and_score(state: MCTSGraphState) -> dict:
             try:
                 df_output = pd.read_csv(target_file_location, low_memory=False)
                 df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-                df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+                df_gt = drop_leading_index_col_if_present(df_gt)
                 judge_verdict, _ = llm_judge_fn(
                     df_output, df_gt,
                     judge_type=llm_judge,
@@ -1729,7 +2477,7 @@ def backpropagate(state: MCTSGraphState) -> dict:
 
     # Split any merged GROUP_BY/AGGREGATE steps back into separate GROUP_BY + AGGREGATE
     # nodes so the tree stays consistent with the expand-layer structure.
-    full_history = _split_groupby_aggregate(full_history)
+    full_history = _canonicalize_column_ops(_split_groupby_aggregate(full_history))
 
     sim_backprop_path: List[MCTSNode] = selection_path  # default: no divergence
     sim_diverged: bool = False
@@ -1771,22 +2519,10 @@ def backpropagate(state: MCTSGraphState) -> dict:
     _sim_leaf_old_best = sim_backprop_path[-1].best_score if sim_backprop_path else float('inf')
     for node in reversed(sim_backprop_path):
         node.update(pre_critique_score)
-        if (
-            node.operator_type == "GROUP_BY"
-            and pre_critique_score >= _REAGGREGATION_REWARD_THRESHOLD
-            and len(node.children) < AGGREGATE_MAX_CHILDREN
-        ):
-            node.reaggregation_needed = True
-            config.logger.info(
-                f"[backpropagate] Iter {state['iteration']}: "
-                f"GROUP_BY reaggregation flagged "
-                f"(score={pre_critique_score:.4f}, "
-                f"children={len(node.children)}/{AGGREGATE_MAX_CHILDREN})"
-            )
 
     # Virtual visits for selection-only nodes when simulation diverged
     for node in reversed(selection_only_nodes):
-        node.update(0.0)  # visits += 1, total_reward += 0 → UCB1 becomes finite
+        node.update(0.0)  # visits += 1, total_reward += 0
 
     # Cache best script on the deepest simulated node if improved.
     # Compare against the OLD best (before update() promoted it), otherwise the
@@ -1804,12 +2540,6 @@ def backpropagate(state: MCTSGraphState) -> dict:
         _crit_leaf_old_best = critique_selection_path[-1].best_score
         for node in reversed(critique_selection_path):
             node.update(critique_score)  # in-place: visits += 1, total_reward += reward
-            if (
-                node.operator_type == "GROUP_BY"
-                and critique_score >= _REAGGREGATION_REWARD_THRESHOLD
-                and len(node.children) < AGGREGATE_MAX_CHILDREN
-            ):
-                node.reaggregation_needed = True
 
         # Cache best script on the deepest critique node if improved.
         if critique_score > _crit_leaf_old_best:
@@ -1996,7 +2726,7 @@ def _build_critique_prompt(state: MCTSGraphState, script: str, rag_hints: str = 
     # Ground truth row count
     try:
         df_gt = pd.read_csv(ground_truth_location, low_memory=False)
-        df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+        df_gt = drop_leading_index_col_if_present(df_gt)
         prompt = prompt.replace("$NUM_TUPLES$", str(len(df_gt)))
     except Exception:
         prompt = prompt.replace("$NUM_TUPLES$", "N/A")
@@ -2182,7 +2912,7 @@ def mcts_critique(state: MCTSGraphState) -> dict:
     expanded_depth: int = len(state.get("rollout_history", []))
     critique_selection_path: List[MCTSNode] = []
     if critique_plan:
-        critique_plan = _split_groupby_aggregate(critique_plan)
+        critique_plan = _canonicalize_column_ops(_split_groupby_aggregate(critique_plan))
         truncated_critique_plan = critique_plan[:expanded_depth] if expanded_depth > 0 else []
         try:
             if truncated_critique_plan:
@@ -2204,7 +2934,7 @@ def mcts_critique(state: MCTSGraphState) -> dict:
         try:
             df_output = pd.read_csv(state["target_file_location"], low_memory=False)
             df_gt = pd.read_csv(state["ground_truth_location"], low_memory=False)
-            df_gt = df_gt.drop(columns=df_gt.columns[0], axis=1)
+            df_gt = drop_leading_index_col_if_present(df_gt)
             judge_verdict, _ = llm_judge_fn(
                 df_output, df_gt,
                 judge_type=llm_judge,

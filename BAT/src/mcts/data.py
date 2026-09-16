@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 from pandas.testing import assert_frame_equal
+from src.utils.csv_io import drop_leading_index_col_if_present
 
 class DataProcessor:
     def __init__(self, folder_path, data_type, meta_path = None):
@@ -33,9 +34,9 @@ class DataProcessor:
                     continue
                 file_path = os.path.join(folder_path, file_name)
                 if key == "target":
-                    self.table_dict[key] = pd.read_csv(file_path, nrows=5).iloc[:, 1:]
+                    self.table_dict[key] = drop_leading_index_col_if_present(pd.read_csv(file_path, nrows=5))
                 else:
-                    self.table_dict[key] = pd.read_csv(file_path).iloc[:, 1:]
+                    self.table_dict[key] = drop_leading_index_col_if_present(pd.read_csv(file_path))
         if self.data_type == "buildings":
             for file_name in os.listdir(folder_path):
                 if file_name.lower().endswith('.csv'):

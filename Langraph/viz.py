@@ -219,6 +219,7 @@ def write_tree_viz(
         stats = (
             f"visits={node.visits:3d}  "
             f"q={node.q_value:.3f}  "
+            f"prior={node.prior:.3f}  "
             f"best={node.best_score:.3f}"
             f"{terminal_tag}{path_tag}"
         )
@@ -247,6 +248,8 @@ def write_tree_viz(
         "Legend",
         "  visits  number of simulations that passed through this node",
         "  q       average reward (total_reward / visits)",
+        "  prior   fixed prior (S_combined score at candidate creation time; used as",
+        "          ucb1()'s First-Play-Urgency fallback while unvisited)",
         "  best    highest single reward seen from any simulation through this node",
         "  ·       on the path to the best result",
         "  ★       the node whose simulation produced the best overall result",

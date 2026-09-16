@@ -7,8 +7,9 @@ import time
 from datetime import datetime
 
 import pandas as pd
+import psycopg2
 
-from util import create_connection, execute_sql
+from util import create_connection
 from join_util import (
     convert_target_names,
     num_source_tables,
@@ -29,6 +30,33 @@ VALIDATION_METHODS = {
     "hard_match": "hard_match",
     "autopipeline": "autopipeline",
 }
+
+
+def execute_ddl(conn, query):
+    """Run the LLM's CREATE/COPY/INSERT script and commit -- nothing more.
+
+    util.py's execute_sql() does this same execute+commit, but then *also*
+    tries to auto-guess the target table name (regex over CREATE TABLE/INSERT
+    INTO statements) and SELECT from it, just to hand back a "result" value.
+    That guess is regularly wrong here (e.g. it can match a stray word from
+    the LLM's own prose/reasoning as a table name, producing errors like
+    'relation "the" does not exist' or 'relation "target" does not exist'
+    even though the real DDL/DML executed and committed successfully one line
+    earlier) -- and since that guess-and-fetch runs in the same try/except as
+    the real execution, a failure there was indistinguishable from the real
+    SQL failing, so run_case() bailed out on perfectly good cases. We already
+    know the exact target table name from the JSON and query it ourselves
+    right after this call, so we never need execute_sql()'s guess at all.
+    """
+    cursor = conn.cursor()
+    try:
+        cursor.execute("BEGIN;")
+        cursor.execute(query)
+        conn.commit()
+        return None
+    except psycopg2.Error as e:
+        conn.rollback()
+        return f"Error: {e.pgerror}"
 
 
 def setup_experiment(experiment_name):
@@ -111,7 +139,25 @@ Please follow these steps:
 """
 
 
-def run_case(conn, target_name, records, model=DEFAULT_MODEL, max_tokens=12000, validation_method="join"):
+def cleanup_case_tables(conn, target_name, records):
+    """Drop this case's Source*/Target tables now that it's been scored — otherwise
+    every case's full-data tables accumulate in Postgres for the rest of the run
+    (confirmed: 3208 leftover tables, ~2.4GB, after the first batch of runs, on a
+    disk that was already at 96% full). Best-effort: a cleanup failure shouldn't
+    override the case's actual result, so this never raises."""
+    table_names = [rec["Source Data Name"] for rec in records] + [target_name]
+    try:
+        cur = conn.cursor()
+        for table_name in table_names:
+            cur.execute(f"DROP TABLE IF EXISTS {table_name};")
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        logging.warning(f"{target_name}: table cleanup failed: {type(e).__name__}: {e}")
+
+
+def run_case(conn, target_name, records, model=DEFAULT_MODEL, max_tokens=12000, validation_method="join",
+             benchmark="autopipeline"):
     """Run and validate one benchmark case end-to-end. Never raises — failures are
     reported in the returned dict so a batch run can continue past a bad case.
 
@@ -130,7 +176,7 @@ def run_case(conn, target_name, records, model=DEFAULT_MODEL, max_tokens=12000, 
     n_sources = len(records)
     case_start = time.time()
 
-    on_disk = num_source_tables(case_name)
+    on_disk = num_source_tables(case_name, benchmark)
     if on_disk != n_sources:
         logging.warning(f"{target_name}: JSON has {n_sources} source(s) but {case_name} has {on_disk} test_*.csv on disk")
 
@@ -142,7 +188,7 @@ def run_case(conn, target_name, records, model=DEFAULT_MODEL, max_tokens=12000, 
     record = {"target": target_name, "model": model, "prompt": None, "response": None,
               "usage": None, "llm_latency_seconds": None}
     try:
-        source_paths = [clean_source_csv_path(case_name, i) for i in range(n_sources)]
+        source_paths = [clean_source_csv_path(case_name, i, benchmark) for i in range(n_sources)]
         prompt = generate_prompt_auto_pipeline(records, target_name, source_paths)
         record["prompt"] = prompt
         logging.info(f"{target_name}: prompt built ({len(prompt)} chars)")
@@ -158,23 +204,21 @@ def run_case(conn, target_name, records, model=DEFAULT_MODEL, max_tokens=12000, 
         result["llm_latency_seconds"] = llm_latency
         logging.info(f"{target_name}: gpt sql ({llm_latency:.2f}s, usage={usage}):\n{gpt_output}")
 
-        sql_result = execute_sql(conn, gpt_output)
-        if isinstance(sql_result, str) and sql_result.startswith("Error:"):
-            result["error"] = sql_result
+        ddl_error = execute_ddl(conn, gpt_output)
+        if ddl_error is not None:
+            result["error"] = ddl_error
             return result, record
 
-        # execute_sql()'s own auto-detected "target table" (util.py's
-        # extract_target_table_name) assumes at most 2 source tables — it picks
-        # the 3rd CREATE TABLE statement seen, which is wrong for cases with more
-        # sources. We already know the exact target table name from the JSON, so
-        # query it directly instead of trusting that guess (also gives us real
-        # column names, needed for the name-based hard_match method below).
+        # We already know the exact target table name from the JSON, so query
+        # it directly (also gives us real column names, needed for the
+        # name-based hard_match method below) rather than trusting any
+        # regex-based guess at the table name.
         cur = conn.cursor()
         cur.execute(f"SELECT * FROM {target_name};")
         sql_rows = cur.fetchall()
         sql_cols = [d[0] for d in cur.description]
         sql_result_df = pd.DataFrame(sql_rows, columns=sql_cols)
-        target_df = read_target_dataframe(case_name)
+        target_df = read_target_dataframe(case_name, benchmark)
 
         if validation_method == "join":
             if len(sql_result_df.columns) != len(target_df.columns):
@@ -198,12 +242,13 @@ def run_case(conn, target_name, records, model=DEFAULT_MODEL, max_tokens=12000, 
         logging.exception(f"{target_name}: failed")
         result["error"] = f"{type(e).__name__}: {e}"
     finally:
+        cleanup_case_tables(conn, target_name, records)
         result["total_latency_seconds"] = time.time() - case_start
     return result, record
 
 
 def run_many(by_target, target_names, model=DEFAULT_MODEL, max_tokens=12000,
-             validation_method="join", experiment_dir=None):
+             validation_method="join", experiment_dir=None, benchmark="autopipeline"):
     if experiment_dir is None:
         experiment_dir = setup_experiment("adhoc")
     os.makedirs(experiment_dir, exist_ok=True)
@@ -223,7 +268,7 @@ def run_many(by_target, target_names, model=DEFAULT_MODEL, max_tokens=12000,
                     continue
                 records = by_target[target_name]
                 res, record = run_case(conn, target_name, records, model=model, max_tokens=max_tokens,
-                                        validation_method=validation_method)
+                                        validation_method=validation_method, benchmark=benchmark)
                 print(f"  -> accuracy={res['accuracy']:.2f} correct={res['correct']} "
                       f"cost=${res['cost_usd'] if res['cost_usd'] is not None else 'n/a'} "
                       f"latency={res['total_latency_seconds']:.1f}s "
@@ -264,31 +309,62 @@ def _build_target_names(len_id, start_id, end_id):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the SQL-generation baseline over a range of "
-                                                   "AutoPipeline github-pipelines benchmark cases.")
-    parser.add_argument("--len", type=int, required=True, dest="len_id",
-                        help="Length group (the N in lengthN_M / TargetN_M), e.g. 1")
-    parser.add_argument("--start_target_id", type=int, required=True,
-                        help="First case index (inclusive)")
-    parser.add_argument("--end_target_id", type=int, required=True,
-                        help="Last case index (inclusive)")
+                                                   "benchmark cases (--benchmark autopipeline|smart_building).")
+    parser.add_argument("--len", type=int, dest="len_id", default=None,
+                        help="Length group (the N in lengthN_M / TargetN_M), e.g. 1. "
+                             "Not needed if --cases is given.")
+    parser.add_argument("--start_target_id", type=int, default=None,
+                        help="First case index (inclusive). Not needed if --cases is given.")
+    parser.add_argument("--end_target_id", type=int, default=None,
+                        help="Last case index (inclusive). Not needed if --cases is given.")
+    parser.add_argument("--cases", type=str, nargs="+", default=None,
+                        help="Explicit list of case names to run instead of a --len/--start/--end "
+                             "range, e.g. --cases Target1_5 Target4_23 Target9_87. Can span "
+                             "multiple lengths (e.g. to rerun a specific set of failed cases).")
     parser.add_argument("--validation", choices=sorted(VALIDATION_METHODS), default="inbuilt",
                         help="'inbuilt' = join.py's validation() (default); 'hard_match'/'autopipeline' = "
                              "the same methods Langraph/mcts_search.py uses, for comparability")
+    parser.add_argument("--benchmark", choices=["autopipeline", "smart_building", "smart_building_v2"],
+                        default="autopipeline",
+                        help="'autopipeline' (default) = the original github-pipelines benchmark "
+                             "(data/chatgpt_github_ss.json + chatgpt_github_ms.json). "
+                             "'smart_building' = the 50/50 test/training split of the smart_building "
+                             "benchmark (data/chatgpt_smartbuilding_split_ss.json, single-source only, "
+                             "cases Target1_1..Target1_100 with gaps -- see "
+                             "smartbuilding_solutions_manifest.csv for which case IDs actually exist). "
+                             "'smart_building_v2' = the 105-case smart_building v2 benchmark "
+                             "(data/chatgpt_smartbuilding_v2_ss.json, single-source only, cases "
+                             "Target1_1..Target15_4 -- see "
+                             "autopipeline-benchmarks/smartbuilding-pipelines-v2-split/split_manifest.csv "
+                             "for the full case list; unlike v1, all 105 cases are usable).")
     parser.add_argument("--experiment_name", type=str, required=True,
                         help="Logs/results go to logs/{experiment_name}_{timestamp}/")
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL)
     parser.add_argument("--max_tokens", type=int, default=12000)
     args = parser.parse_args()
 
+    if args.cases:
+        target_names = args.cases
+    elif args.len_id is not None and args.start_target_id is not None and args.end_target_id is not None:
+        target_names = _build_target_names(args.len_id, args.start_target_id, args.end_target_id)
+    else:
+        parser.error("either --cases, or all of --len/--start_target_id/--end_target_id, are required")
+
     experiment_dir = setup_experiment(args.experiment_name)
     print(f"Experiment dir: {experiment_dir}")
 
-    by_target = load_case_records([
-        os.path.join(_THIS_DIR, "..", "data", "chatgpt_github_ss.json"),
-        os.path.join(_THIS_DIR, "..", "data", "chatgpt_github_ms.json"),
-    ])
-    target_names = _build_target_names(args.len_id, args.start_target_id, args.end_target_id)
+    if args.benchmark == "smart_building":
+        json_paths = [os.path.join(_THIS_DIR, "..", "data", "chatgpt_smartbuilding_split_ss.json")]
+    elif args.benchmark == "smart_building_v2":
+        json_paths = [os.path.join(_THIS_DIR, "..", "data", "chatgpt_smartbuilding_v2_ss.json")]
+    else:
+        json_paths = [
+            os.path.join(_THIS_DIR, "..", "data", "chatgpt_github_ss.json"),
+            os.path.join(_THIS_DIR, "..", "data", "chatgpt_github_ms.json"),
+        ]
+    by_target = load_case_records(json_paths)
     print(f"Running {len(target_names)} case(s): {target_names[0]}..{target_names[-1]}")
 
     run_many(by_target, target_names, model=args.model, max_tokens=args.max_tokens,
-             validation_method=VALIDATION_METHODS[args.validation], experiment_dir=experiment_dir)
+             validation_method=VALIDATION_METHODS[args.validation], experiment_dir=experiment_dir,
+             benchmark=args.benchmark)

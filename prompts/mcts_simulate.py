@@ -18,7 +18,7 @@ from pathlib import Path
 _TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[1])
 if _TRANSCHEMA_ROOT not in sys.path:
     sys.path.insert(0, _TRANSCHEMA_ROOT)
-from hints.hints_static import get_hints_section, PYTHON_SCRIPT_HINT_IDS
+from hints.hints_static import get_hints_section, PYTHON_SCRIPT_HINT_IDS, get_smartbuilding_index_col_override
 from hints.hint import get_hints
 
 
@@ -99,7 +99,14 @@ about what additional steps are required to produce the correct target schema, i
             "No prior operations selected. Reason freely about the full pipeline.\n"
         )
 
-    script_hints = get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet") if static_hints else ""
+    # smart_building's CSVs have no throwaway leading index column (unlike
+    # github/monteprep), so hint #29 ("always add index_col=0") is actively
+    # wrong there -- following it literally drops a real column (e.g. a date
+    # column) and produces an incorrect transform from the very first step.
+    _is_smartbuilding = "smartbuilding" in directory
+    _script_hint_ids = [h for h in PYTHON_SCRIPT_HINT_IDS if h != 29] if _is_smartbuilding else PYTHON_SCRIPT_HINT_IDS
+    _index_col_override = get_smartbuilding_index_col_override() if (_is_smartbuilding and static_hints) else ""
+    script_hints = get_hints_section(_script_hint_ids, fmt="bullet") if static_hints else ""
     rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
 
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should be immediately executable in a correct way, which means it should NOT contain any placeholder for brevity. For example, even if there exist hundreds of source tables, these data need to be loaded completely one by one or in a programmable way.
@@ -132,7 +139,17 @@ Examples of valid operation lines:
   UNION : [test_0, test_1]
   JOIN : [[union_result, test_2]] columns=[[union_result.id, test_2.id]]
   GROUP_BY/AGGREGATE : group_by=[test_0.category] aggregations=[COUNT(test_0.id)]
+  PIVOT
+  UNPIVOT
+  COLUMN_TRANSFORM : [out_a = test_0.col_1, out_b = SUM(test_0.col_2, test_0.col_3), out_c = FORMAT(test_0.dt, '%m/%d/%Y'), out_d = EXTRACT(MONTH FROM test_0.dt), out_e = UPPER(TRIM(test_0.name))]
   NO_MORE_OPERATION
+
+COLUMN_TRANSFORM defines the output columns as row-wise expressions over existing
+columns — pass-through/rename, multi-column folds, date reformatting and part
+extraction, and string reshaping — in one step. The entries are emitted in the
+order listed and any column not listed is dropped. Available in an expression:
+SUM/AVG/MAX/MIN over several columns, COALESCE, FORMAT, EXTRACT, UPPER, LOWER,
+TRIM, LENGTH, CONCAT, SUBSTR, SPLIT, REPLACE, CAST, and nesting of these.
 
 After the plan, rate your confidence that this COMPLETE pipeline's output will
 exactly match the target table. Output a single decimal number between 0.0
@@ -156,6 +173,7 @@ Please quote the Python script between one single "```Python" and "```".
 Hints for Python code generation
 ══════════════════════════════════════════════════════
 {script_hints}
+{_index_col_override}
 {data_specific_hints}
 
 Errors in previous attempts: {error_string}

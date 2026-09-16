@@ -1,8 +1,7 @@
 import json
 import os
 import sys
-import threading
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+import multiprocessing
 
 import numpy as np
 from scipy.stats import wasserstein_distance
@@ -17,15 +16,58 @@ import fdtool.fdtool as fdtool
 import column_map_utils
 from column_map_utils import get_column_map
 
-FD_TIMEOUT = 60
+FD_TIMEOUT = 30  # per-attempt budget; relative_csv_score() retries once on truncated data if this expires
 
-def _run_fdtool(df):
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(fdtool.main, df)
-        try:
-            return future.result(timeout=FD_TIMEOUT)
-        except FuturesTimeoutError:
-            return [], [], []
+def _fdtool_worker(df, q):
+    try:
+        q.put(("ok", fdtool.main(df)))
+    except Exception as e:
+        q.put(("error", str(e)))
+
+def _run_fdtool(df, timeout=FD_TIMEOUT):
+    """Returns (FDs, E, keys, timed_out).
+
+    A ThreadPoolExecutor here previously "timed out" only in the sense of
+    raising after `timeout` seconds -- the `with` block's exit still blocks
+    on shutdown(wait=True), which waits for the abandoned thread to finish
+    on its own (Python threads can't be forcibly killed), so a slow
+    FD-mining call could run far longer than `timeout` before this function
+    actually returned. multiprocessing.Process.terminate() can be forcibly
+    killed, making the timeout strict.
+    """
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(target=_fdtool_worker, args=(df, q), daemon=False)
+    p.start()
+    p.join(timeout=timeout)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return [], [], [], True
+    try:
+        status, result = q.get_nowait()
+        if status == "ok":
+            return result[0], result[1], result[2], False
+        return [], [], [], False
+    except Exception:
+        return [], [], [], False
+
+
+def _run_fdtool_two_phase(df_row_capped, max_cols_full, max_cols_truncated, max_rows_truncated):
+    """df_row_capped should already have the caller's phase-1 row cap applied
+    (e.g. _max_fd_rows for the gen side, or uncapped for GT).
+
+    Phase 1: FD mining on the first max_cols_full columns, timeout=FD_TIMEOUT.
+    Phase 2, only if Phase 1 times out: retry on a smaller slice (first
+    max_cols_truncated columns, first max_rows_truncated rows), same
+    FD_TIMEOUT. If Phase 2 also times out, give up -- returns empty FDs
+    (fd_f1 excluded from score_1 by the caller's weighted-average-over-
+    available logic, rather than treated as a hard 0)."""
+    FDs, E, keys, timed_out = _run_fdtool(df_row_capped.iloc[:, :max_cols_full])
+    if not timed_out:
+        return FDs, E, keys
+    df_truncated = df_row_capped.iloc[:max_rows_truncated, :max_cols_truncated]
+    FDs, E, keys, _ = _run_fdtool(df_truncated)
+    return FDs, E, keys
 
 def serialize_fd_list(fd_list):
     return [{"lhs": list(lhs), "rhs": rhs} for lhs, rhs in fd_list]
@@ -62,6 +104,8 @@ def serialize_column_map(col_map):
     return serialized
 MAX_FD_COLS = 52
 MAX_FD_ROWS = 2000  # row cap for gen-side FD mining every iteration; keeps scoring fast on large tables
+MAX_FD_COLS_TRUNCATED = 15  # Phase-2 fallback column cap when full-table FD mining times out
+MAX_FD_ROWS_TRUNCATED = 2000  # Phase-2 fallback row cap (same as MAX_FD_ROWS, named separately for clarity)
 
 
 def compute_distribution_scores(df_a, df_b, col_map=None):
@@ -200,19 +244,27 @@ def relative_csv_score(df_a, df_b, precomputed_gt=None):
     # When GT was also reduced (max_fd_rows in cache), use that value so both
     # sides are consistent; otherwise fall back to the global MAX_FD_ROWS cap.
     _max_fd_rows = (precomputed_gt.get("max_fd_rows") if precomputed_gt else None) or MAX_FD_ROWS
-    df_a_fd = df_a.iloc[:_max_fd_rows, :MAX_FD_COLS]
+    df_a_fd = df_a.iloc[:_max_fd_rows]
 
-    # Run FD mining on generated output — always needed each iteration
-    FDs_a, E_a, keys_a = _run_fdtool(df_a_fd)
+    # Run FD mining on generated output — always needed each iteration.
+    # Phase 1: full (row-capped) table, FD_TIMEOUT. Phase 2 (only if Phase 1
+    # times out): truncated to MAX_FD_COLS_TRUNCATED cols / MAX_FD_ROWS_TRUNCATED
+    # rows, another FD_TIMEOUT. If both time out, FDs_a stays empty and fd_f1
+    # is excluded from score_1 (weighted average renormalizes over the
+    # remaining components) rather than forcing a hard 0.
+    FDs_a, E_a, keys_a = _run_fdtool_two_phase(
+        df_a_fd, MAX_FD_COLS, MAX_FD_COLS_TRUNCATED, MAX_FD_ROWS_TRUNCATED
+    )
 
-    # GT FDs — skip if pre-computed (saves up to FD_TIMEOUT seconds per iteration)
+    # GT FDs — skip if pre-computed (saves up to 2*FD_TIMEOUT seconds per iteration)
     if precomputed_gt is not None:
         FDs_b  = precomputed_gt["FDs_b"]
         E_b    = precomputed_gt["E_b"]
         keys_b = precomputed_gt["keys_b"]
     else:
-        df_b_fd = df_b.iloc[:, :MAX_FD_COLS]
-        FDs_b, E_b, keys_b = _run_fdtool(df_b_fd)
+        FDs_b, E_b, keys_b = _run_fdtool_two_phase(
+            df_b, MAX_FD_COLS, MAX_FD_COLS_TRUNCATED, MAX_FD_ROWS_TRUNCATED
+        )
 
     fd_count_a = len(FDs_a)
     fd_count_b = len(FDs_b)

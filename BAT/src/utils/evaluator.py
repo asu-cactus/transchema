@@ -17,6 +17,26 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 from validation.hard_match import compare_tables_matching
 
+
+def drop_leading_index_col_if_present(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop the first column only if it's actually a throwaway pandas index
+    column (unnamed, or literally "Unnamed: 0") -- true for every
+    github-pipelines/monteprep-pipelines CSV (hence the previous unconditional
+    `.iloc[:, 1:]` at this file's two call sites), but NOT true for
+    smart_building's CSVs, whose first column is real data (e.g. CST/date/
+    season). Blindly dropping it there would silently corrupt every row.
+    Mirrors src/utils/csv_io.py's version -- duplicated (not imported) since
+    this file runs as a bare script (`python3 src/utils/evaluator.py`, not
+    `-m src.utils.evaluator`), so BAT's own directory isn't reliably on
+    sys.path for a `from src.utils...` import to resolve.
+    """
+    if len(df.columns) > 0:
+        first_col = str(df.columns[0])
+        if first_col == "" or first_col.startswith("Unnamed:"):
+            return df.drop(columns=df.columns[0])
+    return df
+
+
 def parse_llm_logs(log_file_path: str) -> List[Dict]:
     """Parse JSONL log file and return list of log entries."""
     logs = []
@@ -66,7 +86,7 @@ def read_csv_files(folder_path, folder_name):
                     and not file_name.startswith('target')):
                 key = os.path.splitext(file_name)[0]
                 file_path = os.path.join(folder_path, file_name)
-                table_dict[key] = pd.read_csv(file_path).iloc[:, 1:]
+                table_dict[key] = drop_leading_index_col_if_present(pd.read_csv(file_path))
     elif folder_name == "buildings":
         for file_name in os.listdir(folder_path):
             if file_name.lower().endswith('.csv') and not file_name.startswith('target'):
@@ -205,7 +225,7 @@ def process_json_files(
             last_var = extract_last_variable('\n'.join(path))
             result = exec_env.get(last_var, pd.DataFrame())
             if folder_name == "auto_pipeline":
-                target = pd.read_csv(target_file).iloc[:, 1:]
+                target = drop_leading_index_col_if_present(pd.read_csv(target_file))
             else:
                 target = pd.read_csv(target_file)
             if validation == "autopipeline":
@@ -281,10 +301,14 @@ def main(json_folder, data_folder, output_base, length_types, start_num, end_num
     if folder_name not in ["auto_pipeline", "buildings"]:
             raise ValueError(f"Unsupported folder name: {folder_name}")
 
-    # Parse LLM logs
+    # Parse LLM logs. Single-length invocations (how run_length*.sh /
+    # run_cases_iteratively.py always call this) read from the matching
+    # per-length log file written by main.py's LLMClient(log_tag=...),
+    # instead of the shared file every length otherwise races on.
     llm_logs = []
     if model_name:
-        log_file = f"logs/llm_queries_{model_name}.jsonl"
+        log_suffix = f"_length{length_types[0]}" if len(length_types) == 1 else ""
+        log_file = f"logs/llm_queries_{model_name}{log_suffix}.jsonl"
         llm_logs = parse_llm_logs(log_file)
 
     for length_type in length_types:

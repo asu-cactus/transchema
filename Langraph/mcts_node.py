@@ -3,7 +3,8 @@ MCTSNode: the core data structure for MCTS-based schema transformation search.
 
 Each node represents a partial transformation plan (pipeline prefix).
 The tree built from MCTSNodes is the cross-iteration memory:
-  - visit counts and accumulated rewards guide UCB1 selection
+  - visit counts, accumulated rewards, and each child's fixed prior (used as
+    a First-Play-Urgency fallback while unvisited) guide UCB1 selection
   - best scripts cached at each node for quick retrieval
 
 Tree structure (key design decision)
@@ -20,7 +21,6 @@ mcts_select descends past it using UCB1 to explore deeper plans.
 """
 
 import math
-import random
 from typing import Dict, List, Optional
 
 # All operators the LLM can choose from (same as multi_step.py).
@@ -31,6 +31,7 @@ OPERATOR_TYPES: List[str] = [
     "GROUP_BY/AGGREGATE",
     "PIVOT",
     "UNPIVOT",
+    "COLUMN_TRANSFORM",
     "NO_MORE_OPERATION",
 ]
 
@@ -45,29 +46,28 @@ EXPAND_OPERATOR_TYPES: List[str] = [
     "AGGREGATE",
     "PIVOT",
     "UNPIVOT",
+    "COLUMN_TRANSFORM",
     "NO_MORE_OPERATION",
 ]
 
-# Structural operator types that standard nodes can have as children.
-# A standard node is "fully expanded" once all of these types appear at least
-# once among its children.
+# Structural operator types offered to the LLM as expansion candidates for any
+# non-GROUP_BY node (GROUP_BY nodes only ever offer AGGREGATE). No longer used
+# to decide when a node is "fully expanded" — see MAX_CHILDREN / is_fully_expanded.
 STRUCTURAL_EXPAND_OPS: List[str] = [
-    "JOIN", "UNION", "GROUP_BY", "PIVOT", "UNPIVOT"
+    "JOIN", "UNION", "GROUP_BY", "PIVOT", "UNPIVOT",
+    "COLUMN_TRANSFORM",
 ]
 
-# Operator types required for an AGGREGATE node to be considered fully expanded.
-# GROUP_BY is intentionally excluded: any operator (including GROUP_BY) is allowed
-# after AGGREGATE, but the system must not MANDATE a GROUP_BY child — that would
-# force unbounded GROUP_BY→AGGREGATE→GROUP_BY→... chains.
-# The LLM may still freely propose GROUP_BY after AGGREGATE when it's appropriate.
+# Operator types offered as expansion candidates for an AGGREGATE node.
+# GROUP_BY is excluded: grouping again immediately after an aggregation would
+# re-group an already-aggregated table, which is never a valid step here, and
+# it is what produced the GROUP_BY -> AGGREGATE -> GROUP_BY chains seen in the
+# trees. Enforced both in the expand prompt's allowed_operation_list and in
+# get_mcts_candidates' operator filter.
 POST_AGGREGATE_EXPAND_OPS: List[str] = [
-    "JOIN", "UNION", "PIVOT", "UNPIVOT"
+    "JOIN", "UNION", "PIVOT", "UNPIVOT",
+    "COLUMN_TRANSFORM",
 ]
-
-
-# Maximum number of AGGREGATE children a single GROUP_BY node may accumulate.
-# Re-expansion beyond the initial batch is gated by the reaggregation_needed flag.
-AGGREGATE_MAX_CHILDREN: int = 9
 
 
 DEFAULT_EXPLORATION_WEIGHT: float = math.sqrt(2)
@@ -92,19 +92,24 @@ class MCTSNode:
     Memory across iterations
     ------------------------
     - visits / total_reward are updated by backpropagate() after every simulation.
-    - UCB1 uses these accumulated stats to balance exploration vs exploitation.
+    - UCB1 uses these accumulated stats to balance exploration vs exploitation;
+      an unvisited node falls back to its fixed prior (First Play Urgency)
+      instead of the classic +inf, so it competes on a bounded, comparable
+      score rather than automatically winning.
     - best_script / best_score cache the highest-scoring result seen from this subtree.
     """
 
-    # A node is considered "fully expanded" once it has this many children.
-    # mcts_select will then descend past it into its children.
-    MAX_CHILDREN: int = 3
+    # A node is considered "fully expanded" once it has this many children —
+    # applies uniformly to every operator type, including GROUP_BY's AGGREGATE
+    # children. mcts_select will then descend past it into its children.
+    MAX_CHILDREN: int = 5
 
     def __init__(
         self,
         operation_history: List[str],
         parent: Optional["MCTSNode"] = None,
         operator_type: Optional[str] = None,
+        prior: float = 0.0,
     ) -> None:
         # Transformation plan up to this point
         self.operation_history: List[str] = operation_history
@@ -133,11 +138,15 @@ class MCTSNode:
         # is_fully_expanded() returns True so selection can descend past this node.
         self.saturated: bool = False
 
-        # Set by backpropagate when this GROUP_BY node's subtree scores above the
-        # reaggregation threshold AND there is still room for more AGGREGATE children.
-        # mcts_select will pause descent here to trigger another expansion call,
-        # then clears the flag.
-        self.reaggregation_needed: bool = False
+        # Fixed prior — the merged LLM+rule score (S_combined) this candidate
+        # was ranked at when it was proposed during expansion. Looked up ONCE
+        # at creation time, never touched by update()/backpropagate — kept
+        # entirely separate from real reward statistics (visits/total_reward
+        # are never seeded from it). Used only as ucb1()'s First-Play-Urgency
+        # fallback for an unvisited node, in place of +inf. Root has no
+        # incoming candidate score, so it stays 0.0 (neutral, unused — root's
+        # own children compete on their own priors, not root's).
+        self.prior: float = prior
 
     # ──────────────────────────────────────────────────────────────────────────
     # UCB1 / selection helpers
@@ -162,60 +171,37 @@ class MCTSNode:
 
     def ucb1(self, exploration_weight: float = DEFAULT_EXPLORATION_WEIGHT) -> float:
         """
-        UCB1 score used by tree policy.
-        Unexplored nodes return +inf so they are always tried first.
+        UCB1 score used by tree policy, with prior-based First Play Urgency:
+        an unvisited node (or one whose parent has no visits yet) returns
+        self.prior instead of +inf. prior is the fixed S_combined score this
+        candidate was ranked at when proposed (see add_child) — already
+        scaled comparably to q_value (both roughly [0,1] here), so it
+        competes directly against already-visited siblings on a real,
+        bounded score instead of automatically winning. This is what removes
+        the old "every sibling must get one visit before any can be
+        compared" behavior, without seeding fake visits/reward into the
+        node's real statistics.
+
+        For a visited node, this is classic UCB1 — unchanged:
+            q_value + exploration_weight * sqrt(log(N_parent) / N_self)
         """
-        if self.visits == 0:
-            return float("inf")
-        if self.parent is None or self.parent.visits == 0:
-            return float("inf")
+        if self.visits == 0 or self.parent is None or self.parent.visits == 0:
+            return self.prior
         return self.q_value + exploration_weight * math.sqrt(
             math.log(self.parent.visits) / self.visits
         )
 
-    def best_child(
-        self, exploration_weight: float = DEFAULT_EXPLORATION_WEIGHT
-    ) -> "MCTSNode":
-        """Return the child with the highest UCB1 score.
-
-        When multiple children are unvisited (UCB1=∞), one is chosen uniformly
-        at random rather than always picking the first insertion-order winner.
-        This prevents the search from drilling into the same first-inserted
-        subtree while equally-unexplored siblings wait indefinitely.
-        """
-        children = list(self.children.values())
-        unvisited = [c for c in children if c.visits == 0]
-        if unvisited:
-            return random.choice(unvisited)
-        return max(children, key=lambda c: c.ucb1(exploration_weight))
+    def best_child(self, exploration_weight: float = DEFAULT_EXPLORATION_WEIGHT) -> "MCTSNode":
+        """Return the child with the highest UCB1 score."""
+        return max(self.children.values(), key=lambda c: c.ucb1(exploration_weight))
 
     def is_fully_expanded(self) -> bool:
         """
-        Criterion depends on this node's operator type:
-
-        GROUP_BY: fully expanded once AGGREGATE_MAX_CHILDREN (9) AGGREGATE
-            variants have been added. Until then, selection always stops here
-            to add more aggregation candidates. The reaggregation_needed flag
-            can trigger re-expansion past this threshold if the subtree is
-            proving promising.
-
-        AGGREGATE: fully expanded once every type in POST_AGGREGATE_EXPAND_OPS
-            [JOIN, UNION, PIVOT, UNPIVOT] appears as a child. GROUP_BY is NOT
-            required — it may appear if the LLM proposes it, but it is never
-            mandated, preventing forced GROUP_BY→AGGREGATE→... chains.
-
-        All other nodes: fully expanded once every type in STRUCTURAL_EXPAND_OPS
-            appears at least once as a child's operator_type, OR when saturated.
+        Fully expanded once this node has MAX_CHILDREN children (uniform
+        across every operator type, including GROUP_BY), or once saturated
+        (the LLM/rule engine has no new candidates left to propose).
         """
-        if self.saturated:
-            return True
-        if self.operator_type == "GROUP_BY":
-            return len(self.children) >= AGGREGATE_MAX_CHILDREN
-        if self.operator_type == "AGGREGATE":
-            child_op_types = {c.operator_type for c in self.children.values()}
-            return all(op in child_op_types for op in STRUCTURAL_EXPAND_OPS)
-        child_op_types = {c.operator_type for c in self.children.values()}
-        return all(op in child_op_types for op in STRUCTURAL_EXPAND_OPS)
+        return self.saturated or len(self.children) >= MCTSNode.MAX_CHILDREN
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tree mutation
@@ -226,6 +212,7 @@ class MCTSNode:
         configured_step: str,
         new_operation_history: List[str],
         operator_type: Optional[str] = None,
+        prior: float = 0.0,
     ) -> "MCTSNode":
         """
         Expand a new child node keyed by the full configured_step string.
@@ -236,6 +223,9 @@ class MCTSNode:
                                 e.g. "JOIN : [[S0, S1]] columns=[...]"
         new_operation_history : parent history + [configured_step]
         operator_type         : human-readable operator label (metadata only)
+        prior                 : S_combined score this candidate was ranked at when
+                                proposed — becomes the child's fixed prior (used as
+                                ucb1()'s First-Play-Urgency fallback while unvisited)
         """
         if configured_step in self.children:
             raise ValueError(
@@ -245,6 +235,7 @@ class MCTSNode:
             operation_history=new_operation_history,
             parent=self,
             operator_type=operator_type,
+            prior=prior,
         )
         self.children[configured_step] = child
         return child
@@ -270,7 +261,7 @@ class MCTSNode:
             "best_score": round(self.best_score, 4),
             "is_terminal": self.is_terminal,
             "saturated": self.saturated,
-            "reaggregation_needed": self.reaggregation_needed,
+            "prior": round(self.prior, 4),
         }
         if depth < max_depth:
             # Truncate long keys for readability
@@ -311,12 +302,11 @@ class MCTSNode:
         flags = ""
         if self.saturated:
             flags += " SATURATED"
-        if self.reaggregation_needed:
-            flags += " REAGG"
         return (
             f"MCTSNode(op={self.operator_type}, "
             f"depth={len(self.operation_history)}, "
             f"visits={self.visits}, "
             f"q={self.q_value:.3f}, "
+            f"prior={self.prior:.3f}, "
             f"children={len(self.children)}{flags} {child_ops})"
         )

@@ -1,6 +1,8 @@
 import os
 import time
 import re
+import hashlib
+import multiprocessing
 from pathlib import Path
 from dataclasses import dataclass
 import pdb
@@ -9,7 +11,7 @@ import pandas as pd
 pd.set_option("display.max_columns", None)
 import logging
 from datetime import datetime
-from util.utils import get_test_info
+from util.utils import get_test_info, drop_leading_index_col_if_present, resolve_main_folder, resolve_case_json
 from test_scope import get_test_cases_ids
 from hints.hint import get_hints
 from validation.hard_match import is_column_numerical
@@ -41,6 +43,7 @@ from prompts.configuration_prompts import (
 from prompts.code_generation_prompt import get_python_script
 from prompts.mcts_expand import get_mcts_expand_prompt, get_mcts_expand_aggregate_prompt
 from prompts.mcts_simulate import get_mcts_simulate_prompt
+from prompts.partial_pipeline_execution import get_partial_pipeline_execution_prompt
 
 # from prompts.next_operator_prompt_with_intermediate_materialization import (
 #     get_next_operator_prompt_with_intermediate_materialization,
@@ -86,6 +89,7 @@ def get_prompt(
     is_final: bool = False,
     data_split="test",
     explored_steps=None,
+    agg_evidence="",
 ):
     """
     Args:
@@ -125,6 +129,13 @@ def get_prompt(
     elif "mixtral" in ml:
         # Mixtral uses the Mistral tokenizer
         encoding = _hf_tokenizer("mistralai/Mixtral-8x7B-Instruct-v0.1")
+    elif ml.startswith("dmx-"):
+        from llm.llm_models import dmx_encoding
+        encoding = dmx_encoding(model)
+    elif "gpt-oss" in ml:
+        # tiktoken.encoding_for_model() has no entry for gpt-oss and raises KeyError.
+        from llm.llm_models import gpt_oss_encoding
+        encoding = gpt_oss_encoding()
     else:
         encoding = tiktoken.encoding_for_model(model)
 
@@ -165,7 +176,7 @@ def get_prompt(
         # calculate filtered functional dependency hints
         target_file_location = f"{directory}/length{len_idx_target_idx}/target.csv"
         df = pd.read_csv(target_file_location, low_memory=False)
-        df = df.drop(df.columns[0], axis=1)
+        df = drop_leading_index_col_if_present(df)
         keys, fds = get_filtered_functional_dependency(df)
         fd_hints = get_fd_hints(keys, fds)
 
@@ -577,6 +588,28 @@ def get_prompt(
             is_final=is_final,
             rag_hints=rag_hints,
         )[0]
+
+    elif prompt_type == "partial_pipeline_execute":
+        # Strictly execute rollout_history as given — no target info, no
+        # extrapolation. See prompts/partial_pipeline_execution.py.
+        source_information_with_location = get_source_with_location(
+            file_count,
+            source_data_name_list,
+            source_data_schema_list,
+            source_length,
+            directory,
+            len_idx_target_idx,
+            max_tokens,
+            encoding,
+            data_split=data_split,
+        )
+        prompt = get_partial_pipeline_execution_prompt(
+            operation_history,
+            source_information_with_location,
+            csv_save_path,
+            error_string,
+        )[0]
+
     elif prompt_type == "mcts_expand":
         raw_target_schema = target_data_schema
         if target_data_schema_with_types:
@@ -654,6 +687,7 @@ def get_prompt(
             static_hints=static_hints,
             rag_hints=rag_hints,
             explored_steps=explored_steps,
+            agg_evidence=agg_evidence,
         )[0]
         static_prompt_length = len(encoding.encode(static_prompt))
         target_samples = get_target_samples(
@@ -678,6 +712,7 @@ def get_prompt(
             static_hints=static_hints,
             rag_hints=rag_hints,
             explored_steps=explored_steps,
+            agg_evidence=agg_evidence,
         )[0]
 
     elif prompt_type == "mcts_simulate":
@@ -815,8 +850,7 @@ def get_target_samples(
     # print(directory,len_idx_target_idx, target_perc,is_perc, target_length, max_tokens, static_prompt_length)
     target_csv_path = directory + "/length" + len_idx_target_idx + "/target.csv"
     target_df = pd.read_csv(target_csv_path, low_memory=False)
-    # if (is_column_numerical(target_df.columns[0])):
-    target_df = target_df.drop(target_df.columns[0], axis=1)
+    target_df = drop_leading_index_col_if_present(target_df)
 
     # sampling
     if is_perc:
@@ -878,8 +912,7 @@ def get_source_samples(
     # print(filename)
     # sys.exit()
     source_df = pd.read_csv(filename, low_memory=False)
-    # if (is_column_numerical(source_df.columns[0])):
-    source_df = source_df.drop(source_df.columns[0], axis=1)
+    source_df = drop_leading_index_col_if_present(source_df)
     num_tuples = len(source_df)
     num_tuples_string = "\t Source {index} contains {num_tuples_in_source} tuples, with examples as follows: \n".format(
         index=i, num_tuples_in_source=num_tuples
@@ -968,6 +1001,19 @@ def get_all_intermediate(
     return all_intermediate_results
 
 
+# Pre-merge operator names mapped to the unified operator that replaced them.
+# COLUMN_AGGREGATION (row-wise column folding), FORMAT_DATETIME (date reformat /
+# part extraction) and PROJECT (select / rename / reorder) were all special cases
+# of the same row-preserving column map, so they became one COLUMN_TRANSFORM.
+# Kept as aliases so old logs, cached trees, RAG corpora and few-shot text stay
+# readable, and so a model emitting the old vocabulary is normalised, not dropped.
+_LEGACY_OPERATOR_ALIASES = {
+    "COLUMN_AGGREGATION": "COLUMN_TRANSFORM",
+    "FORMAT_DATETIME": "COLUMN_TRANSFORM",
+    "PROJECT": "COLUMN_TRANSFORM",
+}
+
+
 def get_mcts_candidates(response: str, operator_types: list) -> list:
     """
     Parse an mcts_expand LLM response into a ranked list of
@@ -1003,6 +1049,14 @@ def get_mcts_candidates(response: str, operator_types: list) -> list:
                 op_type = m.group(1).strip()
                 break
 
+        # COLUMN_AGGREGATION / FORMAT_DATETIME / PROJECT were merged into
+        # COLUMN_TRANSFORM. Normalise before the membership test below, which
+        # would otherwise silently drop a candidate whose operator name is the
+        # pre-merge one (stale few-shot text, a retrieved RAG example, or the
+        # model simply reaching for the old vocabulary).
+        if op_type:
+            op_type = _LEGACY_OPERATOR_ALIASES.get(op_type.upper(), op_type)
+
         if not op_type or op_type not in operator_types:
             continue
 
@@ -1013,13 +1067,26 @@ def get_mcts_candidates(response: str, operator_types: list) -> list:
 
         # ── Build config dict from key: value lines ────────────────────────
         cfg: dict = {}
+        _cur_key = None
         for line in lines:
             m = re.match(r"([A-Z_/]+):\s*(.+)", line, re.IGNORECASE)
             if m and m.group(1).upper() != "OPERATOR":
-                key = m.group(1).upper()
-                val = m.group(2).strip()
-                # Accumulate multi-line values (e.g., wrapped COLUMNS)
-                cfg[key] = cfg.get(key, "") + (" " if key in cfg else "") + val
+                _cur_key = m.group(1).upper()
+                cfg[_cur_key] = (cfg.get(_cur_key, "") + " " if _cur_key in cfg else "") + m.group(2).strip()
+            elif m and m.group(1).upper() == "OPERATOR":
+                _cur_key = None
+            elif _cur_key is not None:
+                # Continuation of the previous key's value. The model routinely emits
+                #     AGGREGATIONS: [
+                #       SUM(t.a) AS x,
+                #       SUM(t.b) AS y
+                #     ]
+                # and these lines carry no "KEY:" prefix. Dropping them (the previous
+                # behaviour) left AGGREGATIONS == "[", so every AGGREGATE candidate
+                # serialised to the identical config "AGGREGATE : [" -- three distinct
+                # proposals deduped into ONE tree child and the node was then marked
+                # saturated, so aggregation branching never happened at all.
+                cfg[_cur_key] = (cfg[_cur_key] + " " + line).strip()
 
         # ── Build configured_op string matching operation_history format ───
         if op_type == "JOIN":
@@ -1046,6 +1113,16 @@ def get_mcts_candidates(response: str, operator_types: list) -> list:
             # Separate AGGREGATE expand step — always follows a GROUP_BY node.
             aggs = cfg.get("AGGREGATIONS", "")
             configured_op = f"AGGREGATE : {aggs}"
+        elif op_type == "COLUMN_TRANSFORM":
+            # Row-wise map defining the output columns: pass-through/rename,
+            # multi-column folds, date reformat/part extraction and string
+            # reshaping all share one COLUMNS list. Unlike GROUP_BY/AGGREGATE
+            # this does not collapse rows, so the config stays distinct in the tree.
+            # AGGREGATIONS/OUTPUT are accepted as fallbacks so a model still
+            # emitting the pre-merge COLUMN_AGGREGATION / FORMAT_DATETIME keys
+            # is normalised rather than dropped.
+            columns = cfg.get("COLUMNS") or cfg.get("AGGREGATIONS") or cfg.get("OUTPUT", "")
+            configured_op = f"COLUMN_TRANSFORM : {columns}"
         else:
             configured_op = op_type
 
@@ -1163,15 +1240,133 @@ def extract_dependencies(fd_dict):
     return dependencies
 
 
-def get_filtered_functional_dependency(df):
-    # take only first 15 columns and 1000 rows to analyse functional dependencies
-    df = df.sample(n=min(1000, df.shape[0]), replace=False)
-    df = df.iloc[:, :15]
+# FD mining is Apriori over the attribute lattice (quality/quality.py). The 1000-row /
+# 15-column cap below bounds the lattice, but NOT the cost of walking it: pruning only
+# fires when subsets turn out not to be keys. On high-cardinality data almost every
+# subset IS a key, so the search approaches the full 2^15 and the call takes ~96s on a
+# smartbuilding target vs ~0.04-0.5s on github tables (which are tiny and low
+# cardinality). calculate_score/calculate_score_cost each call this TWICE (GT + target),
+# so an unguarded pair could eat ~190s of a 600s per-case budget before the model does
+# any work. eval_score/score.py already solved this for the newer scoring path; this
+# mirrors its FD_TIMEOUT + two-phase-fallback + precomputed-GT approach for the legacy
+# path that critique/hints/calculate_score still use.
+FD_ANALYSIS_TIMEOUT = 30      # per-attempt budget, matches eval_score.score.FD_TIMEOUT
+FD_PHASE2_COLS = 8            # phase-2 retry: fewer columns shrinks the lattice
+FD_PHASE2_ROWS = 200
+_FD_CACHE_MAX = 32
+_fd_result_cache = {}         # content hash -> filtered_F, so GT is mined once per case
+
+
+def _fd_analysis_worker(df, q):
     try:
-        filtered_F, all_keys_sorted = analyze_functional_dependencies(df)
-        if not filtered_F or not all_keys_sorted:
-            return [], {}
+        q.put(("ok", analyze_functional_dependencies(df)))
     except Exception as e:
+        q.put(("error", str(e)))
+
+
+def _run_fd_analysis_timed(df, timeout=None):
+    """Run analyze_functional_dependencies under a hard timeout.
+
+    Uses multiprocessing rather than a thread for the same reason score.py does: a
+    Python thread cannot be forcibly killed, so a thread-based timeout still blocks on
+    shutdown and the "timed out" call keeps burning CPU. Returns (filtered_F, timed_out).
+    """
+    # Read the module global at CALL time, not as a default argument: a default binds
+    # once at def time, which would silently ignore any later tuning of
+    # FD_ANALYSIS_TIMEOUT (including from a test or a caller raising the budget).
+    if timeout is None:
+        timeout = FD_ANALYSIS_TIMEOUT
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(target=_fd_analysis_worker, args=(df, q), daemon=False)
+    p.start()
+    p.join(timeout=timeout)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return None, True
+    try:
+        status, result = q.get_nowait()
+    except Exception:
+        return None, False
+    if status != "ok":
+        return None, False
+    filtered_F, all_keys_sorted = result
+    if not filtered_F or not all_keys_sorted:
+        return None, False
+    return filtered_F, False
+
+
+def _fd_cache_key(df):
+    """Content key for the pre-sample frame. Returns None when the frame cannot be
+    hashed cheaply, in which case the caller simply skips the cache."""
+    try:
+        h = hashlib.blake2b(digest_size=16)
+        h.update(repr(list(df.columns)).encode())
+        h.update(repr(df.shape).encode())
+        h.update(pd.util.hash_pandas_object(df, index=False).values.tobytes())
+        return h.hexdigest()
+    except Exception:
+        return None
+
+
+def _run_fd_analysis(df):
+    """Shared preprocessing + FD analysis call, used by both
+    get_filtered_functional_dependency (single-column, position/dtype-filtered) and
+    get_multi_column_functional_dependency (raw, unfiltered). Returns the raw
+    filtered_F list (each entry is (determinant, dependent_column), determinant may
+    have length > 1) and the sampled/column-limited df it was computed against.
+
+    Phase 1 runs the established 1000x15 cap under FD_ANALYSIS_TIMEOUT. If that expires,
+    phase 2 retries on a smaller slice. If both expire, returns [] -- the same empty
+    result the pre-existing `except Exception` path already returned, so callers degrade
+    exactly as they always did for un-minable tables rather than hitting a new code path.
+    """
+    key = _fd_cache_key(df)
+    if key is not None and key in _fd_result_cache:
+        filtered_F, cached_df = _fd_result_cache[key]
+        return list(filtered_F), cached_df
+
+    # take only first 15 columns and 1000 rows to analyse functional dependencies
+    sampled = df.sample(n=min(1000, df.shape[0]), replace=False)
+    sampled = sampled.iloc[:, :15]
+
+    filtered_F, timed_out = _run_fd_analysis_timed(sampled)
+    result_df = sampled
+    if timed_out:
+        truncated = sampled.iloc[:FD_PHASE2_ROWS, :FD_PHASE2_COLS]
+        filtered_F, _ = _run_fd_analysis_timed(truncated)
+        result_df = truncated
+
+    if filtered_F is None:
+        filtered_F = []
+
+    if key is not None:
+        if len(_fd_result_cache) >= _FD_CACHE_MAX:
+            _fd_result_cache.clear()
+        _fd_result_cache[key] = (list(filtered_F), result_df)
+    return filtered_F, result_df
+
+
+def get_multi_column_functional_dependency(df):
+    """Raw multi-column-capable FD extraction, bypassing
+    get_filtered_functional_dependency's two restrictions: it truncates determinants
+    to their first column (key[0]), and it only keeps keys at column position 0 or
+    dtype=="object". analyze_functional_dependencies is a full Apriori-style lattice
+    search over powerset(U) and genuinely returns multi-column, non-leading,
+    non-object determinants -- this reads that raw output directly, unfiltered.
+
+    Returns fd_keys: Set[Tuple[str, ...]] -- every determinant tuple discovered,
+    single- or multi-column, sorted for consistent membership-check comparisons.
+    """
+    filtered_F, _df = _run_fd_analysis(df)
+    if not filtered_F:
+        return set()
+    return {tuple(sorted(key)) for key, _value in filtered_F}
+
+
+def get_filtered_functional_dependency(df):
+    filtered_F, df = _run_fd_analysis(df)
+    if not filtered_F:
         return [], {}
 
     # Find the key with the most dependencies
@@ -1417,8 +1612,10 @@ if __name__ == "__main__":
         idx = sys.argv.index("--benchmark")
         if idx + 1 < len(sys.argv) and sys.argv[idx + 1] in ("github", "monteprep"):
             benchmark = sys.argv[idx + 1]
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
-    json_file_path = "data/chatgpt_monteprep_ms.json" if benchmark == "monteprep" else "data/chatgpt_github_ms.json"
+    main_folder = resolve_main_folder(benchmark)
+    # file_count=2 keeps this site's long-standing _ms preference for github/monteprep;
+    # smart_building_v2 is single-source and resolves to its ss file regardless.
+    json_file_path = resolve_case_json(benchmark, 2)
 
     len_id = 2
     max_len_id = 2

@@ -25,6 +25,7 @@ expansion always proposes a structural operator. Plan termination is decided
 later by simulation / critique, not here.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -33,11 +34,14 @@ if _TRANSCHEMA_ROOT not in sys.path:
     sys.path.insert(0, _TRANSCHEMA_ROOT)
 from hints.hints_static import (
     get_hints_section,
+    hints_for_benchmark,
+    smartbuilding_override_for,
     NEXT_OPERATOR_HINT_IDS,
     JOIN_HINT_IDS,
     GROUPBY_AGG_HINT_IDS,
     GROUPBY_HINT_IDS,
     AGGREGATE_HINT_IDS,
+    COLUMN_TRANSFORM_HINT_IDS,
 )
 from hints.hint import get_hints
 
@@ -108,7 +112,15 @@ def get_mcts_expand_prompt(
 
     join_hints = get_hints_section(JOIN_HINT_IDS, fmt="bullet") if static_hints else ""
     groupby_hints = get_hints_section(GROUPBY_HINT_IDS, fmt="bullet") if static_hints else ""
-    selection_hints = get_hints_section(NEXT_OPERATOR_HINT_IDS, fmt="bullet") if static_hints else ""
+    selection_hints = get_hints_section(
+        hints_for_benchmark(NEXT_OPERATOR_HINT_IDS, directory), fmt="bullet"
+    ) if static_hints else ""
+    coltransform_hints = get_hints_section(COLUMN_TRANSFORM_HINT_IDS, fmt="bullet") if static_hints else ""
+
+    # The smart-building date-format override is COLUMN_TRANSFORM knowledge that until
+    # now only reached the code-generation prompts, never operator selection.
+    _sb_override = smartbuilding_override_for(directory, static_hints)
+    datetime_override = ("\n" + _sb_override.rstrip()) if _sb_override else ""
 
     rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
 
@@ -177,6 +189,33 @@ GROUP_BY — choose which columns to group rows by
 PIVOT / UNPIVOT — no additional configuration needed
   Format: (just the operator line; no TABLES or COLUMNS line)
 
+COLUMN_TRANSFORM — define the target columns as row-wise expressions over existing columns
+  • The entries ARE the output schema: they are emitted in the order listed, and any
+    source column not listed is dropped. One entry per target column.
+  • Only reference columns that already exist in the current table.
+{coltransform_hints}{datetime_override}
+  Format:
+    COLUMNS: [target_col_a = <expr>, target_col_b = <expr>, ...]
+
+  <expr> is any of:
+    table.col                          pass through, or rename by giving a new target name
+    0  /  'NA'                         a bare literal makes a constant column
+    SUM|AVG|MAX|MIN(table.c1, table.c2, ...)
+                                       fold several columns into one, ROW BY ROW
+    MAX(...) - MIN(...)                two functions may be combined arithmetically
+    COALESCE(table.col, 0)             treat nulls as zero
+    FORMAT(table.date_col, '<pattern>')
+                                       re-render a date/time with a strftime-style pattern
+    EXTRACT(<PART> FROM table.date_col)
+                                       pull YEAR, MONTH, DAY, HOUR, MINUTE or DOW out
+    UPPER|LOWER|TRIM|LENGTH(table.col)
+    CONCAT(table.c1, '-', table.c2)
+    SUBSTR(table.col, <start>, <len>)
+    SPLIT(table.col, '<sep>', <index>)
+    REPLACE(table.col, '<old>', '<new>')
+    CAST(table.col AS int|float|str)
+    (functions may be nested, e.g. UPPER(TRIM(table.city)))
+
 ══════════════════════════════════════════════════════
 SELECTION GUIDANCE (apply these rules when ranking candidates)
 ══════════════════════════════════════════════════════
@@ -204,7 +243,7 @@ $END$
 
 ... (up to {k} candidates)
 
-Example (Operation History is empty — three independent alternatives for the FIRST step):
+Example (Operation History is empty — four independent alternatives for the FIRST step):
 
 $CANDIDATE 1$
 OPERATOR: JOIN
@@ -222,7 +261,12 @@ OPERATOR: GROUP_BY
 COLUMNS: [test_0.category]
 $END$
 
-Note: all three candidates above operate on the SAME original source tables.
+$CANDIDATE 4$
+OPERATOR: COLUMN_TRANSFORM
+COLUMNS: [date = FORMAT(test_0.timestamp, '%m/%d/%Y'), month = EXTRACT(MONTH FROM test_0.timestamp), site = UPPER(TRIM(test_0.building)), total_load = SUM(test_0.hvac_kw, test_0.light_kw, test_0.plug_kw)]
+$END$
+
+Note: all four candidates above operate on the SAME original source tables.
 Candidate 2 does NOT depend on candidate 1 having been applied first.
 When GROUP_BY is chosen, the aggregation functions are selected in the next expansion step.
 
@@ -243,6 +287,7 @@ def get_mcts_expand_aggregate_prompt(
     static_hints=True,
     rag_hints="",
     explored_steps=None,
+    agg_evidence="",
 ):
     """
     MCTS Aggregation Expansion prompt.
@@ -263,6 +308,49 @@ def get_mcts_expand_aggregate_prompt(
     groupby_step = operation_history[-1] if operation_history else "(none)"
     agg_hints = get_hints_section(AGGREGATE_HINT_IDS, fmt="bullet") if static_hints else ""
     rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
+
+    # ── Column-coverage requirement ────────────────────────────────────────
+    # Every target column that is NOT a GROUP BY key must be produced by an
+    # aggregation, otherwise the candidate cannot possibly reproduce the
+    # target. Without stating this explicitly (and naming the columns), the
+    # model routinely aggregates only a subset: on length1_9, GROUP BY
+    # [zipcode] with target [zipcode, AGI_STUB, N1, A00100] produced
+    # SUM(N1), SUM(A00100) in every candidate and silently dropped AGI_STUB,
+    # so no candidate under that GROUP BY could ever be correct.
+    _gb_cols = set()
+    _gb_inner = re.findall(r"\[(.*?)\]", groupby_step)
+    if _gb_inner:
+        _gb_cols = {
+            c.strip().split(".")[-1]
+            for c in _gb_inner[0].split(",")
+            if c.strip()
+        }
+    # target_data_schema looks like "['zipcode': integer, 'AGI_STUB': integer, ...]"
+    _tgt_cols = re.findall(r"'([^']+)'\s*:", str(target_data_schema))
+    if not _tgt_cols:
+        _tgt_cols = [
+            c.strip().strip("'\"")
+            for c in str(target_data_schema).strip("[] ").split(",")
+            if c.strip()
+        ]
+    _need_cols = [c for c in _tgt_cols if c not in _gb_cols]
+
+    if _need_cols:
+        coverage_line = (
+            f"- EVERY candidate must cover all {len(_need_cols)} target column(s) that are "
+            f"NOT GROUP BY keys — {', '.join(_need_cols)} — with exactly one aggregation "
+            f"each. Never drop or add a target column between candidates. "
+            f"This applies to columns that look like categories, codes or brackets too.\n"
+            f"- An aggregation's argument may be an EXPRESSION over several source columns, "
+            f"not only a single column: AGG_FUNC(t.a + t.b + t.c) is valid wherever "
+            f"AGG_FUNC(t.a) is. Choose the expression that the target column's name, dtype "
+            f"and example values actually imply.\n"
+            f"- Candidates should differ in these expressions as well as in the functions. "
+            f"Varying only the function while holding one fixed source→target mapping "
+            f"explores a single mapping: if that mapping is wrong, every candidate is wrong.\n"
+        )
+    else:
+        coverage_line = ""
 
     if explored_steps:
         explored_lines = "\n".join(f"  • {s[:100]}" for s in explored_steps)
@@ -296,14 +384,16 @@ Operation History (completed so far, ending with the GROUP BY): {operation_histo
 4. Source Information:  {source_information}
 {fd_hints}
 
-══════════════════════════════════════════════════════
+{agg_evidence}══════════════════════════════════════════════════════
 AGGREGATION GUIDANCE
 ══════════════════════════════════════════════════════
 {agg_hints}
-- Use ONLY columns that exist in the source tables (or the result of prior steps).
+{coverage_line}- Use ONLY columns that exist in the source tables (or the result of prior steps).
 - Common aggregation functions: COUNT, SUM, AVG, MIN, MAX, COUNT DISTINCT.
 - Columns already used in the GROUP BY step above must NOT appear as aggregation targets.
 - Do NOT repeat an aggregation configuration already present in the operation history.
+- There is no limit on how many aggregations a candidate may contain — include as
+  many as the coverage rule requires, not the number shown in the examples.
 
 {agg_explored_block}{rag_hints_section}══════════════════════════════════════════════════════
 OUTPUT FORMAT  (follow exactly)
@@ -322,21 +412,28 @@ $END$
 
 ... (up to {k} candidates)
 
-Example (GROUP BY already set to [test_0.category] — three independent aggregation variants):
+Example — GROUP BY already set to [test_0.category], target's non-key columns are
+exactly: tier, id, revenue. Every candidate covers ALL THREE. Candidates differ in
+the aggregation FUNCTION and, where the target implies it, in the EXPRESSION over
+source columns:
 
 $CANDIDATE 1$
 OPERATOR: AGGREGATE
-AGGREGATIONS: [COUNT(test_0.id), SUM(test_0.revenue)]
+AGGREGATIONS: [SUM(test_0.tier) AS tier, COUNT(test_0.id) AS id, SUM(test_0.revenue) AS revenue]
 $END$
 
 $CANDIDATE 2$
 OPERATOR: AGGREGATE
-AGGREGATIONS: [COUNT(test_0.id), AVG(test_0.revenue)]
+AGGREGATIONS: [
+  MAX(test_0.tier) AS tier,
+  COUNT(test_0.id) AS id,
+  SUM(test_0.revenue + test_0.revenue_adj) AS revenue
+]
 $END$
 
 $CANDIDATE 3$
 OPERATOR: AGGREGATE
-AGGREGATIONS: [COUNT DISTINCT(test_0.id)]
+AGGREGATIONS: [MIN(test_0.tier) AS tier, COUNT DISTINCT(test_0.id) AS id, AVG(test_0.revenue) AS revenue]
 $END$
 
 Now provide your ranked candidates:"""

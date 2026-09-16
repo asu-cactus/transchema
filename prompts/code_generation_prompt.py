@@ -1,4 +1,5 @@
-from hints.hints_static import get_hints_section, PIPELINE_HINT_IDS, PYTHON_SCRIPT_HINT_IDS, CRITIQUE_HINT_IDS
+from hints.hints_static import (get_hints_section, PIPELINE_HINT_IDS, PYTHON_SCRIPT_HINT_IDS,
+                                CRITIQUE_HINT_IDS, hints_for_benchmark, smartbuilding_override_for)
 from hints.hint import get_hints
 
 
@@ -38,6 +39,7 @@ def get_python_script(
             static_hints=static_hints,
             past_context=past_context,
             intermediate_scores=intermediate_scores,
+            directory=directory,
         )
     if all_intermediate_results:
         return get_python_script_with_intermediate_materialization(
@@ -52,6 +54,7 @@ def get_python_script(
             static_hints=static_hints,
             past_context=past_context,
             intermediate_scores=intermediate_scores,
+            directory=directory,
         )
     elif not operation_history:
         return get_python_script_for_single_step_cot(
@@ -61,6 +64,7 @@ def get_python_script(
             source_information_with_location,
             csv_save_path,
             error_string,
+            allowed_operation_list=allowed_operation_list,
             static_hints=static_hints,
             past_context=past_context,
             hint_source=hint_source,
@@ -84,6 +88,7 @@ def get_python_script(
             static_hints,
             past_context=past_context,
             rag_hints=rag_hints,
+            directory=directory,
         )
 
 
@@ -98,6 +103,7 @@ def get_python_script_simple(
     static_hints=False,
     past_context="",
     rag_hints="",
+    directory="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt = f"""
@@ -112,16 +118,26 @@ def get_python_script_simple(
     3. Target Examples: {target_samples}
     4. Source Information: {source_information_with_location}
     5. Write the result to this path {csv_save_path}
+    **IMPORTANT: DO NOT FORGET ANY PART OF ANY FILE PATH ABOVE — EVERY SOURCE PATH IN
+    ITEM 4 AND THE OUTPUT PATH IN ITEM 5. COPY EACH ONE EXACTLY, CHARACTER FOR CHARACTER,
+    INCLUDING EVERY DIRECTORY SEGMENT — DO NOT SHORTEN, GUESS, OR RECONSTRUCT ANY PATH
+    FROM MEMORY. IF A SOURCE PATH IS WRONG THE SCRIPT WILL FAIL TO READ; IF THE OUTPUT
+    PATH IS WRONG OR INCOMPLETE THE OUTPUT FILE WILL NOT BE FOUND — EITHER WAY THIS
+    ATTEMPT WILL ERROR OUT.**
 
     Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that will be used.
 
-    Please quote the Python script between one single "```Python" and "```".
+    **IMPORTANT: DO NOT FORGET TO CLOSE THE "```Python" BLOCK WITH A CLOSING "```".**
+    Quote the ENTIRE Python script between one single "```Python" and a matching closing
+    "```" — **if the closing "```" IS MISSING, THE SCRIPT CANNOT BE EXTRACTED AND THIS
+    ATTEMPT WILL ERROR OUT.**
     """
     if static_hints:
         prompt += f"""
     Hints to be considered for Python code generation:
-{get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
- Please quote the Python script between one single "```Python" and "```"."""
+{get_hints_section(hints_for_benchmark(PYTHON_SCRIPT_HINT_IDS, directory), fmt="bullet")}{smartbuilding_override_for(directory, static_hints)}
+ **REMINDER: DO NOT FORGET TO CLOSE THE "```Python" BLOCK WITH A CLOSING "```" — IF YOU
+DO NOT, THIS ATTEMPT WILL ERROR OUT.**"""
     if rag_hints:
         prompt += f"\n{rag_hints.rstrip()}\n"
     prompt += f"""
@@ -149,8 +165,27 @@ def get_python_script_for_single_step_cot(
     len_idx_target_idx="",
     raw_target_schema="",
     rag_hints="",
+    allowed_operation_list=None,
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
+
+    # Single-step CoT plans in prose and emits one script -- it never writes operator
+    # strings the way the operator-driven arm does. The vocabulary is still worth
+    # stating: without it the model plans the transformation with no shared names for
+    # the kinds of step available, so the operator-level guidance in the static hints
+    # (e.g. "use COLUMN_TRANSFORM to ...") refers to terms the prompt never introduced.
+    # Framed explicitly as planning vocabulary, NOT an output format, so the response
+    # stays a single ```Python block.
+    allowed_ops_section = (
+        f"""
+    Allowed Operations (the vocabulary for your transformation plan): {allowed_operation_list}
+    These name the KINDS of transformation to reason about while planning. Your OUTPUT is
+    still one complete Python script -- do NOT emit this operation list or any operator
+    strings.
+"""
+        if allowed_operation_list
+        else ""
+    )
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should immediately executable in a correct way, which means it should NOT contain any placeholder for brievity. For example, even if there exists hundreds of source tables, these data needs to be loaded completely one by one or in a programmable way. Before generating the code, please think step by step about the transformation plan to convert the source tables to the target table.
 {past_context_section}
     1. Target Table Name: {target_data_name}
@@ -158,17 +193,27 @@ def get_python_script_for_single_step_cot(
     3. Target Examples: {target_samples}
     4. Source Information: {source_information_with_location}
     5. Write the result to this path {csv_save_path}
-
+    **IMPORTANT: DO NOT FORGET ANY PART OF ANY FILE PATH ABOVE — EVERY SOURCE PATH IN
+    ITEM 4 AND THE OUTPUT PATH IN ITEM 5. COPY EACH ONE EXACTLY, CHARACTER FOR CHARACTER,
+    INCLUDING EVERY DIRECTORY SEGMENT — DO NOT SHORTEN, GUESS, OR RECONSTRUCT ANY PATH
+    FROM MEMORY. IF A SOURCE PATH IS WRONG THE SCRIPT WILL FAIL TO READ; IF THE OUTPUT
+    PATH IS WRONG OR INCOMPLETE THE OUTPUT FILE WILL NOT BE FOUND — EITHER WAY THIS
+    ATTEMPT WILL ERROR OUT.**
+{allowed_ops_section}
     Based on the transformation plan, generate the Python script that implements the transformation. The script should handle data import, transformation, and export. The script should be complete and executable, not omiting any single statement. For example, please list all the source paths that will be used.
 
-    Please quote the Python script between one single "```Python" and "```".
+    **IMPORTANT: DO NOT FORGET TO CLOSE THE "```Python" BLOCK WITH A CLOSING "```".**
+    Quote the ENTIRE Python script between one single "```Python" and a matching closing
+    "```" — **if the closing "```" IS MISSING, THE SCRIPT CANNOT BE EXTRACTED AND THIS
+    ATTEMPT WILL ERROR OUT.**
     """
     if static_hints:
         prompt += f"""
 Hints to be considered for Python code generation:
-{get_hints_section(PIPELINE_HINT_IDS, fmt="numbered")}
+{get_hints_section(hints_for_benchmark(PIPELINE_HINT_IDS, directory), fmt="numbered")}{smartbuilding_override_for(directory, static_hints)}
 
-Please quote the Python script between one single "```Python" and "```".
+**REMINDER: DO NOT FORGET TO CLOSE THE "```Python" BLOCK WITH A CLOSING "```" — IF YOU
+DO NOT, THIS ATTEMPT WILL ERROR OUT.**
 """
 
     # Collect data-specific hints (join, group-by, union, table matching) from hint_source
@@ -227,6 +272,7 @@ def get_python_script_with_intermediate_materialization(
     static_hints=False,
     past_context="",
     intermediate_scores: dict = {},
+    directory="",
 ):
     # assert len(all_intermediate_results) + 1 == len(
     #   operation_history
@@ -243,6 +289,12 @@ The code should immediately executable in a correct way, which means it should N
     3. Target Examples: {target_samples}
     4. Source Information: {source_information_with_location}
     5. Write the result to this path {csv_save_path}
+    **IMPORTANT: DO NOT FORGET ANY PART OF ANY FILE PATH ABOVE — EVERY SOURCE PATH IN
+    ITEM 4 AND THE OUTPUT PATH IN ITEM 5. COPY EACH ONE EXACTLY, CHARACTER FOR CHARACTER,
+    INCLUDING EVERY DIRECTORY SEGMENT — DO NOT SHORTEN, GUESS, OR RECONSTRUCT ANY PATH
+    FROM MEMORY. IF A SOURCE PATH IS WRONG THE SCRIPT WILL FAIL TO READ; IF THE OUTPUT
+    PATH IS WRONG OR INCOMPLETE THE OUTPUT FILE WILL NOT BE FOUND — EITHER WAY THIS
+    ATTEMPT WILL ERROR OUT.**
 
 Past operations: {past_operations}
 Next Operation : {next_operation}{past_context_section}
@@ -269,7 +321,7 @@ Important: when reading any intermediate table listed above (for example, interm
 
     Hints to be considered for Python code generation:
  - Please write python code to execute the next operation {next_operation}.
-{get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
+{get_hints_section(hints_for_benchmark(PYTHON_SCRIPT_HINT_IDS, directory), fmt="bullet")}{smartbuilding_override_for(directory, static_hints)}
 """
     prompt_last += f"""
   Errors in previous Attempts : {error_string}
@@ -289,6 +341,7 @@ def get_python_script_final_with_materialization(
     static_hints=False,
     past_context="",
     intermediate_scores: dict = {},
+    directory="",
 ):
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""
     prompt_start = f"""
@@ -299,6 +352,12 @@ The code should be immediately executable and must NOT contain any placeholders.
     3. Target Examples: {target_samples}
     4. Source Information: {source_information_with_location}
     5. Write the result to this path {csv_save_path}
+    **IMPORTANT: DO NOT FORGET ANY PART OF ANY FILE PATH ABOVE — EVERY SOURCE PATH IN
+    ITEM 4 AND THE OUTPUT PATH IN ITEM 5. COPY EACH ONE EXACTLY, CHARACTER FOR CHARACTER,
+    INCLUDING EVERY DIRECTORY SEGMENT — DO NOT SHORTEN, GUESS, OR RECONSTRUCT ANY PATH
+    FROM MEMORY. IF A SOURCE PATH IS WRONG THE SCRIPT WILL FAIL TO READ; IF THE OUTPUT
+    PATH IS WRONG OR INCOMPLETE THE OUTPUT FILE WILL NOT BE FOUND — EITHER WAY THIS
+    ATTEMPT WILL ERROR OUT.**
 
 Operation History (all operations in order): {operation_history}{past_context_section}
 
@@ -323,7 +382,7 @@ Important: when reading any intermediate table listed above (for example, interm
         prompt_last += f"""
 
 Hints to be considered for Python code generation:
-{get_hints_section(PYTHON_SCRIPT_HINT_IDS, fmt="bullet")}
+{get_hints_section(hints_for_benchmark(PYTHON_SCRIPT_HINT_IDS, directory), fmt="bullet")}{smartbuilding_override_for(directory, static_hints)}
 """
     prompt_last += f"""
   Errors in previous Attempts : {error_string}

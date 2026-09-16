@@ -6,6 +6,7 @@ import os
 import pandas as pd
 import ast
 import json
+from src.utils.csv_io import drop_leading_index_col_if_present
 
 class RewardModel:
     def __init__(self, **kwargs):
@@ -122,11 +123,11 @@ class llmRewardModel(RewardModel):
                     continue
                 file_path = os.path.join(folder_path, file_name)
                 if key == "target":
-                    df = pd.read_csv(file_path, nrows=5).iloc[:, 1:]
+                    df = drop_leading_index_col_if_present(pd.read_csv(file_path, nrows=5))
                     table_dict[key] = df
                     target_columns = list(df.columns)
                 else:
-                    table_dict[key] = pd.read_csv(file_path).iloc[:, 1:]
+                    table_dict[key] = drop_leading_index_col_if_present(pd.read_csv(file_path))
         elif 'group' in folder_path.name:
             for file_name in os.listdir(folder_path):
                 if file_name.lower().endswith('.csv'):

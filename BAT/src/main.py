@@ -20,6 +20,8 @@ def parse_arguments():
     parser.add_argument("--end_num", type=int, default=3, help="End folder number")
     parser.add_argument("--log_path", type=str, default="logs/mcts_error_log.txt", help="Log file path")
     parser.add_argument("--data_type", type=str, default=None, help="Override data type (auto_pipeline or buildings). Defaults to basename of base_path.")
+    parser.add_argument("--cases", nargs='+', type=int, default=None, help="Explicit list of case numbers to process instead of the contiguous --start_num/--end_num range (e.g. for retrying specific failed cases).")
+    parser.add_argument("--model_name", type=str, default=None, help="Override the model from src/config/default.yaml (e.g. o4-mini). Must be a key in src/llm/config.py's MODELS dict.")
     return parser.parse_args()
 
 def initialize_logging(log_path):
@@ -62,11 +64,20 @@ def main():
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     llm_kwargs = config.get("model_kwargs", {})
-    llm_client = LLMClient(model_name=llm_kwargs.get("model_name", "qwen2.5-coder-32b-instruct")) 
+    _model_name = args.model_name or llm_kwargs.get("model_name", "qwen2.5-coder-32b-instruct")
+    # Single-length invocations (how run_length*.sh / run_cases_iteratively.py
+    # always call this) get their own logs/llm_queries_{model}_length{N}.jsonl
+    # so parallel length runs (and different models for the same length) don't
+    # race on one shared log file.
+    _log_tag = f"length{args.length_type[0]}" if len(args.length_type) == 1 else None
+    llm_client = LLMClient(
+        model_name=_model_name,
+        log_tag=_log_tag,
+    )
     base_path = args.base_path
     result_dir = args.result_dir
     length_type = args.length_type
-    length_value = list(range(args.start_num, args.end_num))
+    length_value = args.cases if args.cases else list(range(args.start_num, args.end_num))
 
     # Configure MCTSSolver parameters
     max_rollout_steps = 10  
