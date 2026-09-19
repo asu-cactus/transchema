@@ -55,3 +55,26 @@ MODELS['qwen3:32b'] = {
     'top_p': 0.8,
     'temperature': 0
 }
+
+# Microsoft DMX models via the SSH tunnel to the Azure VM proxy (same convention as
+# llm/llm_models.py: "dmx-" prefix picks the route, stripped before sending; the proxy adds
+# the Azure token, so the key here is a placeholder). Proxy verified to accept top_p and n>1.
+dmx_base_url = os.environ.get("DMX_OPENAI_BASE_URL", "http://localhost:8000/v1")
+MODELS['dmx-gpt-oss-120b'] = {
+    'api_key': 'unused',
+    'base_url': dmx_base_url,
+    'model': 'gpt-oss-120b',
+    'is_inference': False,
+    'top_p': 0.8,
+    'temperature': 0
+}
+
+for _m in ("deepseek-v4-flash", "deepseek-v4-pro"):
+    MODELS[f"dmx-{_m}"] = {
+        'api_key': 'unused',
+        'base_url': dmx_base_url,
+        'model': _m,
+        'is_inference': False,
+        'top_p': 0.8,
+        'temperature': 0
+    }

@@ -243,10 +243,12 @@ HINTS = {
         "dtype and example values actually support."
     ),
     # --- Column-level operator (COLUMN_TRANSFORM) ---
-    # 38/39/40 kept their original IDs through the COLUMN_AGGREGATION +
+    # 38/39 kept their original IDs through the COLUMN_AGGREGATION +
     # FORMAT_DATETIME + PROJECT -> COLUMN_TRANSFORM merge: only the operator each
     # one names changed, so existing ID lists and hint-number references in old
-    # logs stay valid.
+    # logs stay valid. Hint 40 (ex-PROJECT_HINT_IDS) was removed outright -- its
+    # "do not use JOIN, PIVOT or GROUP_BY" framing was steering the model away
+    # from a GROUP_BY that a case genuinely needed.
     38: (
         "When configuring COLUMN_TRANSFORM, give one entry per target column and "
         "choose which source columns feed it from what the target column's name and "
@@ -259,12 +261,7 @@ HINTS = {
         "If a date or time column is written differently in the target than in the "
         "source, use COLUMN_TRANSFORM to change it. If a target column is a part of a "
         "date (month, hour, season, day of week), use COLUMN_TRANSFORM to extract it "
-        "first -- PIVOT and GROUP_BY can only use columns that already exist."
-    ),
-    40: (
-        "If every target column is already present in the source, just renamed or "
-        "reordered, and the row count is the same, use COLUMN_TRANSFORM. Do not use "
-        "JOIN, PIVOT or GROUP_BY."
+        "first."
     ),
     41: (
         "If a target column's values match a source column but are written differently "
@@ -279,15 +276,21 @@ HINTS = {
 # Per-prompt hint ID lists (from Current Prompt Mapping)
 # ---------------------------------------------------------------------------
 
-NEXT_OPERATOR_HINT_IDS = [1, 2, 3, 4, 5, 6, 9, 11, 16, 37, 39, 40]
+NEXT_OPERATOR_HINT_IDS = [1, 2, 3, 4, 5, 6, 9, 11, 16, 37, 39]
 JOIN_HINT_IDS = [7, 8, 9, 35, 36]
 GROUPBY_AGG_HINT_IDS = [10, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22]
 GROUPBY_HINT_IDS = [10, 11, 12, 13, 14]          # group-by column selection only
 AGGREGATE_HINT_IDS = [14, 16, 17, 18, 19, 20, 21, 22, 33, 37]  # aggregation function selection only
 # Single config group for COLUMN_TRANSFORM — the union of the former
-# COLUMN_AGG_HINT_IDS [37, 38], FORMAT_DATETIME_HINT_IDS [39] and
-# PROJECT_HINT_IDS [40], plus 41 for the newly added string functions.
-COLUMN_TRANSFORM_HINT_IDS = [37, 38, 39, 40, 41]
+# COLUMN_AGG_HINT_IDS [37, 38] and FORMAT_DATETIME_HINT_IDS [39], plus 41 for the
+# newly added string functions. (Hint 40, ex-PROJECT_HINT_IDS, was removed
+# outright -- see the note above.)
+COLUMN_TRANSFORM_HINT_IDS = [37, 38, 39, 41]
+# Config-only subset of the above: 39 is a ROUTING hint ("use COLUMN_TRANSFORM
+# instead of X") that only makes sense while an operator is still being chosen.
+# Simulate and Critique both act with the operator already fixed, so they get this
+# subset (how to fill in / fix a COLUMNS: entry) rather than the full group.
+COLUMN_TRANSFORM_CONFIG_HINT_IDS = [37, 38, 41]
 PYTHON_SCRIPT_HINT_IDS = [1, 2, 3, 4, 5, 10, 11, 16, 17, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
 CRITIQUE_HINT_IDS = [4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 29, 33, 34, 35, 36]
 # Pipeline-level: combined design + code generation (single_step_cot / Create_New_Pipeline)
@@ -368,54 +371,68 @@ def get_smartbuilding_index_col_override():
     override text already used in prompts/code_generation_prompt.py for the
     same benchmark/reason -- kept here as the single shared copy so new
     call sites (e.g. prompts/mcts_simulate.py) don't have to duplicate it.
+
+    This is restored close to verbatim from the Simulate prompt logged in the
+    2026-08-24 17/20 baseline run (smartbuilding_v2_first20_det_score_training),
+    from before the COLUMN_AGGREGATION/FORMAT_DATETIME/PROJECT -> COLUMN_TRANSFORM
+    merge. The only change from that original text is the dow paragraph's example
+    API call: it originally read "date.isoweekday()", which -- as that very log
+    shows -- raises AttributeError when called through pandas' vectorized .dt
+    accessor (.dt has no isoweekday); the model self-corrected on retry, but the
+    example itself was wrong. Replaced with the equivalent vectorized form,
+    (parsed_date.dt.dayofweek + 1), with everything else left as it was.
     """
     return (
         "\nImportant: do NOT use index_col=0 when reading the source CSV, and do NOT "
         "drop its first column. Every column in this benchmark's source and target "
         "files is real data — there is no throwaway leading index column.\n"
-        "\nBefore finalizing, re-check every string/date output column character-for-"
-        "character against the Target Examples shown above (YOUR CURRENT task's own "
-        "target samples — NOT a retrieved similar-case example's samples, which use "
-        "different, unrelated data and formatting that may not apply here). "
-        "Do not simply copy a source column as-is if YOUR OWN target sample shows extra "
-        "formatting; conversely, do NOT invent formatting (like a weekday abbreviation) "
-        "that YOUR OWN target sample does not actually show.\n"
-        "If — and only if — your current task's own Target Examples show a date column "
-        "with a 3-letter weekday abbreviation (e.g. 'Sat 01/01/2011') that the source "
-        "column's own sample values do NOT contain, you must COMPUTE it — derive it from "
-        "the parsed date, e.g.:\n"
+        "\nBefore finalizing, re-check every string/date output column "
+        "character-for-character against the Target Examples shown above (YOUR "
+        "CURRENT task's own target samples — NOT a retrieved similar-case example's "
+        "samples, which use different, unrelated data and formatting that may not "
+        "apply here). Do not simply copy a source column as-is if YOUR OWN target "
+        "sample shows extra formatting; conversely, do NOT invent formatting (like a "
+        "weekday abbreviation) that YOUR OWN target sample does not actually show.\n"
+        "If — and only if — your current task's own Target Examples show a date "
+        "column with a 3-letter weekday abbreviation (e.g. 'Sat 01/01/2011') that "
+        "the source column's own sample values do NOT contain, you must COMPUTE it "
+        "— derive it from the parsed date, e.g.:\n"
         "    d = pd.to_datetime(df['date_col'])\n"
         "    df['CST'] = d.dt.strftime('%a') + ' ' + d.dt.strftime('%m/%d/%Y')\n"
         "This applies even if the source has a separate column that already encodes "
         "one PART of the target value (e.g. a numeric day-of-week column): count how "
-        "many distinct parts your current task's OWN target sample string actually has, "
-        "and make sure your output concatenates ALL of them — never substitute one part "
-        "alone (e.g. just the mapped weekday name) for the full multi-part value.\n"
+        "many distinct parts your current task's OWN target sample string actually "
+        "has, and make sure your output concatenates ALL of them — never substitute "
+        "one part alone (e.g. just the mapped weekday name) for the full multi-part "
+        "value.\n"
         "Zero-pad month/day (e.g. '01' not '1') the same way — via strftime, not "
         "string concatenation of the raw parsed components.\n"
-        "\nNEVER produce a date/datetime output column via a bare str(...), .astype(str), "
-        "or default to_csv serialization of a datetime/Timestamp value — pandas' default "
-        "string form is ISO format ('2011-01-01'), which is almost never what this "
-        "benchmark's targets actually want (they use forms like '1/1/2011', '04/01/09', "
-        "'Sat 01/01/2011', etc., each with its own separators/padding/year-length). "
-        "Always convert explicitly with .dt.strftime('<format matching your own target "
-        "sample exactly>') and derive that format string by inspecting your own target "
-        "sample's literal characters (digit count for year, presence of leading zeros, "
-        "separator characters, weekday or not) — never guess or default.\n"
-        "\nReproduce string/categorical output values EXACTLY as they appear in your own "
-        "target sample, including any leading/trailing whitespace or fixed-width padding "
-        "(e.g. a month name padded to 9 characters like 'January  ' with two trailing "
-        "spaces). Do not strip, trim, or normalize whitespace unless your own target "
-        "sample itself shows it stripped — pad with .ljust(width) or equivalent if the "
-        "sample shows fixed-width padding, using the exact width observed.\n"
+        "\nNEVER produce a date/datetime output column via a bare str(...), "
+        ".astype(str), or default to_csv serialization of a datetime/Timestamp "
+        "value — pandas' default string form is ISO format ('2011-01-01'), which is "
+        "almost never what this benchmark's targets actually want (they use forms "
+        "like '1/1/2011', '04/01/09', 'Sat 01/01/2011', etc., each with its own "
+        "separators/padding/year-length). Always convert explicitly with "
+        ".dt.strftime('<format matching your own target sample exactly>') and derive "
+        "that format string by inspecting your own target sample's literal "
+        "characters (digit count for year, presence of leading zeros, separator "
+        "characters, weekday or not) — never guess or default.\n"
+        "\nReproduce string/categorical output values EXACTLY as they appear in "
+        "your own target sample, including any leading/trailing whitespace or "
+        "fixed-width padding (e.g. a month name padded to 9 characters like "
+        "'January  ' with two trailing spaces). Do not strip, trim, or normalize "
+        "whitespace unless your own target sample itself shows it stripped — pad "
+        "with .ljust(width) or equivalent if the sample shows fixed-width padding, "
+        "using the exact width observed.\n"
         "\nIf a target column is a numeric day-of-week integer (name like 'dow' or "
-        "similar), do NOT assume pandas' default .dt.dayofweek / .weekday() convention "
-        "(Monday=0). Verify against your own target sample: pick one target sample row "
-        "whose date you can identify, work out that date's real day of the week, and "
-        "check what integer the sample uses for it. Many SQL-derived targets in this "
-        "benchmark use EXTRACT(ISODOW)-style numbering (Monday=1 ... Sunday=7) or "
-        "EXTRACT(DOW)-style (Sunday=0 ... Saturday=6) instead — confirm which one matches "
-        "your sample before writing the conversion, e.g. via "
-        "date.isoweekday() (Mon=1..Sun=7) or (date.weekday()+1)%7 (Sun=0..Sat=6), not a "
-        "blind .weekday() call.\n"
+        "similar), do NOT assume pandas' default .dt.dayofweek / .weekday() "
+        "convention (Monday=0). Verify against your own target sample: pick one "
+        "target sample row whose date you can identify, work out that date's real "
+        "day of the week, and check what integer the sample uses for it. Many "
+        "SQL-derived targets in this benchmark use EXTRACT(ISODOW)-style numbering "
+        "(Monday=1 ... Sunday=7) or EXTRACT(DOW)-style (Sunday=0 ... Saturday=6) "
+        "instead — confirm which one matches your sample before writing the "
+        "conversion, e.g. via (parsed_date.dt.dayofweek + 1) (Mon=1..Sun=7) or "
+        "(parsed_date.dt.dayofweek + 1) % 7 (Sun=0..Sat=6), not a blind .weekday() "
+        "call.\n"
     )

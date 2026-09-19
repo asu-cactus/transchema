@@ -395,6 +395,24 @@ def _parse_op_type(step: str) -> str:
 _LEGACY_COLUMN_OPS = ("COLUMN_AGGREGATION", "FORMAT_DATETIME", "PROJECT")
 
 
+def _credibility_key_step(step: str) -> str:
+    """Collapse a COLUMN_TRANSFORM step to its bare operator name for CREDIBILITY
+    matching only -- never for tree-path building (_find_or_create_path etc. still
+    need the full configured string; do not use this there).
+
+    COLUMN_TRANSFORM's payload is a per-column "target = expr" list, and two
+    independently regenerated attempts at conceptually the same step almost never
+    produce byte-identical payloads (different column order, whitespace, formula
+    phrasing). Keeping the full payload in the credibility key means occurrences
+    for a COLUMN_TRANSFORM-containing plan essentially never exceeds 1, so
+    credibility_weight = occurrences/(occurrences+k) stays diluted near its floor
+    even when the same conceptual plan keeps recurring across iterations. Other
+    operators (JOIN, GROUP_BY, PIVOT, ...) keep their configuration in the key,
+    since credibility should still distinguish e.g. two different join columns.
+    """
+    return "COLUMN_TRANSFORM" if step == "COLUMN_TRANSFORM" or step.startswith("COLUMN_TRANSFORM :") else step
+
+
 def _canonicalize_column_ops(history: List[str]) -> List[str]:
     """Rewrite pre-merge column-level steps to COLUMN_TRANSFORM.
 
@@ -520,7 +538,11 @@ def _record_pipeline_confidence(
     Mutates state["pipeline_confidence_stats"] in place (case-wide dict that
     persists across iterations, like state["root"]).
     """
-    key = tuple(_canonicalize_column_ops(_split_groupby_aggregate(full_history)))
+    canon = _canonicalize_column_ops(_split_groupby_aggregate(full_history))
+    # Credibility matches on operator SHAPE, not COLUMN_TRANSFORM's exact per-column
+    # config -- see _credibility_key_step. Tree-path building elsewhere keeps using
+    # `canon` (the full, un-collapsed history) unchanged.
+    key = tuple(_credibility_key_step(step) for step in canon)
     stats = state["pipeline_confidence_stats"].setdefault(
         key, {"occurrences": 0, "conf_sum": 0.0, "conf_count": 0}
     )
@@ -2275,12 +2297,27 @@ def simulate(state: MCTSGraphState) -> dict:
     _result = "Success" if response == "Success" else "FAILED"
 
     # Blend this occurrence into the case-wide pipeline confidence/frequency table
-    # (shared with critique) -- None if no plan was parsed.
+    # (shared with critique). No parsed plan means two separate things, handled
+    # separately:
+    #   - confidence: genuinely no signal (no $CONFIDENCE$ block to read) -- stays
+    #     None, dropped from the weighted average, same as before.
+    #   - credibility_weight: NOT dropped. With no parsed plan there's no
+    #     pipeline-shape to key occurrences on, so it can't earn credibility from
+    #     repetition -- but it still deserves exactly the credibility a genuine
+    #     first-ever occurrence would get (occurrences=1), not zero and not a free
+    #     pass. Previously this was dropped from the average entirely, which let a
+    #     malformed (planless) response skip the discount every well-formed
+    #     response pays and score HIGHER as a result -- confirmed on case 2_1
+    #     (dmx-deepseek-v4-flash pilot, 2026-09-17): a plan-less iter-0 script
+    #     scored 0.8940 and became final "best", despite 7 later, plan-having,
+    #     lower-scoring candidates actually validating correct on held-out test
+    #     data.
     if full_history:
         confidence, occurrences = _record_pipeline_confidence(state, full_history, self_reported_confidence)
         credibility_weight = _credibility_weight_from_occurrences(occurrences, state.get("credibility_k"))
     else:
-        confidence, occurrences, credibility_weight = None, 0, None
+        confidence, occurrences = None, 0
+        credibility_weight = _credibility_weight_from_occurrences(1, state.get("credibility_k"))
 
     return {
         "current_script": script,
@@ -2748,9 +2785,30 @@ def _build_critique_prompt(state: MCTSGraphState, script: str, rag_hints: str = 
     # Inject critique hints unless suppressed via --no_static_hints
     if getattr(config, "static_hints", True):
         try:
-            from hints.hints_static import get_hints_section, CRITIQUE_HINT_IDS
+            from hints.hints_static import (
+                get_hints_section, CRITIQUE_HINT_IDS, hints_for_benchmark,
+                smartbuilding_override_for,
+            )
+            # Same hint id list + benchmark filtering as CoT's critique
+            # (methods/critique.py's crit()/critique()), which wraps
+            # CRITIQUE_HINT_IDS in hints_for_benchmark() the same way -- keeps
+            # the two prompts' static hints aligned.
+            #
+            # smartbuilding_override_for() RESTORED (2026-09-17): a bug-impact audit
+            # of the gpt-oss-120b/flash/pro MCTS runs found dt_strata/dow/cst date
+            # column mismatches behind 44 of 49 genuine (non-validation-bug) incorrect
+            # cases for flash+pro alone -- exactly what this override's dow-numbering
+            # and date-format paragraphs address. It was temporarily dropped for the
+            # CoT-vs-MCTS hint-alignment comparison; CoT's own critique has always
+            # included it, so this brings MCTS's critique back in line with that.
+            _directory = getattr(config, "directory", "")
             prompt = prompt.replace(
-                "$STATIC_HINTS$", get_hints_section(CRITIQUE_HINT_IDS, fmt="numbered")
+                "$STATIC_HINTS$",
+                get_hints_section(
+                    hints_for_benchmark(CRITIQUE_HINT_IDS, _directory),
+                    fmt="numbered",
+                )
+                + smartbuilding_override_for(_directory)
             )
         except Exception:
             prompt = prompt.replace("$STATIC_HINTS$", "")
@@ -2816,13 +2874,17 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
     self_reported_confidence, confidence_raw = _parse_pipeline_confidence(
         res[0], config.logger, tag="_run_critique_llm"
     )
-    # Blend into the case-wide pipeline confidence/frequency table -- None if no
-    # plan was parsed (nothing to key the occurrence on).
+    # Blend into the case-wide pipeline confidence/frequency table. No parsed plan:
+    # confidence stays None (no $CONFIDENCE$ block to read, dropped from the
+    # weighted average); credibility_weight gets exactly a first-occurrence value
+    # (occurrences=1) rather than being dropped -- see the matching comment in
+    # execute_and_score() for why.
     if critique_plan:
         confidence, occurrences = _record_pipeline_confidence(state, critique_plan, self_reported_confidence)
         credibility_weight = _credibility_weight_from_occurrences(occurrences, state.get("credibility_k"))
     else:
-        confidence, occurrences, credibility_weight = None, 0, None
+        confidence, occurrences = None, 0
+        credibility_weight = _credibility_weight_from_occurrences(1, state.get("credibility_k"))
     config.logger.info(
         f"[_run_critique_llm] Confidence: self_reported={confidence_raw!r} "
         f"({self_reported_confidence}) -> blended={confidence}, "

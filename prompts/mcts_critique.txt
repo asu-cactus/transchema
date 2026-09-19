@@ -47,20 +47,10 @@ Now produce the corrected pipeline. First, state the corrected sequence of opera
 - UNION: "UNION : [Table1, Table2, ...]"
 - GROUP_BY/AGGREGATE: 'GROUP_BY/AGGREGATE : "group_by" = [col1, col2], "aggregations" = [AGG_FUNC(col), ...]'
 - PIVOT / UNPIVOT: "PIVOT" or "UNPIVOT" (no configuration)
-- COLUMN_TRANSFORM: "COLUMN_TRANSFORM : [out_a = Table1.col1, out_b = SUM(Table1.col2, Table1.col3), out_c = FORMAT(Table1.dt, 'pattern'), out_d = EXTRACT(MONTH FROM Table1.dt), out_e = UPPER(TRIM(Table1.name))]"
-  (defines the output columns as row-wise expressions over existing columns: pass-through/rename,
-   multi-column folds, date reformatting and part extraction, and string reshaping. The entries
-   are emitted in the order listed and any column not listed is dropped; does NOT collapse rows.
-   Available: SUM/AVG/MAX/MIN over several columns, COALESCE, FORMAT, EXTRACT, UPPER, LOWER,
-   TRIM, LENGTH, CONCAT, SUBSTR, SPLIT, REPLACE, CAST, and nesting of these.)
 - End with: "NO_MORE_OPERATION"
 
 The corrected operation sequence does not have to reuse the same operator(s) as the failed
-pipeline. If the target is reachable by renaming/reordering columns alone, say so explicitly
-with a COLUMN_TRANSFORM step; if a date or time column just needs reformatting, a target column
-is a part of a date, or a string column just needs different casing/padding/separators, use
-COLUMN_TRANSFORM. Do not fall back to a bare "NO_MORE_OPERATION" plan to express work that one
-of the operators above can state directly.
+pipeline.
 
 Reason briefly about what is wrong. Then output the corrected operation sequence:
 

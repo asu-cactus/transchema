@@ -35,13 +35,11 @@ if _TRANSCHEMA_ROOT not in sys.path:
 from hints.hints_static import (
     get_hints_section,
     hints_for_benchmark,
-    smartbuilding_override_for,
     NEXT_OPERATOR_HINT_IDS,
     JOIN_HINT_IDS,
     GROUPBY_AGG_HINT_IDS,
     GROUPBY_HINT_IDS,
     AGGREGATE_HINT_IDS,
-    COLUMN_TRANSFORM_HINT_IDS,
 )
 from hints.hint import get_hints
 
@@ -115,12 +113,10 @@ def get_mcts_expand_prompt(
     selection_hints = get_hints_section(
         hints_for_benchmark(NEXT_OPERATOR_HINT_IDS, directory), fmt="bullet"
     ) if static_hints else ""
-    coltransform_hints = get_hints_section(COLUMN_TRANSFORM_HINT_IDS, fmt="bullet") if static_hints else ""
-
-    # The smart-building date-format override is COLUMN_TRANSFORM knowledge that until
-    # now only reached the code-generation prompts, never operator selection.
-    _sb_override = smartbuilding_override_for(directory, static_hints)
-    datetime_override = ("\n" + _sb_override.rstrip()) if _sb_override else ""
+    # COLUMN_TRANSFORM_HINT_IDS and the smart-building date-format override are
+    # intentionally NOT injected here -- reverted to match the 2026-08-24 17/20
+    # baseline run's Expand prompt, which had no column-level operator (or any
+    # hints for one) at all.
 
     rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
 
@@ -190,31 +186,6 @@ PIVOT / UNPIVOT — no additional configuration needed
   Format: (just the operator line; no TABLES or COLUMNS line)
 
 COLUMN_TRANSFORM — define the target columns as row-wise expressions over existing columns
-  • The entries ARE the output schema: they are emitted in the order listed, and any
-    source column not listed is dropped. One entry per target column.
-  • Only reference columns that already exist in the current table.
-{coltransform_hints}{datetime_override}
-  Format:
-    COLUMNS: [target_col_a = <expr>, target_col_b = <expr>, ...]
-
-  <expr> is any of:
-    table.col                          pass through, or rename by giving a new target name
-    0  /  'NA'                         a bare literal makes a constant column
-    SUM|AVG|MAX|MIN(table.c1, table.c2, ...)
-                                       fold several columns into one, ROW BY ROW
-    MAX(...) - MIN(...)                two functions may be combined arithmetically
-    COALESCE(table.col, 0)             treat nulls as zero
-    FORMAT(table.date_col, '<pattern>')
-                                       re-render a date/time with a strftime-style pattern
-    EXTRACT(<PART> FROM table.date_col)
-                                       pull YEAR, MONTH, DAY, HOUR, MINUTE or DOW out
-    UPPER|LOWER|TRIM|LENGTH(table.col)
-    CONCAT(table.c1, '-', table.c2)
-    SUBSTR(table.col, <start>, <len>)
-    SPLIT(table.col, '<sep>', <index>)
-    REPLACE(table.col, '<old>', '<new>')
-    CAST(table.col AS int|float|str)
-    (functions may be nested, e.g. UPPER(TRIM(table.city)))
 
 ══════════════════════════════════════════════════════
 SELECTION GUIDANCE (apply these rules when ranking candidates)
@@ -263,7 +234,7 @@ $END$
 
 $CANDIDATE 4$
 OPERATOR: COLUMN_TRANSFORM
-COLUMNS: [date = FORMAT(test_0.timestamp, '%m/%d/%Y'), month = EXTRACT(MONTH FROM test_0.timestamp), site = UPPER(TRIM(test_0.building)), total_load = SUM(test_0.hvac_kw, test_0.light_kw, test_0.plug_kw)]
+COLUMNS: [date = FORMAT(test_0.timestamp, '%m/%d/%Y'), total_load = SUM(test_0.hvac_kw, test_0.light_kw, test_0.plug_kw)]
 $END$
 
 Note: all four candidates above operate on the SAME original source tables.

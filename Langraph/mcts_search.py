@@ -1028,7 +1028,13 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             f"case={len_idx_target_idx}"
         )
         mcts_graph = build_mcts_graph()
-        _checkpoint_file = f"/tmp/mcts_checkpoint_{len_idx_target_idx}.json"
+        # experiment_name included: length_case_id alone collides across any two
+        # concurrent MCTS processes working the same case (different models, different
+        # runs, or even overlapping windows of two "same length" pilots) -- confirmed on
+        # 2026-09-17 case 2_2, where a concurrently-running dmx-deepseek-v4-pro process
+        # clobbered this file mid-write and a later dmx-deepseek-v4-flash timeout
+        # recovered PRO's checkpoint instead of its own.
+        _checkpoint_file = f"/tmp/mcts_checkpoint_{experiment_name}_{len_idx_target_idx}.json"
         final_state: MCTSGraphState = initial_state
         # Cost-budget mode can run far more iterations — raise the graph step limit accordingly
         _recursion_limit = 10000 if cost_budget > 0.0 else 500
@@ -1561,7 +1567,8 @@ if __name__ == "__main__":
             results[case_id] = None
 
             # Attempt to recover the best script written during the run
-            _checkpoint_file = f"/tmp/mcts_checkpoint_{length}_{case_id}.json"
+            # experiment_name included -- see the length2_2/2026-09-17 collision note above.
+            _checkpoint_file = f"/tmp/mcts_checkpoint_{args.experiment_name}_{length}_{case_id}.json"
             _recovered = False
             if os.path.exists(_checkpoint_file):
                 try:
@@ -1691,7 +1698,8 @@ if __name__ == "__main__":
             # Attempt checkpoint recovery (same logic as timeout path) —
             # covers OOM kills (-9) and other unexpected exits where the
             # subprocess wrote at least one checkpoint during iteration.
-            _checkpoint_file = f"/tmp/mcts_checkpoint_{length}_{case_id}.json"
+            # experiment_name included -- see the length2_2/2026-09-17 collision note above.
+            _checkpoint_file = f"/tmp/mcts_checkpoint_{args.experiment_name}_{length}_{case_id}.json"
             _recovered = False
             if os.path.exists(_checkpoint_file):
                 try:

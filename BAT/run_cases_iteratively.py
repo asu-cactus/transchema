@@ -25,6 +25,9 @@ LENGTH_TYPE = 1
 START_NUM = 0
 END_NUM = 100
 LOG_DIR = "logs"
+# Per-case MCTS progress logs (mcts_<case>.txt) carry no model/benchmark in their name, so a
+# second run overwrites the first's. Set BAT_MCTS_LOG_DIR to keep a run's own; default unchanged.
+MCTS_LOG_DIR = os.environ.get("BAT_MCTS_LOG_DIR", LOG_DIR)
 CLEANUP_RESULTS = True  # Clean up intermediate result JSON files after evaluation
 VALIDATION = "hard_match"  # "hard_match" (evaluator's own similarity) or "autopipeline" (validation.hard_match.compare_tables_matching, matches mcts_search.py --validation autopipeline)
 MODEL_NAME = "gpt-4.1-mini"  # must be a key in BAT/src/llm/config.py's MODELS dict (e.g. "o4-mini")
@@ -153,6 +156,7 @@ def process_case(case_num, logger):
     logger.info(f"Processing case {case_num}: {case_id}")
     logger.info(f"{'='*60}")
 
+    os.makedirs(MCTS_LOG_DIR, exist_ok=True)
     # Step 1: Run main.py for this case
     main_cmd = [
         "python3", "-m", "src.main",
@@ -162,7 +166,7 @@ def process_case(case_num, logger):
         "--length_type", str(LENGTH_TYPE),
         "--start_num", str(case_num),
         "--end_num", str(case_num + 1),
-        "--log_path", os.path.join(LOG_DIR, f"mcts_{case_id}.txt"),
+        "--log_path", os.path.join(MCTS_LOG_DIR, f"mcts_{case_id}.txt"),
         "--model_name", MODEL_NAME
     ]
 

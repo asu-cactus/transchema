@@ -13,6 +13,18 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 DEFAULT_MODEL = "gpt-4-1106-preview"
 
+# Microsoft DMX models (e.g. dmx-gpt-oss-120b), reached through the SSH tunnel to the Azure
+# VM proxy, same convention as llm/llm_models.py (duplicated here to keep this file free of
+# that module's tokenizer imports): "dmx-" prefix selects the route and is stripped before
+# sending; the proxy adds the Azure token itself.
+DMX_PREFIX = "dmx-"
+DMX_BASE_URL = os.environ.get("DMX_OPENAI_BASE_URL", "http://localhost:8000/v1")
+DMX_READ_TIMEOUT = float(os.environ.get("TRANSCHEMA_OLLAMA_HTTP_TIMEOUT", "3600"))
+# Azure's v1 API budgets reasoning tokens inside max_completion_tokens, so add headroom.
+DMX_REASONING_HEADROOM = int(os.environ.get("TRANSCHEMA_REASONING_HEADROOM", "8192"))
+DMX_REASONING_EFFORT = os.environ.get("TRANSCHEMA_REASONING_EFFORT", "").strip().lower() or None
+DMX_MAX_ATTEMPTS = 3
+
 # Reasoning ("o-series") models don't accept a custom temperature (only the
 # default of 1) and require max_completion_tokens instead of max_tokens.
 REASONING_MODELS = {"o3", "o3-mini", "o4-mini"}
@@ -29,17 +41,38 @@ def chat_with_gpt(prompt, ifsql=True, max_tokens=4096, model=DEFAULT_MODEL, retu
         model=model,
         messages=[{"role": "user", "content": prompt}],
     )
-    if model in REASONING_MODELS:
+    if _is_dmx_model(model):
+        kwargs["model"] = model[len(DMX_PREFIX):]
+        kwargs["temperature"] = 0
+        kwargs["max_completion_tokens"] = max_tokens + DMX_REASONING_HEADROOM
+        if DMX_REASONING_EFFORT:
+            kwargs["reasoning_effort"] = DMX_REASONING_EFFORT
+    elif model in REASONING_MODELS:
         kwargs["max_completion_tokens"] = max_tokens
     else:
         kwargs["temperature"] = 0
         kwargs["max_tokens"] = max_tokens
 
     start = time.time()
-    response = _get_client(model).chat.completions.create(**kwargs)
+    if _is_dmx_model(model):
+        # The proxy already retries upstream errors; this covers dropped tunnel connections
+        # so a transport hiccup isn't scored as a wrong answer.
+        for attempt in range(1, DMX_MAX_ATTEMPTS + 1):
+            try:
+                response = _get_client(model).chat.completions.create(**kwargs)
+                break
+            except Exception:
+                if attempt == DMX_MAX_ATTEMPTS:
+                    raise
+                time.sleep(30 * attempt)
+    else:
+        response = _get_client(model).chat.completions.create(**kwargs)
     latency = time.time() - start
 
     complete_response = response.choices[0].message.content
+    if not complete_response:
+        raise RuntimeError(f"{model} returned empty content (finish_reason="
+                           f"{response.choices[0].finish_reason}, usage={response.usage})")
     if ifsql:
         result = ''.join(complete_response.split("```sql")[1].split("```")[0].strip())
     else:
@@ -356,11 +389,24 @@ def generate_prompt(json_file_path, template_option,output_table,output_sql,sour
 
     return prompt, ground_truth, target_data_name
 
+def _is_dmx_model(model: str) -> bool:
+    return (model or "").lower().startswith(DMX_PREFIX)
+
 def _is_oss_model(model: str) -> bool:
     oss_prefixes = ("qwen", "deepseek", "mixtral", "llama")
     return any(model.lower().startswith(p) for p in oss_prefixes)
 
+_dmx_client = None
+
 def _get_client(model: str) -> OpenAI:
+    global _dmx_client
+    if _is_dmx_model(model):
+        if _dmx_client is None:
+            import httpx
+            _dmx_client = OpenAI(
+                base_url=DMX_BASE_URL, api_key="unused",
+                timeout=httpx.Timeout(connect=60.0, read=DMX_READ_TIMEOUT, write=120.0, pool=60.0))
+        return _dmx_client
     if _is_oss_model(model):
         base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         return OpenAI(base_url=base_url, api_key="ollama")

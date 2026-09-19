@@ -195,6 +195,15 @@ def make_test_validation_script(script: str) -> str:
     Covers all target_multisource* variants: plain, _cot, _critique_history, etc.
     """
     swapped = re.sub(r'training_(\d+)\.csv', r'test_\1.csv', script)
+    # Some generated scripts read training data via glob.glob(".../training_*.csv")
+    # rather than a literal training_N.csv path -- the digit-only regex above misses
+    # that entirely, so the "test validation" run silently kept reading TRAINING data
+    # and got compared against the TEST target, producing a false is_correct=False for
+    # an otherwise-correct script. Confirmed via a direct MCTS log audit (2026-09-17,
+    # cases 1_2/1_3 of smartbuilding_v2_mcts20_dmx_hintsalign_t600_dmx-gpt-oss-120b):
+    # the selected best script in both cases used this glob pattern, ran correctly
+    # against real test data once patched, yet was recorded incorrect before this fix.
+    swapped = re.sub(r'training_\*\.csv', 'test_*.csv', swapped)
     swapped = re.sub(r'(target_multisource[^.]*?)\.csv', r'\1_test_val.csv', swapped)
     return swapped
 
