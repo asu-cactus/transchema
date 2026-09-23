@@ -37,12 +37,15 @@ class LLMClient:
         self._setup_logger()
 
     def _setup_logger(self):
-        os.makedirs("logs", exist_ok=True)
+        # BAT_LLM_LOG_DIR keeps a run's per-call LLM logs separate: the file name has no benchmark in it, and
+        # the evaluator attributes tokens by case_id, so two benchmarks sharing a log would mix their calls.
+        log_dir = os.environ.get("BAT_LLM_LOG_DIR", "logs")
+        os.makedirs(log_dir, exist_ok=True)
         suffix = f"_{self.log_tag}" if self.log_tag else ""
         logger_name = f"llm_{self.model_name}{suffix}"
         self.llm_logger = logging.getLogger(logger_name)
         if not self.llm_logger.handlers:
-            handler = logging.FileHandler(f"logs/llm_queries_{self.model_name}{suffix}.jsonl")
+            handler = logging.FileHandler(f"{log_dir}/llm_queries_{self.model_name}{suffix}.jsonl")
             handler.setFormatter(logging.Formatter('%(message)s'))
             self.llm_logger.addHandler(handler)
             self.llm_logger.setLevel(logging.INFO)

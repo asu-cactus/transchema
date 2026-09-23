@@ -308,7 +308,7 @@ def main(json_folder, data_folder, output_base, length_types, start_num, end_num
     llm_logs = []
     if model_name:
         log_suffix = f"_length{length_types[0]}" if len(length_types) == 1 else ""
-        log_file = f"logs/llm_queries_{model_name}{log_suffix}.jsonl"
+        log_file = f"{os.environ.get('BAT_LLM_LOG_DIR', 'logs')}/llm_queries_{model_name}{log_suffix}.jsonl"
         llm_logs = parse_llm_logs(log_file)
 
     for length_type in length_types:

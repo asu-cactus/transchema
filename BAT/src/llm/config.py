@@ -17,6 +17,7 @@ MODELS = {
         'base_url': "https://api.openai.com/v1",
         'model': "o4-mini",
         'is_inference': True,
+        'supports_temperature': False,  # o-series reasoning model: only the default temperature (1) is accepted
         'top_p': 0.8,
         'temperature': 0.1
     },
