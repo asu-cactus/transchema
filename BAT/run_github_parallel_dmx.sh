@@ -17,6 +17,10 @@
 #   ssh -N -L 8000:127.0.0.1:8000 <user>@<dmx-vm-host>
 #
 # Overrides:  N_WORKERS=20  LENGTHS="1 2 3 4 5 6 9"  DRY_RUN=1 (print the case counts and exit)
+#             CASE_TIMEOUT=600  hard per-case wall-clock cap in seconds (see below)
+#             SKIP_CASES="4_0 4_1 ... 4_18"  (space-separated "L_id" tokens) drop these cases from the run
+#             CASES_OVERRIDE="4_0 9_17 ..."  (space-separated "L_id" tokens) run ONLY these cases
+#                                             (takes priority over LENGTHS/SKIP_CASES)
 # Output:     result/github-pipelines/<model>/execution_<TS>/   predict/github-pipelines/<model>/execution_<TS>/g<L>_c<id>/
 #             logs/github_<model>_<TS>/{mcts,llm}/     (llm/llm_queries_<model>_length<L>.jsonl holds the tokens)
 set -euo pipefail
@@ -25,6 +29,12 @@ cd "$(dirname "$0")"
 MODEL="${1:-dmx-gpt-oss-120b}"
 N_WORKERS="${N_WORKERS:-20}"
 LENGTHS="${LENGTHS:-1 2 3 4 5 6 9}"
+# Hard per-case wall-clock cap (seconds) -- BAT's own MCTS solver has NO timeout of its own,
+# unlike every other tool in this project (TreeMorpher/critique_data.py all cap at 600s). A
+# stuck case (observed: several ran 30-50+ min with no sign of finishing) blocks its worker
+# forever. `timeout` SIGTERMs (then SIGKILLs) the case; `|| true` below keeps a killed/failed
+# case from taking down the rest of that worker's queue under `set -e`.
+CASE_TIMEOUT="${CASE_TIMEOUT:-600}"
 BASE_PATH=/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/github-pipelines
 RUN_TAG="$(date +%Y%m%d_%H%M%S)"
 RESULT_DIR="result/github-pipelines/${MODEL}/execution_${RUN_TAG}"
@@ -33,10 +43,26 @@ RUN_LOGS="logs/github_${MODEL//[.:]/-}_${RUN_TAG}"
 
 # "group:position" for every case folder that exists, sorted by length then id.
 PAIRS=()
-for L in $LENGTHS; do
-    while IFS= read -r id; do PAIRS+=("${L}:${id}"); done < <(
-        ls -d "${BASE_PATH}/length${L}_"* 2>/dev/null | sed "s|.*/length${L}_||" | sort -n)
-done
+if [ -n "${CASES_OVERRIDE:-}" ]; then
+    for tok in $CASES_OVERRIDE; do PAIRS+=("${tok/_/:}"); done
+else
+    for L in $LENGTHS; do
+        while IFS= read -r id; do PAIRS+=("${L}:${id}"); done < <(
+            ls -d "${BASE_PATH}/length${L}_"* 2>/dev/null | sed "s|.*/length${L}_||" | sort -n)
+    done
+fi
+
+# SKIP_CASES="4_0 4_1 ... 4_18" (space-separated "L_id" tokens) drops those cases from the run.
+# Ignored when CASES_OVERRIDE is set -- CASES_OVERRIDE already names exactly what to run.
+if [ -z "${CASES_OVERRIDE:-}" ] && [ -n "${SKIP_CASES:-}" ]; then
+    declare -A _skip
+    for tok in $SKIP_CASES; do _skip["${tok/_/:}"]=1; done
+    _kept=()
+    for p in "${PAIRS[@]}"; do [ -z "${_skip[$p]:-}" ] && _kept+=("$p"); done
+    echo "SKIP_CASES: dropping ${#_skip[@]} case(s), ${#PAIRS[@]} -> ${#_kept[@]}"
+    PAIRS=("${_kept[@]}")
+fi
+
 echo "Total cases: ${#PAIRS[@]}  model=$MODEL  workers=$N_WORKERS"
 if [ -n "${DRY_RUN:-}" ]; then
     for L in $LENGTHS; do
@@ -78,14 +104,15 @@ for ((i = 0; i < N_WORKERS; i++)); do
         for pair in "${chunk[@]}"; do
             group="${pair%%:*}"
             position="${pair##*:}"
-            python3 run_cases_iteratively.py \
+            timeout "${CASE_TIMEOUT}s" python3 run_cases_iteratively.py \
                 --length_type "$group" \
                 --cases "$position" \
                 --base_path "$BASE_PATH" \
                 --result_dir "$RESULT_DIR" \
                 --predict_dir "$PREDICT_DIR/g${group}_c${position}" \
                 --validation autopipeline \
-                --model_name "$MODEL"
+                --model_name "$MODEL" \
+                || echo "[$(date '+%H:%M:%S')] case ${group}_${position}: TIMED OUT or FAILED (see above) -- continuing to the next case"
         done
     ) > "${RUN_LOGS}/workers/worker_${i}.log" 2>&1 &
     pids+=($!)
