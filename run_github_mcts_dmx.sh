@@ -36,6 +36,8 @@
 #                                RUN_TAG to RESUME: cases that already have a results_summary.csv
 #                                in that run are skipped.
 #     CASES_OVERRIDE="1_41 4_18" only these cases (L_id tokens)
+#     SKIP_CASES="4_0 4_1 ... 4_17"   drop these cases from the run (space-separated "L_id"
+#                                tokens); ignored when CASES_OVERRIDE is set
 #     DROP_SCORE_COMPONENTS="fd_f1"   reward-function ablation switch (Ablation Plan §1), forwarded
 #                                to mcts_search.py's --drop_score_components. Comma-separated score_1
 #                                component names to force out of the weighted average (renormalizing
@@ -89,6 +91,17 @@ else
         while IFS= read -r id; do CASES+=("${L}:${id}"); done < <(
             ls -d "${BENCH_DIR}/length${L}_"* 2>/dev/null | sed "s|.*/length${L}_||" | sort -n)
     done
+fi
+
+# SKIP_CASES="4_0 4_1 ... 4_17" (space-separated "L_id" tokens) drops those cases from the run.
+# Ignored when CASES_OVERRIDE is set -- CASES_OVERRIDE already names exactly what to run.
+if [ -z "${CASES_OVERRIDE:-}" ] && [ -n "${SKIP_CASES:-}" ]; then
+    declare -A _skip
+    for tok in $SKIP_CASES; do _skip["${tok/_/:}"]=1; done
+    _kept=()
+    for c in "${CASES[@]}"; do [ -z "${_skip[$c]:-}" ] && _kept+=("$c"); done
+    log "ALL" "SKIP_CASES: dropping ${#_skip[@]} case(s), ${#CASES[@]} -> ${#_kept[@]}"
+    CASES=("${_kept[@]}")
 fi
 
 if [ -n "${DRY_RUN:-}" ]; then
