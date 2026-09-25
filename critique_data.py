@@ -993,7 +993,7 @@ def get_parser():
     return parser
 
 
-_CASE_TIMEOUT = 600  # 10 minutes per case
+_CASE_TIMEOUT = int(os.environ.get("CRITIQUE_CASE_TIMEOUT", 600))  # 10 minutes per case by default
 
 # Score at or above which an attempt is treated as done: critique is skipped and the
 # iteration loop stops. 1.0 means "only a perfect score counts as done".

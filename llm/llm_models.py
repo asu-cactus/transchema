@@ -224,6 +224,12 @@ class LLMClient:
                 self.encoding = tiktoken.get_encoding("o200k_base")
             elif model == "o4-mini" or model == "o3":
                 self.encoding = tiktoken.get_encoding("cl100k_base")
+            elif model.startswith("gpt-5"):
+                # tiktoken (as installed here) predates gpt-5.1 and doesn't have a mapping
+                # for it -- KeyError otherwise. This is only used for local prompt-budget
+                # estimation, not billing (the API's own `usage` numbers are authoritative
+                # regardless); o200k_base is the same encoding gpt-4.1-mini uses above.
+                self.encoding = tiktoken.get_encoding("o200k_base")
             else:
                 self.encoding = tiktoken.encoding_for_model(model)
 
@@ -248,7 +254,11 @@ class LLMClient:
             # fall into that branch: replaying the same code-gen prompt, temperature 1.0 gave
             # a compilable script 1/3 times (prose spliced into code, runaway reasoning to the
             # token cap) vs 3/3 at 0.0, which was also ~2x faster.
-            temperature = 0.0 if ("4.1" in self.model or self._uses_asu or self._uses_dmx) else 1.0
+            # gpt-5.1 (unlike o3/o4-mini) accepts a custom temperature -- verified live:
+            # temperature=0 succeeds -- so it gets the same low-temperature default as
+            # every other model here rather than falling into the o3/o4-mini 1.0 branch.
+            temperature = 0.0 if ("4.1" in self.model or self._uses_asu or self._uses_dmx
+                                    or self.model.startswith("gpt-5")) else 1.0
         outputs = []
         while n > 0:
             cnt = min(n, 20)  # Ensure at most 20 requests per batch
@@ -329,7 +339,10 @@ class LLMClient:
                     kwargs["reasoning_effort"] = _REASONING_EFFORT
                 return self.client.chat.completions.create(**kwargs)
 
-            if self.model == "o4-mini" or self.model == "o3":
+            if self.model == "o4-mini" or self.model == "o3" or self.model.startswith("gpt-5"):
+                # gpt-5.1: verified live that max_tokens is rejected ("Unsupported parameter:
+                # 'max_tokens' ... Use 'max_completion_tokens' instead"); temperature/top_p/
+                # penalties ARE accepted here (unlike o3/o4-mini), so they're passed through.
                 return self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,

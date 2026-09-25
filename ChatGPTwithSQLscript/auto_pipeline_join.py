@@ -152,7 +152,10 @@ def cleanup_case_tables(conn, target_name, records):
             cur.execute(f"DROP TABLE IF EXISTS {table_name};")
         conn.commit()
     except Exception as e:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass  # connection already dead; run_many reconnects before the next case
         logging.warning(f"{target_name}: table cleanup failed: {type(e).__name__}: {e}")
 
 
@@ -247,6 +250,27 @@ def run_case(conn, target_name, records, model=DEFAULT_MODEL, max_tokens=12000, 
     return result, record
 
 
+def _reconnect(old_conn, attempts=12, wait_seconds=5):
+    """Fresh Postgres connection after the server dropped ours (e.g. a backend crash makes the
+    server terminate every connection and restart). Waits while the database is in recovery."""
+    try:
+        old_conn.close()
+    except Exception:
+        pass
+    for attempt in range(1, attempts + 1):
+        try:
+            return create_connection()
+        except psycopg2.Error as e:
+            logging.warning(f"reconnect attempt {attempt}/{attempts} failed: {type(e).__name__}: {e}")
+            time.sleep(wait_seconds)
+    raise RuntimeError("could not reconnect to Postgres")
+
+
+def _connection_lost(conn, res):
+    err = str(res.get("error") or "")
+    return bool(conn.closed) or err.startswith(("OperationalError", "InterfaceError"))
+
+
 def run_many(by_target, target_names, model=DEFAULT_MODEL, max_tokens=12000,
              validation_method="join", experiment_dir=None, benchmark="autopipeline"):
     if experiment_dir is None:
@@ -267,8 +291,16 @@ def run_many(by_target, target_names, model=DEFAULT_MODEL, max_tokens=12000,
                     logging.warning(f"{target_name}: not found in loaded JSON records, skipping")
                     continue
                 records = by_target[target_name]
+                if conn.closed:
+                    conn = _reconnect(conn)
                 res, record = run_case(conn, target_name, records, model=model, max_tokens=max_tokens,
                                         validation_method=validation_method, benchmark=benchmark)
+                if _connection_lost(conn, res):
+                    # Not the model's fault: get a live connection and run the case once more.
+                    logging.warning(f"{target_name}: database connection lost; reconnecting and retrying once")
+                    conn = _reconnect(conn)
+                    res, record = run_case(conn, target_name, records, model=model, max_tokens=max_tokens,
+                                            validation_method=validation_method, benchmark=benchmark)
                 print(f"  -> accuracy={res['accuracy']:.2f} correct={res['correct']} "
                       f"cost=${res['cost_usd'] if res['cost_usd'] is not None else 'n/a'} "
                       f"latency={res['total_latency_seconds']:.1f}s "
