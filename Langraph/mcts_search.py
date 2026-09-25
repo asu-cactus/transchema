@@ -72,7 +72,7 @@ from state import MCTSGraphState
 from graph import build_mcts_graph
 from viz import write_action_trace, write_tree_viz
 from rag_pipeline.local_rag_db import build_upper_bound_db, populate_from_global_results
-from eval_score_value_based import get_length_score_weights
+from eval_score_value_based import get_length_score_weights, SCORE_1_COMPONENTS
 
 
 def _resolve_main_folder(benchmark: str) -> str:
@@ -170,6 +170,34 @@ def _parse_score_weights(raw: str | None) -> dict | None:
             f"{len(_SCORE_1_COMPONENT_ORDER_WITH_CONFIDENCE)} total), got {len(parts)}: {raw!r}"
         )
     return {k: float(v) for k, v in zip(order, parts)}
+
+
+def _parse_drop_score_components(raw: str | None) -> frozenset | None:
+    """Parse --drop_score_components into a frozenset of score_1 component names.
+
+    Reward-function ablation switch (Ablation Plan §1, "w/o s_fd" / "w/o s_col" /
+    "w/o s_rows+s_missing" / "w/o s_cred"): each named component's VALUE is forced
+    to None before value_based_relative_csv_score's weighted average runs, so
+    _weighted_avg_available drops it and renormalizes the rest -- the same path
+    already used when confidence/credibility_weight simply aren't supplied. This
+    works on top of whichever top-level weights are in effect (length-based
+    default or an explicit --score_weights), unlike --score_weights itself, which
+    would need every remaining weight typed out by hand to reproduce a drop-and-
+    renormalize.
+
+    Accepts a comma-separated subset of SCORE_1_COMPONENTS, e.g.
+    'fd_f1' or 'row_count_score,max_missing_score'. Returns None (drop nothing,
+    unchanged default behavior) when not provided."""
+    if not raw:
+        return None
+    names = frozenset(p.strip() for p in raw.split(",") if p.strip())
+    unknown = names - frozenset(SCORE_1_COMPONENTS)
+    if unknown:
+        raise ValueError(
+            f"--drop_score_components got unknown component(s) {sorted(unknown)}; "
+            f"valid names are {SCORE_1_COMPONENTS}"
+        )
+    return names or None
 
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -580,6 +608,10 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     _cli_score_weights = _parse_score_weights(getattr(args, "score_weights", None))
     _length_top_weights, column_type_weights, credibility_k = get_length_score_weights(length)
     score_weights = _cli_score_weights or _length_top_weights
+    # Reward-function ablation switch (Ablation Plan §1): drop named score_1
+    # components from the weighted average, on top of whichever score_weights
+    # are in effect above. See _parse_drop_score_components.
+    drop_score_components = _parse_drop_score_components(getattr(args, "drop_score_components", None))
     join_flag = getattr(args, "join_flag", 0)
     aggregate_flag = getattr(args, "aggregate_flag", 0)
     join_hints_truncate = getattr(args, "join_hints_truncate", [])
@@ -953,6 +985,7 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             "score_weights": score_weights,
             "column_type_weights": column_type_weights,
             "credibility_k": credibility_k,
+            "drop_score_components": drop_score_components,
             "experiment_name": experiment_name,
             "case_id": len_idx_target_idx,
             # Prompt extras
@@ -1322,6 +1355,24 @@ if __name__ == "__main__":
             "(0.2 each across all 5, or 0.25 each across the original 4 when "
             "confidence is unavailable). Passing --score_weights explicitly "
             "always overrides the length-based top-level default."
+        ),
+    )
+    parser.add_argument(
+        "--drop_score_components",
+        type=str,
+        default=None,
+        help=(
+            "Only used with --reward det_score_value. Reward-function ablation switch "
+            "(Ablation Plan §1): a comma-separated subset of the score_1 component names "
+            "(fd_f1, avg_col_score_1, row_count_score, max_missing_score, confidence, "
+            "credibility_weight) to force OUT of score_1's weighted average, e.g. "
+            "'fd_f1' (w/o s_fd), 'avg_col_score_1' (w/o s_col), "
+            "'row_count_score,max_missing_score' (w/o s_rows+s_missing), or "
+            "'credibility_weight' (w/o s_cred). Dropped components are treated exactly "
+            "like confidence/credibility_weight when those simply aren't supplied: their "
+            "weight is not zeroed, they are removed from the average and the remaining "
+            "weights renormalize -- this works on top of --score_weights or the "
+            "length-based default, whichever is in effect. Default: None -> drop nothing."
         ),
     )
     parser.add_argument(

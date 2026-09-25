@@ -714,7 +714,8 @@ def _weighted_avg_available(values: dict, weights: dict) -> float:
 def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, precomputed_gt=None,
                                     weights: dict | None = None, confidence: float | None = None,
                                     column_type_weights: dict | None = None,
-                                    credibility_weight: float | None = None):
+                                    credibility_weight: float | None = None,
+                                    drop_components: frozenset | set | None = None):
     """
     Drop-in replacement for relative_csv_score.
 
@@ -732,6 +733,17 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
         is None (e.g. confidence or credibility_weight, when not supplied) is
         dropped and the remaining weights renormalized, so omitting either
         reproduces the original 4-component score_1.
+
+    drop_components: optional set of SCORE_1_COMPONENTS names (e.g.
+        {"fd_f1"} or {"row_count_score", "max_missing_score"}) to force OUT
+        of score_1 for this call, regardless of whether they were actually
+        computed. This is the reward-function ablation switch (Ablation
+        Plan §1, "w/o s_fd" / "w/o s_col" / "w/o s_rows+s_missing" /
+        "w/o s_cred"): it reuses the exact same "value=None -> dropped and
+        renormalized" path that confidence/credibility_weight already use
+        when they're simply not supplied, so removing a component here is
+        indistinguishable from that component never having been computable.
+        None (default) drops nothing beyond whatever was already None.
 
     confidence: optional self-reported LLM confidence (0.0-1.0) that this
         output matches the target, e.g. from mcts_critique's $CONFIDENCE$
@@ -835,20 +847,18 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     # Langraph/nodes.py's pipeline_confidence_stats). When either is absent,
     # weights renormalize over the remaining components, reproducing the
     # original score_1.
-    score_1 = round(
-        _weighted_avg_available(
-            {
-                "fd_f1": fd_f1,
-                "avg_col_score_1": _avg_col_score_1,
-                "row_count_score": row_count_score,
-                "max_missing_score": max_missing_score,
-                "confidence": confidence,
-                "credibility_weight": credibility_weight,
-            },
-            weights,
-        ),
-        4,
-    )
+    _score_1_values = {
+        "fd_f1": fd_f1,
+        "avg_col_score_1": _avg_col_score_1,
+        "row_count_score": row_count_score,
+        "max_missing_score": max_missing_score,
+        "confidence": confidence,
+        "credibility_weight": credibility_weight,
+    }
+    if drop_components:
+        for _k in drop_components:
+            _score_1_values[_k] = None
+    score_1 = round(_weighted_avg_available(_score_1_values, weights), 4)
 
     # score_2: full value-based score = (fd_f1 + avg_column_score + row_ratio) / 3.
     # Includes JS similarity, nunique/missing similarity, and row-count penalty.
@@ -875,6 +885,7 @@ def value_based_relative_csv_score(df_gen: pd.DataFrame, df_gt: pd.DataFrame, pr
     debug_dict["confidence"]           = confidence
     debug_dict["credibility_weight"]   = credibility_weight
     debug_dict["score_1"]              = score_1
+    debug_dict["drop_components"]      = sorted(drop_components) if drop_components else []
     debug_dict["score_2"]              = score_2
     debug_dict["true_combined_score"]  = true_combined_score
     debug_dict["jaccard_column_map"]   = column_map

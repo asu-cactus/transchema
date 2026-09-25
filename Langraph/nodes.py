@@ -166,7 +166,8 @@ def _score_with_timeout(target_file_location: str, ground_truth_location: str,
 def _value_score_worker(target_file_location: str, ground_truth_location: str, result_queue,
                         gt_cache_path: str = "", weights: dict | None = None,
                         confidence: float | None = None, column_type_weights: dict | None = None,
-                        credibility_weight: float | None = None):
+                        credibility_weight: float | None = None,
+                        drop_components: frozenset | set | None = None):
     """Subprocess worker: load CSVs and compute value_based score, put result in queue.
 
     Uses Jaccard-aligned column matching + value-based distribution scoring.
@@ -190,6 +191,10 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
     credibility_weight: optional pipeline-frequency-based credibility signal
         (0.0-1.0), forwarded to value_based_relative_csv_score as the 6th
         score_1 component. None (default) excludes it.
+    drop_components: optional set of score_1 component names (see
+        eval_score_value_based.SCORE_1_COMPONENTS) to force out of score_1's
+        weighted average this call, forwarded to value_based_relative_csv_score.
+        Reward-function ablation switch; None (default) drops nothing.
     Puts a dict {"score": float, "components": {...} | None} in result_queue
     -- components are the raw (unweighted) score_1 inputs, logged
     regardless of which weights produced the score, so the score can be
@@ -224,6 +229,7 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
         _, _, _, fd_f1, true_combined_score, debug_dict = value_based_relative_csv_score(
             df_output, df_gt, precomputed_gt=precomputed_gt, weights=weights, confidence=confidence,
             column_type_weights=column_type_weights, credibility_weight=credibility_weight,
+            drop_components=drop_components,
         )
         components = {
             "fd_f1": fd_f1,
@@ -241,7 +247,8 @@ def _value_score_worker(target_file_location: str, ground_truth_location: str, r
 def _value_score_with_timeout(target_file_location: str, ground_truth_location: str,
                               gt_cache_path: str = "", weights: dict | None = None,
                               confidence: float | None = None, column_type_weights: dict | None = None,
-                              credibility_weight: float | None = None):
+                              credibility_weight: float | None = None,
+                              drop_components: frozenset | set | None = None):
     """Run value_based scoring in a child process with a hard timeout.
 
     FD-mining timeouts are handled internally by relative_csv_score() (full
@@ -255,6 +262,9 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
     credibility_weight: optional pipeline-frequency-based credibility signal
         (0.0-1.0), forwarded to value_based_relative_csv_score as the 6th
         score_1 component.
+    drop_components: optional set of score_1 component names to force out of
+        the weighted average, forwarded to value_based_relative_csv_score.
+        Reward-function ablation switch; None (default) drops nothing.
 
     Returns (score, components) -- components is a dict of the raw
     (unweighted) score_1 inputs, or None on timeout/error.
@@ -263,7 +273,7 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
     p = multiprocessing.Process(
         target=_value_score_worker,
         args=(target_file_location, ground_truth_location, q, gt_cache_path, weights,
-              confidence, column_type_weights, credibility_weight),
+              confidence, column_type_weights, credibility_weight, drop_components),
         # relative_csv_score() spawns its own child process for FD mining
         # (eval_score/score.py's _run_fdtool) -- a daemonic process can't have
         # children, so this parent must not be daemonic either.
@@ -292,6 +302,7 @@ def _score_and_validate_output(
     confidence: float | None = None,
     column_type_weights: dict | None = None,
     credibility_weight: float | None = None,
+    drop_score_components: frozenset | set | None = None,
 ):
     """
     Load output + ground truth and compute only the metric required by reward_mode:
@@ -325,6 +336,11 @@ def _score_and_validate_output(
                 count (see _record_pipeline_confidence/_credibility_weight_from_occurrences).
                 Folded into score_1 as its 6th component when
                 reward_mode="det_score_value"; ignored otherwise.
+    drop_score_components: optional set of score_1 component names (see
+                eval_score_value_based.SCORE_1_COMPONENTS) to force out of
+                score_1's weighted average, only used when
+                reward_mode="det_score_value". Reward-function ablation
+                switch (Ablation Plan §1); None (default) drops nothing.
     """
     df_output = pd.read_csv(target_file_location, low_memory=False)
     df_gt = pd.read_csv(ground_truth_location, low_memory=False)
@@ -349,7 +365,7 @@ def _score_and_validate_output(
         score, components = _value_score_with_timeout(
             target_file_location, ground_truth_location, gt_cache_path,
             weights=score_weights, confidence=confidence, column_type_weights=column_type_weights,
-            credibility_weight=credibility_weight,
+            credibility_weight=credibility_weight, drop_components=drop_score_components,
         )
         return score, score >= _DET_SCORE_THRESHOLD, components
 
@@ -2384,6 +2400,7 @@ def execute_and_score(state: MCTSGraphState) -> dict:
                 confidence=state.get("current_confidence"),
                 column_type_weights=state.get("column_type_weights"),
                 credibility_weight=state.get("current_credibility_weight"),
+                drop_score_components=state.get("drop_score_components"),
             )
             # --no_score_threshold: suppress early-stop for continuous score modes
             # so the search exhausts its full budget and picks the best at the end.
@@ -2914,6 +2931,7 @@ def _run_critique_llm(state: MCTSGraphState, script: str):
                     confidence=confidence,
                     column_type_weights=state.get("column_type_weights"),
                     credibility_weight=credibility_weight,
+                    drop_score_components=state.get("drop_score_components"),
                 )
             except Exception:
                 new_score = 0.0

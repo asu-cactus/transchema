@@ -46,6 +46,11 @@ class MCTSGraphState(TypedDict):
                                        # occurrences / (occurrences + credibility_k), auto-selected by
                                        # --length via get_length_score_weights() alongside score_weights/
                                        # column_type_weights. No CLI override (length-based only).
+    drop_score_components: Any        # frozenset of score_1 component names (see
+                                       # eval_score_value_based.SCORE_1_COMPONENTS) to force out of
+                                       # score_1's weighted average (det_score_value mode only), or None
+                                       # = drop nothing. Set via --drop_score_components; reward-function
+                                       # ablation switch (Ablation Plan §1: "w/o s_fd" etc.).
     experiment_name: str             # label for saved scripts
     case_id: str                     # e.g. "2_5" for length2_5
 
