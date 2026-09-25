@@ -1,0 +1,46 @@
+{
+  "case": "4_68",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6656,
+        "cost": 0.009057599999999999,
+        "latency": 177.65519285202026,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.331) / 2 = 0.666 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.025.\nGround truth candidate keys: {b}; {c}; {school_name}; {d}; {e}.\nGenerated table candidate keys: {b}; {c}; {school_name}; {d}; {e}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'b': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 182329.0, max: 22667121.0, mean: 8676744.125\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\n  Column 'c': range overlap=0.098, JS similarity=0.442\n    Generated    \u2014 min: 182329.0, max: 22667121.0, mean: 8676744.125\n    Ground Truth \u2014 min: 917500.0, max: 3124928.0, mean: 1789628.0\n  Column 'd': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 182329.0, max: 22667121.0, mean: 8676744.125\n    Ground Truth \u2014 min: 76.6294, max: 83.3595, mean: 80.0974\n  Column 'e': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 182329.0, max: 22667121.0, mean: 8676744.125\n    Ground Truth \u2014 min: 80.8582, max: 83.9895, mean: 82.4551\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+        "generated_samples": "Schema: ['school_name', 'a', 'b', 'c', 'd', 'e']\nNumber of Tuples: 8\nExamples:\n       school_name        a        b           c        d        e\nThomas High School  Charter  2673225  1705517550 137093.0 136389.0\nWright High School  Charter  3240000  1888920000 151119.0 150628.0\nBailey High School District 16231712 10193515136 264634.0 251241.0",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_68/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_68/training_1.csv\", index_col=0)\n\n# Join Source4_68_0 and Source4_68_1 on 'school_name'\njoined = pd.merge(source0, source1, on=\"school_name\", how=\"inner\")\n\n# Group by school_name and type (which corresponds to target columns 'school_name' and 'a')\n# Aggregations:\n# sum of size -> target column 'b' (integer)\n# sum of budget -> target column 'c' (integer)\n# sum of reading_score -> target column 'd' (float)\n# sum of math_score -> target column 'e' (float)\nagg = joined.groupby([\"school_name\", \"type\"], as_index=False).agg({\n    \"size\": \"sum\",\n    \"budget\": \"sum\",\n    \"reading_score\": \"sum\",\n    \"math_score\": \"sum\"\n})\n\n# Rename columns to match target schema\nagg = agg.rename(columns={\n    \"school_name\": \"school_name\",\n    \"type\": \"a\",\n    \"size\": \"b\",\n    \"budget\": \"c\",\n    \"reading_score\": \"d\",\n    \"math_score\": \"e\"\n})\n\n# Ensure correct dtypes as per target schema\nagg[\"school_name\"] = agg[\"school_name\"].astype(str)\nagg[\"a\"] = agg[\"a\"].astype(str)\nagg[\"b\"] = agg[\"b\"].astype(int)\nagg[\"c\"] = agg[\"c\"].astype(int)\nagg[\"d\"] = agg[\"d\"].astype(float)\nagg[\"e\"] = agg[\"e\"].astype(float)\n\n# Reorder columns to match target schema order\nagg = agg[[\"school_name\", \"a\", \"b\", \"c\", \"d\", \"e\"]]\n\n# Save to target path\nagg.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_68/target_multisource.csv\", index=False)",
+        "generated_csv_head": "school_name,a,b,c,d,e\nBailey High School,District,16231712,10193515136,264634.0,251241.0\nFord High School,District,7502121,4831365924,221164.0,211184.0\nHolden High School,Charter,182329,105933149,35789.0,35784.0\nJohnson High School,District,22667121,14733628650,385481.0,366942.0\nPena High School,Charter,925444,563595396,80851.0,80654.0\nRodriguez High School,District,15992001,10186904637,322898.0,307294.0\nThomas High School,Charter,2673225,1705517550,137093.0,136389.0\nWright High School,Charter,3240000,1888920000,151119.0,150628.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.524209976196289
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7893,
+          "cost": 0.002704,
+          "latency": 11.40379548072815,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.579) / 2 = 0.789 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.721, range overlap=0.488.\nGround truth candidate keys: {b}; {c}; {school_name}; {d}; {e}.\nGenerated table candidate keys: {b}; {c}; {school_name}; {d}; {e}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'b': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 182329.0, max: 22667121.0, mean: 8676744.125\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\n  Column 'c': range overlap=0.098, JS similarity=0.442\n    Generated    \u2014 min: 182329.0, max: 22667121.0, mean: 8676744.125\n    Ground Truth \u2014 min: 917500.0, max: 3124928.0, mean: 1789628.0\n  Column 'd': range overlap=0.904, JS similarity=1.000\n    Generated    \u2014 min: 76.8427, max: 83.8399, mean: 80.3478\n    Ground Truth \u2014 min: 76.6294, max: 83.3595, mean: 80.0974\n  Column 'e': range overlap=0.949, JS similarity=1.000\n    Generated    \u2014 min: 80.7447, max: 84.0447, mean: 82.4059\n    Ground Truth \u2014 min: 80.8582, max: 83.9895, mean: 82.4551\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+          "generated_samples": "Schema: ['school_name', 'a', 'b', 'c', 'd', 'e']\nNumber of Tuples: 8\nExamples:\n        school_name        a        b           c         d         e\n   Pena High School  Charter   925444   563595396 84.044699 83.839917\n Holden High School  Charter   182329   105933149 83.814988 83.803279\nJohnson High School District 22667121 14733628650 80.966394 77.072464",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_68/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_68/training_1.csv\", index_col=0)\n\n# Join on school_name\ndf = pd.merge(source0, source1, on=\"school_name\", how=\"inner\")\n\n# Group by school_name\n# Aggregations:\n# - a: first(type)\n# - b: sum(size)\n# - c: sum(budget)\n# - d: mean(reading_score)\n# - e: mean(math_score)\nagg_df = df.groupby(\"school_name\").agg({\n    \"type\": \"first\",\n    \"size\": \"sum\",\n    \"budget\": \"sum\",\n    \"reading_score\": \"mean\",\n    \"math_score\": \"mean\"\n}).reset_index()\n\n# Rename columns to match target schema\nagg_df = agg_df.rename(columns={\n    \"type\": \"a\",\n    \"size\": \"b\",\n    \"budget\": \"c\",\n    \"reading_score\": \"d\",\n    \"math_score\": \"e\"\n})\n\n# Ensure correct column order as per target schema\nagg_df = agg_df[[\"school_name\", \"a\", \"b\", \"c\", \"d\", \"e\"]]\n\n# Write output\nagg_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_68/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.4200210571289062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 220605.49402236938,
+        "critique": 11518.630266189575
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "4_75",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8964,
+        "cost": 0.0020480000000000003,
+        "latency": 10.208395719528198,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.793) / 2 = 0.896 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.721, range overlap=0.657.\nGround truth candidate keys: {b}; {type}; {a}.\nGenerated table candidate keys: {b}; {type}; {a}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'a': range overlap=0.938, JS similarity=1.000\n    Generated    \u2014 min: 77.0043, max: 83.635, mean: 80.3196\n    Ground Truth \u2014 min: 76.9661, max: 83.2564, mean: 80.1113\n  Column 'b': range overlap=0.377, JS similarity=0.442\n    Generated    \u2014 min: 77.0043, max: 83.635, mean: 80.3196\n    Ground Truth \u2014 min: 81.037, max: 83.8886, mean: 82.4628",
+        "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type           a         b\nDistrict 3853.714286 77.004336\n Charter 1524.250000 83.634950",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_75/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_75/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['type': string, 'a': float, 'b': float]\n# Target examples show 'type' as school type (e.g., Charter, District)\n# 'a' and 'b' are float values close to 80-85 range.\n#\n# Source0 has 'type' (school type), 'size', 'budget' per school.\n# Source1 has student scores by school_name.\n#\n# We want to produce a table grouped by 'type' with two aggregated float columns 'a' and 'b'.\n#\n# Hypothesis:\n# - 'a' corresponds to average 'size' of schools of that type (from Source0)\n# - 'b' corresponds to average math_score of students in schools of that type (from Source1)\n#\n# Steps:\n# 1. From Source0, group by 'type' and get average 'size' as 'a'.\n# 2. From Source1, join with Source0 on 'school_name' to get 'type' for each student.\n# 3. From joined data, group by 'type' and get average 'math_score' as 'b'.\n# 4. Join the two aggregated results on 'type'.\n# 5. Output final dataframe with columns ['type', 'a', 'b'] matching target schema and types.\n\n# Step 1: Aggregate Source0 by 'type' to get average 'size' as 'a'\nagg_source0 = df_source0.groupby('type', as_index=False)['size'].mean()\nagg_source0.rename(columns={'size': 'a'}, inplace=True)\n\n# Step 2: Join Source1 with Source0 on 'school_name' to get 'type' for each student\n# Prepare a mapping from school_name to type from Source0\nschool_type_map = df_source0[['school_name', 'type']]\n\n# Merge Source1 with school_type_map on 'school_name'\ndf_joined = pd.merge(df_source1, school_type_map, on='school_name', how='inner')\n\n# Step 3: Aggregate joined data by 'type' to get average 'math_score' as 'b'\nagg_source1 = df_joined.groupby('type', as_index=False)['math_score'].mean()\nagg_source1.rename(columns={'math_score': 'b'}, inplace=True)\n\n# Step 4: Join the two aggregated results on 'type'\ndf_target = pd.merge(agg_source0, agg_source1, on='type', how='inner')\n\n# Step 5: Ensure correct data types as per target schema\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['a'] = df_target['a'].astype(float)\ndf_target['b'] = df_target['b'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "type,a,b\nCharter,1524.25,83.63495024875621\nDistrict,3853.714285714286,77.00433574961046\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3499259948730469
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.99,
+          "cost": 0.0014348,
+          "latency": 4.197547912597656,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.980) / 2 = 0.990 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.940.\nGround truth candidate keys: {b}; {type}; {a}.\nGenerated table candidate keys: {b}; {type}; {a}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'a': range overlap=0.938, JS similarity=1.000\n    Generated    \u2014 min: 77.0043, max: 83.635, mean: 80.3196\n    Ground Truth \u2014 min: 76.9661, max: 83.2564, mean: 80.1113\n  Column 'b': range overlap=0.943, JS similarity=1.000\n    Generated    \u2014 min: 80.9008, max: 83.9245, mean: 82.4127\n    Ground Truth \u2014 min: 81.037, max: 83.8886, mean: 82.4628",
+          "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type         a         b\n Charter 83.924544 83.634950\nDistrict 80.900820 77.004336",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_75/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_75/training_1.csv\", index_col=0)\n\n# Join Source1 and Source0 on school_name\njoined = pd.merge(source1, source0, on=\"school_name\", how=\"inner\")\n\n# Group by 'type' and aggregate mean of reading_score and math_score\nresult = joined.groupby(\"type\", as_index=False).agg({\n    \"reading_score\": \"mean\",\n    \"math_score\": \"mean\"\n})\n\n# Rename columns to match target schema\nresult.rename(columns={\"reading_score\": \"a\", \"math_score\": \"b\"}, inplace=True)\n\n# Write output to the specified file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0838508605957031
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10272.034883499146,
+        "critique": 4286.075830459595
+      }
+    }
+  ]
+}

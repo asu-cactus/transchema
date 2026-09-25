@@ -1,0 +1,46 @@
+{
+  "case": "9_32",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7791,
+        "cost": 0.0129948,
+        "latency": 24.27000403404236,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.558) / 2 = 0.779 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.646, range overlap=0.471.\nGround truth candidate keys: {VISITS_NUM}.\nGenerated table candidate keys: {VISITS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'VISITS_NUM': range overlap=0.471, JS similarity=0.646\n    Generated    \u2014 min: 1.0, max: 25.0, mean: 4.7084\n    Ground Truth \u2014 min: 1.0, max: 52.0, mean: 9.0332",
+        "generated_samples": "Schema: ['VISITS_NUM']\nNumber of Tuples: 2641\nExamples:\n VISITS_NUM\n          3\n         12\n          2",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_9.csv\", index_col=0)\n\n# According to operation_history, perform joins in the specified order on ROW_WID\n\n# 1) Join Source9_32_0 and Source9_32_1 on ROW_WID\njoin_0_1 = pd.merge(source0, source1, on=\"ROW_WID\", how=\"inner\")\n\n# 2) Join the result with Source9_32_2 on ROW_WID\njoin_0_1_2 = pd.merge(join_0_1, source2, on=\"ROW_WID\", how=\"inner\")\n\n# 3) Join the result with Source9_32_3 on ROW_WID\njoin_0_1_2_3 = pd.merge(join_0_1_2, source3, on=\"ROW_WID\", how=\"inner\")\n\n# 4) Join the result with Source9_32_9 on ROW_WID\nfinal_join = pd.merge(join_0_1_2_3, source9, on=\"ROW_WID\", how=\"inner\")\n\n# The target table schema is ['VISITS_NUM': integer]\n# VISITS_NUM is present in source1 and thus in the joined dataframe as 'VISITS_NUM'\n\n# Select only the VISITS_NUM column for the target output\ntarget_df = final_join[[\"VISITS_NUM\"]].copy()\n\n# Ensure VISITS_NUM is integer type as per target schema\ntarget_df[\"VISITS_NUM\"] = target_df[\"VISITS_NUM\"].astype(int)\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/target_multisource.csv\", index=False)",
+        "generated_csv_head": "VISITS_NUM\n11\n5\n4\n4\n13\n5\n10\n10\n3\n4\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0242462158203125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0035072000000000002,
+          "latency": 13.931546926498413,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {VISITS_NUM}.\nGenerated table candidate keys: {VISITS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'VISITS_NUM': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 9718.0, max: 9718.0, mean: 9718.0\n    Ground Truth \u2014 min: 1.0, max: 52.0, mean: 9.0332",
+          "generated_samples": "Schema: ['VISITS_NUM']\nNumber of Tuples: 1\nExamples:\n VISITS_NUM\n       9718",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0 as instructed\nsource_0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_0.csv\", index_col=0)\nsource_1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_1.csv\", index_col=0)\nsource_2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_2.csv\", index_col=0)\nsource_3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_3.csv\", index_col=0)\nsource_4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_4.csv\", index_col=0)\nsource_5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_5.csv\", index_col=0)\nsource_6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_6.csv\", index_col=0)\nsource_7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_7.csv\", index_col=0)\nsource_8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_8.csv\", index_col=0)\nsource_9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/training_9.csv\", index_col=0)\n\n# Step 1: UNION the four sources with the same schema (source_5,6,7,8)\nunion_5_6_7_8 = pd.concat([source_5, source_6, source_7, source_8], ignore_index=True)\n\n# Step 2: JOIN union_5_6_7_8 with source_0 on ROW_WID\njoin_1 = pd.merge(union_5_6_7_8, source_0, on=\"ROW_WID\", how=\"inner\")\n\n# Step 3: JOIN with source_1 on ROW_WID\njoin_2 = pd.merge(join_1, source_1, on=\"ROW_WID\", how=\"inner\")\n\n# Step 4: JOIN with source_2 on ROW_WID\njoin_3 = pd.merge(join_2, source_2, on=\"ROW_WID\", how=\"inner\")\n\n# Step 5: JOIN with source_3 on ROW_WID\njoin_4 = pd.merge(join_3, source_3, on=\"ROW_WID\", how=\"inner\")\n\n# Step 6: JOIN with source_4 on ROW_WID\njoin_5 = pd.merge(join_4, source_4, on=\"ROW_WID\", how=\"inner\")\n\n# Step 7: JOIN with source_9 on ROW_WID\njoin_6 = pd.merge(join_5, source_9, on=\"ROW_WID\", how=\"inner\")\n\n# The target schema is only ['VISITS_NUM'], so we aggregate VISITS_NUM by sum (no group by)\n# Because no key or group by columns exist in target, aggregate all rows into one sum\nresult = pd.DataFrame()\nresult[\"VISITS_NUM\"] = [join_6[\"VISITS_NUM\"].sum()]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_32/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.5962848663330078
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 24340.444803237915,
+        "critique": 14173.780918121338
+      }
+    }
+  ]
+}

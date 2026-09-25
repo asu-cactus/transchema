@@ -1,0 +1,29 @@
+{
+  "case": "1_55",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0014924,
+        "latency": 3.1995906829833984,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHJ4\n IGHJ4\n IGHJ4",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_55/training_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Target schema: ['V_GENE']\n# Source schema: ['J_CALL']\n# The target column V_GENE corresponds to the part of J_CALL before the '*' character.\n# Extract the substring before '*' from J_CALL to create V_GENE.\n\nsource0_df['V_GENE'] = source0_df['J_CALL'].str.split('*').str[0]\n\n# Select only the target column\ntarget_df = source0_df[['V_GENE']]\n\n# Write the transformed data to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_55/target_multisource.csv\", index=False)",
+        "generated_csv_head": "V_GENE\nIGHJ4\nIGHJ3\nIGHJ4\nIGHJ6\nIGHJ6\nIGHJ4\nIGHJ5\nIGHJ5\nIGHJ4\nIGHJ6\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6582012176513672
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 3204.169273376465,
+        "critique": 0.0
+      }
+    }
+  ]
+}

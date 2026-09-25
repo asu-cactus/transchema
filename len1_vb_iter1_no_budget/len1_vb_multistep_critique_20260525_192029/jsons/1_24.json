@@ -1,0 +1,46 @@
+{
+  "case": "1_24",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7474,
+        "cost": 0.0015812000000000003,
+        "latency": 5.179324626922607,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.495) / 2 = 0.747 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.490, range overlap=0.500.\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'click': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.524\n    Ground Truth \u2014 min: 246.0, max: 253.0, mean: 249.5",
+        "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 500\nExamples:\n condition  click\n         1      0\n         1      0\n         1      0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_24/training_0.csv\"\n]\n\n# List to hold dataframes\ndfs = []\n\n# Load each source CSV file with index_col=0 to ignore the first numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# Since all source tables have the same schema as the target ['condition', 'click'],\n# we can union (concatenate) them directly.\n# Here, we have only one source table, so just use it directly.\n# If there were multiple, we would concat them.\n\n# Concatenate all source dataframes (union)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target schema requires 'condition' and 'click' as integers.\n# Ensure the data types are integer.\ntarget_df['condition'] = target_df['condition'].astype(int)\ntarget_df['click'] = target_df['click'].astype(int)\n\n# Write the result to the target CSV file path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_24/target_multisource.csv\", index=False)",
+        "generated_csv_head": "condition,click\n0,0\n1,1\n1,1\n0,0\n1,0\n1,0\n0,1\n0,0\n1,0\n0,0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9984970092773438
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.75,
+          "cost": 0.0014144000000000001,
+          "latency": 7.66371488571167,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.500) / 2 = 0.750 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.500, range overlap=0.500.\nGround truth candidate keys: {condition}; {click}.\nGenerated table candidate keys: {condition}; {click}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'click': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.5\n    Ground Truth \u2014 min: 246.0, max: 253.0, mean: 249.5",
+          "generated_samples": "Schema: ['condition', 'click']\nNumber of Tuples: 2\nExamples:\n condition  click\n         0     20\n         1     29",
+          "code": "import pandas as pd\n\n# Read source table\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_24/training_0.csv\", index_col=0)\n\n# Group by 'condition' and sum 'click'\nresult = df0.groupby('condition', as_index=False).agg({'click': 'sum'})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_24/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9775161743164062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5184.192657470703,
+        "critique": 7694.220542907715
+      }
+    }
+  ]
+}

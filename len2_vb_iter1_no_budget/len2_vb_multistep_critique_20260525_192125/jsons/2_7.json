@@ -1,0 +1,46 @@
+{
+  "case": "2_7",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6112,
+        "cost": 0.0052144,
+        "latency": 10.50037932395935,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.222) / 2 = 0.611 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.975, range overlap=0.000.\nGround truth candidate keys: {contributor_firstname, contributor_lastname}.\nGenerated table candidate keys: {contributor_firstname, contributor_lastname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount': range overlap=0.000, JS similarity=0.975\n    Generated    \u2014 min: -1000.0, max: 9500000.0, mean: 4471.5798\n    Ground Truth \u2014 min: 0.0, max: 2296.64, mean: 580.1437\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'contributor_firstname': Jaccard=0.070\n  Column 'contributor_lastname': Jaccard=0.109",
+        "generated_samples": "Schema: ['contributor_firstname', 'contributor_lastname', 'amount']\nNumber of Tuples: 8893\nExamples:\ncontributor_firstname contributor_lastname  amount\n                CATHY             DREYFUSS   200.0\n                 GENE              OSBORNE    60.0\n               ALEXIS             LASHERAS   200.0",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_7/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_7/training_1.csv\"\n\nsource0 = pd.read_csv(source0_path, index_col=0)\nsource1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source2_7_0 and Source2_7_1 on \"calaccess_committee_id\"\njoined = pd.merge(\n    source0,\n    source1,\n    how=\"inner\",\n    on=\"calaccess_committee_id\",\n    suffixes=('_0', '_1')\n)\n\n# Operation 2: GROUP BY Source2_7_1.contributor_firstname, Source2_7_1.contributor_lastname\n# and aggregate sum of Source2_7_1.amount\n\n# Note: contributor_firstname and contributor_lastname come from source1 (joined columns with suffix _1)\ngrouped = (\n    joined\n    .groupby(['contributor_firstname', 'contributor_lastname'], as_index=False)\n    .agg({'amount': 'sum'})\n)\n\n# Ensure the target schema and types:\n# ['contributor_firstname': string, 'contributor_lastname': string, 'amount': float]\n\n# Convert contributor_firstname and contributor_lastname to string explicitly\ngrouped['contributor_firstname'] = grouped['contributor_firstname'].astype(str)\ngrouped['contributor_lastname'] = grouped['contributor_lastname'].astype(str)\n# amount should already be float from sum aggregation, but enforce float type\ngrouped['amount'] = grouped['amount'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_7/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "contributor_firstname,contributor_lastname,amount\nA. JERROLD,PERENCHIO,200000.0\nA. JERROLD,PERENCHIO AND AFFILIATED ENTITIES,500000.0\nA. PETER,DAVIES,20000.0\nAARON,BEITCH,570.0\nAARON,BOOTH,185.0\nAARON,GROSSBARD,30.0\nAARON,JACOBSON,216.0\nAARON,JUSTIS,250.0\nAARON,MINICK,25.0\nAARON,MULLEN,150.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6608238220214844
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6095,
+          "cost": 0.0017684,
+          "latency": 7.571864128112793,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.219) / 2 = 0.610 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.954, range overlap=0.000.\nGround truth candidate keys: {contributor_firstname, contributor_lastname}.\nGenerated table candidate keys: {contributor_firstname, contributor_lastname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount': range overlap=0.000, JS similarity=0.954\n    Generated    \u2014 min: -1000.0, max: 19861452.0, mean: 31443.8136\n    Ground Truth \u2014 min: 0.0, max: 2296.64, mean: 580.1437\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'contributor_firstname': Jaccard=0.070\n  Column 'contributor_lastname': Jaccard=0.109",
+          "generated_samples": "Schema: ['contributor_firstname', 'contributor_lastname', 'amount']\nNumber of Tuples: 10098\nExamples:\ncontributor_firstname   contributor_lastname  amount\n               EDWARD                 LEHMAN     100\n                DEREK                 SAYTON     100\n                  NaN YOUNG'S MARKET COMPANY   25000",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_7/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_7/training_1.csv\", index_col=0)\n\n# Join Source2_7_0 and Source2_7_1 on calaccess_committee_id (inner join)\njoined = pd.merge(\n    source0,\n    source1,\n    how=\"inner\",\n    left_on=\"calaccess_committee_id\",\n    right_on=\"calaccess_committee_id\",\n    suffixes=(\"\", \"_r\")\n)\n\n# Group by contributor_firstname and contributor_lastname, sum the amount\nresult = joined.groupby(\n    [\"contributor_firstname\", \"contributor_lastname\"], dropna=False, as_index=False\n).agg({\"amount\": \"sum\"})\n\n# Write output with exact target schema column names\nresult.to_csv(\n    \"autopipeline-benchmarks/github-pipelines/length2_7/target_multisource_critique_history.csv\",\n    index=False,\n)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.5838146209716797
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10563.134908676147,
+        "critique": 8728.76262664795
+      }
+    }
+  ]
+}

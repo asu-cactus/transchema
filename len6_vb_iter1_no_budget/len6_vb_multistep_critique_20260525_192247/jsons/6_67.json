@@ -1,0 +1,29 @@
+{
+  "case": "6_67",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0036119999999999998,
+        "latency": 9.11562705039978,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=1.000.\nGround truth candidate keys: {air_store_id, dow}.\nGenerated table candidate keys: {air_store_id, dow}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['air_store_id', 'dow']\nNumber of Tuples: 5337\nExamples:\n        air_store_id  dow\nair_b30fffd7ab1e75a5    2\nair_00a91d42b08b08d9    6\nair_a38f25e3399d1b25    6",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length6_67/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_67/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_67/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_67/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_67/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_67/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_67/training_6.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# According to operation_history: UNION all source tables\n# All source tables have the same schema ['air_store_id', 'dow'], so union is valid\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure the schema and types match the target schema:\n# Target schema: ['air_store_id': string, 'dow': integer]\nunion_df['air_store_id'] = union_df['air_store_id'].astype(str)\nunion_df['dow'] = union_df['dow'].astype(int)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length6_67/target_multisource.csv\"\nunion_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "air_store_id,dow\nair_00a91d42b08b08d9,3\nair_0164b9927d20bcc3,3\nair_0241aa3964b7f861,3\nair_0328696196e46f18,3\nair_034a3d5b40d5b1b1,3\nair_036d4f1ee7285390,3\nair_0382c794b73b51ad,3\nair_03963426c9312048,3\nair_04341b588bde96cd,3\nair_049f6d5b402a31b2,3\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9932518005371094
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 9182.13438987732,
+        "critique": 0.0
+      }
+    }
+  ]
+}

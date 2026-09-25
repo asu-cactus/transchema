@@ -1,0 +1,46 @@
+{
+  "case": "9_31",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.018028,
+        "latency": 22.319302320480347,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {HOME_PASSED}.\nGenerated table candidate keys: {HOME_PASSED}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'HOME_PASSED': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 38276974.0, max: 38276974.0, mean: 38276974.0\n    Ground Truth \u2014 min: 2.0, max: 4892.0, mean: 1334.8983",
+        "generated_samples": "Schema: ['HOME_PASSED']\nNumber of Tuples: 1\nExamples:\n HOME_PASSED\n    38276974",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_5.csv\", index_col=0)\n\n# Step 1: UNION of Source9_31_0, Source9_31_1, Source9_31_3, Source9_31_5\n# These four sources share the same schema (all columns listed in prompt)\n# We only need the HOME_PASSED column for final aggregation, but keep all columns for joins\nunion_0135 = pd.concat([source0, source1, source3, source5], ignore_index=True)\n\n# Step 2: JOIN Source9_31_0 and Source9_31_2 on ROW_WID\n# source0 has ROW_WID, source2 has ROW_WID and INTERACTIONS_NUM\njoin_0_2 = pd.merge(source0, source2, how='inner', left_on='ROW_WID', right_on='ROW_WID')\n\n# Step 3: UNION with empty list (no operation, skip)\n\n# Step 4: JOIN Source9_31_1 and Source9_31_2 on ROW_WID\njoin_1_2 = pd.merge(source1, source2, how='inner', left_on='ROW_WID', right_on='ROW_WID')\n\n# Step 5: JOIN Source9_31_0 and Source9_31_4 on ROW_WID\njoin_0_4 = pd.merge(source0, source4, how='inner', left_on='ROW_WID', right_on='ROW_WID')\n\n# Step 6: Aggregation (sum) of HOME_PASSED from Source9_31_0, Source9_31_1, Source9_31_3, Source9_31_5\n# Since union_0135 contains all these rows, sum HOME_PASSED directly from union_0135\n\n# Sum HOME_PASSED from each source separately to match the aggregation plan:\nsum_home_passed_0 = source0['HOME_PASSED'].sum()\nsum_home_passed_1 = source1['HOME_PASSED'].sum()\nsum_home_passed_3 = source3['HOME_PASSED'].sum()\nsum_home_passed_5 = source5['HOME_PASSED'].sum()\n\ntotal_home_passed = sum_home_passed_0 + sum_home_passed_1 + sum_home_passed_3 + sum_home_passed_5\n\n# The target table schema is only HOME_PASSED (integer)\n# The target examples show multiple rows, so we need to produce a DataFrame with HOME_PASSED column\n# The aggregation plan does not specify grouping columns, so we produce a single-row DataFrame with the total sum\n\ntarget_df = pd.DataFrame({'HOME_PASSED': [total_home_passed]})\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/target_multisource.csv\", index=False)",
+        "generated_csv_head": "HOME_PASSED\n38276974\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8523464202880859
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0032827999999999998,
+          "latency": 13.603466749191284,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {HOME_PASSED}.\nGenerated table candidate keys: {HOME_PASSED}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'HOME_PASSED': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 2885070.0, max: 2885070.0, mean: 2885070.0\n    Ground Truth \u2014 min: 2.0, max: 4892.0, mean: 1334.8983",
+          "generated_samples": "Schema: ['HOME_PASSED']\nNumber of Tuples: 1\nExamples:\n HOME_PASSED\n     2885070",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/training_9.csv\", index_col=0)\n\n# UNION the four source tables with the same schema\nunioned = pd.concat([source0, source1, source3, source5], ignore_index=True)\n\n# JOIN unioned with each aspect table on ROW_WID\nunioned = unioned.merge(source2, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source4, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source6, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source7, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source8, on=\"ROW_WID\", how=\"inner\")\nunioned = unioned.merge(source9, on=\"ROW_WID\", how=\"inner\")\n\n# Aggregate sum of HOME_PASSED (no group by columns)\nresult = pd.DataFrame({\"HOME_PASSED\": [unioned[\"HOME_PASSED\"].sum()]})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_31/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.812530517578125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 22415.23241996765,
+        "critique": 13836.97533607483
+      }
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+Case: 1_2
+Status: CORRECT
+Timestamp: 2026-02-24T13:17:34.133027
+Duration: 330.70 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_0_30/case_1_2/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['starttime', 'stoptime', 'start station id', 'end station id', 'bikeid', 'usertype', 'birth year', 'gender', 'tripduration', 'start station name', 'start station latitude', 'start station longitude', 'end station name', 'end station latitude', 'end station longitude']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_2
+2. Target Schema: ['tripduration': integer, 'starttime': string, 'stoptime': string, 'start station id': integer, 'start station name': string, 'start station latitude': float, 'start station longitude': float, 'end station id': integer, 'end station name': string, 'end station latitude': float, 'end station longitude': float, 'bikeid': integer, 'usertype': string, 'birth year': integer, 'gender': integer]
+3. Target Examples: There are 54924 available target examples:        tripduration                 starttime                  stoptime  \
+47006           438  2018-06-14 07:14:43.7730  2018-06-14 07:22:02.4340   
+17001           258  2018-05-21 08:03:36.3610  2018-05-21 08:07:55.2260   
+19194           682  2018-05-23 10:11:48.5310  2018-05-23 10:23:11.2900   
+23719           144  2018-05-28 20:09:10.7890  2018-05-28 20:11:35.2630   
+4825            285  2018-05-10 19:49:03.3950  2018-05-10 19:53:48.5340   
+...             ...                       ...                       ...   
+25703           404  2018-05-03 23:52:03.5390  2018-05-03 23:58:47.9420   
+28636           506  2018-05-30 07:57:31.0350  2018-05-30 08:05:58.0110   
+16283           227  2018-05-25 09:38:55.2200  2018-05-25 09:42:42.4750   
+33808           789  2018-05-09 10:39:27.5170  2018-05-09 10:52:37.1470   
+21397           671  2018-05-31 19:37:57.2410  2018-05-31 19:49:09.0800   
+
+       start station id start station name  start station latitude  \
+47006              3195            Sip Ave               40.730743   
+17001              3205  JC Medical Center               40.716540   
+19194              3210     Pershing Field               40.742677   
+23719              3267       Morris Canal               40.712419   
+4825               3186      Grove St PATH               40.719586   
+...                 ...                ...                     ...   
+25703              3272       Jersey & 3rd               40.723332   
+28636              3276   Marin Light Rail               40.714584   
+16283              3203      Hamilton Park               40.727596   
+33808              3679         Bergen Ave               40.722104   
+21397              3213     Van Vorst Park               40.718489   
+
+       start station longitude  end station id end station name  \
+47006               -74.063784            3194  McGinley Square   
+17001               -74.049638            3272     Jersey & 3rd   
+19194               -74.051789            3202     Newport PATH   
+23719               -74.038526            3681         Grand St   
+4825                -74.043117            3203    Hamilton Park   
+...                        ...             ...              ...   
+25703               -74.045953            3272     Jersey & 3rd   
+28636               -74.042817            3202     Newport PATH   
+16283               -74.044247            3186    Grove St PATH   
+33808               -74.071455            3186    Grove St PATH   
+21397               -74.047727            3678    Fairmount Ave   
+
+       end station latitude  end station longitude  bikeid    usertype  \
+47006             40.725340             -74.067622   26249  Subscriber   
+17001             40.723332             -74.045953   29262  Subscriber   
+19194             40.727224             -74.033759   26306  Subscriber   
+23719             40.715178             -74.037683   33610  Subscriber   
+4825              40.727596             -74.044247   33626  Subscriber   
+...                     ...                    ...     ...         ...   
+25703             40.723332             -74.045953   29600  Subscriber   
+28636             40.727224             -74.033759   33559  Subscriber   
+16283             40.719586             -74.043117   29298  Subscriber   
+33808             40.719586             -74.043117   29435  Subscriber   
+21397             40.725726             -74.071959   26223  Subscriber   
+
+       birth year  gender  
+47006        1960       1  
+17001        1988       1  
+19194        1981       1  
+23719        1958       1  
+4825         1987       1  
+...           ...     ...  
+25703        1968       1  
+28636        1979       2  
+16283        1977       1  
+33808        1996       2  
+21397        1982       1  
+
+[5492 rows x 15 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_2_0
+	Source 0 Schema: ['tripduration', 'starttime', 'stoptime', 'start station id', 'start station name', 'start station latitude', 'start station longitude', 'end station id', 'end station name', 'end station latitude', 'end station longitude', 'bikeid', 'usertype', 'birth year', 'gender']
+	Source 0 Examples: 	 Source 0 contains 20468 tuples, with examples as follows: 
+   tripduration                 starttime                  stoptime  \
+0           329  2018-06-01 07:07:00.2990  2018-06-01 07:12:30.2220   
+1           259  2018-06-01 08:24:43.8490  2018-06-01 08:29:03.8450   
+2           686  2018-06-01 09:17:49.5730  2018-06-01 09:29:16.1770   
+
+   start station id start station name  start station latitude  \
+0              3183     Exchange Place               40.716247   
+1              3183     Exchange Place               40.716247   
+2              3183     Exchange Place               40.716247   
+
+   start station longitude  end station id  end station name  \
+0               -74.033459            3276  Marin Light Rail   
+1               -74.033459            3267      Morris Canal   
+2               -74.033459            3202      Newport PATH   
+
+   end station latitude  end station longitude  bikeid    usertype  \
+0             40.714584             -74.042817   29513  Subscriber   
+1             40.712419             -74.038526   26221  Subscriber   
+2             40.727224             -74.033759   29266  Subscriber   
+
+   birth year  gender  
+0        1991       1  
+1        1989       2  
+2        1990       1  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_2_1
+	Source 1 Schema: ['tripduration', 'starttime', 'stoptime', 'start station id', 'start station name', 'start station latitude', 'start station longitude', 'end station id', 'end station name', 'end station latitude', 'end station longitude', 'bikeid', 'usertype', 'birth year', 'gender']
+	Source 1 Examples: 	 Source 1 contains 34456 tuples, with examples as follows: 
+   tripduration                 starttime                  stoptime  \
+0           131  2018-05-01 07:29:57.5490  2018-05-01 07:32:08.6160   
+1            73  2018-05-01 08:13:58.2560  2018-05-01 08:15:11.9230   
+2          4929  2018-05-01 08:17:21.3110  2018-05-01 09:39:31.0770   
+
+   start station id start station name  start station latitude  \
+0              3183     Exchange Place               40.716247   
+1              3183     Exchange Place               40.716247   
+2              3183     Exchange Place               40.716247   
+
+   start station longitude  end station id end station name  \
+0               -74.033459            3184      Paulus Hook   
+1               -74.033459            3184      Paulus Hook   
+2               -74.033459            3183   Exchange Place   
+
+   end station latitude  end station longitude  bikeid    usertype  \
+0             40.714145             -74.033552   29617  Subscriber   
+1             40.714145             -74.033552   29288  Subscriber   
+2             40.716247             -74.033459   29520    Customer   
+
+   birth year  gender  
+0        1966       1  
+1        1975       1  
+2        1969       0  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_2/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

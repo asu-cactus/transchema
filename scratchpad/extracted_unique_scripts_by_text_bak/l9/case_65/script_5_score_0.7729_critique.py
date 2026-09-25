@@ -1,0 +1,29 @@
+import pandas as pd
+
+paths = [
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_0.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_1.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_2.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_3.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_4.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_5.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_6.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_7.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_8.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_65/training_9.csv"
+]
+
+dfs = [pd.read_csv(p, index_col=0) for p in paths]
+result = pd.concat(dfs, ignore_index=True)
+
+# Remove duplicates by grouping by all columns (equivalent to drop_duplicates)
+result = result.drop_duplicates(subset=['admit', 'gre', 'gpa', 'prestige'])
+
+result = result.astype({
+    'admit': 'int64',
+    'gre': 'int64',
+    'gpa': 'float64',
+    'prestige': 'int64'
+})
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length9_65/target_multisource_mcts.csv", index=False)

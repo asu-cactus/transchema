@@ -1,0 +1,125 @@
+Case: 1_88
+Status: CORRECT
+Timestamp: 2026-02-24T04:31:38.707822
+Duration: 55.11 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_88/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route', 'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops', 'Additional_Info', 'Price']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_88
+2. Target Schema: ['Airline': string, 'Date_of_Journey': string, 'Source': string, 'Destination': string, 'Route': string, 'Dep_Time': string, 'Arrival_Time': string, 'Duration': string, 'Total_Stops': string, 'Additional_Info': string, 'Price': integer]
+3. Target Examples: There are 5341 available target examples:                 Airline Date_of_Journey    Source Destination  \
+4842        Jet Airways       9/03/2019     Delhi      Cochin   
+1963        Jet Airways      27/05/2019     Delhi      Cochin   
+1158          Air India      24/03/2019  Banglore   New Delhi   
+2578  Multiple carriers      18/05/2019     Delhi      Cochin   
+4401        Jet Airways       3/06/2019     Delhi      Cochin   
+...                 ...             ...       ...         ...   
+355              IndiGo       1/06/2019  Banglore       Delhi   
+1835        Jet Airways      27/06/2019     Delhi      Cochin   
+1732        Jet Airways      24/03/2019   Kolkata    Banglore   
+2           Jet Airways       9/06/2019     Delhi      Cochin   
+1054  Multiple carriers      15/06/2019     Delhi      Cochin   
+
+                      Route Dep_Time  Arrival_Time Duration Total_Stops  \
+4842        DEL → BOM → COK    00:20  04:25 10 Mar   28h 5m      1 stop   
+1963        DEL → BOM → COK    19:45  04:25 28 May   8h 40m      1 stop   
+1158              BLR → DEL    17:00         19:45   2h 45m    non-stop   
+2578        DEL → BOM → COK    11:40         19:00   7h 20m      1 stop   
+4401        DEL → BOM → COK    11:30  12:35 04 Jun   25h 5m      1 stop   
+...                     ...      ...           ...      ...         ...   
+355               BLR → DEL    23:30  02:20 02 Jun   2h 50m    non-stop   
+1835        DEL → BOM → COK    02:15         12:35  10h 20m      1 stop   
+1732        CCU → BOM → BLR    18:55  12:00 25 Mar   17h 5m      1 stop   
+2     DEL → LKO → BOM → COK    09:25  04:25 10 Jun      19h     2 stops   
+1054  DEL → IXU → BOM → COK    17:50  01:30 16 Jun   7h 40m     2 stops   
+
+                  Additional_Info  Price  
+4842                      No info  15029  
+1963  In-flight meal not included  12898  
+1158                      No info   5176  
+2578                      No info  10529  
+4401  In-flight meal not included  10262  
+...                           ...    ...  
+355                       No info   4591  
+1835                      No info  18371  
+1732                      No info  14231  
+2                         No info  13882  
+1054                      No info  18485  
+
+[534 rows x 11 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_88_0
+	Source 0 Schema: ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route', 'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops', 'Additional_Info', 'Price']
+	Source 0 Examples: 	 Source 0 contains 5341 tuples, with examples as follows: 
+       Airline Date_of_Journey    Source Destination                  Route  \
+0       IndiGo      24/03/2019  Banglore   New Delhi              BLR → DEL   
+1    Air India       1/05/2019   Kolkata    Banglore  CCU → IXR → BBI → BLR   
+2  Jet Airways       9/06/2019     Delhi      Cochin  DEL → LKO → BOM → COK   
+
+  Dep_Time  Arrival_Time Duration Total_Stops Additional_Info  Price  
+0    22:20  01:10 22 Mar   2h 50m    non-stop         No info   3897  
+1    05:50         13:15   7h 25m     2 stops         No info   7662  
+2    09:25  04:25 10 Jun      19h     2 stops         No info  13882  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_88/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_88/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+def main():
+    # Read the source CSV file with index_col=0 as specified
+    source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_88/test_0.csv"
+    df_source = pd.read_csv(source_path, index_col=0)
+
+    # The source schema matches the target schema exactly, so no transformation needed
+    # Just ensure the column order and types match the target schema
+
+    target_columns = ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route', 
+                      'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops', 'Additional_Info', 'Price']
+
+    # Reorder columns if necessary
+    df_target = df_source[target_columns].copy()
+
+    # Ensure data types:
+    # According to target schema:
+    # 'Airline': string
+    # 'Date_of_Journey': string
+    # 'Source': string
+    # 'Destination': string
+    # 'Route': string
+    # 'Dep_Time': string
+    # 'Arrival_Time': string
+    # 'Duration': string
+    # 'Total_Stops': string
+    # 'Additional_Info': string
+    # 'Price': integer
+
+    # Convert columns to string except Price
+    str_columns = ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route', 
+                   'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops', 'Additional_Info']
+    for col in str_columns:
+        df_target[col] = df_target[col].astype(str)
+
+    # Convert Price to integer
+    df_target['Price'] = df_target['Price'].astype(int)
+
+    # Save the final dataframe to the specified CSV file path
+    target_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_88/target_multisource_agentic.csv"
+    df_target.to_csv(target_path, index=False)
+
+if __name__ == "__main__":
+    main()
+```

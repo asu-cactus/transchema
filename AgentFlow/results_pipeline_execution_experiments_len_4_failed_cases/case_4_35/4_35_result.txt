@@ -1,0 +1,151 @@
+Case: 4_35
+Status: CORRECT
+Timestamp: 2026-02-16T15:22:21.079722
+Duration: 354.72 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_35/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['AB de Villiers-AD Russell-AM Rahane', '0-0-1', '12-13-12', '575-453-613', '11-7-3', '163-192-129', '942-871-793', '56-82-14']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_35
+2. Target Schema: ['batsman': string, 'batsman_runs_x': integer, 'batsman_runs_y': integer, 'no of balls': integer, 'batsman_runs_x_4': integer, 'strike': float, 'batsman_runs_y_6': integer, 'total_runs': integer]
+3. Target Examples: There are 88 available target examples:           batsman  batsman_runs_x  batsman_runs_y  no of balls  \
+12        CA Lynn               7               0          679   
+55  Mohammad Nabi               0               0           92   
+54       R Ashwin               0               0          104   
+47      V Shankar               1               0          352   
+10     AD Russell               7               0          453   
+62     PJ Sangwan               0               0            5   
+37     MA Agarwal               2               0          335   
+13       MS Dhoni               6               0          638   
+49        R Parag               1               0          133   
+
+    batsman_runs_x_4      strike  batsman_runs_y_6  total_runs  
+12               924  136.082474                14          40  
+55               144  156.521739                 1           7  
+54               151  145.192308                 2           8  
+47               473  134.375000                 5          23  
+10               871  192.273731                13          82  
+62                 1   20.000000                 0           0  
+37               462  137.910448                 6          19  
+13               917  143.730408                13          51  
+49               169  127.067669                 3           5  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_35_0
+	Source 0 Schema: ['batsman', 'batsman_runs']
+	Source 0 Examples: 	 Source 0 contains 177 tuples, with examples as follows: 
+     batsman  batsman_runs
+0   CH Gayle             2
+1  SR Watson             2
+2   KL Rahul             2
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_35_1
+	Source 1 Schema: ['batsman', 'total_runs']
+	Source 1 Examples: 	 Source 1 contains 177 tuples, with examples as follows: 
+      batsman  total_runs
+0  AD Russell          82
+1     RR Pant          65
+2    CH Gayle          61
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_35_2
+	Source 2 Schema: ['batsman', 'batsman_runs']
+	Source 2 Examples: 	 Source 2 contains 177 tuples, with examples as follows: 
+    batsman  batsman_runs
+0  KL Rahul            17
+1   RR Pant            16
+2  S Dhawan            15
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_35_3
+	Source 3 Schema: ['batsman', 'batsman_runs']
+	Source 3 Examples: 	 Source 3 contains 88 tuples, with examples as follows: 
+          batsman  batsman_runs
+0        KL Rahul            13
+1  AB de Villiers            11
+2         RR Pant             9
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_35_4
+	Source 4 Schema: ['batsman', 'no of balls', 'batsman_runs', 'strike']
+	Source 4 Examples: 	 Source 4 contains 177 tuples, with examples as follows: 
+       batsman  no of balls  batsman_runs      strike
+0  A Dananjaya            5             4   80.000000
+1      A Hales          119           152  127.731092
+2     A Joseph           13            15  115.384615
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Load source data with index_col=0 to ignore the numerical index column
+source0 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_0.csv', index_col=0)
+source1 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_1.csv', index_col=0)
+source2 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_2.csv', index_col=0)
+source3 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_3.csv', index_col=0)
+source4 = pd.read_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/test_4.csv', index_col=0)
+
+# Step 1: INNER JOIN Source4_35_0 and Source4_35_2 on 'batsman'
+# Rename batsman_runs columns to distinguish them before join
+source0_renamed = source0.rename(columns={'batsman_runs': 'batsman_runs_x'})
+source2_renamed = source2.rename(columns={'batsman_runs': 'batsman_runs_y'})
+df1 = pd.merge(source0_renamed, source2_renamed, on='batsman', how='inner')
+
+# Step 2: INNER JOIN the result with Source4_35_3 on 'batsman'
+# Rename batsman_runs from source3 to batsman_runs_x_4
+source3_renamed = source3.rename(columns={'batsman_runs': 'batsman_runs_x_4'})
+df2 = pd.merge(df1, source3_renamed, on='batsman', how='inner')
+
+# Step 3: INNER JOIN the result with Source4_35_1 on 'batsman'
+df3 = pd.merge(df2, source1, on='batsman', how='inner')
+
+# Step 4: INNER JOIN the result with Source4_35_4 on 'batsman'
+# Rename batsman_runs from source4 to batsman_runs_y_6 to match target schema
+source4_renamed = source4.rename(columns={'batsman_runs': 'batsman_runs_y_6'})
+df4 = pd.merge(df3, source4_renamed, on='batsman', how='inner')
+
+# Step 5: GROUP_BY 'batsman' and aggregate sums of all numeric columns except 'strike'
+# 'strike' is float and should be averaged (mean) as per typical strike rate calculation
+agg_dict = {
+    'batsman_runs_x': 'sum',
+    'batsman_runs_y': 'sum',
+    'batsman_runs_x_4': 'sum',
+    'total_runs': 'sum',
+    'no of balls': 'sum',
+    'batsman_runs_y_6': 'sum',
+    'strike': 'mean'
+}
+grouped = df4.groupby('batsman', as_index=False).agg(agg_dict)
+
+# Step 6: PIVOT is not needed here because we already have distinct columns for batsman_runs_x and batsman_runs_y
+
+# Step 7: SELECT & COMPUTE - ensure columns are in the exact order and types as target schema
+final_df = grouped[['batsman', 'batsman_runs_x', 'batsman_runs_y', 'no of balls',
+                    'batsman_runs_x_4', 'strike', 'batsman_runs_y_6', 'total_runs']]
+
+# Convert columns to correct types as per target schema
+final_df['batsman'] = final_df['batsman'].astype(str)
+final_df['batsman_runs_x'] = final_df['batsman_runs_x'].astype(int)
+final_df['batsman_runs_y'] = final_df['batsman_runs_y'].astype(int)
+final_df['no of balls'] = final_df['no of balls'].astype(int)
+final_df['batsman_runs_x_4'] = final_df['batsman_runs_x_4'].astype(int)
+final_df['strike'] = final_df['strike'].astype(float)
+final_df['batsman_runs_y_6'] = final_df['batsman_runs_y_6'].astype(int)
+final_df['total_runs'] = final_df['total_runs'].astype(int)
+
+# Step 8: SAVE the final dataframe as CSV
+final_df.to_csv('/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_35/target_multisource_agentic.csv', index=False)
+```

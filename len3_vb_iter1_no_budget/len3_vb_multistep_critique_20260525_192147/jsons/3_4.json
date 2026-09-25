@@ -1,0 +1,46 @@
+{
+  "case": "3_4",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.1746,
+        "cost": 0.0016192000000000001,
+        "latency": 4.089300155639648,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.349) / 2 = 0.175 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.759, range overlap=0.326.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN, Price}.\nKeys present in ground truth but absent in generated: {SN}.\nSpurious keys in generated not present in ground truth: {Price, SN}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['SN'] \u2192 Price.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.326, JS similarity=0.759\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+        "generated_samples": "Schema: ['SN', 'Price']\nNumber of Tuples: 390\nExamples:\n            SN  Price\n    Sundjask71   4.00\nAerithnuphos61   4.91\nTyaelistidru84   3.26",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length3_4/training_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the first numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# Extract only the columns needed for the target table: ['SN', 'Price']\n# Ensure types: SN as string, Price as float\ndf_target = dfs[0][['SN', 'Price']].copy()\ndf_target['SN'] = df_target['SN'].astype(str)\ndf_target['Price'] = df_target['Price'].astype(float)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_4/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "SN,Price\nAsur53,2.42\nAlarap40,3.27\nSida61,1.66\nHiarideu73,2.5\nLassassasda30,3.54\nEnnoncil86,1.74\nSiralsudeu54,1.44\nEusri26,3.27\nArdcil81,3.09\nMarilsasya33,1.56\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0137557983398438
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7508,
+          "cost": 0.0011836,
+          "latency": 3.3632237911224365,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.502) / 2 = 0.751 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.917, range overlap=0.777.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.777, JS similarity=0.917\n    Generated    \u2014 min: 1.0, max: 10.52, mean: 3.4873\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+          "generated_samples": "Schema: ['SN', 'Price']\nNumber of Tuples: 333\nExamples:\n            SN  Price\nSeudaillorap38   3.10\n  Chanastnya43   8.82\n    Chanosia60   2.94",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_4/training_0.csv\", index_col=0)\n\n# Union all source tables (only one source table here)\ndf_union = source0.copy()\n\n# Group by SN and aggregate Price by sum\ndf_result = df_union.groupby(\"SN\", as_index=False).agg({\"Price\": \"sum\"})\n\n# Write output\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_4/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9109973907470703
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4092.0705795288086,
+        "critique": 3407.557249069214
+      }
+    }
+  ]
+}

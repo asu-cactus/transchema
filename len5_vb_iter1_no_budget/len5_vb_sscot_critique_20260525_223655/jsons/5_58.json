@@ -1,0 +1,46 @@
+{
+  "case": "5_58",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4939,
+        "cost": 0.0025476,
+        "latency": 13.778113603591919,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.788 + 0.200) / 2 = 0.494 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Category}.\nGenerated table candidate keys: {Year}; {Movie}; {Nominee}; {Category}; {Winner}.\nSpurious keys in generated not present in ground truth: {Winner}; {Movie}; {Nominee}; {Year}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.788 (precision=0.650, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Movie'] \u2192 Category; ['Winner'] \u2192 Category; ['Movie'] \u2192 Year; ['Movie'] \u2192 Nominee; ['Year'] \u2192 Category (and 2 more).\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['Category', 'Year', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 357\nExamples:\n                  Category  Year  Nominee  Movie  Winner\nActress -- Supporting Role  1944        1      1       1\n   Actress -- Leading Role  1957        1      1       1\n  Actor -- Supporting Role  1955        1      1       1",
+        "code": "import pandas as pd\n\n# File paths for all source CSV files\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length5_58/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_58/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_58/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_58/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_58/training_4.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# All source tables have the same schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\n# Target schema: ['Category': string, 'Year': integer, 'Nominee': integer, 'Movie': integer, 'Winner': integer]\n\n# Transformation plan:\n# 1. Extract the year number from the 'Year' column (e.g. \"2010 (83rd)\" -> 2010)\n# 2. Convert 'Winner' column from \"YES\"/other to integer 1/0\n# 3. Convert 'Nominee' and 'Movie' columns from string (names) to integer counts of distinct values per group (Category, Year)\n#    Because target examples show integer counts for Nominee and Movie equal to Year (e.g. 75, 42), \n#    we interpret Nominee and Movie columns as counts of distinct nominees and movies per Category and Year.\n# 4. Aggregate by ['Category', 'Year'] to get counts of distinct Nominee and Movie, and count of Winner=1 as Nominee count (or use count of rows)\n# 5. The 'Nominee' column in target is integer, presumably count of nominees per Category-Year\n# 6. The 'Movie' column in target is integer, presumably count of movies per Category-Year\n# 7. The 'Winner' column in target is integer, presumably count of winners per Category-Year\n# 8. The target examples show Nominee, Movie, Winner counts equal to Year counts (e.g. 75, 42), so we will count distinct Nominee, distinct Movie, and count Winner=1 per Category-Year\n# 9. Output the final DataFrame with columns ['Category', 'Year', 'Nominee', 'Movie', 'Winner'] with correct types\n\n# Concatenate all source dataframes (union)\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Step 1: Extract year as integer from 'Year' column\n# The format is like \"2010 (83rd)\", we extract the first 4 digits as year\ndf_all['Year'] = df_all['Year'].str.extract(r'(\\d{4})').astype(int)\n\n# Step 2: Convert 'Winner' column: \"YES\" -> 1, else 0\ndf_all['Winner'] = df_all['Winner'].apply(lambda x: 1 if str(x).strip().upper() == 'YES' else 0)\n\n# Step 3 & 4: Aggregate by ['Category', 'Year']\n# Count distinct Nominee and Movie, sum Winner\nagg_df = df_all.groupby(['Category', 'Year']).agg(\n    Nominee=('Nominee', 'nunique'),\n    Movie=('Movie', 'nunique'),\n    Winner=('Winner', 'sum')\n).reset_index()\n\n# Ensure columns have correct types\nagg_df['Category'] = agg_df['Category'].astype(str)\nagg_df['Year'] = agg_df['Year'].astype(int)\nagg_df['Nominee'] = agg_df['Nominee'].astype(int)\nagg_df['Movie'] = agg_df['Movie'].astype(int)\nagg_df['Winner'] = agg_df['Winner'].astype(int)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_58/target_multisource_cot.csv\"\nagg_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Category,Year,Nominee,Movie,Winner\nActor -- Leading Role,1927,2,1,2\nActor -- Leading Role,1928,1,1,1\nActor -- Leading Role,1929,1,1,1\nActor -- Leading Role,1930,1,1,1\nActor -- Leading Role,1931,2,2,2\nActor -- Leading Role,1932,1,1,1\nActor -- Leading Role,1934,1,1,1\nActor -- Leading Role,1935,1,1,1\nActor -- Leading Role,1936,1,1,1\nActor -- Leading Role,1937,1,1,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3475418090820312
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9965,
+          "cost": 0.0020356000000000003,
+          "latency": 6.178774833679199,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.993) / 2 = 0.997 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.983.\nGround truth candidate keys: {Category}.\nGenerated table candidate keys: {Category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['Category', 'Year', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 5\nExamples:\n                  Category  Year  Nominee  Movie  Winner\nActress -- Supporting Role    75       75     75      75\n                 Directing    43       43     42      43\n     Actor -- Leading Role    85       85     84      85",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the first index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_3.csv\", index_col=0)\ndf4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/training_4.csv\", index_col=0)\n\n# UNION all source tables (concatenate)\ndf_all = pd.concat([df0, df1, df2, df3, df4], ignore_index=True)\n\n# Group by 'Category' and aggregate counts of other columns\nresult = df_all.groupby('Category').agg(\n    Year=('Year', 'count'),\n    Nominee=('Nominee', 'count'),\n    Movie=('Movie', 'count'),\n    Winner=('Winner', 'count')\n).reset_index()\n\n# Write the result to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_58/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.047372817993164
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13841.98021888733,
+        "critique": 6259.410381317139
+      }
+    }
+  ]
+}

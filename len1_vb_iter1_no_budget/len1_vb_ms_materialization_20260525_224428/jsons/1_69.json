@@ -1,0 +1,46 @@
+{
+  "case": "1_69",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.5911,
+        "cost": 0.0047264,
+        "latency": 17.371840715408325,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.636 + 0.546) / 2 = 0.591 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.760, range overlap=0.897.\nGround truth candidate keys: {ride_id}; {date}.\nGenerated table candidate keys: {driver_count, ride_id}.\nKeys present in ground truth but absent in generated: {date}; {ride_id}.\nSpurious keys in generated not present in ground truth: {ride_id, driver_count}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.636 (precision=0.875, recall=0.500).\nSpurious FDs in generated (not in ground truth): ['city'] \u2192 date.\nMissing FDs from ground truth: ['date'] \u2192 ride_id; ['city'] \u2192 driver_count; ['fare'] \u2192 type; ['date'] \u2192 driver_count; ['date'] \u2192 fare (and 2 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.958, JS similarity=0.588\n    Generated    \u2014 min: 1.0, max: 73.0, mean: 22.3803\n    Ground Truth \u2014 min: 4.0, max: 73.0, mean: 40.1466\n  Column 'fare': range overlap=0.734, JS similarity=0.747\n    Generated    \u2014 min: 4.15, max: 59.65, mean: 29.3099\n    Ground Truth \u2014 min: 4.05, max: 44.98, mean: 24.3564\n  Column 'ride_id': range overlap=0.998, JS similarity=0.946\n    Generated    \u2014 min: 2238752751.0, max: 9992146021449.0, mean: 4865042135169.842\n    Ground Truth \u2014 min: 18075235678.0, max: 9997901376574.0, mean: 4846803563368.285\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.477\n  Column 'type': Jaccard=0.312\n  Column 'date': Jaccard=0.000",
+        "generated_samples": "Schema: ['city', 'driver_count', 'type', 'date', 'fare', 'ride_id']\nNumber of Tuples: 1220\nExamples:\n        city  driver_count     type                date  fare       ride_id\nKennethburgh             3    Rural 2016-11-19 06:59:31 18.37 5897895798960\n  Thomastown             1 Suburban 2016-08-28 05:02:29 12.33  276829037576\n Kellershire            51    Urban 2016-03-09 01:06:52  9.00 9197603993608",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_69/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_69/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Perform the join on 'city' as specified\ndf_joined = pd.merge(df0, df1, on=\"city\", how=\"inner\")\n\n# Ensure columns are in the target schema order and types:\n# Target Schema: ['city': string, 'driver_count': integer, 'type': string, 'date': string, 'fare': float, 'ride_id': integer]\n\n# Convert types explicitly\ndf_joined['city'] = df_joined['city'].astype(str)\ndf_joined['driver_count'] = df_joined['driver_count'].astype(int)\ndf_joined['type'] = df_joined['type'].astype(str)\ndf_joined['date'] = df_joined['date'].astype(str)\ndf_joined['fare'] = df_joined['fare'].astype(float)\n# ride_id looks like a large integer stored as int64 or possibly string, convert to int\ndf_joined['ride_id'] = df_joined['ride_id'].astype(int)\n\n# Reorder columns to match target schema\ndf_target = df_joined[['city', 'driver_count', 'type', 'date', 'fare', 'ride_id']]\n\n# Write the result to the specified path without the index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_69/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "city,driver_count,type,date,fare,ride_id\nKelseyland,63,Urban,2016-04-20 05:36:59,31.67,2865704421982\nKelseyland,63,Urban,2016-05-02 05:55:28,40.92,2769007541388\nKelseyland,63,Urban,2016-06-22 06:54:57,12.58,6629798205387\nKelseyland,63,Urban,2016-06-18 06:03:03,16.77,7223504701591\nKelseyland,63,Urban,2016-01-09 20:28:56,27.21,831362906446\nKelseyland,63,Urban,2016-07-22 19:28:21,35.71,1234880130185\nKelseyland,63,Urban,2016-11-26 02:34:57,15.49,5187807155760\nNguyenbury,8,Urban,2016-09-29 23:40:50,35.73,1542525861890\nNguyenbury,8,Urban,2016-01-30 13:17:52,33.43,6262269338025\nNguyenbury,8,Urban,2016-08-30 04:06:45,7.03,6218370015522\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6050338745117188
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5911,
+          "cost": 0.00169,
+          "latency": 4.928646802902222,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.636 + 0.546) / 2 = 0.591 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.760, range overlap=0.897.\nGround truth candidate keys: {ride_id}; {date}.\nGenerated table candidate keys: {driver_count, ride_id}.\nKeys present in ground truth but absent in generated: {date}; {ride_id}.\nSpurious keys in generated not present in ground truth: {ride_id, driver_count}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.636 (precision=0.875, recall=0.500).\nSpurious FDs in generated (not in ground truth): ['city'] \u2192 date.\nMissing FDs from ground truth: ['date'] \u2192 ride_id; ['city'] \u2192 driver_count; ['fare'] \u2192 type; ['date'] \u2192 driver_count; ['date'] \u2192 fare (and 2 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.958, JS similarity=0.588\n    Generated    \u2014 min: 1.0, max: 73.0, mean: 22.3803\n    Ground Truth \u2014 min: 4.0, max: 73.0, mean: 40.1466\n  Column 'fare': range overlap=0.734, JS similarity=0.747\n    Generated    \u2014 min: 4.15, max: 59.65, mean: 29.3099\n    Ground Truth \u2014 min: 4.05, max: 44.98, mean: 24.3564\n  Column 'ride_id': range overlap=0.998, JS similarity=0.946\n    Generated    \u2014 min: 2238752751.0, max: 9992146021449.0, mean: 4865042135169.842\n    Ground Truth \u2014 min: 18075235678.0, max: 9997901376574.0, mean: 4846803563368.285\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.477\n  Column 'type': Jaccard=0.312\n  Column 'date': Jaccard=0.000",
+          "generated_samples": "Schema: ['city', 'driver_count', 'type', 'date', 'fare', 'ride_id']\nNumber of Tuples: 1220\nExamples:\n         city  driver_count     type                date  fare       ride_id\nWest Paulport             5 Suburban 2016-03-25 00:12:36 21.08 8297446071998\n    Port Jose            11 Suburban 2016-08-29 12:55:05 32.02 5415594887923\n Alvarezhaven            21    Urban 2016-01-27 10:38:40  6.72 6152998520191",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_69/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_69/training_1.csv\", index_col=0)\n\n# Join on 'city' column (inner join by default)\nresult = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Ensure column order and types match target schema\nresult = result[['city', 'driver_count', 'type', 'date', 'fare', 'ride_id']]\n\n# Convert ride_id to integer if not already\nresult['ride_id'] = result['ride_id'].astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_69/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.4510154724121094
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 17449.9089717865,
+        "critique": 5136.134147644043
+      }
+    }
+  ]
+}

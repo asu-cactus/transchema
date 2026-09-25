@@ -1,0 +1,107 @@
+Case: 1_93
+Status: INCORRECT
+Timestamp: 2026-02-24T04:40:30.690923
+Duration: 20.58 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_93/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.75
+  matched_columns: ['time', 'bet', 'win']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_93
+2. Target Schema: ['user_id': string, 'time': string, 'bet': float, 'win': float]
+3. Target Examples: There are 500 available target examples:       user_id                  time        bet        win
+382  user_903  [2019-02-11 17:05:25      900.0        NaN
+250  user_984  [2019-01-27 20:54:28        NaN        NaN
+112  user_988   [2019-01-12 0:41:00        NaN        NaN
+342  user_922  [2019-02-07 17:27:13      200.0        NaN
+310  user_900  [2019-02-04 11:51:46        NaN        NaN
+379  user_990   [2019-02-10 5:24:36        NaN        NaN
+29   user_942  [2019-01-04 13:59:42  1678321.0  9876543.0
+490  user_956  [2019-02-23 16:47:08        NaN        NaN
+201  user_931   [2019-01-22 2:45:39        NaN        NaN
+91   user_900   [2019-01-09 3:05:07        NaN        NaN
+332  user_984  [2019-02-06 13:49:28        NaN        NaN
+57   user_954   [2019-01-06 9:33:18        NaN        NaN
+164  user_917  [2019-01-18 21:36:48        NaN        NaN
+339  user_926   [2019-02-07 0:02:52        NaN        NaN
+120  user_993  [2019-01-12 22:23:14        NaN        NaN
+87   user_915  [2019-01-09 17:43:11        NaN        NaN
+324  user_901  [2019-02-05 21:16:53        NaN        NaN
+11   user_966  [2019-01-02 21:32:20        NaN        NaN
+383  user_960  [2019-02-11 18:20:26        NaN        NaN
+124  user_930  [2019-01-13 13:51:26        NaN        NaN
+288  user_975   [2019-01-31 4:57:32        NaN        NaN
+296  user_903  [2019-02-02 17:17:43        NaN        NaN
+149  user_985  [2019-01-16 14:51:36        NaN        NaN
+476  user_906  [2019-02-21 18:29:28        NaN        NaN
+350  user_997  [2019-02-08 13:27:54        NaN        NaN
+67   user_987  [2019-01-07 21:46:13     5000.0        NaN
+251  user_971   [2019-01-27 3:23:22        NaN        NaN
+168  user_906   [2019-01-18 9:50:48        NaN        NaN
+466  user_964  [2019-02-20 11:51:03      400.0        NaN
+26   user_976   [2019-01-04 1:59:34        NaN        NaN
+218  user_980  [2019-01-24 21:12:22        NaN        NaN
+19   user_942  [2019-01-03 14:03:21    98753.0        NaN
+206  user_998   [2019-01-22 7:15:00        NaN        NaN
+137  user_907   [2019-01-15 1:16:06        NaN        NaN
+486  user_987  [2019-02-22 21:56:03      300.0        NaN
+390  user_980  [2019-02-12 11:02:10        NaN        NaN
+58   user_915   [2019-01-07 0:23:47        NaN        NaN
+461  user_924  [2019-02-19 17:10:32      300.0     5266.0
+451  user_908  [2019-02-17 20:40:57        NaN        NaN
+228  user_951  [2019-01-25 17:02:53      100.0        NaN
+436  user_942   [2019-02-15 8:27:35        NaN        NaN
+17   user_998  [2019-01-03 11:29:08        NaN        NaN
+381  user_940   [2019-02-10 8:40:42        NaN        NaN
+216  user_952  [2019-01-24 12:57:32      200.0        NaN
+130  user_993   [2019-01-14 1:14:30        NaN        NaN
+300  user_916   [2019-02-02 6:15:01        NaN        NaN
+484  user_951  [2019-02-22 20:36:03      600.0        NaN
+325  user_971  [2019-02-05 21:48:02        NaN        NaN
+419  user_927  [2019-02-14 11:12:30        NaN        NaN
+25   user_949   [2019-01-03 5:49:42        NaN        NaN
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_93_0
+	Source 0 Schema: ['user_id', 'time', 'bet', 'win']
+	Source 0 Examples: 	 Source 0 contains 500 tuples, with examples as follows: 
+                            user_id                  time  bet  win
+0  Запись пользователя № - user_919  [2019-01-01 14:06:51  NaN  NaN
+1  Запись пользователя № - user_973  [2019-01-01 14:51:16  NaN  NaN
+2  Запись пользователя № - user_903  [2019-01-01 16:31:16  NaN  NaN
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_93/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_93/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Step 1: Read the source CSV file with index_col=0
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_93/test_0.csv"
+df_source = pd.read_csv(source_path, index_col=0)
+
+# Step 2: Since the source schema matches the target schema and no transformations are needed,
+# just ensure the columns are in the correct order and types match the target schema.
+
+# Target schema: ['user_id': string, 'time': string, 'bet': float, 'win': float]
+# Convert columns to the correct types explicitly
+df_source = df_source[['user_id', 'time', 'bet', 'win']]
+
+df_source['user_id'] = df_source['user_id'].astype(str)
+df_source['time'] = df_source['time'].astype(str)
+df_source['bet'] = pd.to_numeric(df_source['bet'], errors='coerce')
+df_source['win'] = pd.to_numeric(df_source['win'], errors='coerce')
+
+# Step 3: Save the resulting dataframe to the specified CSV file
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_93/target_multisource_agentic.csv"
+df_source.to_csv(output_path)
+```

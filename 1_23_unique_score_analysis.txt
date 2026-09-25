@@ -1,0 +1,190 @@
+Case 1_23 — Unique Det_Score_Value Analysis
+Experiment: rag_det_score_t1_train
+Ground truth: autopipeline-benchmarks/github-pipelines/length1_23/target.csv  shape=(12849, 2)  cols=['customer_id', 'amount']
+Total scripts generated: 116
+Unique logged det_score_values: 10
+====================================================================================================
+
+Script #    Logged_Det_Train    Det_Train     Partial_Train   Correct_Train   Det_Test      Partial_Test    Correct_Test    Error?  
+------------------------------------------------------------------------------------------------------------------------------------
+40          0.0                 ERROR         ERROR           False           ERROR         ERROR           False           YES     
+5           0.4662              0.4662        0.0             False           0.4817        0.0             False                   
+98          0.4798              0.4798        0.0             False           0.4985        0.0             False                   
+18          0.8256              0.8256        0.0             False           0.8249        0.5             False                   
+9           0.8713              0.8713        0.0             False           0.8732        0.5             False                   
+1           0.8942              0.8942        0.0             False           0.9197        0.5             False                   
+78          0.9795              0.9795        0.0             False           0.998         0.5             False                   
+52          0.9799              0.9799        0.0             False           0.997         0.5             False                   
+69          0.9801              0.9801        0.0             False           1.0           1.0             True                    
+86          0.9804              0.9804        0.0             False           0.999         0.5             False                   
+
+====================================================================================================
+
+Scripts detail (code for each representative):
+
+────────────────────────────────────────────────────────────────────────────────
+Script #40  |  logged_det_train=0.0
+  det_train=ERROR   partial_train=ERROR   correct_train=False
+  det_test=ERROR    partial_test=ERROR    correct_test=False
+  error: Traceback (most recent call last):   File "/tmp/tmpon3g6wgs.py", line 4, in <module>     df1 = pd.re
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_1.csv", index_col=0)
+df2 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_2.csv", index_col=0)
+
+df_all = pd.concat([df0, df1, df2], ignore_index=True)
+df_all = df_all[['customer_id', 'amount']]
+df_all['customer_id'] = df_all['customer_id'].astype(int)
+df_all['amount'] = df_all['amount'].astype(float)
+
+df_all.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #5  |  logged_det_train=0.4662
+  det_train=0.4662   partial_train=0.0   correct_train=False
+  det_test=0.4817    partial_test=0.0    correct_test=False
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+df0 = df0[['customer_id', 'amount']]
+df0['customer_id'] = df0['customer_id'].astype(int)
+df0['amount'] = df0['amount'].astype(float)
+
+df0.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #98  |  logged_det_train=0.4798
+  det_train=0.4798   partial_train=0.0   correct_train=False
+  det_test=0.4985    partial_test=0.0    correct_test=False
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+
+agg_df = df0.groupby("customer_id").agg(max_amount=("amount", "max"), avg_amount=("amount", "mean")).reset_index()
+
+melted = agg_df.melt(id_vars=["customer_id"], value_vars=["max_amount", "avg_amount"], value_name="amount")
+
+result = melted[["customer_id", "amount"]]
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #18  |  logged_det_train=0.8256
+  det_train=0.8256   partial_train=0.0   correct_train=False
+  det_test=0.8249    partial_test=0.5    correct_test=False
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+
+joined = pd.merge(df0, df0, left_on='amount', right_on='amount', suffixes=('', '_right'))
+
+result = joined.groupby('customer_id', as_index=False)['amount'].sum()
+
+result['customer_id'] = result['customer_id'].astype(int)
+result['amount'] = result['amount'].astype(float)
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #9  |  logged_det_train=0.8713
+  det_train=0.8713   partial_train=0.0   correct_train=False
+  det_test=0.8732    partial_test=0.5    correct_test=False
+
+import pandas as pd
+
+df = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+
+joined = pd.merge(df, df, on="customer_id", suffixes=('_left', '_right'))
+
+grouped = joined.groupby("customer_id", as_index=False).agg({"amount_left": "sum"})
+
+grouped.rename(columns={"amount_left": "amount"}, inplace=True)
+
+grouped["customer_id"] = grouped["customer_id"].astype(int)
+grouped["amount"] = grouped["amount"].astype(float)
+
+grouped.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #1  |  logged_det_train=0.8942
+  det_train=0.8942   partial_train=0.0   correct_train=False
+  det_test=0.9197    partial_test=0.5    correct_test=False
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+result = df0.groupby("customer_id", as_index=False)["amount"].sum()
+result["customer_id"] = result["customer_id"].astype(int)
+result["amount"] = result["amount"].astype(float)
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #78  |  logged_det_train=0.9795
+  det_train=0.9795   partial_train=0.0   correct_train=False
+  det_test=0.998    partial_test=0.5    correct_test=False
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+
+grouped = df0.groupby("customer_id")["amount"].agg(["max", "mean"]).reset_index()
+grouped["amount"] = (grouped["max"] + grouped["mean"]) / 2
+result = grouped[["customer_id", "amount"]]
+result["customer_id"] = result["customer_id"].astype(int)
+result["amount"] = result["amount"].astype(float)
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #52  |  logged_det_train=0.9799
+  det_train=0.9799   partial_train=0.0   correct_train=False
+  det_test=0.997    partial_test=0.5    correct_test=False
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+result = df0.groupby("customer_id", as_index=False)["amount"].min()
+result["customer_id"] = result["customer_id"].astype(int)
+result["amount"] = result["amount"].astype(float)
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #69  |  logged_det_train=0.9801
+  det_train=0.9801   partial_train=0.0   correct_train=False
+  det_test=1.0    partial_test=1.0    correct_test=True
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+result = df0.groupby("customer_id", as_index=False)["amount"].mean()
+result["amount"] = result["amount"].astype(float)
+result["customer_id"] = result["customer_id"].astype(int)
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #86  |  logged_det_train=0.9804
+  det_train=0.9804   partial_train=0.0   correct_train=False
+  det_test=0.999    partial_test=0.5    correct_test=False
+
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+
+agg = df0.groupby("customer_id").agg(
+    count_amount=pd.NamedAgg(column="amount", aggfunc="count"),
+    min_amount=pd.NamedAgg(column="amount", aggfunc="min"),
+    max_amount=pd.NamedAgg(column="amount", aggfunc="max"),
+)
+
+agg["amount"] = (agg["min_amount"] + agg["max_amount"]) / 2
+result = agg[["amount"]].reset_index()
+result["customer_id"] = result["customer_id"].astype(int)
+result["amount"] = result["amount"].astype(float)
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+

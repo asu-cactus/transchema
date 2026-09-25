@@ -1,0 +1,126 @@
+Case: 1_98
+Status: INCORRECT
+Timestamp: 2026-02-24T04:49:36.525890
+Duration: 30.11 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_98/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.502
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_98
+2. Target Schema: ['0_x': float, '0_y': float]
+3. Target Examples: There are 500 available target examples:           0_x       0_y
+440  1.839094 -1.106528
+90   2.028650  1.916203
+156 -0.222530  1.331017
+301  3.155102 -2.278869
+350 -0.923241 -0.360486
+32   3.519251 -0.627177
+237 -0.803826  0.244539
+127  3.418266 -0.950869
+145  0.318491  0.327612
+383  0.494742  0.074496
+432  2.635222 -1.118987
+79  -1.456073  0.519415
+220  5.166822  1.144814
+7    1.562141  1.100110
+475  2.849913  1.236680
+44  -0.858832  0.243067
+180  0.829580 -1.490140
+148  4.275836  1.508668
+12   1.192236  0.085316
+22   4.583663  0.121471
+213  0.037298 -1.346473
+114  0.332132  1.524132
+363  1.399610 -0.208983
+435 -2.252343 -0.043803
+167 -0.888790 -0.634361
+202  0.225030 -1.284587
+258  1.308040 -1.483175
+374 -0.405974 -1.502238
+140 -2.059493  0.268211
+373  0.620117 -0.265018
+3   -2.589168  0.424461
+160  3.312931 -0.580337
+332  4.556189  1.216892
+40  -2.183107  0.339755
+298  5.194833 -0.584762
+8    6.657941  0.089952
+413  0.105597 -0.318742
+234  3.212852 -0.820439
+460 -0.925216 -0.002582
+459  0.159304 -0.204306
+93   2.117857  0.295976
+212  0.366852 -0.851022
+284 -0.838626  0.095611
+378 -0.123523  0.509927
+96  -2.698689 -0.775957
+241  1.669579  0.030281
+257  1.828494  0.405659
+182  1.424734  0.477135
+352  5.719780  1.326380
+365 -1.698405 -0.829589
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_98_0
+	Source 0 Schema: ['right_index', '0']
+	Source 0 Examples: 	 Source 0 contains 1000 tuples, with examples as follows: 
+   right_index         0
+0            0 -0.397811
+1            1  0.122042
+2            2 -0.053316
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_98_1
+	Source 1 Schema: ['0']
+	Source 1 Examples: 	 Source 1 contains 500 tuples, with examples as follows: 
+          0
+0  0.148736
+1  1.551094
+2  5.411766
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_98/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Step 1: Read source CSV files
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv"
+
+# Source 0 has columns ['right_index', '0'], with index_col=0
+df0 = pd.read_csv(source0_path, index_col=0)
+
+# Source 1 has column ['0'], with index_col=0
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Step 2: Join Source1_98_0 and Source1_98_1 on Source1_98_0.right_index == index of Source1_98_1
+# The join key from df0 is 'right_index', from df1 is the index
+df_joined = pd.merge(df0, df1, left_on='right_index', right_index=True, how='inner', suffixes=('_x', '_y'))
+
+# Step 3: Rename columns
+df_joined.rename(columns={'0_x': '0_x', '0_y': '0_y'}, inplace=True)  # Actually columns are '0_x' and '0_y' after merge suffixes
+# After merge, columns are: ['right_index', '0_x', '0_y']
+# We only want ['0_x', '0_y']
+df_result = df_joined[['0_x', '0_y']]
+
+# Step 4: Limit to 500 rows
+df_result = df_result.head(500)
+
+# Step 5: Ensure columns are float type
+df_result = df_result.astype({'0_x': float, '0_y': float})
+
+# Step 6: Save to CSV
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_98/target_multisource_agentic.csv"
+df_result.to_csv(output_path, index=False)
+```

@@ -1,0 +1,161 @@
+Case: 4_16
+Status: INCORRECT
+Timestamp: 2026-02-23T13:17:54.665645
+Duration: 277.84 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_16/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_16
+2. Target Schema: ['COD_INTERV': string, 'estado_cli': string, 'COD_OFICIPAL': integer, 'COD_SEGLOBAL': integer, 'COD_OFICI': integer, 'COD_NIVELOFIC': integer]
+3. Target Examples: There are 9 available target examples:   COD_INTERV estado_cli  COD_OFICIPAL  COD_SEGLOBAL  COD_OFICI  COD_NIVELOFIC
+6        TIT          A         15417         15417      15417          15417
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_16_0
+	Source 0 Schema: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
+	Source 0 Examples: 	 Source 0 contains 20240 tuples, with examples as follows: 
+  COD_IDCONTRA  COD_PERSONA  FAP_CONTR  IMP_CAPDIS  IMP_CAPINI  IMP_CAPPEN
+0     24873185         8644  31JUL1999    35361.97    35361.97    15891.81
+1    366059069         9066  21DEC2016   341936.70   341936.70   339935.22
+2    250661304         9507  30JAN2015    15000.00    15000.00     2125.34
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_16_1
+	Source 1 Schema: ['COD_PERSONA', 'XTI_ESTADO', 'QNU_ORDTIT', 'COD_INTERV', 'COD_IDCONTRA']
+	Source 1 Examples: 	 Source 1 contains 240615 tuples, with examples as follows: 
+   COD_PERSONA XTI_ESTADO  QNU_ORDTIT COD_INTERV COD_IDCONTRA
+0          364          A           1        TIT      7667157
+1          364          A           1        TIT     44521392
+2          364          A           1        TIT     44521393
+	Source 1 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_16_2
+	Source 2 Schema: ['COD_PERSONA', 'COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli']
+	Source 2 Examples: 	 Source 2 contains 100000 tuples, with examples as follows: 
+   COD_PERSONA  COD_AREANEGO  COD_EDAD  COD_OFICIPAL  COD_SEGLOBAL estado_cli
+0          364            13        52          9275          24.0          A
+1          672            13        40          6130          24.0          R
+2          728          6057        68          8248          23.0          I
+	Source 2 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_16_3
+	Source 3 Schema: ['COD_OFICI', 'COD_NIVELOFIC', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ', 'cod_areanego', 'des_areanego']
+	Source 3 Examples: 	 Source 3 contains 9605 tuples, with examples as follows: 
+   COD_OFICI  COD_NIVELOFIC                          des_ofici  cod_cbc  \
+0          1             70    BANCO BILBAO VIZCAYA ARGENTARIA      NaN   
+1       2004             40  AGREGADO FICT. CARTERA DE TITULOS      NaN   
+2       2221             40                        FRANCIA (R)      NaN   
+
+  des_cbc  cod_zona des_zona  COD_TERRIT des_territ  cod_areanego des_areanego  
+0     NaN       NaN      NaN           0        NaN           NaN          NaN  
+1     NaN       NaN      NaN           0        NaN           NaN          NaN  
+2     NaN       NaN      NaN           0        NaN           NaN          NaN  
+	Source 3 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_3.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+def main():
+    # File paths
+    path_source0 = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_0.csv"
+    path_source1 = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_1.csv"
+    path_source2 = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_2.csv"
+    path_source3 = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/test_3.csv"
+    output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_16/target_multisource_agentic.csv"
+
+    # Read source CSV files with index_col=0 as specified
+    df0 = pd.read_csv(path_source0, index_col=0)
+    df1 = pd.read_csv(path_source1, index_col=0)
+    df2 = pd.read_csv(path_source2, index_col=0)
+    df3 = pd.read_csv(path_source3, index_col=0)
+
+    # Step 1: LEFT JOIN Source4_16_1 and Source4_16_0 on ['COD_IDCONTRA', 'COD_PERSONA']
+    # Preserve all interviews from Source4_16_1
+    df_1_0 = pd.merge(
+        df1,
+        df0,
+        how='left',
+        on=['COD_IDCONTRA', 'COD_PERSONA'],
+        suffixes=('_src1', '_src0')
+    )
+
+    # Step 2: LEFT JOIN result of Step 1 with Source4_16_2 on 'COD_PERSONA'
+    df_1_0_2 = pd.merge(
+        df_1_0,
+        df2,
+        how='left',
+        on='COD_PERSONA',
+        suffixes=('', '_src2')
+    )
+
+    # Step 3: LEFT JOIN result of Step 2 with Source4_16_3 on 'COD_OFICIPAL' = 'COD_OFICI'
+    # Note: 'COD_OFICIPAL' comes from df2 (now in df_1_0_2), 'COD_OFICI' from df3
+    df_final_join = pd.merge(
+        df_1_0_2,
+        df3,
+        how='left',
+        left_on='COD_OFICIPAL',
+        right_on='COD_OFICI',
+        suffixes=('', '_src3')
+    )
+
+    # Step 4: SELECT DISTINCT and cast columns to target schema:
+    # Target schema columns and types:
+    # 'COD_INTERV': string
+    # 'estado_cli': string
+    # 'COD_OFICIPAL': integer
+    # 'COD_SEGLOBAL': integer
+    # 'COD_OFICI': integer
+    # 'COD_NIVELOFIC': integer
+
+    # Select columns - these columns come from the joined dataframe:
+    # 'COD_INTERV' from df1 (present in df_1_0_2 and df_final_join)
+    # 'estado_cli' from df2 (df_1_0_2)
+    # 'COD_OFICIPAL' from df2 (df_1_0_2)
+    # 'COD_SEGLOBAL' from df2 (df_1_0_2)
+    # 'COD_OFICI' from df3 (df_final_join)
+    # 'COD_NIVELOFIC' from df3 (df_final_join)
+
+    # Extract columns safely (some may have NaNs due to left joins)
+    df_result = df_final_join[[
+        'COD_INTERV',
+        'estado_cli',
+        'COD_OFICIPAL',
+        'COD_SEGLOBAL',
+        'COD_OFICI',
+        'COD_NIVELOFIC'
+    ]].copy()
+
+    # Cast columns to target types with care for missing values:
+    # For string columns, convert to string and fill NaN with empty string or keep as NaN
+    df_result['COD_INTERV'] = df_result['COD_INTERV'].astype('string')
+    df_result['estado_cli'] = df_result['estado_cli'].astype('string')
+
+    # For integer columns, convert with pd.to_numeric and errors='coerce' to handle NaNs,
+    # then convert to Int64 dtype to allow nullable integers
+    int_columns = ['COD_OFICIPAL', 'COD_SEGLOBAL', 'COD_OFICI', 'COD_NIVELOFIC']
+    for col in int_columns:
+        df_result[col] = pd.to_numeric(df_result[col], errors='coerce').astype('Int64')
+
+    # Remove duplicate rows
+    df_result = df_result.drop_duplicates()
+
+    # Step 5: Save the resulting table as CSV
+    df_result.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
+    main()
+```

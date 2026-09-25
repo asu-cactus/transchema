@@ -1,0 +1,90 @@
+Case: 1_42
+Status: CORRECT
+Timestamp: 2026-02-24T13:15:53.167382
+Duration: 52.54 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_30_60/case_1_42/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_42
+2. Target Schema: ['user_id': integer, 'item_id': integer, 'rating': integer, 'timestamp': integer, 'movie title': string]
+3. Target Examples: There are 50000 available target examples:        user_id  item_id  rating  timestamp  \
+19604      385      134       5  879441538   
+13433      318       77       3  884497078   
+34677      504     1133       3  887910871   
+9371       645      200       5  892054906   
+15535      503      318       5  880383679   
+...        ...      ...     ...        ...   
+27536      201      448       3  884112581   
+21931      450      462       4  882396928   
+5247       232      919       3  888550036   
+3596       138      100       5  879022956   
+6943       487     1016       5  883444515   
+
+                                             movie title  
+19604                                Citizen Kane (1941)  
+13433                                   Firm, The (1993)  
+34677                    Escape to Witch Mountain (1975)  
+9371                                 Shining, The (1980)  
+15535                            Schindler's List (1993)  
+...                                                  ...  
+27536                                   Omen, The (1976)  
+21931  Like Water For Chocolate (Como agua para choco...  
+5247                   City of Lost Children, The (1995)  
+3596                                        Fargo (1996)  
+6943                                      Con Air (1997)  
+
+[5000 rows x 5 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_42_0
+	Source 0 Schema: ['user_id', 'item_id', 'rating', 'timestamp']
+	Source 0 Examples: 	 Source 0 contains 50000 tuples, with examples as follows: 
+   user_id  item_id  rating  timestamp
+0      196      242       3  881250949
+1      186      302       3  891717742
+2       22      377       1  878887116
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_42_1
+	Source 1 Schema: ['item_id', 'movie title', 'release date', 'video release date', 'IMDb URL', 'unknown', 'Action', 'Adventure', 'Animation', 'Childrens', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
+	Source 1 Examples: 	 Source 1 contains 1682 tuples, with examples as follows: 
+   item_id        movie title release date  video release date  \
+0        1   Toy Story (1995)  01-Jan-1995                 NaN   
+1        2   GoldenEye (1995)  01-Jan-1995                 NaN   
+2        3  Four Rooms (1995)  01-Jan-1995                 NaN   
+
+                                            IMDb URL  unknown  Action  \
+0  http://us.imdb.com/M/title-exact?Toy%20Story%2...        0       0   
+1  http://us.imdb.com/M/title-exact?GoldenEye%20(...        0       1   
+2  http://us.imdb.com/M/title-exact?Four%20Rooms%...        0       0   
+
+   Adventure  Animation  Childrens  Comedy  Crime  Documentary  Drama  \
+0          0          1          1       1      0            0      0   
+1          1          0          0       0      0            0      0   
+2          0          0          0       0      0            0      0   
+
+   Fantasy  Film-Noir  Horror  Musical  Mystery  Romance  Sci-Fi  Thriller  \
+0        0          0       0        0        0        0       0         0   
+1        0          0       0        0        0        0       0         1   
+2        0          0       0        0        0        0       0         1   
+
+   War  Western  
+0    0        0  
+1    0        0  
+2    0        0  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

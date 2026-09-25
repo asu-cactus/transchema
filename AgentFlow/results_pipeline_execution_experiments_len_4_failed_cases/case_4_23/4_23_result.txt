@@ -1,0 +1,418 @@
+Case: 4_23
+Status: INCORRECT
+Timestamp: 2026-02-23T13:48:04.060179
+Duration: 85.09 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_23/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_23
+2. Target Schema: ['placeID': integer, 'Rcuisine': string, 'latitude': float, 'longitude': float, 'the_geom_meter': string, 'name': string, 'address': string, 'city': string, 'state': string, 'country': string, 'fax': string, 'zip': string, 'alcohol': string, 'smoking_area': string, 'dress_code': string, 'accessibility': string, 'price': string, 'url': string, 'Rambience': string, 'franchise': string, 'area': string, 'other_services': string, 'hours': string, 'days': string, 'parking_lot': string]
+3. Target Examples: There are 324 available target examples:      placeID         Rcuisine   latitude   longitude  \
+157   134986    International  18.928798  -99.239513   
+317   132584          Mexican  23.752365  -99.165288   
+58    135057              Bar  22.145992 -100.955118   
+170   132955  Bar_Pub_Brewery  22.147622 -101.010275   
+116   135034         Japanese  22.140517 -101.021422   
+10    135088        Cafeteria  18.876011  -99.219890   
+288   132667         Armenian  23.752697  -99.163359   
+5     135106          Mexican  22.149709 -100.976093   
+56    135058         Pizzeria  22.165587 -101.001273   
+322   132560         Regional  23.752304  -99.166913   
+108   135039          Seafood  22.145893 -100.974870   
+278   132717        Fast_Food  23.731860  -99.150436   
+129   135028          Mexican  22.146658 -100.987219   
+202   132869         Pizzeria  22.141238 -100.923925   
+247   132773          Mexican  18.869993  -99.210319   
+145   135021        Fast_Food  18.933537  -99.222497   
+320   132572        Cafeteria  22.141647 -100.992712   
+88    135046        Fast_Food  22.141282 -101.002958   
+298   132630          Mexican  23.752931  -99.164473   
+3     135106          Mexican  22.149709 -100.976093   
+126   135030        Cafeteria  22.147880 -100.989472   
+144   135021        Fast_Food  18.933537  -99.222497   
+179   132937              Bar  22.150019 -100.979920   
+289   132667         Armenian  23.752697  -99.163359   
+246   132773          Mexican  18.869993  -99.210319   
+221   132856          Italian  22.151378 -100.974634   
+198   132870          Burgers  22.143078 -100.935479   
+91    135044          Chinese  22.141848 -100.997475   
+110   135039          Seafood  22.145893 -100.974870   
+119   135032        Cafeteria  22.152481 -100.973486   
+55    135058         Pizzeria  22.165587 -101.001273   
+275   132723          Mexican  22.148934 -101.019845   
+
+                                        the_geom_meter  \
+157  0101000020957F00002A0D05E2D96D5AC1AB058CB1EC56...   
+317  0101000020957F000048C65BA7EF8157C177F2344D664E...   
+58   0101000020957F000095669021894958C182C9C10E669D...   
+170  0101000020957F000068BE7C87C24758C1920A360A08AD...   
+116  0101000020957F000026D92BB4894858C161A7552DA2B0...   
+10   0101000020957F0000E14AD4DBC7765AC1F7B33C85B153...   
+288  0101000020957F00005D67BCDDED8157C1222A2DC8D84D...   
+5    0101000020957F0000649D6F21634858C119AE9BF528A3...   
+56   0101000020957F0000EB71019D424558C15CC5404365A9...   
+322  0101000020957F0000FC60BDA8E88157C1B2C357D6DA4E...   
+108  0101000020957F000040D5CE4E014958C177DC62AE09A3...   
+278  0101000020957F0000B21C3F6C5E8557C188ACCF0A444B...   
+129  0101000020957F0000B4F00BDD8B4858C10AC3619C83A6...   
+202  0101000020957F0000BC62C18D1F4B58C169E0A959C894...   
+247  0101000020957F0000B1F935F9FA775AC1D06DFD101751...   
+145  0101000020957F00005645259D836D5AC11EF994E27F51...   
+320  0101000020957F00005D19BF45294958C18FF7F8E260A8...   
+88   0101000020957F000011DFB4E3EE4858C13F78758452AB...   
+298  0101000020957F000047206572DE8157C1D3315028254E...   
+3    0101000020957F0000649D6F21634858C119AE9BF528A3...   
+126  0101000020957F0000C57C76034C4858C10E437A7E15A7...   
+144  0101000020957F00005645259D836D5AC11EF994E27F51...   
+179  0101000020957F0000F9F19DDC3B4858C191B265A83BA4...   
+289  0101000020957F00005D67BCDDED8157C1222A2DC8D84D...   
+246  0101000020957F0000B1F935F9FA775AC1D06DFD101751...   
+221  0101000020957F0000C1B7D30B2C4858C1CE557111A5A2...   
+198  0101000020957F0000550FC1FC854A58C16D7D4E35F897...   
+91   0101000020957F0000C8B62F9EFF4858C14FA6C296B9A9...   
+110  0101000020957F000040D5CE4E014958C177DC62AE09A3...   
+119  0101000020957F000017D69FF5084858C1A8F2188740A2...   
+55   0101000020957F0000EB71019D424558C15CC5404365A9...   
+275  0101000020957F0000B366C9254B4758C191987F9CAEAF...   
+
+                                   name  \
+157            Restaurant Las Mananitas   
+317                  Gorditas Dona Tota   
+58     El Herradero Restaurante and Bar   
+170                           emilianos   
+116          Michiko Restaurant Japones   
+10                    Cafeteria cenidet   
+288      little pizza Emilio Portes Gil   
+5            El Rincón de San Francisco   
+56                 Restaurante Tiberius   
+322                  puesto de gorditas   
+108     Restaurant de Mariscos de Picon   
+278                        tortas hawai   
+129                         La Virreina   
+202                       Dominos Pizza   
+247                         El cotorreo   
+145                              Subway   
+320                        Cafe Chaires   
+88              Restaurante El Reyecito   
+298                          palomo tec   
+3            El Rincón de San Francisco   
+126            Preambulo Wifi Zone Cafe   
+144                              Subway   
+179                         rockabilly    
+289      little pizza Emilio Portes Gil   
+246                         El cotorreo   
+221                       Unicols Pizza   
+198      Tortas y hamburguesas el gordo   
+91                Restaurant Wu Zhuo Yi   
+110     Restaurant de Mariscos de Picon   
+119  Cafeteria y Restaurant El Pacifico   
+55                 Restaurante Tiberius   
+275                   Gordas de morales   
+
+                                         address             city  \
+157                          Ricardo Linares 107       Cuernavaca   
+317                                            ?                ?   
+58            Costado Sur Central Camionera Km 2  San Luis Potosi   
+170                          venustiano carranza   san luis potos   
+116  Cordillera de Los Alpes 160 Lomas 2 Seccion  San Luis Potosi   
+10                 Interior Internado Palmira SN       Cuernavaca   
+288                      calle emilio portes gil        victoria    
+5                                Universidad 169  San Luis Potosi   
+56                               Munoz Sn Centro  San Luis Potosi   
+322                        frente al tecnologico         victoria   
+108                    Miguel Barragan 46 Centro  San Luis Potosi   
+278                                            ?                ?   
+129                             Av. Carranza 830  San Luis Potosi   
+202                             Ricardo B. Anaya  San Luis Potosi   
+247            Emiliano Zapata Col. Tres de Mayo       Cuernavaca   
+145                    Rio Mayo 17 Vista Hermosa       Cuernavaca   
+320                                            ?  San Luis Potosi   
+88                     Agricultura 595 del Valle  San Luis Potosi   
+298                      blvrd emilio portes gil         victoria   
+3                                Universidad 169  San Luis Potosi   
+126                                  Anahuac 805  San Luis Potosi   
+144                    Rio Mayo 17 Vista Hermosa       Cuernavaca   
+179                          agustin de iturbide  san luis potosi   
+289                      calle emilio portes gil        victoria    
+246            Emiliano Zapata Col. Tres de Mayo       Cuernavaca   
+221                             Plaza del Carmen  San Luis Potosi   
+198                             Ricardo B. Anaya  San Luis Potosi   
+91                    Himno Nacional 100 Avenida  San Luis Potosi   
+110                    Miguel Barragan 46 Centro  San Luis Potosi   
+119                      Constitucion 200 Centro  San Luis Potosi   
+55                               Munoz Sn Centro  San Luis Potosi   
+275                                            ?                ?   
+
+               state country fax    zip            alcohol   smoking_area  \
+157          Morelos  Mexico   ?      ?          Wine-Beer           none   
+317                ?       ?   ?      ?  No_Alcohol_Served  not permitted   
+58               SLP  Mexico   ?  78390          Wine-Beer        section   
+170           mexico       ?   ?      ?          Wine-Beer           none   
+116              SLP  Mexico   ?  78210  No_Alcohol_Served           none   
+10           Morelos  Mexico   ?      ?  No_Alcohol_Served  not permitted   
+288       tamaulipas       ?   ?      ?  No_Alcohol_Served           none   
+5    San Luis Potosi  Mexico   ?  78000          Wine-Beer    only at bar   
+56               SLP  Mexico   ?  64000  No_Alcohol_Served           none   
+322       tamaulipas  mexico   ?      ?  No_Alcohol_Served      permitted   
+108              SLP  Mexico   ?  79300  No_Alcohol_Served        section   
+278                ?       ?   ?      ?  No_Alcohol_Served  not permitted   
+129              SLP  Mexico   ?      ?          Wine-Beer           none   
+202  San Luis Potosi  Mexico   ?      ?  No_Alcohol_Served  not permitted   
+247          Morelos       ?   ?      ?          Wine-Beer      permitted   
+145          Morelos  Mexico   ?  62290  No_Alcohol_Served  not permitted   
+320  San Luis Potosi  Mexico   ?      ?  No_Alcohol_Served  not permitted   
+88               SLP  Mexico   ?  78200  No_Alcohol_Served           none   
+298       tamaulipas       ?   ?      ?  No_Alcohol_Served           none   
+3    San Luis Potosi  Mexico   ?  78000          Wine-Beer    only at bar   
+126              SLP  Mexico   ?      ?  No_Alcohol_Served           none   
+144          Morelos  Mexico   ?  62290  No_Alcohol_Served  not permitted   
+179  san luis potosi  mexico   ?      ?           Full_Bar        section   
+289       tamaulipas       ?   ?      ?  No_Alcohol_Served           none   
+246          Morelos       ?   ?      ?          Wine-Beer      permitted   
+221  San Luis Potosi  Mexico   ?      ?          Wine-Beer           none   
+198  San Luis Potosi  Mexico   ?      ?  No_Alcohol_Served  not permitted   
+91               SLP  Mexico   ?  78240  No_Alcohol_Served           none   
+110              SLP  Mexico   ?  79300  No_Alcohol_Served        section   
+119              SLP  Mexico   ?  78000          Wine-Beer        section   
+55               SLP  Mexico   ?  64000  No_Alcohol_Served           none   
+275  San Luis Potosi  Mexico   ?      ?           Full_Bar        section   
+
+    dress_code     accessibility   price                  url Rambience  \
+157     formal  no_accessibility    high  lasmananitas.com.mx  familiar   
+317   informal        completely  medium                    ?  familiar   
+58    informal  no_accessibility  medium                    ?  familiar   
+170   informal        completely     low                    ?  familiar   
+116   informal  no_accessibility  medium                    ?  familiar   
+10    informal  no_accessibility     low   www.cenidet.edu.mx     quiet   
+288   informal        completely     low                    ?  familiar   
+5     informal         partially  medium                    ?  familiar   
+56    informal  no_accessibility  medium                    ?  familiar   
+322   informal  no_accessibility     low                    ?  familiar   
+108   informal  no_accessibility     low                    ?  familiar   
+278   informal         partially  medium                    ?  familiar   
+129   informal  no_accessibility  medium                    ?  familiar   
+202   informal  no_accessibility  medium                    ?  familiar   
+247   informal  no_accessibility     low                    ?  familiar   
+145   informal  no_accessibility     low                    ?  familiar   
+320   informal        completely     low                    ?  familiar   
+88    informal  no_accessibility  medium         reyecito.com  familiar   
+298   informal        completely     low                    ?  familiar   
+3     informal         partially  medium                    ?  familiar   
+126   informal  no_accessibility  medium                    ?     quiet   
+144   informal  no_accessibility     low                    ?  familiar   
+179   informal        completely     low                    ?     quiet   
+289   informal        completely     low                    ?  familiar   
+246   informal  no_accessibility     low                    ?  familiar   
+221   informal        completely     low                    ?  familiar   
+198   informal  no_accessibility     low                    ?  familiar   
+91    informal  no_accessibility  medium                    ?  familiar   
+110   informal  no_accessibility     low                    ?  familiar   
+119   informal  no_accessibility  medium                    ?  familiar   
+55    informal  no_accessibility  medium                    ?  familiar   
+275   informal        completely  medium                    ?  familiar   
+
+    franchise    area other_services         hours                  days  \
+157         f  closed           none  00:00-23:30;                  Sat;   
+317         t  closed           none  09:00-20:30;                  Sun;   
+58          f  closed           none  13:00-23:00;                  Sat;   
+170         t  closed        variety  00:00-23:30;                  Sun;   
+116         f  closed           none  13:30-19:00;                  Sun;   
+10          f  closed           none  00:00-00:00;                  Sat;   
+288         t  closed           none  00:00-23:30;  Mon;Tue;Wed;Thu;Fri;   
+5           f    open           none  18:00-21:00;                  Sun;   
+56          t  closed           none  13:00-23:00;                  Sun;   
+322         f    open           none  00:00-00:00;                  Sat;   
+108         f  closed           none  10:00-20:00;  Mon;Tue;Wed;Thu;Fri;   
+278         f  closed           none  09:30-21:30;                  Sun;   
+129         f  closed           none  13:00-23:30;  Mon;Tue;Wed;Thu;Fri;   
+202         f  closed           none  10:00-23:00;                  Sat;   
+247         f    open           none  10:00-13:00;                  Sat;   
+145         t  closed           none  00:00-23:30;                  Sat;   
+320         f  closed           none  00:00-23:30;                  Sun;   
+88          f  closed           none  08:30-21:00;                  Sat;   
+298         f  closed           none  00:00-23:30;                  Sat;   
+3           f    open           none  18:00-23:30;  Mon;Tue;Wed;Thu;Fri;   
+126         f  closed       Internet  00:00-00:00;  Mon;Tue;Wed;Thu;Fri;   
+144         t  closed           none  00:00-23:30;  Mon;Tue;Wed;Thu;Fri;   
+179         f  closed        variety  16:00-23:30;                  Sun;   
+289         t  closed           none  00:00-23:30;                  Sat;   
+246         f    open           none  10:00-18:00;  Mon;Tue;Wed;Thu;Fri;   
+221         f  closed           none  10:30-22:30;                  Sun;   
+198         f  closed           none  10:30-23:00;  Mon;Tue;Wed;Thu;Fri;   
+91          f  closed           none  13:00-22:30;                  Sat;   
+110         f  closed           none  10:00-20:00;                  Sun;   
+119         f  closed           none  07:00-23:30;                  Sun;   
+55          t  closed           none  13:00-23:00;                  Sat;   
+275         f  closed           none  00:00-23:30;                  Sun;   
+
+    parking_lot  
+157         yes  
+317         yes  
+58          yes  
+170        none  
+116        none  
+10       public  
+288        none  
+5          none  
+56       public  
+322      public  
+108         yes  
+278      public  
+129        none  
+202         yes  
+247        none  
+145      public  
+320         yes  
+88          yes  
+298        none  
+3          none  
+126        none  
+144      public  
+179        none  
+289        none  
+246        none  
+221        none  
+198        none  
+91         none  
+110         yes  
+119      public  
+55       public  
+275      public  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_23_0
+	Source 0 Schema: ['placeID', 'parking_lot']
+	Source 0 Examples: 	 Source 0 contains 702 tuples, with examples as follows: 
+   placeID parking_lot
+0   135111      public
+1   135110        none
+2   135109        none
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_23_1
+	Source 1 Schema: ['placeID', 'hours', 'days']
+	Source 1 Examples: 	 Source 1 contains 1169 tuples, with examples as follows: 
+   placeID         hours                  days
+0   135111  00:00-23:30;  Mon;Tue;Wed;Thu;Fri;
+1   135111  00:00-23:30;                  Sat;
+2   135111  00:00-23:30;                  Sun;
+	Source 1 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_23_2
+	Source 2 Schema: ['placeID', 'latitude', 'longitude', 'the_geom_meter', 'name', 'address', 'city', 'state', 'country', 'fax', 'zip', 'alcohol', 'smoking_area', 'dress_code', 'accessibility', 'price', 'url', 'Rambience', 'franchise', 'area', 'other_services']
+	Source 2 Examples: 	 Source 2 contains 130 tuples, with examples as follows: 
+   placeID   latitude   longitude  \
+0   134999  18.915421  -99.184871   
+1   132825  22.147392 -100.983092   
+2   135106  22.149709 -100.976093   
+
+                                      the_geom_meter  \
+0  0101000020957F000088568DE356715AC138C0A525FC46...   
+1  0101000020957F00001AD016568C4858C1243261274BA5...   
+2  0101000020957F0000649D6F21634858C119AE9BF528A3...   
+
+                         name                                 address  \
+0             Kiku Cuernavaca                              Revolucion   
+1             puesto de tacos  esquina santos degollado y leon guzman   
+2  El Rincón de San Francisco                         Universidad 169   
+
+              city            state country fax    zip            alcohol  \
+0       Cuernavaca          Morelos  Mexico   ?      ?  No_Alcohol_Served   
+1           s.l.p.           s.l.p.  mexico   ?  78280  No_Alcohol_Served   
+2  San Luis Potosi  San Luis Potosi  Mexico   ?  78000          Wine-Beer   
+
+  smoking_area dress_code     accessibility   price                    url  \
+0         none   informal  no_accessibility  medium  kikucuernavaca.com.mx   
+1         none   informal        completely     low                      ?   
+2  only at bar   informal         partially  medium                      ?   
+
+  Rambience franchise    area other_services  
+0  familiar         f  closed           none  
+1  familiar         f    open           none  
+2  familiar         f    open           none  
+	Source 2 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_23_3
+	Source 3 Schema: ['placeID', 'Rcuisine']
+	Source 3 Examples: 	 Source 3 contains 916 tuples, with examples as follows: 
+   placeID        Rcuisine
+0   135110         Spanish
+1   135109         Italian
+2   135107  Latin_American
+	Source 3 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_23_4
+	Source 4 Schema: ['placeID', 'Rpayment']
+	Source 4 Examples: 	 Source 4 contains 1314 tuples, with examples as follows: 
+   placeID             Rpayment
+0   135110                 cash
+1   135110                 VISA
+2   135110  MasterCard-Eurocard
+	Source 4 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_4.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSVs
+source0_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_0.csv"
+source1_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_1.csv"
+source2_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_2.csv"
+source3_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_3.csv"
+source4_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/test_4.csv"
+
+# Read source CSV files with index_col=0
+df0 = pd.read_csv(source0_path, index_col=0)  # ['placeID', 'parking_lot']
+df1 = pd.read_csv(source1_path, index_col=0)  # ['placeID', 'hours', 'days']
+df2 = pd.read_csv(source2_path, index_col=0)  # ['placeID', 'latitude', 'longitude', 'the_geom_meter', 'name', 'address', 'city', 'state', 'country', 'fax', 'zip', 'alcohol', 'smoking_area', 'dress_code', 'accessibility', 'price', 'url', 'Rambience', 'franchise', 'area', 'other_services']
+df3 = pd.read_csv(source3_path, index_col=0)  # ['placeID', 'Rcuisine']
+df4 = pd.read_csv(source4_path, index_col=0)  # ['placeID', 'Rpayment']
+
+# Step 1: Join Source4_23_2 (df2) and Source4_23_3 (df3) on 'placeID'
+df_23_2_3 = pd.merge(df2, df3, on='placeID', how='inner')
+
+# Step 2: Join the result with Source4_23_1 (df1) on 'placeID'
+df_23_2_3_1 = pd.merge(df_23_2_3, df1, on='placeID', how='inner')
+
+# Step 3: Join the result with Source4_23_0 (df0) on 'placeID'
+df_23_2_3_1_0 = pd.merge(df_23_2_3_1, df0, on='placeID', how='inner')
+
+# The target schema columns in order:
+target_columns = [
+    'placeID', 'Rcuisine', 'latitude', 'longitude', 'the_geom_meter', 'name', 'address', 'city', 'state', 'country',
+    'fax', 'zip', 'alcohol', 'smoking_area', 'dress_code', 'accessibility', 'price', 'url', 'Rambience', 'franchise',
+    'area', 'other_services', 'hours', 'days', 'parking_lot'
+]
+
+# Select only the target columns in the specified order
+df_final = df_23_2_3_1_0[target_columns]
+
+# Ensure correct dtypes according to target schema:
+# 'placeID': integer
+df_final['placeID'] = df_final['placeID'].astype(int)
+
+# 'latitude', 'longitude': float
+df_final['latitude'] = df_final['latitude'].astype(float)
+df_final['longitude'] = df_final['longitude'].astype(float)
+
+# The rest are strings, convert all other columns to string (except placeID, latitude, longitude)
+for col in target_columns:
+    if col not in ['placeID', 'latitude', 'longitude']:
+        df_final[col] = df_final[col].astype(str)
+
+# Save the final dataframe to CSV
+output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_23/target_multisource_agentic.csv"
+df_final.to_csv(output_path, index=False)
+```

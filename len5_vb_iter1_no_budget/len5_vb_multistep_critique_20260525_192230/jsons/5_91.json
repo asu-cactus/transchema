@@ -1,0 +1,46 @@
+{
+  "case": "5_91",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5887,
+        "cost": 0.0034252,
+        "latency": 8.898420333862305,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.320) / 2 = 0.589 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.375, range overlap=0.265.\nGround truth candidate keys: {longitude}.\nGenerated table candidate keys: {longitude}; {latitude}; {missing_count}; {state}.\nSpurious keys in generated not present in ground truth: {missing_count}; {latitude}; {state}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['missing_count'] \u2192 longitude; ['state'] \u2192 longitude; ['latitude'] \u2192 longitude.\nDistribution Analysis (numerical columns with issues):\n  Column 'missing_count': range overlap=0.020, JS similarity=0.167\n    Generated    \u2014 min: 1.0, max: 50.0, mean: 25.5\n    Ground Truth \u2014 min: 4.0, max: 5.0, mean: 4.5\n  Column 'state': range overlap=0.020, JS similarity=0.167\n    Generated    \u2014 min: 1.0, max: 50.0, mean: 25.5\n    Ground Truth \u2014 min: 4.0, max: 5.0, mean: 4.5\n  Column 'latitude': range overlap=0.020, JS similarity=0.167\n    Generated    \u2014 min: 1.0, max: 50.0, mean: 25.5\n    Ground Truth \u2014 min: 4.0, max: 5.0, mean: 4.5",
+        "generated_samples": "Schema: ['longitude', 'missing_count', 'state', 'latitude']\nNumber of Tuples: 200\nExamples:\n longitude  missing_count  state  latitude\n -152.2683              0      2        61\n  -72.7622              0      7        41\n  -98.2883              0     27        41",
+        "code": "import pandas as pd\n\n# File paths for the source tables to be unioned\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length5_91/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_91/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_91/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_91/training_4.csv\"\n]\n\n# List to hold dataframes\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# UNION operation: concatenate all dataframes vertically\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['longitude': float, 'missing_count': integer, 'state': integer, 'latitude': integer]\n# Source schema: ['missing_count', 'state', 'latitude', 'longitude']\n# We need to reorder columns to match target schema order and convert types accordingly.\n\n# First, reorder columns\nunion_df = union_df[['longitude', 'missing_count', 'state', 'latitude']]\n\n# Convert longitude to float\nunion_df['longitude'] = union_df['longitude'].astype(float)\n\n# Convert missing_count to integer\nunion_df['missing_count'] = union_df['missing_count'].astype(int)\n\n# Convert latitude to integer (target schema says integer)\nunion_df['latitude'] = union_df['latitude'].astype(int)\n\n# Convert state to integer:\n# Source 'state' column contains state names (strings), but target schema expects integer.\n# We need to map state names to integers.\n# Since no mapping is provided, we will create a consistent mapping based on unique states in union_df.\n\nunique_states = union_df['state'].unique()\nstate_to_int = {state: idx+1 for idx, state in enumerate(sorted(unique_states))}\nunion_df['state'] = union_df['state'].map(state_to_int).astype(int)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_91/target_multisource.csv\"\nunion_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "longitude,missing_count,state,latitude\n-86.8073,0,1,32\n-152.2683,0,2,61\n-111.3877,0,3,33\n-92.3809,0,4,34\n-119.7462,0,5,36\n-105.3272,0,6,39\n-72.7622,0,7,41\n-75.5148,0,8,39\n-81.717,0,9,27\n-83.6487,0,10,32\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9114017486572266
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0024056,
+          "latency": 9.194940328598022,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_91/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_91/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_91/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_91/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_91/training_4.csv\", index_col=0)\n\n# Join all sources on 'longitude' (the primary key)\ndf = source0.merge(source1, on='longitude', suffixes=('', '_1'))\ndf = df.merge(source2, on='longitude', suffixes=('', '_2'))\ndf = df.merge(source3, on='longitude', suffixes=('', '_3'))\ndf = df.merge(source4, on='longitude', suffixes=('', '_4'))\n\n# After join, columns are duplicated with suffixes, we need to aggregate them properly\n# The target schema is: ['longitude': float, 'missing_count': integer, 'state': integer, 'latitude': integer]\n# We take max of each attribute from all joined tables (excluding longitude)\n# Collect all columns for each attribute\nmissing_count_cols = ['missing_count', 'missing_count_1', 'missing_count_2', 'missing_count_3', 'missing_count_4']\nstate_cols = ['state', 'state_1', 'state_2', 'state_3', 'state_4']\nlatitude_cols = ['latitude', 'latitude_1', 'latitude_2', 'latitude_3', 'latitude_4']\n\n# Aggregate by max for each attribute\ndf['missing_count'] = df[missing_count_cols].max(axis=1)\ndf['state'] = df[state_cols].max(axis=1)\ndf['latitude'] = df[latitude_cols].max(axis=1)\n\n# Select only the target columns in the correct order and types\nresult = df[['longitude', 'missing_count', 'state', 'latitude']]\n\n# Convert to correct types as per target schema\nresult['missing_count'] = result['missing_count'].astype(int)\nresult['state'] = result['state'].astype(int)\nresult['latitude'] = result['latitude'].astype(int)\nresult['longitude'] = result['longitude'].astype(float)\n\n# Write the final output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_91/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03814697265625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8993.093252182007,
+        "critique": 9230.772256851196
+      }
+    }
+  ]
+}

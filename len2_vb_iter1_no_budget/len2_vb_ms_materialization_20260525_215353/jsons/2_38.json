@@ -1,0 +1,46 @@
+{
+  "case": "2_38",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6184,
+        "cost": 0.006151200000000001,
+        "latency": 19.021254301071167,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.237) / 2 = 0.618 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.322, range overlap=0.000.\nGround truth candidate keys: {type}; {fare}.\nGenerated table candidate keys: {type}; {fare}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.000, JS similarity=0.322\n    Generated    \u2014 min: 4327.93, max: 19356.33, mean: 11501.28\n    Ground Truth \u2014 min: 29034.8, max: 29034.8, mean: 29034.8\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['type', 'fare']\nNumber of Tuples: 3\nExamples:\n    type     fare\nSuburban 19356.33\n   Urban 10819.58\n   Rural  4327.93",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_38/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_38/training_1.csv\", index_col=0)\n\n# Join Source0 and Source1 on 'city'\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'type' from Source0 and sum the 'fare' from Source1\ngrouped = joined.groupby(\"type\", as_index=False)[\"fare\"].sum()\n\n# Convert 'fare' to float explicitly (should already be float, but to ensure)\ngrouped[\"fare\"] = grouped[\"fare\"].astype(float)\n\n# Reorder columns to match target schema ['type', 'fare']\nTarget2_38 = grouped[[\"type\", \"fare\"]]\n\n# Write the result to the specified path without the index\nTarget2_38.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_38/target_multisource.csv\", index=False)",
+        "generated_csv_head": "type,fare\nRural,4327.93\nSuburban,19356.33\nUrban,10819.58\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.8434524536132812
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6184,
+          "cost": 0.00136,
+          "latency": 4.3756208419799805,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.237) / 2 = 0.618 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.322, range overlap=0.000.\nGround truth candidate keys: {type}; {fare}.\nGenerated table candidate keys: {type}; {fare}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.000, JS similarity=0.322\n    Generated    \u2014 min: 4327.93, max: 19356.33, mean: 11501.28\n    Ground Truth \u2014 min: 29034.8, max: 29034.8, mean: 29034.8\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['type', 'fare']\nNumber of Tuples: 3\nExamples:\n    type     fare\nSuburban 19356.33\n   Rural  4327.93\n   Urban 10819.58",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_38/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_38/training_1.csv\", index_col=0)\n\n# Join on city column\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'type' and aggregate sum of 'fare'\nresult = joined.groupby(\"type\", as_index=False).agg({\"fare\": \"sum\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_38/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8544921875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 19093.60146522522,
+        "critique": 4411.833047866821
+      }
+    }
+  ]
+}

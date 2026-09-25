@@ -1,0 +1,547 @@
+Case 1_23 — Training Score Distribution Breakdown
+Experiment: rag_det_score_t1_train
+GT columns: ['customer_id', 'amount']  |  GT rows: 12849
+
+DET_SCORE_VALUE — Score Definition
+===================================
+The det_score_value reward uses value_based_relative_csv_score, which computes:
+
+  true_combined_score = (fd_f1 + avg_column_score) / 2
+
+  Components
+  ──────────
+  1. FD_F1 (Functional Dependency F1)
+       Mines functional dependencies (FDs) from both the generated and ground-truth
+       tables, then computes F1 = 2*precision*recall / (precision+recall).
+       FD: a set of columns LHS that uniquely determines column RHS.
+       A perfect FD match means the generated table has the same structural
+       dependency patterns as the ground truth.
+
+  2. COLUMN_RATIO
+       Fraction of GT columns that were successfully mapped to a generated column
+       via Jaccard similarity on unique values (categorical) or numeric range/JS.
+       E.g. 2/2 columns mapped → ratio = 1.0.
+
+  3. PER-COLUMN SCORE  (per GT column, then averaged → avg_column_score)
+       • Numeric column:  column_score = 0.5 × (js_similarity + range_overlap)
+           – JS_similarity:    1 - JensenShannon(dist_gen, dist_gt) — measures how
+                               similar the value distributions are (0=identical, 1=max diff)
+           – Range_overlap:    overlap of [min, max] intervals between gen and gt column
+       • Categorical column: column_score = MinHash Jaccard on unique string values
+
+  Final formula:
+      true_combined_score = (fd_f1 + avg_column_score) / 2
+
+  NOTE: This score operates on COLUMN DISTRIBUTIONS, not row-by-row values,
+  so it can be high even when row counts differ between generated and GT tables.
+  A script that produces the right column shapes/ranges but wrong row count will
+  still score well on det_score_value while failing a hard-match (exact) check.
+
+
+==============================================================================================================
+SUMMARY TABLE (training data)
+==============================================================================================================
+ Script#   LoggedDet    FD_F1   ColRatio   AvgColScore   TrueCombined   Col:customer_id   Col:amount   GenRows   GTRows
+-----------------------------------------------------------------------------------------------------------------------
+     #40      0.0000    ERROR          —             —              —                 —            —         —        —  Traceback (most recent call last):
+  File "/tmp/tmp73vq3vi_.py", line 4, in <module>
+    df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_1.csv", index_col=0)
+      #5      0.4662   0.0000     1.0000        0.9324         0.4662            0.9321       0.9327
+     #98      0.4798   0.0000     1.0000        0.9595         0.4798            0.9868       0.9321
+     #18      0.8256   1.0000     1.0000        0.6512         0.8256            0.9868       0.3156
+      #9      0.8713   1.0000     1.0000        0.7425         0.8713            0.9868       0.4982
+      #1      0.8942   1.0000     1.0000        0.7883         0.8942            0.9868       0.5898
+     #78      0.9795   1.0000     1.0000        0.9590         0.9795            0.9868       0.9313
+     #52      0.9799   1.0000     1.0000        0.9599         0.9799            0.9868       0.9330
+     #69      0.9801   1.0000     1.0000        0.9602         0.9801            0.9868       0.9335
+     #86      0.9804   1.0000     1.0000        0.9608         0.9804            0.9868       0.9348
+
+==============================================================================================================
+DETAILED BREAKDOWN PER SCRIPT (training data)
+==============================================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+Script #40   logged_det_train = 0.0
+────────────────────────────────────────────────────────────────────────────────
+  *** FAILED TO RUN: Traceback (most recent call last):
+  File "/tmp/tmp73vq3vi_.py", line 4, in <module>
+    df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_1.csv", index_col=0) ***
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_1.csv", index_col=0)
+    df2 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_2.csv", index_col=0)
+    
+    df_all = pd.concat([df0, df1, df2], ignore_index=True)
+    df_all = df_all[['customer_id', 'amount']]
+    df_all['customer_id'] = df_all['customer_id'].astype(int)
+    df_all['amount'] = df_all['amount'].astype(float)
+    
+    df_all.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+────────────────────────────────────────────────────────────────────────────────
+Script #5   logged_det_train = 0.4662
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (0.0000 + 0.9324) / 2
+  │                      = 0.4662
+  │  Generated rows: 20000   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 0.0000
+  │  precision  = 0.0000
+  │  recall     = 0.0000
+  │  Generated FDs : []
+  │  GT FDs        : ["['customer_id']→amount"]
+  │  False negatives (missing FDs):      [{'lhs': ['customer_id'], 'rhs': 'amount'}]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9320
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.9328
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9321   =  0.5 × (js_similarity=0.8655 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=108464.45
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.9327   =  0.5 × (js_similarity=0.9767 + range_overlap=0.8888)
+  │    Gen  stats: min=5.0  max=4000.0  mean=63.09
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.9324
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    df0 = df0[['customer_id', 'amount']]
+    df0['customer_id'] = df0['customer_id'].astype(int)
+    df0['amount'] = df0['amount'].astype(float)
+    
+    df0.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #98   logged_det_train = 0.4798
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (0.0000 + 0.9595) / 2
+  │                      = 0.4798
+  │  Generated rows: 21914   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 0.0000
+  │  precision  = 0.0000
+  │  recall     = 0.0000
+  │  Generated FDs : []
+  │  GT FDs        : ["['customer_id']→amount"]
+  │  False negatives (missing FDs):      [{'lhs': ['customer_id'], 'rhs': 'amount'}]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.9321
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.9321   =  0.5 × (js_similarity=0.9754 + range_overlap=0.8888)
+  │    Gen  stats: min=5.0  max=4000.0  mean=64.11
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.9595
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    
+    agg_df = df0.groupby("customer_id").agg(max_amount=("amount", "max"), avg_amount=("amount", "mean")).reset_index()
+    
+    melted = agg_df.melt(id_vars=["customer_id"], value_vars=["max_amount", "avg_amount"], value_name="amount")
+    
+    result = melted[["customer_id", "amount"]]
+    
+    result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #18   logged_det_train = 0.8256
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (1.0000 + 0.6512) / 2
+  │                      = 0.8256
+  │  Generated rows: 10957   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 1.0000
+  │  precision  = 1.0000
+  │  recall     = 1.0000
+  │  Generated FDs : ["['customer_id']→amount"]
+  │  GT FDs        : ["['customer_id']→amount"]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.3156
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.3156   =  0.5 × (js_similarity=0.6296 + range_overlap=0.0016)
+  │    Gen  stats: min=28.0  max=2830965.0  mean=162697.84
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.6512
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    
+    joined = pd.merge(df0, df0, left_on='amount', right_on='amount', suffixes=('', '_right'))
+    
+    result = joined.groupby('customer_id', as_index=False)['amount'].sum()
+    
+    result['customer_id'] = result['customer_id'].astype(int)
+    result['amount'] = result['amount'].astype(float)
+    
+    result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #9   logged_det_train = 0.8713
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (1.0000 + 0.7425) / 2
+  │                      = 0.8713
+  │  Generated rows: 10957   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 1.0000
+  │  precision  = 1.0000
+  │  recall     = 1.0000
+  │  Generated FDs : ["['customer_id']→amount"]
+  │  GT FDs        : ["['customer_id']→amount"]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.4982
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.4982   =  0.5 × (js_similarity=0.9662 + range_overlap=0.0302)
+  │    Gen  stats: min=5.0  max=148750.0  mean=348.19
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.7425
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    
+    joined = pd.merge(df, df, on="customer_id", suffixes=('_left', '_right'))
+    
+    grouped = joined.groupby("customer_id", as_index=False).agg({"amount_left": "sum"})
+    
+    grouped.rename(columns={"amount_left": "amount"}, inplace=True)
+    
+    grouped["customer_id"] = grouped["customer_id"].astype(int)
+    grouped["amount"] = grouped["amount"].astype(float)
+    
+    grouped.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #1   logged_det_train = 0.8942
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (1.0000 + 0.7883) / 2
+  │                      = 0.8942
+  │  Generated rows: 10957   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 1.0000
+  │  precision  = 1.0000
+  │  recall     = 1.0000
+  │  Generated FDs : ["['customer_id']→amount"]
+  │  GT FDs        : ["['customer_id']→amount"]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.5898
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.5898   =  0.5 × (js_similarity=0.9681 + range_overlap=0.2116)
+  │    Gen  stats: min=5.0  max=21250.0  mean=115.16
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.7883
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    result = df0.groupby("customer_id", as_index=False)["amount"].sum()
+    result["customer_id"] = result["customer_id"].astype(int)
+    result["amount"] = result["amount"].astype(float)
+    result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #78   logged_det_train = 0.9795
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (1.0000 + 0.9590) / 2
+  │                      = 0.9795
+  │  Generated rows: 10957   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 1.0000
+  │  precision  = 1.0000
+  │  recall     = 1.0000
+  │  Generated FDs : ["['customer_id']→amount"]
+  │  GT FDs        : ["['customer_id']→amount"]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.9313
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.9313   =  0.5 × (js_similarity=0.9738 + range_overlap=0.8888)
+  │    Gen  stats: min=5.0  max=4000.0  mean=64.11
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.9590
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    
+    grouped = df0.groupby("customer_id")["amount"].agg(["max", "mean"]).reset_index()
+    grouped["amount"] = (grouped["max"] + grouped["mean"]) / 2
+    result = grouped[["customer_id", "amount"]]
+    result["customer_id"] = result["customer_id"].astype(int)
+    result["amount"] = result["amount"].astype(float)
+    
+    result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #52   logged_det_train = 0.9799
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (1.0000 + 0.9599) / 2
+  │                      = 0.9799
+  │  Generated rows: 10957   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 1.0000
+  │  precision  = 1.0000
+  │  recall     = 1.0000
+  │  Generated FDs : ["['customer_id']→amount"]
+  │  GT FDs        : ["['customer_id']→amount"]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.9330
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.9330   =  0.5 × (js_similarity=0.9772 + range_overlap=0.8888)
+  │    Gen  stats: min=5.0  max=4000.0  mean=54.90
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.9599
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    result = df0.groupby("customer_id", as_index=False)["amount"].min()
+    result["customer_id"] = result["customer_id"].astype(int)
+    result["amount"] = result["amount"].astype(float)
+    result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #69   logged_det_train = 0.9801
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (1.0000 + 0.9602) / 2
+  │                      = 0.9801
+  │  Generated rows: 10957   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 1.0000
+  │  precision  = 1.0000
+  │  recall     = 1.0000
+  │  Generated FDs : ["['customer_id']→amount"]
+  │  GT FDs        : ["['customer_id']→amount"]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.9336
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.9335   =  0.5 × (js_similarity=0.9783 + range_overlap=0.8888)
+  │    Gen  stats: min=5.0  max=4000.0  mean=60.85
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.9602
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    result = df0.groupby("customer_id", as_index=False)["amount"].mean()
+    result["amount"] = result["amount"].astype(float)
+    result["customer_id"] = result["customer_id"].astype(int)
+    result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+
+────────────────────────────────────────────────────────────────────────────────
+Script #86   logged_det_train = 0.9804
+────────────────────────────────────────────────────────────────────────────────
+
+  ┌─ FINAL SCORE ──────────────────────────────────────────────────
+  │  true_combined_score = (fd_f1 + avg_column_score) / 2
+  │                      = (1.0000 + 0.9608) / 2
+  │                      = 0.9804
+  │  Generated rows: 10957   |   GT rows: 12849
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ FD (Functional Dependency) Score ────────────────────────────
+  │  fd_f1      = 1.0000
+  │  precision  = 1.0000
+  │  recall     = 1.0000
+  │  Generated FDs : ["['customer_id']→amount"]
+  │  GT FDs        : ["['customer_id']→amount"]
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Column Mapping ──────────────────────────────────────────────
+  │  column_ratio = 1.0000  (2/2 GT columns mapped)
+  │    GT 'customer_id' ← Gen 'customer_id'  jaccard=0.9868
+  │    GT 'amount' ← Gen 'amount'  jaccard=0.9348
+  └───────────────────────────────────────────────────────────────
+
+  ┌─ Per-Column Scores ────────────────────────────────────────────
+  │  Column 'customer_id'  (type=numeric)
+  │    column_score = 0.9868   =  0.5 × (js_similarity=0.9749 + range_overlap=0.9986)
+  │    Gen  stats: min=10.0  max=264200.0  mean=126885.67
+  │    GT   stats: min=80.0   max=263890.0   mean=129665.73
+  │  Column 'amount'  (type=numeric)
+  │    column_score = 0.9348   =  0.5 × (js_similarity=0.9808 + range_overlap=0.8888)
+  │    Gen  stats: min=5.0  max=4000.0  mean=61.13
+  │    GT   stats: min=5.0   max=4500.0   mean=58.41
+  │
+  │  avg_column_score = 0.9608
+  └───────────────────────────────────────────────────────────────
+
+  Code:
+    import pandas as pd
+    
+    df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv", index_col=0)
+    
+    agg = df0.groupby("customer_id").agg(
+        count_amount=pd.NamedAgg(column="amount", aggfunc="count"),
+        min_amount=pd.NamedAgg(column="amount", aggfunc="min"),
+        max_amount=pd.NamedAgg(column="amount", aggfunc="max"),
+    )
+    
+    agg["amount"] = (agg["min_amount"] + agg["max_amount"]) / 2
+    result = agg[["amount"]].reset_index()
+    result["customer_id"] = result["customer_id"].astype(int)
+    result["amount"] = result["amount"].astype(float)
+    
+    result.to_csv("autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_mcts.csv", index=False)
+
+

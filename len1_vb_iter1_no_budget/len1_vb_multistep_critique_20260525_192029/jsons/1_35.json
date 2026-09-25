@@ -1,0 +1,46 @@
+{
+  "case": "1_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6988,
+        "cost": 0.0022068,
+        "latency": 6.218887567520142,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.398) / 2 = 0.699 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.509, range overlap=0.286.\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Source Zipcode': range overlap=0.000, JS similarity=0.338\n    Generated    \u2014 min: 94120.0, max: 99999.0, mean: 94771.2424\n    Ground Truth \u2014 min: 90230.0, max: 94120.0, mean: 93537.5091\n  Column 'Counts': range overlap=0.572, JS similarity=0.680\n    Generated    \u2014 min: 1.0, max: 4417.0, mean: 264.9798\n    Ground Truth \u2014 min: 1.0, max: 7721.0, mean: 1277.2",
+        "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 99\nExamples:\n Source Zipcode  Counts\n          95608       1\n          94153       1\n          94952       1",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_35/training_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# According to operation_history:\n# group_by = [Source1_35_0.Source Zipcode]\n# aggregations = [sum(Source1_35_0.Counts)]\n# So we group by 'Source Zipcode' and sum 'Counts'\n\n# Perform the group by and aggregation\ndf_target = df_source0.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Ensure the target schema types: 'Source Zipcode' and 'Counts' as integers\ndf_target[\"Source Zipcode\"] = df_target[\"Source Zipcode\"].astype(int)\ndf_target[\"Counts\"] = df_target[\"Counts\"].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Source Zipcode,Counts\n94120,12\n94121,3217\n94122,4417\n94123,3739\n94124,3303\n94125,3\n94126,6\n94127,1612\n94128,14\n94129,283\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1157989501953125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6988,
+          "cost": 0.0015019999999999999,
+          "latency": 5.563180685043335,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.398) / 2 = 0.699 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.509, range overlap=0.286.\nGround truth candidate keys: {Source Zipcode}.\nGenerated table candidate keys: {Source Zipcode}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Source Zipcode': range overlap=0.000, JS similarity=0.338\n    Generated    \u2014 min: 94120.0, max: 99999.0, mean: 94771.2424\n    Ground Truth \u2014 min: 90230.0, max: 94120.0, mean: 93537.5091\n  Column 'Counts': range overlap=0.572, JS similarity=0.680\n    Generated    \u2014 min: 1.0, max: 4417.0, mean: 264.9798\n    Ground Truth \u2014 min: 1.0, max: 7721.0, mean: 1277.2",
+          "generated_samples": "Schema: ['Source Zipcode', 'Counts']\nNumber of Tuples: 99\nExamples:\n Source Zipcode  Counts\n          94941       1\n          94122    4417\n          96140       1",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the first numerical index column\nsource = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_35/training_0.csv\", index_col=0)\n\n# Group by 'Source Zipcode' and sum 'Counts'\nresult = source.groupby(\"Source Zipcode\", as_index=False)[\"Counts\"].sum()\n\n# Write the result to the target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_35/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6811618804931641
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6221.732378005981,
+        "critique": 5589.304685592651
+      }
+    }
+  ]
+}

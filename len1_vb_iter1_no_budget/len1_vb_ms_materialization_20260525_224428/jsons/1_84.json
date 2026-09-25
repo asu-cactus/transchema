@@ -1,0 +1,29 @@
+{
+  "case": "1_84",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.957,
+        "cost": 0.002524,
+        "latency": 5.956321954727173,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.914) / 2 = 0.957 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'V_GENE': Jaccard=0.914",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\n  V_GENE\nIGHV3-20\nIGHV3-23\nIGHV4-34",
+        "code": "import pandas as pd\n\n# Read the intermediate result after UNPIVOT operation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_84/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path, index_col=0)\n\n# The intermediate_step1.csv already has the column 'V_GENE' in the correct format\n# Just write it to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_84/target_multisource.csv\"\ndf.to_csv(target_path)",
+        "generated_csv_head": "V_GENE\nIGHV3-30\nIGHV3-15\nIGHV4-30-2\nIGHV3-21\nIGHV1-8\nIGHV3-15\nIGHV4-39\nIGHV2-5\nIGHV1-69\nIGHV3-15\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8649826049804688
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 5968.078136444092,
+        "critique": 0.0
+      }
+    }
+  ]
+}

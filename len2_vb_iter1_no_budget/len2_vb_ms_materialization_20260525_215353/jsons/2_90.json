@@ -1,0 +1,46 @@
+{
+  "case": "2_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8436,
+        "cost": 0.0016428,
+        "latency": 8.56816816329956,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.687) / 2 = 0.844 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.798, range overlap=0.966.\nGround truth candidate keys: {day, metric}.\nGenerated table candidate keys: {day, metric}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'value': range overlap=0.966, JS similarity=0.798\n    Generated    \u2014 min: 1.0, max: 30.0, mean: 13.0714\n    Ground Truth \u2014 min: 2.0, max: 30.0, mean: 12.2857\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'day': Jaccard=0.180",
+        "generated_samples": "Schema: ['day', 'metric', 'value']\nNumber of Tuples: 14\nExamples:\n     day         metric  value\nvendredi ensoleillement    3.0\nvendredi      pollution   20.0\n   jeudi          pluie    4.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_90/training_0.csv\"\n]\n\n# List to hold loaded source DataFrames\nsource_dfs = []\n\n# Load each source CSV file with index_col=0 to ignore the numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since all source tables have the same schema as the target ['day', 'metric', 'value'],\n# and only one source table is given, we can directly use it as the target data.\n# If there were multiple source tables with the same schema, we would concat (union) them.\n\n# Concatenate all source DataFrames (union)\ntarget_df = pd.concat(source_dfs, ignore_index=True)\n\n# Ensure the target schema and types:\n# 'day': string, 'metric': string, 'value': float\ntarget_df = target_df.astype({\n    'day': 'string',\n    'metric': 'string',\n    'value': 'float'\n})\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_90/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "day,metric,value\njeudi,pluie,4.0\njeudi,pollution,30.0\nvendredi,temperature,25.0\nvendredi,ensoleillement,3.0\nvendredi,pluie,3.0\nvendredi,pollution,20.0\nsamedi,temperature,24.0\nsamedi,ensoleillement,2.0\nsamedi,pluie,2.0\nsamedi,pollution,30.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9710063934326172
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8436,
+          "cost": 0.0011924000000000001,
+          "latency": 4.313803195953369,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.687) / 2 = 0.844 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.798, range overlap=0.966.\nGround truth candidate keys: {day, metric}.\nGenerated table candidate keys: {day, metric}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'value': range overlap=0.966, JS similarity=0.798\n    Generated    \u2014 min: 1.0, max: 30.0, mean: 13.0714\n    Ground Truth \u2014 min: 2.0, max: 30.0, mean: 12.2857\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'day': Jaccard=0.180",
+          "generated_samples": "Schema: ['day', 'metric', 'value']\nNumber of Tuples: 14\nExamples:\n     day      metric  value\nvendredi temperature     25\n   jeudi       pluie      4\n   jeudi   pollution     30",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_90/training_0.csv\", index_col=0)\n\n# Since only one source table, no join needed.\n# The target schema is ['day', 'metric', 'value'] with 'day' as key.\n# Group by 'day' and 'metric' and sum the 'value' to aggregate duplicates if any.\nresult = source0.groupby(['day', 'metric'], as_index=False).agg({'value': 'sum'})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_90/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.5621185302734375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8574.585676193237,
+        "critique": 4371.979713439941
+      }
+    }
+  ]
+}

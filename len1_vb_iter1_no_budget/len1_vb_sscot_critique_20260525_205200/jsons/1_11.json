@@ -1,0 +1,46 @@
+{
+  "case": "1_11",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6406,
+        "cost": 0.0013788000000000001,
+        "latency": 4.702953338623047,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.281) / 2 = 0.641 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {births}; {sex}.\nGenerated table candidate keys: {births}; {sex}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'sex': Jaccard=0.562",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 1\nExamples:\nsex  births\n  M   30291",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_11/training_0.csv\"\n]\n\n# List to hold dataframes from each source\nsource_dfs = []\n\n# Load each source CSV, ignoring the first index column (index_col=0)\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table, and the target schema is ['sex', 'births'],\n# we need to transform the source by selecting only the 'sex' and 'births' columns.\n\n# Extract relevant columns from each source dataframe\ntransformed_dfs = []\nfor df in source_dfs:\n    # Select only 'sex' and 'births' columns\n    transformed_df = df[['sex', 'births']].copy()\n    transformed_dfs.append(transformed_df)\n\n# If there were multiple source tables with the same schema, we would union them.\n# Here, only one source table exists, so just use it directly.\nresult_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# The target examples show aggregated births by sex.\n# So we need to group by 'sex' and sum 'births'.\nresult_df = result_df.groupby('sex', as_index=False)['births'].sum()\n\n# Ensure the data types match the target schema\nresult_df['sex'] = result_df['sex'].astype(str)\nresult_df['births'] = result_df['births'].astype(int)\n\n# Write the result to the specified output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource_cot.csv\"\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nM,30291\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1141300201416016
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6406,
+          "cost": 0.0013120000000000002,
+          "latency": 3.299529790878296,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.281) / 2 = 0.641 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {births}; {sex}.\nGenerated table candidate keys: {births}; {sex}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'sex': Jaccard=0.562",
+          "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 1\nExamples:\nsex  births\n  M   30291",
+          "code": "import pandas as pd\n\n# Read source table\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_11/training_0.csv\", index_col=0)\n\n# Union step (only one source, so just use it)\ndf = source1\n\n# Group by 'sex' and sum 'births'\nresult = df.groupby('sex', as_index=False).agg({'births': 'sum'})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0845661163330078
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4705.996990203857,
+        "critique": 3322.1077919006348
+      }
+    }
+  ]
+}

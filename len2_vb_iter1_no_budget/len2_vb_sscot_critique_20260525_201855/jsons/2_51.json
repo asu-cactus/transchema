@@ -1,0 +1,46 @@
+{
+  "case": "2_51",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2251,
+        "cost": 0.0023248,
+        "latency": 12.095118045806885,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.450) / 2 = 0.225 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.256, range overlap=0.095.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Timepoint, Mouse ID}.\nKeys present in ground truth but absent in generated: {Timepoint, Drug}.\nSpurious keys in generated not present in ground truth: {Timepoint, Mouse ID, Drug}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.076, JS similarity=0.195\n    Generated    \u2014 min: 1.0, max: 249.0, mean: 116.9475\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.114, JS similarity=0.317\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+        "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 952\nExamples:\n     Drug  Timepoint  Mouse ID\n  Placebo         45        49\n Stelasyn         35        27\nCapomulin         35        25",
+        "code": "import pandas as pd\n\n# File paths for source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_51/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_51/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Inspect source schemas:\n# Source0 columns: ['Mouse ID', 'Timepoint', 'Tumor Volume (mm3)', 'Metastatic Sites']\n# Source1 columns: ['Mouse ID', 'Drug']\n# Target schema: ['Drug': string, 'Timepoint': integer, 'Mouse ID': integer]\n\n# Transformation plan:\n# - Target requires Drug, Timepoint, Mouse ID.\n# - Source0 has Mouse ID and Timepoint but no Drug.\n# - Source1 has Mouse ID and Drug but no Timepoint.\n# - Join Source0 and Source1 on 'Mouse ID' to get all three columns.\n# - Convert 'Mouse ID' to integer in the target, but source Mouse ID values are strings like 'n763', 'q787', 'f234', etc.\n#   Since target examples show Mouse ID as integer (e.g., 22, 25), we need to map these string IDs to integers.\n# - Similarly, Timepoint is integer in source and target.\n# - Drug is string in source1 and target.\n# \n# Since Mouse ID in source is string IDs, but target expects integer Mouse ID, we must create a mapping from string Mouse IDs to integers.\n# The target examples show Mouse ID as integers like 22, 25, so we will assign integer IDs by enumerating unique Mouse IDs.\n#\n# Steps:\n# 1. Extract unique Mouse IDs from both sources.\n# 2. Create a mapping from Mouse ID string to integer.\n# 3. Apply mapping to both dataframes.\n# 4. Join on integer Mouse ID.\n# 5. Select columns Drug, Timepoint, Mouse ID (integer).\n# 6. Export to CSV.\n\n# Step 1: Get unique Mouse IDs from both sources\nmouse_ids_source0 = set(df_source0['Mouse ID'].unique())\nmouse_ids_source1 = set(df_source1['Mouse ID'].unique())\nall_mouse_ids = sorted(mouse_ids_source0.union(mouse_ids_source1))\n\n# Step 2: Create mapping from Mouse ID string to integer ID starting from 1\nmouse_id_map = {mid: idx+1 for idx, mid in enumerate(all_mouse_ids)}\n\n# Step 3: Map Mouse ID strings to integers in both dataframes\ndf_source0['Mouse ID int'] = df_source0['Mouse ID'].map(mouse_id_map)\ndf_source1['Mouse ID int'] = df_source1['Mouse ID'].map(mouse_id_map)\n\n# Step 4: Join Source0 and Source1 on integer Mouse ID\n# We want to join on 'Mouse ID int' and also keep 'Timepoint' and 'Drug'\n# Source0 has multiple rows per Mouse ID with different Timepoints\n# Source1 has one row per Mouse ID with Drug info\n# So join Source0 (many rows per Mouse ID) with Source1 (one row per Mouse ID) on 'Mouse ID int'\n\ndf_joined = pd.merge(\n    df_source0,\n    df_source1[['Mouse ID int', 'Drug']],\n    on='Mouse ID int',\n    how='inner'\n)\n\n# Step 5: Prepare final dataframe with target schema ['Drug', 'Timepoint', 'Mouse ID']\n# Use 'Mouse ID int' as 'Mouse ID' (integer)\ndf_target = df_joined[['Drug', 'Timepoint', 'Mouse ID int']].copy()\ndf_target.rename(columns={'Mouse ID int': 'Mouse ID'}, inplace=True)\n\n# Ensure correct dtypes\ndf_target['Drug'] = df_target['Drug'].astype(str)\ndf_target['Timepoint'] = df_target['Timepoint'].astype(int)\ndf_target['Mouse ID'] = df_target['Mouse ID'].astype(int)\n\n# Step 6: Export to CSV\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_51/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Drug,Timepoint,Mouse ID\nPlacebo,20,133\nPlacebo,25,133\nPlacebo,30,133\nPlacebo,35,133\nPlacebo,40,133\nPlacebo,20,162\nPlacebo,25,162\nPlacebo,30,162\nPlacebo,35,162\nPlacebo,40,162\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5277862548828125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5793,
+          "cost": 0.00168,
+          "latency": 5.087292432785034,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.500 + 0.658) / 2 = 0.579 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.360, range overlap=0.616.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Mouse ID}; {Drug, Timepoint}.\nSpurious keys in generated not present in ground truth: {Mouse ID, Drug}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Timepoint'] \u2192 Mouse ID; ['Mouse ID'] \u2192 Timepoint.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.565, JS similarity=0.383\n    Generated    \u2014 min: 7.0, max: 23.0, mean: 15.8667\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.667, JS similarity=0.336\n    Generated    \u2014 min: 7.0, max: 23.0, mean: 15.8667\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+          "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 60\nExamples:\n    Drug  Timepoint  Mouse ID\nKetapril         45        11\nRamicane         20        23\n Placebo         25        17",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_51/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_51/training_1.csv\", index_col=0)\n\n# Join on Mouse ID\njoined = pd.merge(source0, source1, on=\"Mouse ID\", how=\"inner\")\n\n# Group by Drug and Timepoint, aggregate Mouse ID by count\nresult = joined.groupby([\"Drug\", \"Timepoint\"], as_index=False).agg({\"Mouse ID\": \"count\"})\n\n# Rename columns to match target schema exactly\nresult.columns = [\"Drug\", \"Timepoint\", \"Mouse ID\"]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_51/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8256435394287109
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12158.124685287476,
+        "critique": 5135.178089141846
+      }
+    }
+  ]
+}

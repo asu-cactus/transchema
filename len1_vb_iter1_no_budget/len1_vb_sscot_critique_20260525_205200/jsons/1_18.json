@@ -1,0 +1,46 @@
+{
+  "case": "1_18",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6105,
+        "cost": 0.0015728,
+        "latency": 15.274801254272461,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.221) / 2 = 0.611 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.000.\nGround truth candidate keys: {petal width (cm)}; {y}; {petal length (cm)}; {sepal length (cm)}; {sepal width (cm)}.\nGenerated table candidate keys: {petal width (cm)}; {y}; {petal length (cm)}; {sepal length (cm)}; {sepal width (cm)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'y': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.5\n  Column 'sepal length (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'sepal width (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal length (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal width (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5",
+        "generated_samples": "Schema: ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\nNumber of Tuples: 75\nExamples:\n y  sepal length (cm)  sepal width (cm)  petal length (cm)  petal width (cm)\n 1                  7                 3                  4                 1\n 2                  6                 3                  5                 2\n 2                  7                 3                  6                 2",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_18/training_0.csv\"\n]\n\n# List to hold loaded source DataFrames\nsource_dfs = []\n\n# Load each source CSV with index_col=0 to ignore the numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table and its schema matches the target schema except the order of columns,\n# we just need to reorder columns and convert all columns to integer type as per target schema.\n\n# Target schema column order\ntarget_columns = ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\n\n# Transform each source DataFrame to match target schema:\n# 1. Reorder columns to target schema order\n# 2. Convert all columns to integer type (rounding floats to nearest int)\ntransformed_dfs = []\nfor df in source_dfs:\n    # Reorder columns: source has ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)', 'y']\n    # Target expects ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\n    df_reordered = df[['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']].copy()\n    # Convert to integer by rounding\n    df_reordered = df_reordered.round(0).astype(int)\n    transformed_dfs.append(df_reordered)\n\n# Since only one source, final target DataFrame is just the transformed DataFrame\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_18/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "y,sepal length (cm),sepal width (cm),petal length (cm),petal width (cm)\n1,7,3,4,1\n1,7,3,5,1\n1,7,3,5,2\n1,6,3,4,2\n1,6,3,4,1\n1,6,2,4,1\n1,6,2,4,1\n1,6,3,4,1\n1,6,3,5,2\n1,5,3,4,2\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6133785247802734
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9221,
+          "cost": 0.0016367999999999999,
+          "latency": 5.1232521533966064,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.844) / 2 = 0.922 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.888, range overlap=0.800.\nGround truth candidate keys: {petal width (cm)}; {y}; {petal length (cm)}; {sepal length (cm)}; {sepal width (cm)}.\nGenerated table candidate keys: {petal width (cm)}; {y}; {petal length (cm)}; {sepal length (cm)}; {sepal width (cm)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'y': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.5\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.5",
+          "generated_samples": "Schema: ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\nNumber of Tuples: 2\nExamples:\n y  sepal length (cm)  sepal width (cm)  petal length (cm)  petal width (cm)\n 2                 50                50                 50                50\n 1                 25                25                 25                25",
+          "code": "import pandas as pd\n\n# Read source data\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_18/training_0.csv\", index_col=0)\n\n# Group by 'y' and count the number of rows per group for each measurement column\nresult = source1.groupby('y').agg({\n    'sepal length (cm)': 'count',\n    'sepal width (cm)': 'count',\n    'petal length (cm)': 'count',\n    'petal width (cm)': 'count'\n}).reset_index()\n\n# Convert counts to int (should already be int, but ensure)\nresult = result.astype({\n    'y': int,\n    'sepal length (cm)': int,\n    'sepal width (cm)': int,\n    'petal length (cm)': int,\n    'petal width (cm)': int\n})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_18/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0132789611816406
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15278.49292755127,
+        "critique": 5186.58971786499
+      }
+    }
+  ]
+}

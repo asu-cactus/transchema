@@ -1,19 +1,21 @@
 import time
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching
-from util.utils import get_test_info
+from util.utils import get_test_info, execute_python, make_test_validation_script, resolve_main_folder, resolve_case_json, drop_leading_index_col_if_present
 from test_scope import get_test_cases_ids
-from auto_suggest_llm_util import    calculate_score
-   
 from methods.multi_step import Config, get_python_response
+from hints.rule_hints import compute_case_rule_hints
 
 from log_util.log_util import create_logger
+from eval_score.cot_score import cot_value_based_score
+from rag_pipeline.local_rag_db import build_upper_bound_db, get_rag_hints
+from rag_pipeline.cot_rag import build_curated_rag
 import pandas as pd
 import os
 import traceback
 
 
-def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
+def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_context_str="", token_tracker=None, budget=None):
     # Initialize required variables
     case_path = f"{length}_{id_}"
     is_correct = False
@@ -21,10 +23,15 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
     case_accuracy_ = 0
     score = 0
     case_accuracy = 0
+    df_our_response = None
+    fd_f1_val = 0.0
+    col_ratio_val = 0.0
+    debug_dict_val = {}
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
     cost_summary = []
     start_time = time.time()
-    token_tracker = TokenUsageTracker()
+    if token_tracker is None:
+        token_tracker = TokenUsageTracker()
     script = ""
     op_hist_ = ""
     hint_source = args.hint_source
@@ -48,20 +55,18 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
     model = args.model
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    data_split = getattr(args, "data_split", "test")
+    # Counting files starting with data_split prefix in this subfolder (root only, no subdirs)
     file_count = sum(
         1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
-        if file.startswith("test")
+        for file in os.listdir(path_to_files)
+        if os.path.isfile(os.path.join(path_to_files, file))
+        if file.startswith(data_split)
     )
 
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+    json_file_path = resolve_case_json(benchmark, file_count)
 
     log_dir = log_dir_
 
@@ -79,6 +84,9 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
     # language = 'sql' #or 'python'
 
     ################## Run for each task ##################
+
+    # For single_step_cot called with specific length/id, construct the task name directly
+    task_list = [f"Target{length}_{id_}"]
 
     for task in task_list:
 
@@ -104,12 +112,58 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
             source_data_name_list,
             source_data_schema_list,
             source_samples_list,
-        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
-        # added anon_flag to get_test_info() call
+        ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
+        # added anon_flag and data_split to get_test_info() call
 
-        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger)
+        llm_client = LLMClient(model=model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
 
-        
+        # Build local RAG DB and retrieve hints (upper_bound mode)
+        rag_mode = getattr(args, "rag", "none")
+        sscot_rag_hints = ""
+        if rag_mode == "upper_bound":
+            gt_csv = getattr(args, "gt_csv", "ground_truth_pipelines.csv")
+            db_path = f"/tmp/rag_upper_bound_{length}_{id_}.db"
+            try:
+                build_upper_bound_db(
+                    case_id=f"{length}_{id_}",
+                    case_folder=os.path.join(main_folder, f"length{length}_{id_}"),
+                    gt_csv_path=gt_csv,
+                    db_path=db_path,
+                )
+                sscot_rag_hints = get_rag_hints(db_path, [])
+                if sscot_rag_hints:
+                    logger.info(f"[sscot RAG] hints retrieved for {length}_{id_}")
+                else:
+                    logger.info(f"[sscot RAG] no matching hints for {length}_{id_}")
+            except Exception:
+                logger.warning(f"[sscot RAG] failed to build/query RAG DB:\n{traceback.format_exc()}")
+
+        # Curated-pipeline RAG. This arm produces the whole plan in one shot, so there
+        # is no prefix to match on: the empty history matches every corpus pipeline and
+        # the cosine re-rank returns the --rag_topk structurally most similar cases.
+        elif rag_mode == "curated_pipeline":
+            curated = build_curated_rag(
+                args, directory, len_idx_target_idx,
+                data_split=data_split, logger=logger,
+            )
+            sscot_rag_hints = curated.hints_for([])
+            if not sscot_rag_hints:
+                logger.info(f"[curated RAG] no examples retrieved for {length}_{id_}")
+
+        # Depth-0 rule-engine candidates, computed once per case (cached in
+        # hints/rule_hints.py). The pipeline-driven arm has a single code-gen prompt,
+        # so get_python_response is the only place these are consumed.
+        rule_hint_candidates = None
+        if getattr(args, "rule_hints", False):
+            rule_hint_candidates = compute_case_rule_hints(
+                source_data_name_list,
+                directory,
+                len_idx_target_idx,
+                logger=logger,
+                top_k=getattr(args, "rule_hints_top_k", 3),
+                data_split=data_split,
+            )
+
         config = Config(
             target_data_name=target_data_name,
             target_data_schema=target_data_schema,
@@ -133,14 +187,21 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
             model=model,
             token_limit=token_limit,
             directory=directory,
+            static_hints=getattr(args, "static_hints", True),
+            past_context=past_context_str,
+            rag_hints=sscot_rag_hints,
+            data_split=data_split,
+            rule_hint_candidates=rule_hint_candidates,
         )
 
- 
+
         ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
         target_file_location = (
             f"{main_folder}/length{len_idx_target_idx}/target_multisource_cot.csv"
         )
-        script, response, _ = get_python_response([], 0, target_file_location, config)
+        script, response, _, self_reported_confidence = get_python_response(
+            [], 0, target_file_location, config
+        )
 
         if response == "Success":
             # save file here
@@ -154,7 +215,6 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
                 file.write(script)
 
             try:
-                # name_of_experiment_pass_1
                 df_our_response = pd.read_csv(target_file_location, low_memory=False)
                 df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
                 df_ground_truth.drop(
@@ -165,94 +225,56 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
                         case_accuracy,
                         is_correct,
                         similarity_scores,
-                        shared_columns,
+                        _,
                     ) = validate_fn(df_our_response, df_ground_truth)
-                    if (
-                        is_correct == False
-                        and len(shared_columns) > 0
-                        and len(df_our_response) == len(df_ground_truth)
-                    ):
-                        print(
-                            "TRY IGNORING COLUMN HEADERS AND SORTING COLUMNS FOR BETTER COMPARISON:"
-                        )
-                        sorted_df_our_response = df_our_response.sort_values(
-                            by=shared_columns
-                        )
-                        sorted_df_ground_truth = df_ground_truth.sort_values(
-                            by=shared_columns
-                        )
-                        new_header_our_response = []
-                        for col in sorted_df_our_response.columns:
-                            if "float" in str(sorted_df_our_response[col].dtype):
-                                print("is float")
-                                first_three_values = (
-                                    sorted_df_our_response[col].head(3).astype(int)
-                                )
-                            else:
-                                print("is not float")
-                                first_three_values = sorted_df_our_response[col].head(3)
-                            concatenated_header = (
-                                str(first_three_values.iloc[0])
-                                + "-"
-                                + str(first_three_values.iloc[1])
-                                + "-"
-                                + str(first_three_values.iloc[2])
-                            )
-                            print(concatenated_header)
-                            new_header_our_response.append(concatenated_header)
-                        sorted_df_our_response.columns = new_header_our_response
-                        new_header_ground_truth = []
-                        for col in sorted_df_ground_truth.columns:
-                            if "float" in str(sorted_df_ground_truth[col].dtype):
-                                print("is float")
-                                first_three_values = (
-                                    sorted_df_ground_truth[col].head(3).astype(int)
-                                )
-                            else:
-                                print("is not float")
-                                first_three_values = sorted_df_ground_truth[col].head(3)
-                            concatenated_header = (
-                                str(first_three_values.iloc[0])
-                                + "-"
-                                + str(first_three_values.iloc[1])
-                                + "-"
-                                + str(first_three_values.iloc[2])
-                            )
-                            print(concatenated_header)
-                            new_header_ground_truth.append(concatenated_header)
-                        sorted_df_ground_truth.columns = new_header_ground_truth
-                        print("OUR RESPONSE:")
-                        print(sorted_df_our_response)
-                        print("GROUND TRUTH:")
-                        print(sorted_df_ground_truth)
-                        (
-                            case_accuracy,
-                            is_correct,
-                            similarity_scores,
-                            shared_columns,
-                        ) = validate_fn(
-                            sorted_df_our_response, sorted_df_ground_truth
-                        )
-                    else:
-                        score = calculate_score(df_ground_truth, df_our_response)
                 except Exception as e:
                     print("".join(traceback.format_exc()))
                     is_correct = False
+                try:
+                    _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = cot_value_based_score(
+                        df_our_response,
+                        df_ground_truth,
+                        length=length,
+                        confidence=self_reported_confidence,
+                    )
+                except Exception:
+                    logger.warning(
+                        f"Score computation failed for {length}_{id_}, leaving score=0:"
+                        f"\n{traceback.format_exc()}"
+                    )
             except Exception as e:
                 print("".join(traceback.format_exc()))
                 case_accuracy = 0
                 is_correct = False
                 score = 0
 
+    # Two-phase validation: score on training output, is_correct on test output
+    if data_split == "training" and script:
+        test_script = make_test_validation_script(script)
+        test_output = f"{main_folder}/length{length}_{id_}/target_multisource_cot_test_val.csv"
+        print("[two-phase sscot] executing test-data script for is_correct validation...")
+        test_exec = execute_python(test_script)
+        if test_exec == "Success" and os.path.exists(test_output):
+            try:
+                df_test = pd.read_csv(test_output, low_memory=False)
+                df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
+                drop_leading_index_col_if_present(df_gt_test)
+                _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
+                print(f"[two-phase sscot] is_correct: training={is_correct} → test={test_is_correct}")
+                is_correct = test_is_correct
+            except Exception:
+                print(f"[two-phase sscot] test validation failed:\n{traceback.format_exc()}")
+        else:
+            print(f"[two-phase sscot] test exec={test_exec}, output_exists={os.path.exists(test_output)}")
+
     end_time = time.time()
 
     # Only try to write the file if script was actually generated
     if script:
-        with open(
-            f"{main_folder}/length{length}_{id_}/python_recovered.py",
-            "w",
-        ) as file:
+        recovered_path = f"{main_folder}/length{length}_{id_}/python_recovered.py"
+        with open(recovered_path, "w") as file:
             file.write(script)
+        print(f"[single_step_cot] python_recovered.py written: {recovered_path}")
     cost_data = token_tracker.cost_summary()  # This returns a dictionary
     total_cost = cost_data.get("total_cost", 0.0)  # Safely get total_cost with default
     time_elapsed = end_time - start_time
@@ -266,4 +288,4 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_):
     print(f"ms_info: {ms_info}")
     logger.info("Total Queries Made : {q}".format(q=q_count["total"]))
 
-    return ms_info
+    return ms_info, (df_our_response, fd_f1_val, col_ratio_val, score, debug_dict_val)

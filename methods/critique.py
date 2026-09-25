@@ -8,13 +8,17 @@ import tiktoken
 from pathlib import Path
 from typing import Optional, Union
 from hints.hint_v3 import get_column_equivalence
+from hints.hints_static import (get_hints_section, CRITIQUE_HINT_IDS,
+                                hints_for_benchmark, smartbuilding_override_for)
+from hints.rule_hints import compute_case_rule_hints, format_rule_hints
 from auto_suggest_llm_util import (
     get_source,
     get_target_samples,
     get_filtered_functional_dependency,
-    calculate_score,
 )
-from util.utils import execute_python, get_test_info
+from eval_score.cot_score import cot_value_based_score
+from methods.multi_step import CONFIDENCE_INSTRUCTION, parse_confidence
+from util.utils import execute_python, get_test_info, make_test_validation_script, resolve_main_folder, resolve_case_json, drop_leading_index_col_if_present
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching, is_column_numerical
 from validation.soft_match import compare_lists_matching_soft
@@ -23,8 +27,12 @@ from log_util.log_util import create_logger
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 from rag_pipeline.rag_layer import RAGDB, FeatureRAGDB, milvus_results_to_json
+from rag_pipeline.local_rag_db import build_upper_bound_db, get_rag_hints
+from rag_pipeline.cot_rag import build_curated_rag
 from rag_pipeline.feature_extractor import (
+    FEATURE_DIM,
     compute_from_data,
+    compute_from_jsonl_record,
     load_norm_stats,
     load_source_target_from_folder,
     parse_operation_history_for_query,
@@ -120,6 +128,9 @@ def critique(
     is_def,
     operation_history,
     rag_examples_base: Optional[Union[str, Path]] = None,
+    past_context_str: str = "",
+    judge_reason: str = "",
+    budget: float = None,
 ):
     """
     Run critique on a data-pipeline transformation using RAG few-shot examples.
@@ -154,39 +165,98 @@ def critique(
         ...                   rag_examples_base="/path/to/rag-examples-w-pipeline")
     """
     validate_fn = compare_tables_matching if getattr(args, "validation", "hard_match") == "autopipeline" else compare_lists_matching
+    # Benchmark selector: github | monteprep (need this early for target_location_critique)
+    benchmark = getattr(args, "benchmark", "github")
+    main_folder_early = resolve_main_folder(benchmark)
+    len_id_early = length
+    target_id_early = id_
+    len_idx_target_idx_early = str(len_id_early) + "_" + str(target_id_early)
+
+    # Pre-calculate target_location_critique for placeholder replacement
+    # For mcts_style, use "history" as the output filename for comparability
+    critique_filename = "history" if args.critique_type == "mcts_style" else args.critique_type
+    target_location_critique = (
+        main_folder_early
+        + "/length"
+        + len_idx_target_idx_early
+        + "/target_multisource_critique_"
+        + critique_filename
+        + ".csv"
+    )
+
     prompt_file = f"prompts/{args.critique_type}_critique.txt"
 
     with open(prompt_file, mode="r") as f:
         query = f.read()
 
-    static_hints_read = ""
-    with open("prompts/static_hints_critique.txt", mode="r") as f:
-        static_hints_read = f.read()
+    # Replace CSV output path placeholder
+    query = query.replace("$CSV_SAVE_PATH$", target_location_critique)
 
     if args.static_hints:
-        query = query.replace("$STATIC_HINTS$", static_hints_read)
+        # Hint #29 ("always add index_col=0") is wrong on smart_building, whose first
+        # column is real data -- following it makes the critique re-emit a script that
+        # eats that column and produces no output at all.
+        _hint_dir = main_folder_early
+        query = query.replace("$STATIC_HINTS$",
+                              get_hints_section(hints_for_benchmark(CRITIQUE_HINT_IDS, _hint_dir),
+                                                fmt="numbered")
+                              + smartbuilding_override_for(_hint_dir))
     else:
         query = query.replace("$STATIC_HINTS$", "")
+
+    if past_context_str:
+        query = query.replace("$PAST_ITERATION_CONTEXT$", past_context_str)
+    else:
+        query = query.replace("$PAST_ITERATION_CONTEXT$", "")
+
+    # Replace CSV output path placeholder (for mcts_style and other critique types)
+    query = query.replace("$CSV_SAVE_PATH$", target_location_critique)
+
+    if judge_reason:
+        judge_reason_block = (
+            f"Automated Judge Assessment:\n"
+            f"The automated judge determined this output is INCORRECT.\n"
+            f"Judge reasoning: \"{judge_reason}\""
+        )
+        query = query.replace("$JUDGE_REASON$", judge_reason_block)
+    else:
+        query = query.replace("$JUDGE_REASON$", "")
+
+    # Local upper_bound RAG hints
+    rag_hint_block = ""
+    if getattr(args, "rag", "none") == "upper_bound":
+        gt_csv = getattr(args, "gt_csv", "ground_truth_pipelines.csv")
+        db_path = f"/tmp/rag_upper_bound_{length}_{id_}.db"
+        try:
+            benchmark_folder = resolve_main_folder(getattr(args, "benchmark", "github"))
+            build_upper_bound_db(
+                    case_id=f"{length}_{id_}",
+                    case_folder=os.path.join(benchmark_folder, f"length{length}_{id_}"),
+                    gt_csv_path=gt_csv,
+                    db_path=db_path,
+                )
+            rag_hint_block = get_rag_hints(db_path, [])
+        except Exception:
+            pass
+    # The $RAG_HINTS$ substitution happens further down, after logger/data_split/
+    # main_folder exist, so the curated_pipeline mode can log and honour the split.
 
     log_dir = log_dir_
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    data_split = getattr(args, "data_split", "test")
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with data_split prefix in this subfolder
     file_count = sum(
         1
-        for _, _, files in os.walk(path_to_files)
-        for file in files
-        if file.startswith("test")
+        for file in os.listdir(path_to_files)
+        if file.startswith(data_split) and os.path.isfile(os.path.join(path_to_files, file))
     )
 
     ##print(file_count)
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+    json_file_path = resolve_case_json(benchmark, file_count)
 
     len_id = length
     target_id = id_
@@ -211,7 +281,31 @@ def critique(
 
     logger = create_logger(type_, log_dir, len_id, target_id, max_target_id)
 
-    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
+    if judge_reason:
+        logger.info(f"JUDGE_CALL: judge={getattr(args, 'judge', 'unknown')} verdict=INCORRECT reason={judge_reason!r}")
+    elif getattr(args, "judge", "gt") != "gt":
+        logger.info(f"JUDGE_CALL: judge={args.judge} verdict=INCORRECT reason=(none)")
+
+    llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger, cost_budget=budget if budget is not None else 0.0)
+
+    # ── Curated-pipeline RAG for the critique prompt ──────────────────────────
+    # Retrieved with an EMPTY prefix, i.e. the top-k structurally most similar complete
+    # pipelines, rather than prefix-matching the plan being critiqued. Two reasons:
+    #   * the critique reviews a FINISHED pipeline, so "what operation comes next after
+    #     this prefix" is the wrong question -- a similar complete pipeline is the
+    #     useful reference;
+    #   * crit() receives operation_history as str(list), not a list, and multi_step's
+    #     GROUP_BY entries carry no "GROUP_BY/AGGREGATE : " prefix, so
+    #     step_to_abstract would bin them as "other" and match nothing anyway.
+    if getattr(args, "rag", "none") == "curated_pipeline":
+        curated = build_curated_rag(
+            args, main_folder, len_idx_target_idx, data_split=data_split, logger=logger
+        )
+        rag_hint_block = curated.hints_for([])
+        if not rag_hint_block:
+            logger.info(f"[curated RAG] no critique examples retrieved for {len_idx_target_idx}")
+
+    query = query.replace("$RAG_HINTS$", rag_hint_block)
 
     rag_db = None
     feature_rag_db = None
@@ -245,7 +339,24 @@ def critique(
         source_data_name_list,
         source_data_schema_list,
         source_samples_list,
-    ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag)
+    ) = get_test_info(json_file_path, len_idx_target_idx, main_folder, anon_flag, data_split=data_split)
+
+    # ── Rule-engine hints ─────────────────────────────────────────────────────
+    # The critique template has no $RULE_HINTS$ placeholder (and it is shared with the
+    # MCTS-side prompts, so adding one is off-limits), hence the append. The generation
+    # prompts already get these; without this the critique is the only stage reasoning
+    # without them. compute_case_rule_hints is cached per (case, split), so the work was
+    # already done by the generation stage and this costs nothing.
+    if getattr(args, "rule_hints", False):
+        try:
+            _rule = compute_case_rule_hints(
+                source_data_name_list, main_folder, len_idx_target_idx,
+                logger=logger, top_k=getattr(args, "rule_hints_top_k", 3),
+                data_split=data_split,
+            )
+            query += format_rule_hints(_rule)
+        except Exception as exc:
+            logger.warning(f"[rule_hints] critique hint generation failed: {exc}")
 
     # get model encoding
     if args.model == "gpt-4.1-mini":
@@ -253,6 +364,13 @@ def critique(
         encoding = tiktoken.get_encoding("o200k_base")
     elif args.model == "o4-mini" or args.model == "o3":
         encoding = tiktoken.get_encoding("cl100k_base")
+    elif args.model.lower().startswith("dmx-"):
+        from llm.llm_models import dmx_encoding
+        encoding = dmx_encoding(args.model)
+    elif "gpt-oss" in args.model.lower():
+        # tiktoken.encoding_for_model() has no entry for gpt-oss and raises KeyError.
+        from llm.llm_models import gpt_oss_encoding
+        encoding = gpt_oss_encoding()
     else:
         encoding = tiktoken.encoding_for_model(args.model)
 
@@ -289,6 +407,7 @@ def critique(
         num_source_samples,
         num_tokens,
         encoding,
+        data_split=data_split,
     )
 
     query = query.replace("$SRC_INFO$", source_information)
@@ -300,16 +419,35 @@ def critique(
     )
     try:
         df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
-        df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+        drop_leading_index_col_if_present(df_ground_truth)
         query = query.replace("$NUM_TUPLES$", str(len(df_ground_truth)))
-        if args.critique_type == "history":
+        if args.critique_type in ("history", "mcts_style"):
             query = replace_history_info(query, operation_history)
             result_path = get_result_path(args, main_folder, len_idx_target_idx)
             query = replace_result_info(query, num_target_samples, result_path)
+            try:
+                df_generated = pd.read_csv(result_path, low_memory=False)
+                # Load source CSVs for dtype context
+                source_dfs = []
+                for src_name in source_data_name_list:
+                    try:
+                        src_path = f"{main_folder}/length{len_idx_target_idx}/{src_name}"
+                        # index_col=0 would swallow a REAL first column: 99 of 105
+                        # smartbuilding sources start with data (Strata_ID, datetime),
+                        # unlike github's where it is always a throwaway index.
+                        source_dfs.append(drop_leading_index_col_if_present(
+                            pd.read_csv(src_path, low_memory=False)))
+                    except Exception:
+                        pass
+                dist_section = build_column_distribution_section(df_ground_truth, df_generated, source_dfs=source_dfs)
+                query = query.replace("$COLUMN_DISTRIBUTIONS$", dist_section)
+            except Exception:
+                query = query.replace("$COLUMN_DISTRIBUTIONS$", "")
+        else:
+            query = query.replace("$COLUMN_DISTRIBUTIONS$", "")
     except Exception as e:
-        query = query.replace(
-            "$NUM_TUPLES$", "Last python script failed to produce any output."
-        )
+        query = query.replace("$NUM_TUPLES$", "Last python script failed to produce any output.")
+        query = query.replace("$COLUMN_DISTRIBUTIONS$", "")
 
     if fd == 1:
         df_ground_truth_fd = df_ground_truth.sample(
@@ -343,7 +481,7 @@ def critique(
             output_fields.append("case_id")
 
         if feature_rag_db is not None:
-            # Feature-based retrieval: compute 23-dim from current task, search feature collection
+            # Feature-based retrieval: compute 22-dim from current task, search feature collection
             task_folder = Path(main_folder) / f"length{len_idx_target_idx}"
             pipeline_list = parse_operation_history_for_query(operation_history)
             try:
@@ -364,7 +502,7 @@ def critique(
                     logger.warning(f"Feature extraction failed, using zero vector: {e}")
                 except Exception:
                     pass
-                query_vector = [0.0] * 23
+                query_vector = [0.0] * FEATURE_DIM
             if feature_norm_stats is not None:
                 query_vector = zscore_normalize(query_vector, feature_norm_stats)
             try:
@@ -531,6 +669,12 @@ def critique(
 
         query = query.replace("$FEW_SHOT_EXAMPLES$", few_shot_prompt)
 
+    # The confidence block goes on whichever call actually produces the script: for
+    # mcts_style that is this one, otherwise it is the refinement call below.
+    crit_confidence = None
+    if args.critique_type == "mcts_style":
+        query += CONFIDENCE_INSTRUCTION
+
     res = llm_client.gpt(query)
 
     logger.info(query)
@@ -538,84 +682,46 @@ def critique(
     cost = token_tracker.cost_summary()
     logger.info(cost)
 
-    try:
-        with open(
-            main_folder + "/length" + len_idx_target_idx + "/python_recovered_successful.py",
-            mode="r",
-        ) as f:
-            python_code = f.read()
-    except Exception as e:
-        python_code = ""
-    target_location_critique = (
-        main_folder
-        + "/length"
-        + len_idx_target_idx
-        + "/target_multisource_critique_"
-        + args.critique_type
-        + ".csv"
-    )
-    query_generator = """Based on the LLM response, can you refine the python code."""
-    if args.static_hints:
+    # For mcts_style critique, skip the refinement step to match MCTS behavior (single LLM call)
+    if args.critique_type == "mcts_style":
+        crit_confidence, _ = parse_confidence(res[0], logger=logger, tag="critique")
+        # Extract and execute the script from the first critique response directly
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res[0])
+        if match:
+            script = match.group(1).strip()
+            if script:
+                with open(
+                    f"{main_folder}/length{length}_{id_}/python_recovered.py",
+                    "w",
+                ) as file:
+                    file.write(script)
+        else:
+            script = ""
+        res_gen = res
+    else:
+        # Original multi-step behavior: run refinement step
+        try:
+            with open(
+                main_folder + "/length" + len_idx_target_idx + "/python_recovered.py",
+                mode="r",
+            ) as f:
+                python_code = f.read()
+        except Exception as e:
+            python_code = ""
+        query_generator = """Based on the LLM response, can you refine the python code."""
+        if args.static_hints:
+            query_generator += ("\n\n"
+                                + get_hints_section(hints_for_benchmark(CRITIQUE_HINT_IDS, main_folder),
+                                                    fmt="numbered")
+                                + smartbuilding_override_for(main_folder) + "\n")
         query_generator += """
-
-Hint 1:
-Note that some column names, e.g., purpose, funded_year, may not match the values in the column, e.g., 5 for purpose, 16844 for funded_year. In this case consider the column to be aggregation, e.g., count per purpose, and sum for funded_year. They should not be used in Group By columns.
-
-Hint 2:
-If the resulting data generated by the failed Python script has the same schema with the available target examples, but has more rows, it may indicate the following: (1) A Group By operator and Aggregate operators are missing. We would suggest adding a Group By operator using the left-most non-float, and unique attributes from the given target examples as GroupBy attributes and choosing the Aggregation operator such as count, average, medium, sum, etc., based on the range of valuesfor each of other columns. (2) If a Group By operator has been used, we would suggest remove some Group By attributes. (3) If OUTER join is used, it should be replaced by INNER join. (4) We shall remove rows that contain NaN values.
-
-Hint 3:
-If the output data from the last generated python script has the same schema with the target examples, however the key constraints exist in the target examples do not exist in the generated output data, please add a GroupBy to the last generated python script. The GroupBy attributes must be the primary key of the target examples (i.e., attributes serving as unique tuple identifer in the target examples).
-
-Hint 4:
-If the resulting data generated by the failed Python script has the same schema with the available target examples, but has fewer rows, it may indicate the following: (1) If INNER join is used, it should be replaced by OUTER join. (2) We shall keep rows that contain NaN values. (3) If Group By is used, it should be removed or use more Group By attributes.
-
-Hint 5:
-If multiple source tables share the same schema while the target table (i.e., target examples) also has the same schema, UNION must be used. However if m source tables share the same schema consisting of k non-key columns, but the target table has renamed each non-key column shared into k different columns, and thus consists of k x m non-key columns, JOIN should be applied to join all source tables on the primary key.
-
-Hint 5:
-Group By columns are never float types. These Group By columns correspond to columns that are UNIQUE and non-float in the target examples, which are usually at the leftmost part of the columns of the target examples.
-
-Hint 6:
-If the given target examples contain duplicate keys or duplicate rows, Group By should NOT be used.
-
-Hint 7:
-If the average value of a column in the target examples is significantly bigger than its average values in the source tables, sum aggregation should be applied to the column, and this column should be excluded from the Group By columns.
-
-Hint 8:
-If a column that usually has value range (such as year or funded_year) in the target table has abnormal values (e.g., 0 or 16888 for year or XXXX_year), an aggregation should be applied to the column and this column MUST be EXCLUDED from the Group By columns.
-
-Hint 9:
-JOIN is usually applied to two tables sharing the same primary key, or applied to two tables where one table has a column (i.e., foreign key) referencing to the primary key of the other table.
-
-Hint 10:
-Two different tables may join on shared columns that have different names but contain similar values. For example, in a source table called test_0.csv, there exists a Code column containing values such as AUS, AUT, BEL, CAN, FRA, while another source table called test_1.csv contains a column Country that has values such as FRA, BEL, GRA, USA, CAN. These source tables test_0 and test_1 can be joined on test_0.Code = test_1.Country. Similarly, if test_0 has a column Country having values Afghanistan, Albania, Algeria, Angola, etc, while test_2 has a column Host having similar country values such as France, Switzerland, United States, Germany, etc, the output of test_0 and test_1 df01 could join test_2 on df01.Country = test_2.Host.
-
-Hint 11:
-IMPORTANT: NEVER use all target columns as the GROUP BY columns!!!
-
-Hint 12:
-If in the target data examples, many columns have the same constant numerical values for each tuple, it may indicate a count is used after grouping data by the key of the target examples. 
-
-Hint 13:
-If in the target data examples, many columns have similar but different numerical values such as 5 5 4 5 4, in each row, it indicates that a COUNT DISTINCT is used.
-
-Hint 14:
-If the target data examples, some columns have the same constant values for all tuples, you may simply use the same constant value in the Python script for those columns.
-
-Hint 15:
-Consider applying string functions to certain columns that look similar but have different formats in the target and resulting data examples.
-
-Hint 16:
-Please look at the target examples, and ensure the generated data has the same type and name for each column in the target examples.
-"""
-    query_generator += """
     Note : - Make sure to write the final output of the python code to {target_location_critique}
     - Make sure to write the python code in-between "```Python" and "```"
     - Please keep the final output columns the same as it was in the python script given. [Strictly do not add prefix or suffix to the column names]
     - You just need to apply the fix according to the criticizer response.
     - Do not use assignment operation for any column.
-    Python Code : ```Python 
+    Python Code : ```Python
     {python_code}
     ```
 
@@ -623,27 +729,33 @@ Please look at the target examples, and ensure the generated data has the same t
     {res}
     ```
     """.format(
-        python_code=python_code,
-        target_location_critique=target_location_critique,
-        res=res,
-    )
+            python_code=python_code,
+            target_location_critique=target_location_critique,
+            res=res,
+        )
 
-    res_gen = llm_client.gpt(query_generator)
+        query_generator += CONFIDENCE_INSTRUCTION
 
-    pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
-    match = pattern.search(res_gen[0])
-    script = match.group(1).strip()
+        res_gen = llm_client.gpt(query_generator)
+        crit_confidence, _ = parse_confidence(
+            res_gen[0], logger=logger, tag="critique_refine"
+        )
 
-    if script:
-        with open(
-            f"{main_folder}/length{length}_{id_}/python_recovered.py",
-            "w",
-        ) as file:
-            file.write(script)
+        pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
+        match = pattern.search(res_gen[0])
+        script = match.group(1).strip()
 
-    logger.info(query_generator)
-    logger.info(res_gen[0])
-    logger.info(token_tracker.cost_summary())
+        if script:
+            with open(
+                f"{main_folder}/length{length}_{id_}/python_recovered.py",
+                "w",
+            ) as file:
+                file.write(script)
+
+        logger.info(query_generator)
+        logger.info(res_gen[0])
+        logger.info(token_tracker.cost_summary())
+
     cost = token_tracker.cost_summary()
     end_time = time.time()
     time_elapsed = end_time - start_time
@@ -652,6 +764,11 @@ Please look at the target examples, and ensure the generated data has the same t
     print(response)
     # sys.exit()
     logger.info(response)
+
+    df_critique = None
+    fd_f1_val = 0.0
+    col_ratio_val = 0.0
+    debug_dict_val = {}
 
     try:
         df_critique = pd.read_csv(target_location_critique, low_memory=False)
@@ -715,15 +832,41 @@ Please look at the target examples, and ensure the generated data has the same t
                 similarity_scores,
                 shared_columns,
             ) = validate_fn(sorted_df_critique, sorted_df_ground_truth)
-            score = calculate_score(sorted_df_ground_truth, sorted_df_critique)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = cot_value_based_score(
+                sorted_df_critique, sorted_df_ground_truth,
+                length=len_id, confidence=crit_confidence,
+            )
         else:
-            score = calculate_score(df_ground_truth, df_critique)
+            _, col_ratio_val, _, fd_f1_val, score, debug_dict_val = cot_value_based_score(
+                df_critique, df_ground_truth,
+                length=len_id, confidence=crit_confidence,
+            )
         logger.info(is_correct)
 
     except Exception as e:
         is_correct = False
         score = 0
+        logger.warning(f"Critique scoring/validation failed, leaving score=0: {e}")
         print("".join(traceback.format_exc()))
+
+    # Two-phase validation: score on training output, is_correct on test output
+    if data_split == "training" and script:
+        test_script = make_test_validation_script(script)
+        test_output = target_location_critique.replace(".csv", "_test_val.csv")
+        print("[two-phase crit] executing test-data script for is_correct validation...")
+        test_exec = execute_python(test_script)
+        if test_exec == "Success" and os.path.exists(test_output):
+            try:
+                df_test = pd.read_csv(test_output, low_memory=False)
+                df_gt_test = pd.read_csv(ground_truth_location, low_memory=False)
+                drop_leading_index_col_if_present(df_gt_test)
+                _, test_is_correct, _, _ = validate_fn(df_test, df_gt_test)
+                print(f"[two-phase crit] is_correct: training={is_correct} → test={test_is_correct}")
+                is_correct = test_is_correct
+            except Exception:
+                print(f"[two-phase crit] test validation failed:\n{traceback.format_exc()}")
+        else:
+            print(f"[two-phase crit] test exec={test_exec}, output_exists={os.path.exists(test_output)}")
 
     crit_info = (
         is_correct,
@@ -731,24 +874,149 @@ Please look at the target examples, and ensure the generated data has the same t
         time_elapsed,
         score,
     )
-    return crit_info
+    return crit_info, (df_critique, fd_f1_val, col_ratio_val, score, debug_dict_val)
 
 
 def replace_history_info(query, operation_history):
     return query.replace("$OPERATIONS$", operation_history)
 
 
+def build_column_distribution_section(
+    df_gt: pd.DataFrame,
+    df_gen: pd.DataFrame,
+    source_dfs: list = None,
+) -> str:
+    """
+    Per-column distribution comparison between the ground-truth and generated tables.
+    Numeric columns: min, max, mean with range/mean ratio warnings.
+    Categorical columns: unique count and top values.
+    Also reports source column dtypes when source_dfs is provided.
+    Also reports missing/extra columns.
+    """
+    lines = ["Column-Level Distribution Comparison (Target vs Generated):"]
+
+    # Show source table schemas upfront so the LLM knows the original dtypes
+    # (target columns are often renamed/aggregated from source columns)
+    if source_dfs:
+        lines.append("\n  Source Table Column Schemas:")
+        for src_idx, src_df in enumerate(source_dfs):
+            col_dtypes = ", ".join(f"{c}({src_df[c].dtype})" for c in src_df.columns)
+            lines.append(f"    src_{src_idx}: {col_dtypes}")
+
+    # Build a flat lookup: col_name_lower -> list of (source_file_idx, dtype)
+    # Used for exact-name matches (non-renamed columns)
+    source_dtype_map: dict = {}
+    if source_dfs:
+        for src_idx, src_df in enumerate(source_dfs):
+            for col in src_df.columns:
+                key = col.lower()
+                if key not in source_dtype_map:
+                    source_dtype_map[key] = []
+                source_dtype_map[key].append((src_idx, str(src_df[col].dtype)))
+
+    gt_cols_lower  = {c.lower(): c for c in df_gt.columns}
+    gen_cols_lower = {c.lower(): c for c in df_gen.columns}
+    shared = sorted(set(gt_cols_lower) & set(gen_cols_lower))
+
+    for col_lower in shared:
+        gt_col  = gt_cols_lower[col_lower]
+        gen_col = gen_cols_lower[col_lower]
+        gt_series  = df_gt[gt_col].dropna()
+        gen_series = df_gen[gen_col].dropna()
+
+        gt_dtype  = str(df_gt[gt_col].dtype)
+        gen_dtype = str(df_gen[gen_col].dtype)
+
+        # Build dtype summary line
+        if gt_dtype != gen_dtype:
+            dtype_note = f" [dtype mismatch: target={gt_dtype}, generated={gen_dtype}]"
+        else:
+            dtype_note = f" [dtype: {gt_dtype}]"
+
+        # Append source dtype info if available
+        src_entries = source_dtype_map.get(col_lower)
+        if src_entries:
+            src_dtype_str = ", ".join(f"src_{i}={dt}" for i, dt in src_entries)
+            dtype_note += f" [source: {src_dtype_str}]"
+
+        lines.append(f"\n  Column '{gt_col}'{dtype_note}:")
+
+        try:
+            gt_vals  = gt_series.astype(float).values
+            gen_vals = gen_series.astype(float).values
+            gt_min,  gt_max,  gt_mean  = float(gt_vals.min()),  float(gt_vals.max()),  float(gt_vals.mean())
+            gen_min, gen_max, gen_mean = float(gen_vals.min()), float(gen_vals.max()), float(gen_vals.mean())
+
+            lines.append(f"    Target   : min={gt_min:.4g},  max={gt_max:.4g},  mean={gt_mean:.4g}")
+            lines.append(f"    Generated: min={gen_min:.4g}, max={gen_max:.4g}, mean={gen_mean:.4g}")
+
+            # gt_range  = gt_max  - gt_min
+            # gen_range = gen_max - gen_min
+            # if gt_range > 1e-6:
+            #     ratio = gen_range / gt_range
+            #     if ratio > 5:
+            #         lines.append(
+            #             f"    WARNING: generated range is {ratio:.1f}x larger than target — "
+            #             "likely SUM used instead of AVG or COUNT."
+            #         )
+            #     elif ratio < 0.2:
+            #         lines.append(
+            #             f"    WARNING: generated range is {ratio:.2f}x of target — "
+            #             "possible over-aggregation or wrong GROUP BY."
+            #         )
+
+            # if abs(gt_mean) > 1e-6:
+            #     mean_ratio = gen_mean / gt_mean
+            #     if mean_ratio > 5:
+            #         lines.append(
+            #             f"    WARNING: generated mean is {mean_ratio:.1f}x larger than target — "
+            #             "consider AVG instead of SUM."
+            #         )
+            #     elif mean_ratio < 0.2:
+            #         lines.append(
+            #             f"    WARNING: generated mean is {mean_ratio:.2f}x of target — "
+            #             "values may be under-aggregated."
+            #         )
+
+        except (ValueError, TypeError):
+            gt_nunique  = int(gt_series.nunique())
+            gen_nunique = int(gen_series.nunique())
+            gt_top  = gt_series.value_counts().head(5).index.tolist()
+            gen_top = gen_series.value_counts().head(5).index.tolist()
+            lines.append(f"    Target   : {gt_nunique} unique values, top: {gt_top}")
+            lines.append(f"    Generated: {gen_nunique} unique values, top: {gen_top}")
+            # if gt_nunique != gen_nunique:
+            #     lines.append(
+            #         f"    WARNING: unique value counts differ ({gt_nunique} vs {gen_nunique}) — "
+            #         "check string normalization or grouping."
+            #     )
+
+    missing = sorted(set(df_gt.columns) - set(df_gen.columns))
+    extra   = sorted(set(df_gen.columns) - set(df_gt.columns))
+    if missing:
+        lines.append(f"\n  Columns in target but MISSING in generated: {missing}")
+    if extra:
+        lines.append(f"  Columns in generated but NOT in target: {extra}")
+
+    return "\n".join(lines)
+
+
 def get_result_path(args, main_folder, len_idx_target_idx):
 
     if args.intermediate_materialization:
-        result_path = f"{main_folder}/source_space/length{len_idx_target_idx}/"
-        # Iterate through the intermediate files in the source_space folder and get their names
+        result_path = f"{main_folder}/intermediate_space/length{len_idx_target_idx}/"
+        # Find the highest-numbered intermediate_step{n}.csv in the folder
         max_step = 0
         for f in os.listdir(result_path):
-            if f.startswith("intermediate"):
-                step = f.lstrip("intermediate_step").rstrip(".csv")
-                max_step = max(max_step, int(step))
+            if f.startswith("intermediate_step") and f.endswith(".csv"):
+                try:
+                    step = int(f[len("intermediate_step"):-len(".csv")])
+                    max_step = max(max_step, step)
+                except ValueError:
+                    pass
         result_path += f"intermediate_step{max_step}.csv"
+    elif getattr(args, "single_step_cot", False):
+        result_path = f"{main_folder}/length{len_idx_target_idx}/target_multisource_cot.csv"
     else:
         result_path = f"{main_folder}/length{len_idx_target_idx}/target_multisource.csv"
 

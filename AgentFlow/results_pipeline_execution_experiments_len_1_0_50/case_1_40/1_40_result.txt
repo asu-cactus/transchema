@@ -1,0 +1,70 @@
+Case: 1_40
+Status: INCORRECT
+Timestamp: 2026-02-24T10:16:01.623247
+Duration: 44.92 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_0_50/case_1_40/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_40
+2. Target Schema: ['CUSTOMERNAME': string, 'ORDERNUMBER': integer, 'QUANTITYORDERED': integer]
+3. Target Examples: There are 153 available target examples:                      CUSTOMERNAME  ORDERNUMBER  QUANTITYORDERED
+111  Quebec Home Shopping Network        10261               47
+0                    Alpha Cognac        10136              102
+86   Mini Gifts Distributors Ltd.        10312              464
+150   West Coast Collectables Co.        10215              357
+127       Scandinavian Gift Ideas        10389              222
+129      Signal Collectibles Ltd.        10219               91
+84   Mini Gifts Distributors Ltd.        10271              176
+119                 Rovelli Gifts        10173              342
+72                Mini Auto Werke        10170              108
+56           Heintze Collectables        10161              203
+104  Online Diecast Creations Co.        10192              279
+19     Collectables For Less Inc.        10147              232
+16           Classic Legends Inc.        10337               90
+112  Quebec Home Shopping Network        10411              198
+107                    Petit Auto        10221               95
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_40_0
+	Source 0 Schema: ['ORDERNUMBER', 'QUANTITYORDERED', 'PRICEEACH', 'ORDERLINENUMBER', 'SALES', 'ORDERDATE', 'STATUS', 'QTR_ID', 'MONTH_ID', 'YEAR_ID', 'PRODUCTLINE', 'MSRP', 'PRODUCTCODE', 'CUSTOMERNAME', 'PHONE', 'ADDRESSLINE1', 'ADDRESSLINE2', 'CITY', 'STATE', 'POSTALCODE', 'COUNTRY', 'TERRITORY', 'CONTACTLASTNAME', 'CONTACTFIRSTNAME', 'DEALSIZE']
+	Source 0 Examples: 	 Source 0 contains 1411 tuples, with examples as follows: 
+  ORDERNUMBER  QUANTITYORDERED  PRICEEACH  ORDERLINENUMBER    SALES  \
+0       10107             30.0      95.70              2.0  2871.00   
+1       10121             34.0      81.35              5.0  2765.90   
+2       10134             41.0      94.74              2.0  3884.34   
+
+        ORDERDATE   STATUS  QTR_ID  MONTH_ID  YEAR_ID  PRODUCTLINE  MSRP  \
+0  2/24/2003 0:00  Shipped     1.0       2.0   2003.0  Motorcycles  95.0   
+1   5/7/2003 0:00  Shipped     2.0       5.0   2003.0  Motorcycles  95.0   
+2   7/1/2003 0:00  Shipped     3.0       7.0   2003.0  Motorcycles  95.0   
+
+  PRODUCTCODE        CUSTOMERNAME             PHONE  \
+0    S10_1678   Land of Toys Inc.        2125557818   
+1    S10_1678  Reims Collectables        26.47.1555   
+2    S10_1678     Lyon Souveniers  +33 1 46 62 7555   
+
+                    ADDRESSLINE1 ADDRESSLINE2   CITY STATE POSTALCODE COUNTRY  \
+0        897 Long Airport Avenue          NaN    NYC    NY      10022     USA   
+1             59 rue de l'Abbaye          NaN  Reims   NaN      51100  France   
+2  27 rue du Colonel Pierre Avia          NaN  Paris   NaN      75508  France   
+
+  TERRITORY CONTACTLASTNAME CONTACTFIRSTNAME DEALSIZE  
+0       NaN              Yu             Kwai    Small  
+1      EMEA         Henriot             Paul    Small  
+2      EMEA        Da Cunha           Daniel   Medium  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_40/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_40/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

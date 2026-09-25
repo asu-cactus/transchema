@@ -12,32 +12,34 @@
 # Output: bool — True = correct (do NOT enact critique), False = wrong (enact critique)
 
 import json
+import logging
 import pandas as pd
-from eval_score.score import relative_csv_score
+from eval_score_value_based import value_based_relative_csv_score_timed
 from llm.llm_models import LLMClient, TokenUsageTracker
 
-EPS = 1e-2  # true_combined_score must exceed 1 - EPS to be considered correct
+EPS = 0.002  # true_combined_score must equal exactly 1.0 to be considered correct
 
 
-def judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, judge_type: str, llm_client: LLMClient) -> bool:
+def judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, judge_type: str, llm_client: LLMClient, logger: logging.Logger = None) -> tuple:
+    """Returns (is_correct: bool, reason: str). reason is empty for non-LLM judges."""
     if judge_type == "gt":
         raise ValueError("gt judge is handled upstream via compare_lists_matching — don't call judge() for it")
     elif judge_type == "det_score":
-        return score_judge(df_generated, df_ground_truth)
+        return score_judge(df_generated, df_ground_truth, logger=logger), ""
     elif judge_type == "llm":
-        return llm_judge(df_generated, df_ground_truth, llm_client)
+        return llm_judge(df_generated, df_ground_truth, llm_client, logger=logger)
     elif judge_type == "llm_score":
-        return llm_score_judge(df_generated, df_ground_truth, llm_client)
+        return llm_score_judge(df_generated, df_ground_truth, llm_client, logger=logger)
     elif judge_type == "llm_score_hybrid":
-        return llm_nl_score_judge(df_generated, df_ground_truth, llm_client)
+        return llm_nl_score_judge(df_generated, df_ground_truth, llm_client, logger=logger)
     else:
         raise ValueError(f"Unknown judge type: {judge_type}")
 
 
 def _score_tuple(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame):
-    """Run relative_csv_score, return the full 6-tuple. Callers pick what they need."""
+    """Run value_based_relative_csv_score_timed, return the full 6-tuple. Callers pick what they need."""
     fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
-        relative_csv_score(df_generated, df_ground_truth)
+        value_based_relative_csv_score_timed(df_generated, df_ground_truth)
     return fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict
 
 
@@ -46,17 +48,21 @@ def _df_to_prompt_str(df: pd.DataFrame, max_rows: int = 10) -> str:
     return df.head(max_rows).to_string(index=False)
 
 
-def score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame) -> bool:
+def score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, logger: logging.Logger = None) -> bool:
     """
     Pure deterministic judge. Uses true_combined_score = (fd_f1 + col_ratio) / 2.
     Returns True (correct) iff score >= 1 - EPS.
     """
     _, _, _, _, true_combined_score, _ = _score_tuple(df_generated, df_ground_truth)
-    print(f"DET_SCORE: true_combined_score={true_combined_score:.4f}, threshold={1.0 - EPS:.4f}, result={true_combined_score >= (1.0 - EPS)}")
+    msg = f"DET_SCORE: true_combined_score={true_combined_score:.4f}, threshold={1.0 - EPS:.4f}, result={true_combined_score >= (1.0 - EPS)}"
+    if logger:
+        logger.info(msg)
+    else:
+        print(msg)
     return true_combined_score >= (1.0 - EPS)
 
 
-def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient) -> bool:
+def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None) -> bool:
     """
     LLM sees both tables, no score information. Returns True if LLM judges correct.
     Expects JSON response: {"correct": true/false, "reason": "..."}
@@ -70,27 +76,33 @@ def llm_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_cli
     {_df_to_prompt_str(df_generated)}
 
     Assess whether the generated table is a correct transformation of the ground truth.
-    Consider: schema match (column names, types), value correctness, row count, and structural integrity.
+    Consider: schema match (column names, data types), column count, key structure (candidate keys), functional dependency structure, value range plausibility, and overall structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected. Focus on structural and schema-level properties, not exact value matches.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
     or
     {{"correct": false, "reason": "brief explanation"}}"""
 
+    if logger:
+        logger.info(f"JUDGE_PROMPT (llm):\n{prompt}")
     response_str = llm_client.gpt(prompt)[0]
-    return _parse_llm_bool_response(response_str)
+    return _parse_llm_bool_response(response_str, logger=logger)
 
 
-def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient) -> bool:
+def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None, precomputed_score: float = None) -> bool:
     """
     LLM sees both tables + raw numeric score metrics.
     Returns True if LLM judges correct.
+    If precomputed_score is provided, skip re-running relative_csv_score.
     """
-    fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
-        _score_tuple(df_generated, df_ground_truth)
+    if precomputed_score is not None:
+        true_combined_score = precomputed_score
+    else:
+        _, _, _, _, true_combined_score, _ = _score_tuple(df_generated, df_ground_truth)
 
     score_summary = {
-            "Match score based on functional dependencies and column mapping:": round(true_combined_score, 4),
+            "Match score (Functional Dependency F1 + Jensen-Shannon Divergence similarity + Value Range Overlap) / 3:": round(true_combined_score, 4),
     }
 
     prompt = f"""You are evaluating whether a generated data table matches a ground truth table for a schema transformation task.
@@ -104,29 +116,39 @@ def llm_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, l
     Similarity Metrics:
     {json.dumps(score_summary, indent=2)}
 
+    Assess whether the generated table is a correct transformation of the ground truth.
+    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected.
+
     Use the tables AND the score together to assess correctness.
+    Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
     or
     {{"correct": false, "reason": "brief explanation"}}"""
 
+    if logger:
+        logger.info(f"JUDGE_PROMPT (llm_score):\n{prompt}")
     response_str = llm_client.gpt(prompt)[0]
-    return _parse_llm_bool_response(response_str)
+    return _parse_llm_bool_response(response_str, logger=logger)
 
 
-def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient) -> bool:
+def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame, llm_client: LLMClient, logger: logging.Logger = None, precomputed_nl_score: str = None) -> bool:
     """
     LLM sees both tables + natural language interpretation of the score.
     Softer signal than raw numbers — tells the LLM what the score *means*.
     Returns True if LLM judges correct.
+    If precomputed_nl_score is provided, skip re-running relative_csv_score.
     """
-    fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
-        _score_tuple(df_generated, df_ground_truth)
-
-    nl_interpretation = _build_nl_score_interpretation(
-        fd_f1, col_ratio, true_combined_score, debug_dict
-    )
+    if precomputed_nl_score is not None:
+        nl_interpretation = precomputed_nl_score
+    else:
+        fd_ratio, col_ratio, combined_score, fd_f1, true_combined_score, debug_dict = \
+            _score_tuple(df_generated, df_ground_truth)
+        nl_interpretation = build_nl_score_interpretation(
+            fd_f1, col_ratio, true_combined_score, debug_dict
+        )
 
     prompt = f"""You are evaluating whether a generated data table matches a ground truth table for a schema transformation task.
 
@@ -139,17 +161,24 @@ def llm_nl_score_judge(df_generated: pd.DataFrame, df_ground_truth: pd.DataFrame
     Automated Scoring Analysis:
     {nl_interpretation}
 
+    Assess whether the generated table is a correct transformation of the ground truth.
+    Consider: schema match (column names, types), value correctness, and structural integrity.
+    Note: the tables contain sampled data — individual values may differ and that is expected.
+
     Use the tables AND the scoring analysis together to make a final correctness judgement.
+    Use the provided score as the primary basis for the final decision, with a weight of 80%, and use your own internal judgment or background knowledge only as a secondary factor, with a weight of 20%.
 
     Respond ONLY with a JSON object in this exact format (no markdown, no preamble):
     {{"correct": true, "reason": "brief explanation"}}
     or
     {{"correct": false, "reason": "brief explanation"}}"""
 
+    if logger:
+        logger.info(f"JUDGE_PROMPT (llm_score_hybrid):\n{prompt}")
     response_str = llm_client.gpt(prompt)[0]
-    return _parse_llm_bool_response(response_str)
+    return _parse_llm_bool_response(response_str, logger=logger)
 
-def _build_nl_score_interpretation(
+def build_nl_score_interpretation(
     fd_f1: float,
     col_ratio: float,
     true_combined_score: float,
@@ -162,13 +191,60 @@ def _build_nl_score_interpretation(
     lines = []
 
     # --- Overall verdict ---
+
     if true_combined_score >= 1.0 - EPS:
         lines.append("Overall: the generated table appears to be a near-perfect match.")
     elif true_combined_score >= 0.75:
         lines.append("Overall: the generated table is a partial match with notable discrepancies.")
     else:
         lines.append("Overall: the generated table has significant structural differences from ground truth.")
-    lines.append(f"Combined score (fd_f1 + col_ratio) / 2 = {true_combined_score:.3f} (1.0 is perfect).")
+
+    col_scores_info = debug_dict.get("column_scores", {})
+    dist_info = debug_dict.get("distribution", {})
+
+    if col_scores_info:
+        # New value-based scorer: true_combined_score = (fd_f1 + avg_column_score) / 2
+        # avg_column_score = mean of per-column scores:
+        #   numeric   → 0.5 * (js_similarity + range_overlap)
+        #   categorical → MinHash Jaccard
+        avg_col_score = col_scores_info.get("avg_column_score")
+        avg_js = col_scores_info.get("avg_js_similarity")
+        avg_ro = col_scores_info.get("avg_range_overlap")
+        if avg_col_score is not None:
+            formula = (
+                f"(fd_f1 + avg_column_score) / 2 = "
+                f"({fd_f1:.3f} + {avg_col_score:.3f}) / 2"
+            )
+            col_score_note = (
+                "avg_column_score = mean of per-column scores "
+                "(numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard)."
+            )
+            if avg_js is not None and avg_ro is not None:
+                col_score_note += (
+                    f" Numeric averages: JS similarity={avg_js:.3f}, range overlap={avg_ro:.3f}."
+                )
+        else:
+            formula = f"fd_f1 = {fd_f1:.3f}"
+            col_score_note = None
+        lines.append(f"Combined score = {formula} = {true_combined_score:.3f} (1.0 is perfect).")
+        if col_score_note:
+            lines.append(col_score_note)
+    else:
+        # Legacy scorer path
+        js_sim_val = dist_info.get("avg_js_similarity")
+        range_ovlp = dist_info.get("avg_range_overlap")
+        if js_sim_val is not None and range_ovlp is not None:
+            formula = (
+                f"(fd_f1 + range_overlap + js_similarity) / 3 = "
+                f"({fd_f1:.3f} + {range_ovlp:.3f} + {js_sim_val:.3f}) / 3"
+            )
+        elif range_ovlp is not None:
+            formula = f"(fd_f1 + range_overlap) / 2 = ({fd_f1:.3f} + {range_ovlp:.3f}) / 2"
+        elif js_sim_val is not None:
+            formula = f"(fd_f1 + js_similarity) / 2 = ({fd_f1:.3f} + {js_sim_val:.3f}) / 2"
+        else:
+            formula = f"fd_f1 = {fd_f1:.3f}"
+        lines.append(f"Combined score = {formula} = {true_combined_score:.3f} (1.0 is perfect).")
 
     # --- Key structure comparison ---
     fd_info = debug_dict.get("fd", {})
@@ -255,31 +331,85 @@ def _build_nl_score_interpretation(
             f"recall={fd_info.get('recall', float('nan')):.3f})."
         )
         if fd_fp:
-            fp_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fp[:5]]
+            fp_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fp[:5] if fd is not None]
             overflow = f" (and {len(fd_fp) - 5} more)" if len(fd_fp) > 5 else ""
             lines.append(f"Spurious FDs in generated (not in ground truth): {'; '.join(fp_strs)}{overflow}.")
         if fd_fn:
-            fn_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fn[:5]]
+            fn_strs = [f"{fd['lhs']} → {fd['rhs']}" for fd in fd_fn[:5] if fd is not None]
             overflow = f" (and {len(fd_fn) - 5} more)" if len(fd_fn) > 5 else ""
             lines.append(f"Missing FDs from ground truth: {'; '.join(fn_strs)}{overflow}.")
 
-    # --- Column mapping ---
-    col_info = debug_dict.get("columns", {})
-    if col_ratio >= 1.0 - EPS:
-        lines.append("Column mapping is complete — all ground truth columns are accounted for.")
+    # --- Distribution / column-score analysis ---
+    _DIST_THRESHOLD = 0.95
+    # New value-based scorer stores per-column data under "column_scores"
+    per_col = (
+        debug_dict.get("column_scores", {}).get("per_column", {})
+        or debug_dict.get("distribution", {}).get("per_column", {})
+    )
+    if not per_col:
+        lines.append("No column data found — distribution comparison not applicable.")
     else:
-        lines.append(f"Column coverage ratio: {col_ratio:.3f} — some ground truth columns are missing or misnamed.")
-        a_to_b = col_info.get("A_to_B", {})
-        b_to_b = col_info.get("B_to_B", {})
-        lines.append(
-            f"Generated→GroundTruth column matches: {a_to_b.get('count', '?')} / {b_to_b.get('count', '?')}."
-        )
+        # Separate numeric problem cols from categorical low-score cols
+        numeric_problem_cols = {}
+        categorical_low_cols = {}
+        for gt_col, info in per_col.items():
+            col_type = info.get("type", "numeric")
+            if col_type == "numeric":
+                if (info.get("range_overlap", 1.0) < _DIST_THRESHOLD
+                        or info.get("js_similarity", 1.0) < _DIST_THRESHOLD) \
+                        and info.get("gen_stats") is not None:
+                    numeric_problem_cols[gt_col] = info
+            else:
+                if info.get("column_score", 1.0) < _DIST_THRESHOLD:
+                    categorical_low_cols[gt_col] = info
+
+        if not numeric_problem_cols and not categorical_low_cols:
+            lines.append("All columns show good value overlap and matching distributions.")
+        else:
+            if numeric_problem_cols:
+                lines.append("Distribution Analysis (numerical columns with issues):")
+                for gt_col, info in numeric_problem_cols.items():
+                    gen_col       = info["gen_col"]
+                    range_overlap = info.get("range_overlap", float("nan"))
+                    js_sim_val    = info.get("js_similarity", float("nan"))
+                    gs            = info.get("gen_stats")
+                    ts            = info.get("gt_stats")
+                    col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
+                    lines.append(
+                        f"  Column '{col_label}': range overlap={range_overlap:.3f}, JS similarity={js_sim_val:.3f}"
+                    )
+                    if gs is not None:
+                        lines.append(
+                            f"    Generated    — min: {gs['min']}, max: {gs['max']}, mean: {gs['mean']}"
+                        )
+                    else:
+                        lines.append("    Generated    — stats not available")
+                    if ts is not None:
+                        lines.append(
+                            f"    Ground Truth — min: {ts['min']}, max: {ts['max']}, mean: {ts['mean']}"
+                        )
+                    else:
+                        lines.append("    Ground Truth — stats not available")
+            if categorical_low_cols:
+                lines.append("Categorical Column Match Analysis (low Jaccard similarity):")
+                for gt_col, info in categorical_low_cols.items():
+                    gen_col = info["gen_col"]
+                    jaccard = info.get("column_score", float("nan"))
+                    col_label = gt_col if gen_col == gt_col else f"{gen_col} (mapped to {gt_col})"
+                    lines.append(f"  Column '{col_label}': Jaccard={jaccard:.3f}")
 
     return "\n".join(lines)
 
-def _parse_llm_bool_response(response_str: str) -> bool:
-    print(f"JUDGE RAW RESPONSE: {repr(response_str)}")
-    
+def _parse_llm_bool_response(response_str: str, logger: logging.Logger = None) -> tuple:
+    """Returns (is_correct: bool, reason: str)."""
+    def _log(msg):
+        if logger:
+            logger.info(msg)
+        else:
+            print(msg)
+
+    _log(f"JUDGE RAW RESPONSE: {repr(response_str)}")
+
     cleaned = response_str.strip()
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
@@ -291,12 +421,13 @@ def _parse_llm_bool_response(response_str: str) -> bool:
     try:
         parsed = json.loads(cleaned)
         result = bool(parsed["correct"])
-        print(f"JUDGE PARSED RESULT: {result}")
-        return result
+        reason = parsed.get("reason", "")
+        _log(f"JUDGE PARSED RESULT: {result} | REASON: {reason}")
+        return result, reason
     except (json.JSONDecodeError, KeyError):
         lower = response_str.lower()
         if '"correct": true' in lower or '"correct":true' in lower:
-            print("JUDGE PARSED RESULT: True (fallback grep)")
-            return True
-        print("JUDGE PARSED RESULT: False (parse failed, conservative default)")
-        return False
+            _log("JUDGE PARSED RESULT: True (fallback grep)")
+            return True, ""
+        _log("JUDGE PARSED RESULT: False (parse failed, conservative default)")
+        return False, ""

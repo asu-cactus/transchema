@@ -1,0 +1,46 @@
+{
+  "case": "1_59",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8457,
+        "cost": 0.0041995999999999995,
+        "latency": 9.989131212234497,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.691) / 2 = 0.846 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.466, range overlap=0.299.\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'SALES': range overlap=0.299, JS similarity=0.466\n    Generated    \u2014 min: 77097.47, max: 511283.92, mean: 317107.9286\n    Ground Truth \u2014 min: 39491.1, max: 1489382.8, mean: 451739.6657",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n     PRODUCTLINE     SALES\n           Ships 349111.03\n     Motorcycles 296395.93\nTrucks and Buses 262545.55",
+        "code": "import pandas as pd\n\n# Read the intermediate result after the group by and sum aggregation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_59/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# Ensure the schema and types match the target schema\ndf['PRODUCTLINE'] = df['PRODUCTLINE'].astype(str)\ndf['SALES'] = df['SALES'].astype(float)\n\n# Write the final target table to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource.csv\"\ndf.to_csv(output_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,511283.92\nMotorcycles,296395.93\nPlanes,427267.9\nShips,349111.03\nTrains,77097.47\nTrucks and Buses,262545.55\nVintage Cars,296053.7\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.7163753509521484
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8457,
+          "cost": 0.0020892000000000003,
+          "latency": 7.81195330619812,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.691) / 2 = 0.846 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.466, range overlap=0.299.\nGround truth candidate keys: {PRODUCTLINE}; {SALES}.\nGenerated table candidate keys: {PRODUCTLINE}; {SALES}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'SALES': range overlap=0.299, JS similarity=0.466\n    Generated    \u2014 min: 77097.47, max: 511283.92, mean: 317107.9286\n    Ground Truth \u2014 min: 39491.1, max: 1489382.8, mean: 451739.6657",
+          "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n     PRODUCTLINE     SALES\n           Ships 349111.03\nTrucks and Buses 262545.55\n          Planes 427267.90",
+          "code": "import pandas as pd\n\n# Read source tables (only one source table given in the problem, but hint says all source tables must be used)\n# The problem only lists Source1_59_0 explicitly, but the operation above assumes a second source table Source1_59_1\n# Since only one source file path is given, we assume only one source table exists.\n# So we must UNION all source tables if multiple exist, but here only one source table is given.\n# The failed pipeline used only Source1_59_0, but the instructions say all source tables must be used.\n# Since only one source table is given, we just use it.\n\n# However, the problem states \"All source tables MUST be used.\"\n# But only one source table is listed: Source1_59_0\n# So we proceed with only Source1_59_0.\n\n# Read the source CSV file with index_col=0 as per Hint 21\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_59/training_0.csv\"\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['PRODUCTLINE': string, 'SALES': float]\n# We need to group by PRODUCTLINE and sum SALES\n\n# Clean data: remove rows with NaN in PRODUCTLINE or SALES to avoid aggregation errors\ndf0_clean = df0.dropna(subset=['PRODUCTLINE', 'SALES'])\n\n# Convert SALES to float (in case of string)\ndf0_clean['SALES'] = pd.to_numeric(df0_clean['SALES'], errors='coerce')\ndf0_clean = df0_clean.dropna(subset=['SALES'])\n\n# Group by PRODUCTLINE and sum SALES\nresult = df0_clean.groupby('PRODUCTLINE', as_index=False).agg({'SALES': 'sum'})\n\n# Write output to the required path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource_critique_history.csv\"\nresult.to_csv(output_path, index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9467601776123047
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10001.14369392395,
+        "critique": 7859.477281570435
+      }
+    }
+  ]
+}

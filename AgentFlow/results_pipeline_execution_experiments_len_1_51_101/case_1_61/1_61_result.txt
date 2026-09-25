@@ -1,0 +1,88 @@
+Case: 1_61
+Status: INCORRECT
+Timestamp: 2026-02-24T09:42:21.241569
+Duration: 127.41 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_51_101/case_1_61/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_61
+2. Target Schema: ['provider_id': integer, 'provider_name': string, 'provider_zip_code': integer, 'average_covered_charges': float, 'average_total_payments': float, 'average_medicare_payments': float]
+3. Target Examples: There are 3166 available target examples:       provider_id                             provider_name  \
+2163       360163                           CHRIST HOSPITAL   
+1957       330265       CLIFTON SPRINGS HOSPITAL AND CLINIC   
+825        120007                    KUAKINI MEDICAL CENTER   
+2466       410008                 SOUTH COUNTY HOSPITAL INC   
+1529       240069                         OWATONNA HOSPITAL   
+...           ...                                       ...   
+2473       420004                       MUSC MEDICAL CENTER   
+2494       420048                             KERSHAWHEALTH   
+2287       380014    GOOD SAMARITAN REGIONAL MEDICAL CENTER   
+2826       450780  METHODIST AMBULATORY SURGERY HOSPITAL NW   
+3100       520136              WHEATON FRANCISCAN ST JOSEPH   
+
+      provider_zip_code  average_covered_charges  average_total_payments  \
+2163              45219             67680.584054            16779.905270   
+1957              14432              7874.752000             6875.912000   
+825               96817             40495.682105            15208.718421   
+2466               2879             22482.786400             8410.230400   
+1529              55060             19988.410000             8837.749091   
+...                 ...                      ...                     ...   
+2473              29425             73384.730778            26736.196889   
+2494              29020             25202.422667             6661.368000   
+2287              97330             54154.629167            19372.225000   
+2826              78240             59266.245000            13174.005000   
+3100              53210             38797.035405            14306.260270   
+
+      average_medicare_payments  
+2163               13439.494054  
+1957                5901.356000  
+825                12370.735789  
+2466                6970.348800  
+1529                7813.042727  
+...                         ...  
+2473               20857.285111  
+2494                5283.755333  
+2287               16769.567083  
+2826                9660.030000  
+3100               12673.234324  
+
+[317 rows x 6 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_61_0
+	Source 0 Schema: ['average_covered_charges', 'average_medicare_payments', 'average_total_payments', 'drg_definition', 'hospital_referral_region_hrr_description', 'provider_city', 'provider_id', 'provider_name', 'provider_state', 'provider_street_address', 'provider_zip_code', 'total_discharges']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   average_covered_charges  average_medicare_payments  average_total_payments  \
+0                196441.86                   46042.00                49120.64   
+1                 18365.02                    5502.89                 6930.75   
+2                 34880.98                    6551.78                 8870.75   
+
+                                      drg_definition  \
+0  226 - CARDIAC DEFIBRILLATOR IMPLANT W/O CARDIA...   
+1  190 - CHRONIC OBSTRUCTIVE PULMONARY DISEASE W MCC   
+2  287 - CIRCULATORY DISORDERS EXCEPT AMI, W CARD...   
+
+  hospital_referral_region_hrr_description  provider_city  provider_id  \
+0                             VA - Norfolk        NORFOLK       490007   
+1                          AL - Birmingham           BOAZ        10005   
+2                       TX - Wichita Falls  WICHITA FALLS       450010   
+
+                        provider_name provider_state  \
+0    SENTARA NORFOLK GENERAL HOSPITAL             VA   
+1       MARSHALL MEDICAL CENTER SOUTH             AL   
+2  UNITED REGIONAL HEALTH CARE SYSTEM             TX   
+
+      provider_street_address  provider_zip_code  total_discharges  
+0              600 GRESHAM DR              23507                14  
+1  2505 U S HIGHWAY 431 NORTH              35957               134  
+2            1600 11TH STREET              76301                40  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

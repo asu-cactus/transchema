@@ -1,0 +1,124 @@
+Case: 4_79
+Status: CORRECT
+Timestamp: 2026-02-25T12:20:25.639563
+Duration: 42.30 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_79/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['hero', 'disadvantage', 'winrate', 'matches']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_79
+2. Target Schema: ['hero': string, 'disadvantage': float, 'winrate': float, 'matches': integer]
+3. Target Examples: There are 531 available target examples:                    hero  disadvantage  winrate  matches
+489         Dark Willow         -0.01    51.82    66347
+324           Ogre Magi          0.84    45.21   116092
+116  Ancient Apparition          0.38    50.01   129491
+253             Warlock         -0.05    50.64    82424
+246           Timbersaw          0.08    56.72    61079
+47        Death Prophet          0.13    48.02    21622
+462                Luna          0.38    51.22    91847
+430             Leshrac          1.25    56.13    25100
+56                 Riki         -0.22    44.25    53843
+132                Lich         -0.03    50.48   162283
+374        Chaos Knight         -0.86    51.32    25438
+440            Batrider          0.89    56.50    31531
+194         Enchantress          2.39    55.32    48319
+88                 Puck          0.95    54.70    94437
+499      Crystal Maiden         -0.09    49.29   164130
+412            Batrider         -2.67    57.53    15292
+82                Slark          1.20    50.06   342371
+482               Razor          0.09    52.90    43278
+109           Necrophos          0.50    48.04   147980
+76        Winter Wyvern          1.54    52.76    95142
+319         Earthshaker          0.96    49.15    80449
+11           Venomancer          1.58    43.00    68817
+330          Gyrocopter          0.52    52.92    23292
+90          Monkey King          0.87    54.30   191592
+340         Broodmother          0.28    48.35    13403
+57                 Lich         -0.25    45.38    72893
+36              Invoker          0.38    46.60   135071
+393              Sniper         -1.44    51.71   126500
+422        Earth Spirit          1.68    52.64    55692
+318              Medusa          1.07    48.94    45711
+398                Ursa         -1.55    50.56    69619
+74        Death Prophet          1.60    52.14    51567
+375              Kunkka         -0.87    52.84    48271
+431         Beastmaster          1.24    51.97    27727
+191                 Axe          2.65    49.16   158639
+401           Dark Seer         -1.61    47.62    14989
+373             Leshrac         -0.86    55.72    12533
+275              Sniper         -1.72    55.64   242379
+182    Phantom Assassin          4.16    50.09   277249
+299    Nature's Prophet          1.86    54.34    65640
+218              Dazzle          1.09    51.75    99753
+72        Skywrath Mage          1.66    48.82   173631
+478                Lina          0.15    54.93   141733
+345        Storm Spirit          0.12    51.47    48742
+157             Undying         -1.35    50.92    98000
+371         Elder Titan         -0.80    48.83    13200
+285               Pugna         -2.99    57.34    77565
+480         Earthshaker          0.13    52.20   190877
+146                Sven         -0.61    50.53   217277
+205               Slark          1.72    50.99   247119
+491               Pugna         -0.03    52.92    74049
+384         Beastmaster         -1.17    52.17    13062
+367        Earth Spirit         -0.70    52.70    24910
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_79_0
+	Source 0 Schema: ['hero', 'disadvantage', 'winrate', 'matches']
+	Source 0 Examples: 	 Source 0 contains 59 tuples, with examples as follows: 
+      hero  disadvantage  winrate  matches
+0   Huskar          4.86    43.00    38998
+1  Techies          2.75    44.45    56784
+2   Oracle          2.48    46.72    26957
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_79/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_79_1
+	Source 1 Schema: ['hero', 'disadvantage', 'winrate', 'matches']
+	Source 1 Examples: 	 Source 1 contains 118 tuples, with examples as follows: 
+            hero  disadvantage  winrate  matches
+0        Techies          4.12    46.46    52101
+1  Faceless Void          3.78    44.56   103751
+2           Riki          2.19    45.23    46801
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_79/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_79_2
+	Source 2 Schema: ['hero', 'disadvantage', 'winrate', 'matches']
+	Source 2 Examples: 	 Source 2 contains 118 tuples, with examples as follows: 
+               hero  disadvantage  winrate  matches
+0                Io          3.77    56.90    50434
+1  Nature's Prophet          2.95    56.28   182556
+2              Chen          2.84    55.17    14097
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_79/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_79_3
+	Source 3 Schema: ['hero', 'disadvantage', 'winrate', 'matches']
+	Source 3 Examples: 	 Source 3 contains 118 tuples, with examples as follows: 
+     hero  disadvantage  winrate  matches
+0   Meepo          3.74    50.40    28967
+1    Chen          3.73    54.09    10727
+2  Visage          3.62    51.39    12297
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_79/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_79_4
+	Source 4 Schema: ['hero', 'disadvantage', 'winrate', 'matches']
+	Source 4 Examples: 	 Source 4 contains 118 tuples, with examples as follows: 
+               hero  disadvantage  winrate  matches
+0             Meepo         10.92    43.87    42478
+1                Io          5.49    56.01    38108
+2  Legion Commander          4.92    47.30   240844
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_79/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_79/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

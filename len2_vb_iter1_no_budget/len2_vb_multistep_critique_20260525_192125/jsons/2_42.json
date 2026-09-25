@@ -1,0 +1,46 @@
+{
+  "case": "2_42",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7903,
+        "cost": 0.004126800000000001,
+        "latency": 12.17571234703064,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.581) / 2 = 0.790 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.322, range overlap=0.000.\nGround truth candidate keys: {StoreType}; {Store}.\nGenerated table candidate keys: {StoreType}; {Store}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Store': range overlap=0.000, JS similarity=0.322\n    Generated    \u2014 min: 53125.0, max: 226766.0, mean: 149121.3333\n    Ground Truth \u2014 min: 6.0, max: 26.0, mean: 15.0",
+        "generated_samples": "Schema: ['StoreType', 'Store']\nNumber of Tuples: 3\nExamples:\nStoreType  Store\n        d 167473\n        c  53125\n        a 226766",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_42/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_42/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN on \"Store\"\n# Join df0 and df1 on the \"Store\" column (inner join by default)\njoined_df = pd.merge(df0, df1, on=\"Store\", how=\"inner\")\n\n# Operation 2: group_by Source2_42_1.StoreType, aggregations = sum(Source2_42_0.Store)\n# According to the join, \"StoreType\" comes from df1, \"Store\" column to sum comes from df0\n# But note that \"Store\" is the join key and also the column to sum, so we sum the \"Store\" values from df0.\n# However, \"Store\" is the join key and integer, summing it grouped by StoreType.\n\n# Group by StoreType and sum the Store column from df0 (which is the same as the joined \"Store\" column)\n# Since after join, \"Store\" column is unique per row, sum(Store) per StoreType is straightforward.\n\nresult = joined_df.groupby(\"StoreType\", as_index=False)[\"Store\"].sum()\n\n# Ensure the column types match target schema:\n# Target schema: ['StoreType': string, 'Store': integer]\nresult[\"StoreType\"] = result[\"StoreType\"].astype(str)\nresult[\"Store\"] = result[\"Store\"].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_42/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "StoreType,Store\na,226766\nc,53125\nd,167473\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0881423950195312
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8531,
+          "cost": 0.0014704000000000002,
+          "latency": 4.212536096572876,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.706) / 2 = 0.853 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.544, range overlap=0.280.\nGround truth candidate keys: {StoreType}; {Store}.\nGenerated table candidate keys: {StoreType}; {Store}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Store': range overlap=0.280, JS similarity=0.544\n    Generated    \u2014 min: 1.0, max: 13.0, mean: 5.3333\n    Ground Truth \u2014 min: 6.0, max: 26.0, mean: 15.0",
+          "generated_samples": "Schema: ['StoreType', 'Store']\nNumber of Tuples: 3\nExamples:\nStoreType  Store\n        d     13\n        c      1\n        a      2",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_42/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_42/training_1.csv\", index_col=0)\n\n# Join on Store column (inner join by default)\njoined = pd.merge(source0, source1, left_on=\"Store\", right_on=\"Store\", how=\"inner\")\n\n# Group by StoreType (string, leftmost key in target), aggregate Store by min to get unique Store per StoreType\nresult = joined.groupby(\"StoreType\", as_index=False).agg({\"Store\": \"min\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_42/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8108615875244141
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12245.139122009277,
+        "critique": 4383.650779724121
+      }
+    }
+  ]
+}

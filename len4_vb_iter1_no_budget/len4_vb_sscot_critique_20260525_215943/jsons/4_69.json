@@ -1,0 +1,46 @@
+{
+  "case": "4_69",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8369,
+        "cost": 0.0017312,
+        "latency": 9.210629940032959,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.909 + 0.765) / 2 = 0.837 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.084, range overlap=0.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.909 (precision=0.833, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['fav_music', 'floor', 'libcon'] \u2192 party.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.084\n    Generated    \u2014 min: 43.0, max: 74.0, mean: 58.0323\n    Ground Truth \u2014 min: 1.0, max: 42.0, mean: 21.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'floor': Jaccard=0.883\n  Column 'libcon': Jaccard=0.664",
+        "generated_samples": "Schema: ['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']\nNumber of Tuples: 31\nExamples:\n user_id year_school  floor party libcon fav_music\n      54    Freshman f290.3 TYPEc  TYPEe     TYPEk\n      43    Freshman f282.2 TYPEc  TYPEg     TYPEb\n      60   Sophomore f290.3 TYPEb  TYPEc     TYPEg",
+        "code": "import pandas as pd\n\n# File paths for the source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_69/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_69/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length4_69/training_2.csv\"\n\n# Step 1: Load all source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # Columns: ['user_id', 'year_school', 'floor']\ndf1 = pd.read_csv(source1_path, index_col=0)  # Columns: ['user_id', 'party', 'libcon']\ndf2 = pd.read_csv(source2_path, index_col=0)  # Columns: ['user_id', 'fav_music']\n\n# Step 2: Join the tables on 'user_id' (primary key)\n# Join df0 and df1 first\ndf_01 = pd.merge(df0, df1, on='user_id', how='inner')\n\n# Then join the result with df2\ndf_all = pd.merge(df_01, df2, on='user_id', how='inner')\n\n# Step 3: Ensure the columns are in the target schema order and types\n# Target schema: ['user_id': int, 'year_school': str, 'floor': str, 'party': str, 'libcon': str, 'fav_music': str]\n\n# Convert data types explicitly\ndf_all['user_id'] = df_all['user_id'].astype(int)\ndf_all['year_school'] = df_all['year_school'].astype(str)\ndf_all['floor'] = df_all['floor'].astype(str)\ndf_all['party'] = df_all['party'].astype(str)\ndf_all['libcon'] = df_all['libcon'].astype(str)\ndf_all['fav_music'] = df_all['fav_music'].astype(str)\n\n# Reorder columns to match target schema\ndf_target = df_all[['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']]\n\n# Step 4: Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_69/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "user_id,year_school,floor,party,libcon,fav_music\n43,Freshman,f282.2,TYPEc,TYPEg,TYPEb\n44,Sophomore,f282.2,TYPEa,TYPEf,TYPEa\n45,Freshman,f290.4,TYPEc,TYPEf,TYPEb\n46,Sophomore,f282.3,TYPEa,TYPEg,TYPEf\n47,Junior,f282.3,TYPEc,TYPEd,TYPEh\n48,GRT / Other,f290.2,TYPEa,TYPEf,TYPEf\n49,Senior,f290.2,,TYPEf,TYPEb\n50,GRT / Other,f290.4,TYPEc,TYPEf,TYPEa\n51,GRT / Other,f282.4,TYPEc,TYPEd,TYPEd\n52,Freshman,f282.1,TYPEa,TYPEd,TYPEb\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6143321990966797
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8369,
+          "cost": 0.0015636,
+          "latency": 4.005936145782471,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.909 + 0.765) / 2 = 0.837 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.084, range overlap=0.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nFunctional dependency F1: 0.909 (precision=0.833, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['fav_music', 'floor', 'libcon'] \u2192 party.\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.000, JS similarity=0.084\n    Generated    \u2014 min: 43.0, max: 74.0, mean: 58.0323\n    Ground Truth \u2014 min: 1.0, max: 42.0, mean: 21.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'floor': Jaccard=0.883\n  Column 'libcon': Jaccard=0.664",
+          "generated_samples": "Schema: ['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']\nNumber of Tuples: 31\nExamples:\n user_id year_school  floor party libcon fav_music\n      59    Freshman f282.3 TYPEc  TYPEe     TYPEh\n      55 GRT / Other f282.4 TYPEc  TYPEc     TYPEf\n      47      Junior f282.3 TYPEc  TYPEd     TYPEh",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/training_2.csv\", index_col=0)\n\n# Join Source4_69_0 and Source4_69_1 on user_id\njoin_01 = pd.merge(source0, source1, on=\"user_id\", how=\"inner\")\n\n# Join the above result with Source4_69_2 on user_id\nfinal_df = pd.merge(join_01, source2, on=\"user_id\", how=\"inner\")\n\n# Write the final output with exact target schema and column order\nfinal_df = final_df[['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']]\n\nfinal_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_69/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3022422790527344
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9274.826049804688,
+        "critique": 4138.319969177246
+      }
+    }
+  ]
+}

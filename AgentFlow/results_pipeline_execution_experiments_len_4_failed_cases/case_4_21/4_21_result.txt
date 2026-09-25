@@ -1,0 +1,112 @@
+Case: 4_21
+Status: INCORRECT
+Timestamp: 2026-02-23T13:45:40.432604
+Duration: 99.95 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_21/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_21
+2. Target Schema: ['game_season': string, 'is_goal': float, 'season_sum': integer, 'is_goal_count1': integer]
+3. Target Examples: There are 12486 available target examples:       game_season  is_goal  season_sum  is_goal_count1
+7008      2005-06      NaN         628            1395
+7186      2005-06      0.0         628            1395
+9760      2007-08      NaN         512            1123
+11612     2008-09      NaN         499            1084
+10858     2008-09      0.0         499            1084
+...           ...      ...         ...             ...
+2000      2001-02      1.0         494            1036
+5066      2004-05      0.0         383             871
+6180      2005-06      0.0         628            1395
+7222      2005-06      NaN         628            1395
+7337      2005-06      NaN         628            1395
+
+[1249 rows x 4 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_21_0
+	Source 0 Schema: ['match_event_id', 'location_x', 'location_y', 'remaining_min', 'power_of_shot', 'knockout_match', 'game_season', 'remaining_sec', 'distance_of_shot', 'is_goal', 'area_of_shot', 'shot_basics', 'range_of_shot', 'team_name', 'date_of_game', 'home/away', 'shot_id_number', 'lat/lng', 'type_of_shot', 'type_of_combined_shot', 'match_id', 'team_id', 'remaining_min.1', 'power_of_shot.1', 'knockout_match.1', 'remaining_sec.1', 'distance_of_shot.1']
+	Source 0 Examples: 	 Source 0 contains 15348 tuples, with examples as follows: 
+   match_event_id  location_x  location_y  remaining_min  power_of_shot  \
+0            10.0       167.0        72.0           10.0            1.0   
+1            12.0      -157.0         0.0           10.0            1.0   
+2            35.0      -101.0       135.0            7.0            1.0   
+
+   knockout_match game_season  remaining_sec  distance_of_shot  is_goal  \
+0             0.0     2000-01           27.0              38.0      NaN   
+1             0.0     2000-01           22.0              35.0      0.0   
+2             0.0     2000-01           45.0              36.0      1.0   
+
+           area_of_shot shot_basics range_of_shot          team_name  \
+0         Right Side(R)   Mid Range     16-24 ft.  Manchester United   
+1          Left Side(L)   Mid Range      8-16 ft.  Manchester United   
+2  Left Side Center(LC)   Mid Range     16-24 ft.  Manchester United   
+
+  date_of_game  home/away  shot_id_number                 lat/lng  \
+0   31-10-2000        1.0               1  45.539131, -122.651648   
+1   31-10-2000        1.0               2  45.539131, -122.651648   
+2   31-10-2000        NaN               3  45.539131, -122.651648   
+
+  type_of_shot type_of_combined_shot  match_id     team_id  remaining_min.1  \
+0    shot - 30                   NaN  20000012  1610612747            10.00   
+1    shot - 45                   NaN  20000012  1610612747            10.00   
+2    shot - 25                   NaN  20000012  1610612747            92.64   
+
+   power_of_shot.1  knockout_match.1  remaining_sec.1  distance_of_shot.1  
+0              1.0            50.608          54.2000                38.0  
+1              1.0            28.800          22.0000                35.0  
+2              1.0             0.000          63.7216                54.4  
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_21/test_0.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_21/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+def main():
+    # Read source CSV with index_col=0 as instructed
+    source_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_21/test_0.csv"
+    df = pd.read_csv(source_path, index_col=0)
+
+    # Handle missing values in 'is_goal' by replacing NaN with 0 for aggregation
+    df['is_goal_filled'] = df['is_goal'].fillna(0)
+
+    # Group by 'game_season' and aggregate:
+    # season_sum = count of rows per game_season
+    # is_goal_count1 = sum of is_goal_filled per game_season
+    # is_goal = average of is_goal_filled per game_season
+    agg_df = df.groupby('game_season').agg(
+        season_sum = ('game_season', 'size'),
+        is_goal_count1 = ('is_goal_filled', 'sum'),
+        is_goal = ('is_goal_filled', 'mean')
+    ).reset_index()
+
+    # Cast data types explicitly to match target schema
+    agg_df['season_sum'] = agg_df['season_sum'].astype(int)
+    agg_df['is_goal_count1'] = agg_df['is_goal_count1'].astype(int)
+    agg_df['is_goal'] = agg_df['is_goal'].astype(float)
+    agg_df['game_season'] = agg_df['game_season'].astype(str)
+
+    # Reorder columns to match target schema exactly
+    agg_df = agg_df[['game_season', 'is_goal', 'season_sum', 'is_goal_count1']]
+
+    # Sort by 'game_season' ascending
+    agg_df = agg_df.sort_values(by='game_season').reset_index(drop=True)
+
+    # Save to CSV at the specified location
+    output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_21/target_multisource_agentic.csv"
+    agg_df.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
+    main()
+```

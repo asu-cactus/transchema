@@ -1,0 +1,29 @@
+{
+  "case": "9_51",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9996,
+        "cost": 0.006916800000000001,
+        "latency": 22.3286714553833,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.999) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.998, range overlap=1.000.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25711\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_51/training_14.csv\",\n]\n\n# Read all source tables with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Union all source tables by concatenation\nTarget9_51 = pd.concat(dfs, ignore_index=True)\n\n# Ensure the 'title' column is integer type as per target schema\nTarget9_51['title'] = Target9_51['title'].astype(int)\n\n# Write the final target table to the specified path\nTarget9_51.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0843276977539062
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 22417.690992355347,
+        "critique": 0.0
+      }
+    }
+  ]
+}

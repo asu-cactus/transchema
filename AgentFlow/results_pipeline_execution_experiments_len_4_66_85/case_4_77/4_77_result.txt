@@ -1,0 +1,67 @@
+Case: 4_77
+Status: INCORRECT
+Timestamp: 2026-02-25T12:15:10.643708
+Duration: 168.79 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_77/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.9722222222222222
+  matched_columns: ['0-1-2', 'Huang High School-Figueroa High School-Shelton High School', 'District-District-Charter', '2917-2949-1761', '1910635-1884411-1056600', '76-76-83', '1916-1946-1653', '2372-2381-1688']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_77
+2. Target Schema: ['School ID': integer, 'name': string, 'type': string, 'size': integer, 'budget': integer, 'Average Math Score': float, 'Average Reading Score': float, 'Number Passing Math': integer, 'Number Passing Reading': integer]
+3. Target Examples: There are 8 available target examples:    School ID                 name     type  size   budget  Average Math Score  \
+2          2  Shelton High School  Charter  1761  1056600               83.35   
+
+   Average Reading Score  Number Passing Math  Number Passing Reading  
+2                  83.72                 1653                    1688  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_77_0
+	Source 0 Schema: ['Student ID', 'name', 'gender', 'grade', 'school', 'reading_score', 'math_score']
+	Source 0 Examples: 	 Source 0 contains 19585 tuples, with examples as follows: 
+   Student ID             name gender grade             school  reading_score  \
+0           0     Paul Bradley      M   9th  Huang High School             66   
+1           1     Victor Smith      M  12th  Huang High School             94   
+2           2  Kevin Rodriguez      M  12th  Huang High School             90   
+
+   math_score  
+0          79  
+1          61  
+2          60  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_77/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_77_1
+	Source 1 Schema: ['School ID', 'name', 'type', 'size', 'budget']
+	Source 1 Examples: 	 Source 1 contains 15 tuples, with examples as follows: 
+   School ID                  name      type  size   budget
+0          0     Huang High School  District  2917  1910635
+1          1  Figueroa High School  District  2949  1884411
+2          2   Shelton High School   Charter  1761  1056600
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_77/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_77_2
+	Source 2 Schema: ['school', 'Average Math Score', 'Average Reading Score', 'Number Passing Math', 'Number Passing Reading']
+	Source 2 Examples: 	 Source 2 contains 15 tuples, with examples as follows: 
+                 school  Average Math Score  Average Reading Score  \
+0    Bailey High School               77.04                  81.03   
+1   Cabrera High School               83.06                  83.97   
+2  Figueroa High School               76.71                  81.15   
+
+   Number Passing Math  Number Passing Reading  
+0                 3318                    4077  
+1                 1749                    1803  
+2                 1946                    2381  
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_77/test_2.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_77/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

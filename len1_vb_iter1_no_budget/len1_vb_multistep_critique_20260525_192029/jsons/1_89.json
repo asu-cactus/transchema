@@ -1,0 +1,46 @@
+{
+  "case": "1_89",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.016696799999999998,
+        "latency": 15.06397294998169,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_89/training_0.csv\"\n\n# Load source data\n# index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# According to the source schema:\n# ['ticker', 'date', 'open', 'high', 'low', 'close', 'volume', 'adj_close', 'adj_volume']\n# We need to transform this source table to the target schema:\n# Target schema columns are: 'date' plus many float columns named as floats (like '102.9642307762594', '103.40686762477397', ...), and a 'price' column at the end.\n# The operation history is ['UNPIVOT', 'PIVOT'].\n\n# Step 1: UNPIVOT\n# We unpivot the price-related columns from the source table.\n# The source price-related columns are: 'open', 'high', 'low', 'close', 'adj_close'\n# But the target columns are many float columns (likely representing tickers or prices).\n# The source has a 'ticker' column which looks like a float number (e.g. 120.412920).\n# The target columns are many float numbers as column names.\n# So the likely transformation is:\n# - UNPIVOT the source table on the price columns to get rows with columns: date, ticker, price_type, price_value\n# - Then PIVOT on ticker to get columns named by ticker values, with price values aggregated or selected.\n# However, the target columns are many float numbers (like '102.9642307762594', '103.40686762477397', ...), which match the 'ticker' values in source.\n# The target also has a 'price' column at the end, which likely corresponds to the price value after pivot.\n\n# But the target examples show many columns named by float numbers and a 'price' column at the end.\n# The source has 'ticker' as float-like strings, and price columns.\n# The transformation plan is UNPIVOT then PIVOT.\n\n# Let's proceed:\n\n# UNPIVOT the price columns: 'open', 'high', 'low', 'close', 'adj_close'\nprice_cols = ['open', 'high', 'low', 'close', 'adj_close']\n\n# Melt the dataframe to long format: keep 'date' and 'ticker', melt price_cols into 'price_type' and 'price'\ndf_unpivot = df0.melt(id_vars=['date', 'ticker'], value_vars=price_cols,\n                      var_name='price_type', value_name='price')\n\n# After unpivot, we have columns: date, ticker, price_type, price\n\n# Step 2: PIVOT\n# Pivot on 'ticker' to get columns named by ticker values, values are 'price'\n# The index should be 'date' and 'price_type' to keep all info\ndf_pivot = df_unpivot.pivot_table(index=['date', 'price_type'], columns='ticker', values='price', aggfunc='first')\n\n# The pivot_table columns are ticker values (floats or strings), index is MultiIndex (date, price_type)\n\n# Reset index to flatten\ndf_pivot = df_pivot.reset_index()\n\n# Now, the target schema has only 'date' as string, many float columns named by ticker values, and a 'price' column at the end.\n# The target examples show only 'date' as index and many float columns, no 'price_type' column.\n# So we need to aggregate or select one price_type per date.\n\n# The target examples have 252 rows, source has 253 rows, so likely one row per date.\n\n# We need to remove 'price_type' dimension by aggregating or selecting one price_type.\n\n# Since the target schema has a 'price' column at the end, which is not in the pivot columns,\n# and the target columns are the tickers as columns, we can interpret the target as:\n# For each date, columns named by ticker values contain the price values (from one price_type),\n# and the 'price' column is likely the price value for a specific ticker or aggregated price.\n\n# But the target schema's last column is 'price' (float).\n# The source has multiple price columns, so maybe the 'price' column in target is the 'close' price for that date.\n\n# Let's try to select only the 'close' price_type rows from df_pivot, so that each date has columns named by ticker with close prices.\n\ndf_close = df_pivot[df_pivot['price_type'] == 'close'].copy()\n\n# Drop 'price_type' column as it's now constant 'close'\ndf_close = df_close.drop(columns=['price_type'])\n\n# The columns are ticker values (floats or strings), index is date\n\n# The target schema columns are strings representing floats, so convert ticker columns to string\ndf_close.columns = df_close.columns.map(str)\n\n# The target schema has 'date' as string column, so ensure 'date' is string\ndf_close['date'] = df_close['date'].astype(str)\n\n# The target schema has a 'price' column at the end.\n# We can create 'price' column as the mean of all ticker prices per date (or sum, or max).\n# But target examples show many NaNs, so likely 'price' is NaN or not derived from source.\n# Since no explicit instruction, we set 'price' as NaN.\n\ndf_close['price'] = pd.NA\n\n# Reorder columns: 'date' first, then all ticker columns sorted ascending, then 'price' last\nticker_cols = sorted([col for col in df_close.columns if col != 'date' and col != 'price'], key=lambda x: float(x))\nfinal_cols = ['date'] + ticker_cols + ['price']\ndf_final = df_close[final_cols]\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_89/target_multisource.csv\"\ndf_final.to_csv(target_path, index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.049591064453125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0060924,
+          "latency": 54.01886034011841,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\nsource = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_89/training_0.csv\", index_col=0)\n\n# UNPIVOT operation: melt all columns except 'date' into key-value pairs\nunpivoted = source.melt(id_vars=['date'], value_vars=['ticker', 'open', 'high', 'low', 'close', 'volume', 'adj_close', 'adj_volume'],\n                        var_name='ticker', value_name='value')\n\n# PIVOT operation: pivot the unpivoted data to have 'date' as index and unique 'ticker' values as columns\npivoted = unpivoted.pivot(index='date', columns='ticker', values='value')\n\n# Reset index to bring 'date' back as a column\npivoted = pivoted.reset_index()\n\n# The target schema has 'date' as string and many float columns named by float values (which correspond to ticker values)\n# The pivoted columns are ticker values as strings, so convert column names to float to match target schema\npivoted.columns = ['date'] + [float(str(col)) for col in pivoted.columns[1:]]\n\n# Sort columns to match the target schema order (date first, then sorted float columns)\npivoted = pivoted[['date'] + sorted(pivoted.columns[1:])]\n\n# Write the final output to the target file path\npivoted.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_89/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.02956390380859375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15066.949844360352,
+        "critique": 54037.052631378174
+      }
+    }
+  ]
+}

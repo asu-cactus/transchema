@@ -1,0 +1,46 @@
+{
+  "case": "4_20",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5659,
+        "cost": 0.0038644000000000005,
+        "latency": 9.377776145935059,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.400 + 0.732) / 2 = 0.566 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.455, range overlap=0.830.\nGround truth candidate keys: {is_goal, range_sum}; {range_of_shot, is_goal}; {is_goal, is_goal_count1}.\nGenerated table candidate keys: {range_of_shot, range_sum}; {range_of_shot, is_goal_count1}.\nKeys present in ground truth but absent in generated: {range_sum, is_goal}; {is_goal_count1, is_goal}; {is_goal, range_of_shot}.\nSpurious keys in generated not present in ground truth: {is_goal_count1, range_of_shot}; {range_sum, range_of_shot}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.400 (precision=0.500, recall=0.333).\nSpurious FDs in generated (not in ground truth): ['is_goal_count1'] \u2192 is_goal; ['range_sum'] \u2192 is_goal.\nMissing FDs from ground truth: ['range_of_shot'] \u2192 range_sum; ['is_goal_count1'] \u2192 range_of_shot; ['range_sum'] \u2192 range_of_shot; ['range_of_shot'] \u2192 is_goal_count1.\nDistribution Analysis (numerical columns with issues):\n  Column 'range_sum': range overlap=0.949, JS similarity=0.292\n    Generated    \u2014 min: 0.0, max: 1974.0, mean: 718.1176\n    Ground Truth \u2014 min: 1.0, max: 2080.0, mean: 1405.6423\n  Column 'is_goal_count1': range overlap=0.542, JS similarity=0.072\n    Generated    \u2014 min: 0.0, max: 1974.0, mean: 718.1176\n    Ground Truth \u2014 min: 37.0, max: 3576.0, mean: 3005.8197",
+        "generated_samples": "Schema: ['range_of_shot', 'is_goal', 'range_sum', 'is_goal_count1']\nNumber of Tuples: 17\nExamples:\n  range_of_shot  is_goal  range_sum  is_goal_count1\n       8-16 ft.      1.0      35979            1179\n       8-16 ft.      0.0      46573            1531\nLess Than 8 ft.      0.0      32533            1514",
+        "code": "import pandas as pd\n\n# Load source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_20/training_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# According to operation_history:\n# group_by = [Source4_20_0.range_of_shot, Source4_20_0.is_goal]\n# aggregations = [sum(Source4_20_0.distance_of_shot), count(Source4_20_0.is_goal)]\n\n# We need to group by 'range_of_shot' and 'is_goal'\n# sum of 'distance_of_shot' -> target column 'range_sum' (integer)\n# count of 'is_goal' -> target column 'is_goal_count1' (integer)\n\n# Before grouping, ensure 'is_goal' and 'distance_of_shot' columns are properly typed\n# 'is_goal' is float in target, so keep as float\n# 'distance_of_shot' sum should be integer in target, so convert sum to int\n\n# Some 'is_goal' values might be NaN, count should count non-null occurrences\n\n# Perform groupby and aggregations\ngrouped = df_source0.groupby(['range_of_shot', 'is_goal'], dropna=False).agg(\n    range_sum=pd.NamedAgg(column='distance_of_shot', aggfunc='sum'),\n    is_goal_count1=pd.NamedAgg(column='is_goal', aggfunc='count')\n).reset_index()\n\n# Convert 'range_sum' and 'is_goal_count1' to integer as per target schema\ngrouped['range_sum'] = grouped['range_sum'].fillna(0).astype(int)\ngrouped['is_goal_count1'] = grouped['is_goal_count1'].astype(int)\n\n# Ensure 'is_goal' is float type (already float or NaN)\ngrouped['is_goal'] = grouped['is_goal'].astype(float)\n\n# Ensure 'range_of_shot' is string type\ngrouped['range_of_shot'] = grouped['range_of_shot'].astype(str)\n\n# Reorder columns to match target schema\ntarget_columns = ['range_of_shot', 'is_goal', 'range_sum', 'is_goal_count1']\ndf_target = grouped[target_columns]\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_20/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "range_of_shot,is_goal,range_sum,is_goal_count1\n16-24 ft.,0.0,63026,1715\n16-24 ft.,1.0,40300,1113\n16-24 ft.,,29109,0\n24+ ft.,0.0,74340,1738\n24+ ft.,1.0,34241,802\n24+ ft.,,26332,0\n8-16 ft.,0.0,46573,1531\n8-16 ft.,1.0,35979,1179\n8-16 ft.,,19546,0\nBack Court Shot,0.0,2359,33\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.293182373046875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6593,
+          "cost": 0.0020172000000000002,
+          "latency": 8.394911289215088,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.652) / 2 = 0.659 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.363, range overlap=0.709.\nGround truth candidate keys: {is_goal, range_sum}; {range_of_shot, is_goal}; {is_goal, is_goal_count1}.\nGenerated table candidate keys: {range_of_shot}; {range_sum}; {is_goal}; {is_goal_count1}.\nKeys present in ground truth but absent in generated: {range_sum, is_goal}; {is_goal_count1, is_goal}; {is_goal, range_of_shot}.\nSpurious keys in generated not present in ground truth: {is_goal_count1}; {range_sum}; {range_of_shot}; {is_goal}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['is_goal_count1'] \u2192 is_goal; ['is_goal'] \u2192 is_goal_count1; ['range_of_shot'] \u2192 is_goal; ['range_sum'] \u2192 is_goal; ['is_goal'] \u2192 range_sum (and 1 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'is_goal': range overlap=0.566, JS similarity=0.171\n    Generated    \u2014 min: 0.0, max: 0.5659, mean: 0.3421\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.4545\n  Column 'range_sum': range overlap=0.587, JS similarity=0.254\n    Generated    \u2014 min: 33.0, max: 3488.0, mean: 2319.8\n    Ground Truth \u2014 min: 1.0, max: 2080.0, mean: 1405.6423\n  Column 'is_goal_count1': range overlap=0.974, JS similarity=0.664\n    Generated    \u2014 min: 33.0, max: 3488.0, mean: 2319.8\n    Ground Truth \u2014 min: 37.0, max: 3576.0, mean: 3005.8197",
+          "generated_samples": "Schema: ['range_of_shot', 'is_goal', 'range_sum', 'is_goal_count1']\nNumber of Tuples: 5\nExamples:\n  range_of_shot  is_goal  range_sum  is_goal_count1\n       8-16 ft. 0.435055     102098            2710\nLess Than 8 ft. 0.565940      92292            3488\nBack Court Shot 0.000000       2578              33",
+          "code": "import pandas as pd\n\n# Read source data with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_20/training_0.csv\", index_col=0)\n\n# Since only one source table is given, no union or join with other tables is possible.\n# But instructions say all source tables must be used. Here only one source table exists.\n\n# The failed pipeline grouped by both 'range_of_shot' and 'is_goal' which caused multiple rows per range_of_shot.\n# The target schema keys on 'range_of_shot' only, so group only by 'range_of_shot'.\n\n# Clean data: drop rows where 'range_of_shot' is NaN because it's the key\ndf = source0.dropna(subset=['range_of_shot'])\n\n# Group by 'range_of_shot' only\ngrouped = df.groupby('range_of_shot').agg(\n    is_goal=('is_goal', 'mean'),  # average is_goal to get float (target has float)\n    range_sum=('distance_of_shot', 'sum'),\n    is_goal_count1=('is_goal', 'count')\n).reset_index()\n\n# The target schema is ['range_of_shot': string, 'is_goal': float, 'range_sum': integer, 'is_goal_count1': integer]\n# Convert range_sum and is_goal_count1 to int\ngrouped['range_sum'] = grouped['range_sum'].fillna(0).astype(int)\ngrouped['is_goal_count1'] = grouped['is_goal_count1'].astype(int)\n\n# 'is_goal' is float, keep as is (mean can produce float)\n# Fill NaN in is_goal with 0 (if any)\ngrouped['is_goal'] = grouped['is_goal'].fillna(0)\n\n# Write output\ngrouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_20/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.294851303100586
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9380.502223968506,
+        "critique": 8725.060224533081
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "5_8",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.824,
+        "cost": 0.0068636,
+        "latency": 21.81649613380432,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.648) / 2 = 0.824 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.802, range overlap=0.696.\nGround truth candidate keys: {school_name}; {math_score}.\nGenerated table candidate keys: {school_name}; {math_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'math_score': range overlap=0.696, JS similarity=0.802\n    Generated    \u2014 min: 427.0, max: 4976.0, mean: 2611.3333\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.547",
+        "generated_samples": "Schema: ['school_name', 'math_score']\nNumber of Tuples: 15\nExamples:\n       school_name  math_score\nThomas High School        1635\n  Ford High School        2739\nBailey High School        4976",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_8/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_8/training_1.csv\", index_col=0)\n\n# Step 1: Join Source5_8_0 and Source5_8_1 on 'school_name'\n# But from intermediate_step1.csv, the join result schema is ['school_name', 'math_score']\n# So the join was done but only math_score from Source0 is kept, no columns from Source1 are needed for final output.\n# We can skip re-joining since intermediate_step2 is the aggregation on Source0 grouped by school_name.\n\n# Step 2: Group by Source5_8_0.school_name and sum math_score\nagg = source0.groupby('school_name', as_index=False)['math_score'].sum()\n\n# The aggregated math_score values are very large compared to target examples.\n# Target examples show math_score values in the range ~1500-3000,\n# but aggregated sums are in tens or hundreds of thousands.\n# The target examples correspond to the 'size' column in Source1 for some schools:\n# For example:\n# Figueroa High School: target math_score=2949, Source1 size=2949\n# Wilson High School: target math_score=2283, Source1 size=2283\n# Cabrera High School: target math_score=1858, Source1 size=1858\n# This suggests the target math_score is actually the 'size' column from Source1.\n\n# So the final target table is the subset of Source1 with columns:\n# 'school_name' and 'size' renamed to 'math_score'\n\n# Extract relevant columns from Source1\ntarget = source1[['school_name', 'size']].copy()\ntarget.rename(columns={'size': 'math_score'}, inplace=True)\n\n# Convert math_score to integer type explicitly\ntarget['math_score'] = target['math_score'].astype(int)\n\n# Save the result to the specified path\ntarget.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_8/target_multisource.csv\", index=False)",
+        "generated_csv_head": "school_name,math_score\nHuang High School,2917\nFigueroa High School,2949\nShelton High School,1761\nHernandez High School,4635\nGriffin High School,1468\nWilson High School,2283\nCabrera High School,1858\nBailey High School,4976\nHolden High School,427\nPena High School,962\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8041858673095703
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5461,
+          "cost": 0.0014304,
+          "latency": 3.296262264251709,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.092) / 2 = 0.546 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.259, range overlap=0.000.\nGround truth candidate keys: {school_name}; {math_score}.\nGenerated table candidate keys: {school_name}; {math_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'math_score': range overlap=0.000, JS similarity=0.259\n    Generated    \u2014 min: 35784.0, max: 366942.0, mean: 192514.5\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+          "generated_samples": "Schema: ['school_name', 'math_score']\nNumber of Tuples: 8\nExamples:\n       school_name  math_score\nWright High School      150628\nBailey High School      251241\nHolden High School       35784",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_8/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_8/training_1.csv\", index_col=0)\n\n# Join Source5_8_0 and Source5_8_1 on school_name (inner join)\njoined = pd.merge(source0, source1, how='inner', on='school_name')\n\n# Group by school_name and sum math_score\nresult = joined.groupby('school_name', as_index=False).agg({'math_score': 'sum'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_8/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7672309875488281
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 21889.323949813843,
+        "critique": 3370.4018592834473
+      }
+    }
+  ]
+}

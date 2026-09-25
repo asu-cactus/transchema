@@ -1,0 +1,46 @@
+{
+  "case": "1_88",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0,
+        "cost": 0.0083828,
+        "latency": 15.93948769569397,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths (only one source given)\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_88/training_0.csv\"\n    ]\n\n    # Target schema columns and their types (for reference)\n    target_columns = ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route',\n                      'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops',\n                      'Additional_Info', 'Price']\n\n    # List to hold dataframes from all sources\n    dfs = []\n\n    for file_path in source_files:\n        # Read CSV with index_col=0 to ignore the first numerical index column\n        df = pd.read_csv(file_path, index_col=0)\n\n        # Check if all target columns exist in this source\n        missing_cols = set(target_columns) - set(df.columns)\n        if missing_cols:\n            raise ValueError(f\"Missing columns in source data: {missing_cols}\")\n\n        # Select only the target columns in the correct order\n        df = df[target_columns]\n\n        # Ensure data types:\n        # Price should be integer\n        # Other columns are strings (object)\n        df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0).astype(int)\n\n        # Convert all other columns to string (to match target schema)\n        for col in target_columns:\n            if col != 'Price':\n                df[col] = df[col].astype(str).str.strip()\n\n        dfs.append(df)\n\n    # Since all source tables have the exact same schema as target,\n    # we can union (concatenate) them\n    result_df = pd.concat(dfs, ignore_index=True)\n\n    # Write the result to the target path\n    output_path = \"autopipeline-benchmarks/github-pipelines/length1_88/target_multisource.csv\"\n    result_df.to_csv(output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.03337860107421875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0,
+          "cost": 0.0013,
+          "latency": 12.02089524269104,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_88/training_0.csv\", index_col=0)\n\n# The source schema matches the target schema exactly, so no transformation needed except ensuring types\n# Convert Price to integer type to match target schema\nsource0['Price'] = source0['Price'].astype(int)\n\n# Write the output to the target file path\nsource0.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_88/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.028371810913085938
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15958.729028701782,
+        "critique": 12360.630989074707
+      }
+    }
+  ]
+}

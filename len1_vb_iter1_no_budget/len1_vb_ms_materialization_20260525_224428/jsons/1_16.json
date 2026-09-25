@@ -1,0 +1,46 @@
+{
+  "case": "1_16",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5833,
+        "cost": 0.0022344,
+        "latency": 6.04334831237793,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.500) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}; {ORDERNUMBER}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 754\nExamples:\n                CUSTOMERNAME  ORDERNUMBER\n          Baane Mini Imports        10325\nOnline Diecast Creations Co.        10322\nMini Gifts Distributors Ltd.        10390",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_16/training_0.csv\"\n    ]\n\n    # List to hold dataframes from all sources\n    source_dfs = []\n\n    # Load each source file with index_col=0 to ignore the first numerical index column\n    for file_path in source_files:\n        df = pd.read_csv(file_path, index_col=0)\n        source_dfs.append(df)\n\n    # Since we have only one source table, transformation is straightforward:\n    # Target schema: ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # Extract these two columns from the source dataframe\n\n    # Extract relevant columns and drop rows with missing values in these columns\n    df_transformed = source_dfs[0][['CUSTOMERNAME', 'ORDERNUMBER']].dropna(subset=['CUSTOMERNAME', 'ORDERNUMBER'])\n\n    # Ensure correct data types\n    df_transformed['CUSTOMERNAME'] = df_transformed['CUSTOMERNAME'].astype(str)\n    # ORDERNUMBER should be integer, but source might have float or string, convert safely\n    df_transformed['ORDERNUMBER'] = pd.to_numeric(df_transformed['ORDERNUMBER'], errors='coerce').dropna().astype(int)\n\n    # After conversion, drop rows where ORDERNUMBER conversion failed (NaN)\n    df_transformed = df_transformed.dropna(subset=['ORDERNUMBER'])\n\n    # Reset index for clean output\n    df_transformed = df_transformed.reset_index(drop=True)\n\n    # Write the transformed dataframe to the target CSV file\n    output_path = \"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource.csv\"\n    df_transformed.to_csv(output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nToys4GrownUps.com,10367\nThe Sharp Gifts Warehouse,10407\nSignal Gift Stores,10124\nHeintze Collectables,10161\nGift Depot Inc.,10172\nMini Gifts Distributors Ltd.,10182\nOnline Diecast Creations Co.,10192\nMuscle Machine Inc,10204\nCollectable Mini Designs Co.,10226\nMuscle Machine Inc,10267\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1644363403320312
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5833,
+          "cost": 0.0015004,
+          "latency": 3.2938883304595947,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.500) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {CUSTOMERNAME}; {ORDERNUMBER}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n           CUSTOMERNAME  ORDERNUMBER\n        Cruz & Sons Co.        10108\nAuto-Moto Classics Inc.        10290\n   Marta's Replicas Co.        10285",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/training_0.csv\", index_col=0)\n\n# Select only relevant columns and drop rows with missing CUSTOMERNAME or ORDERNUMBER\ndf = source1[['CUSTOMERNAME', 'ORDERNUMBER']].dropna(subset=['CUSTOMERNAME', 'ORDERNUMBER'])\n\n# Convert ORDERNUMBER to integer type (target schema requires integer)\ndf['ORDERNUMBER'] = df['ORDERNUMBER'].astype(int)\n\n# Group by CUSTOMERNAME (primary key) and aggregate ORDERNUMBER by min to ensure uniqueness and match target keys\nresult = df.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': 'min'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1801719665527344
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6090.752363204956,
+        "critique": 3338.6971950531006
+      }
+    }
+  ]
+}

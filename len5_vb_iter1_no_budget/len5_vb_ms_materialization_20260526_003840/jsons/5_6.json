@@ -1,0 +1,46 @@
+{
+  "case": "5_6",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6022,
+        "cost": 0.016448400000000002,
+        "latency": 51.437737464904785,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.455) / 2 = 0.602 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.636, range overlap=0.000.\nGround truth candidate keys: {state}.\nGenerated table candidate keys: {pop}; {year}; {draw_sales}; {full_state}.\nKeys present in ground truth but absent in generated: {state}.\nSpurious keys in generated not present in ground truth: {year}; {draw_sales}; {full_state}; {pop}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['pop'] \u2192 state; ['full_state'] \u2192 state; ['year'] \u2192 state; ['draw_sales'] \u2192 state.\nMissing FDs from ground truth: ['state'] \u2192 year; ['state'] \u2192 draw_sales; ['state'] \u2192 full_state; ['state'] \u2192 pop.\nDistribution Analysis (numerical columns with issues):\n  Column 'year': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261\n  Column 'draw_sales': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261\n  Column 'full_state': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261\n  Column 'pop': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261",
+        "generated_samples": "Schema: ['state', 'year', 'draw_sales', 'full_state', 'pop']\nNumber of Tuples: 357\nExamples:\nstate  year  draw_sales  full_state        pop\n   TX  2011   216956660           0 4017719804\n   AR  2016     5866016           0  149467900\n   TX  2014   200739597           0 3338572900",
+        "code": "import pandas as pd\n\n# Load Source 0\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_6/training_0.csv\", index_col=0)\n# Extract year from date and convert to int\ndf0['year'] = pd.to_datetime(df0['date']).dt.year.astype(int)\n# Keep only needed columns\ndf0 = df0[['state', 'year', 'draw_sales']]\n\n# Load Source 2\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_6/training_2.csv\", index_col=0)\n# Extract year from date and convert to int\ndf2['year'] = pd.to_datetime(df2['date']).dt.year.astype(int)\n# Keep only needed columns\ndf2 = df2[['state', 'year', 'draw_sales']]\n\n# UNION Source 0 and Source 2\ndf_union = pd.concat([df0, df2], ignore_index=True)\n\n# Load Source 1\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_6/training_1.csv\", index_col=0)\n# full_state is string in source, but target expects integer, so convert full_state to int\n# From examples, full_state looks like a string (e.g. California), but target expects integer.\n# The operation history shows sum(Source5_6_1.full_state) which implies full_state is numeric in source.\n# But source example shows full_state as string, so we must convert full_state to integer.\n# Since full_state is string in source, but target expects integer, we must convert full_state to integer.\n# The operation history shows sum(Source5_6_1.full_state), so full_state must be numeric in source.\n# Possibly full_state column in source is string but contains numeric values as strings.\n# Let's try to convert full_state to numeric, coercing errors to NaN and then fillna(0).\ndf1['full_state'] = pd.to_numeric(df1['full_state'], errors='coerce').fillna(0).astype(int)\n# pop is float in source, target expects int, convert pop to int\ndf1['pop'] = df1['pop'].astype(int)\n# year is int already, state is string\ndf1 = df1[['state', 'year', 'full_state', 'pop']]\n\n# JOIN the unioned df with df1 on ['state', 'year']\ndf_joined = pd.merge(df_union, df1, on=['state', 'year'], how='inner')\n\n# GROUP BY state, year and aggregate sums\ndf_grouped = df_joined.groupby(['state', 'year'], as_index=False).agg({\n    'draw_sales': 'sum',\n    'full_state': 'sum',\n    'pop': 'sum'\n})\n\n# Ensure column types as per target schema\ndf_grouped['state'] = df_grouped['state'].astype(str)\ndf_grouped['year'] = df_grouped['year'].astype(int)\ndf_grouped['draw_sales'] = df_grouped['draw_sales'].astype(int)\ndf_grouped['full_state'] = df_grouped['full_state'].astype(int)\ndf_grouped['pop'] = df_grouped['pop'].astype(int)\n\n# Rename to Target5_6\nTarget5_6 = df_grouped[['state', 'year', 'draw_sales', 'full_state', 'pop']]\n\n# Save to CSV\nTarget5_6.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/target_multisource.csv\", index=False)",
+        "generated_csv_head": "state,year,draw_sales,full_state,pop\nAR,2011,31401830,0,418731313\nAR,2012,43032992,0,458706144\nAR,2013,46161467,0,478330596\nAR,2014,19255937,0,329102901\nAR,2015,5487171,0,172673192\nAR,2016,5866016,0,149467900\nAR,2017,5027237,0,147077959\nAR,2018,15647668,0,168774200\nAZ,2011,108579981,0,1018886668\nAZ,2012,147542105,0,994658291\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1229515075683594
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0021288,
+          "latency": 8.464508771896362,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/training_2.csv\", index_col=0)\n\n# UNION Source5_6_0 and Source5_6_2\nunion_0_2 = pd.concat([source0, source2], ignore_index=True)\n\n# JOIN unioned table with Source5_6_1 on 'state'\njoined = pd.merge(union_0_2, source1, how='inner', on='state')\n\n# GROUP BY 'state' and aggregate\nresult = joined.groupby('state', as_index=False).agg({\n    'year': 'max',\n    'draw_sales': 'sum',\n    'full_state': 'max',\n    'pop': 'max'\n})\n\n# Ensure correct dtypes as per target schema\nresult['state'] = result['state'].astype(str)\nresult['year'] = result['year'].astype(int)\nresult['draw_sales'] = result['draw_sales'].astype(int)\nresult['full_state'] = result['full_state'].astype(int)\nresult['pop'] = result['pop'].astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.0324249267578125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 51513.92221450806,
+        "critique": 8673.901081085205
+      }
+    }
+  ]
+}

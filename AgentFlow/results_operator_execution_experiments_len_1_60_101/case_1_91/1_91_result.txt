@@ -1,0 +1,79 @@
+Case: 1_91
+Status: INCORRECT
+Timestamp: 2026-02-24T14:08:48.025251
+Duration: 37.98 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_91/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.997531914893617
+  matched_columns: ['Name', 'Position', 'Age', 'Team_from', 'League_from', 'Team_to', 'League_to', 'Season', 'Transfer_fee']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_91
+2. Target Schema: ['Name': string, 'Position': string, 'Age': integer, 'Team_from': string, 'League_from': string, 'Team_to': string, 'League_to': string, 'Season': string, 'Market_value': float, 'Transfer_fee': integer]
+3. Target Examples: There are 2350 available target examples:                   Name            Position  Age      Team_from  \
+212         alan mahon       Left Midfield   22    Sporting CP   
+862     osmar ferreyra  Attacking Midfield   20    River Plate   
+1888      marek hamsik    Central Midfield   19        Brescia   
+948        marlon king      Centre-Forward   23  Gillingham FC   
+536         salif diao  Defensive Midfield   25       CS Sedan   
+...                ...                 ...  ...            ...   
+91     philippe delaye    Central Midfield   25    Montpellier   
+1511     tomás rosicky  Attacking Midfield   25  Bor. Dortmund   
+2031  ricardo oliveira      Centre-Forward   28       AC Milan   
+2299     douglas costa        Right Winger   19         Grêmio   
+1977  dimitar berbatov      Centre-Forward   27          Spurs   
+
+         League_from        Team_to       League_to     Season  Market_value  \
+212         Liga NOS      Blackburn         England  2000-2001           NaN   
+862        Argentina    CSKA Moscow    Premier Liga  2003-2004           NaN   
+1888         Serie B     SSC Napoli         Serie A  2007-2008           NaN   
+948   First Division   Nottm Forest  First Division  2003-2004           NaN   
+536          Ligue 1      Liverpool  Premier League  2002-2003           NaN   
+...              ...            ...             ...        ...           ...   
+91           Ligue 2  Stade Rennais         Ligue 1  2000-2001           NaN   
+1511    1.Bundesliga        Arsenal  Premier League  2006-2007    11000000.0   
+2031         Serie A  Real Zaragoza         LaLiga2  2008-2009    11000000.0   
+2299         Série A    Shakhtar D.    Premier Liga  2009-2010     4000000.0   
+1977  Premier League        Man Utd  Premier League  2008-2009    26000000.0   
+
+      Transfer_fee  
+212        2300000  
+862        2500000  
+1888       5500000  
+948        1400000  
+536        7500000  
+...            ...  
+91         6500000  
+1511      10000000  
+2031      10000000  
+2299       8000000  
+1977      38000000  
+
+[235 rows x 10 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_91_0
+	Source 0 Schema: ['Name', 'Position', 'Age', 'Team_from', 'League_from', 'Team_to', 'League_to', 'Season', 'Market_value', 'Transfer_fee']
+	Source 0 Examples: 	 Source 0 contains 2350 tuples, with examples as follows: 
+            Name        Position  Age     Team_from     League_from  \
+0      Luís Figo    Right Winger   27  FC Barcelona          LaLiga   
+1  Hernán Crespo  Centre-Forward   25         Parma         Serie A   
+2  Marc Overmars     Left Winger   27       Arsenal  Premier League   
+
+        Team_to League_to     Season  Market_value  Transfer_fee  
+0   Real Madrid    LaLiga  2000-2001           NaN      60000000  
+1         Lazio   Serie A  2000-2001           NaN      56810000  
+2  FC Barcelona    LaLiga  2000-2001           NaN      40000000  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_91/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_91/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

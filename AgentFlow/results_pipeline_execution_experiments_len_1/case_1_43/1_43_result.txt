@@ -1,0 +1,115 @@
+Case: 1_43
+Status: INCORRECT
+Timestamp: 2026-02-24T01:51:07.468949
+Duration: 33.33 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_43/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 1.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_43
+2. Target Schema: ['fac_type': string, 'facid': integer, 'capacity': integer, 'fac_name': integer, 'fac_address': integer, 'city_state_zip': integer, 'owner': integer, 'operator': integer]
+3. Target Examples: There are 2 available target examples: Empty DataFrame
+Columns: [fac_type, facid, capacity, fac_name, fac_address, city_state_zip, owner, operator]
+Index: []
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_43_0
+	Source 0 Schema: ['facid', 'fac_type', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']
+	Source 0 Examples: 	 Source 0 contains 322 tuples, with examples as follows: 
+    facid fac_type  capacity                                         fac_name  \
+0  385008       NF      96.0               Presbyterian Community Care Center   
+1  385010       NF     159.0        Laurelhurst Village Rehabilitation Center   
+2  385015       NF     128.0  Regency Gresham Nursing & Rehabilitation Center   
+
+                fac_address      city_state_zip  \
+0          1085 N Oregon St   Ontario, OR 97914   
+1          3060 SE Stark St  Portland, OR 97214   
+2  5905 SE Powell Valley Rd   Gresham, OR 97080   
+
+                                               owner  \
+0                    Presbyterian Nursing Home, Inc.   
+1                        Laurelhurst Operations, LLC   
+2  Regency Gresham Nursing & Rehabilitation Cente...   
+
+                          operator  
+0  Presbyterian Nursing Home, Inc.  
+1      Laurelhurst Operations, LLC  
+2  Regency Pacific Management, LLC  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_43/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_43/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Load source CSV with index_col=0 as specified
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_43/test_0.csv"
+df_source0 = pd.read_csv(source0_path, index_col=0)
+
+# Target schema and types
+# ['fac_type': string, 'facid': integer, 'capacity': integer, 'fac_name': integer, 'fac_address': integer, 'city_state_zip': integer, 'owner': integer, 'operator': integer]
+
+# According to the target schema:
+# fac_type: string
+# facid: integer
+# capacity: integer
+# fac_name: integer
+# fac_address: integer
+# city_state_zip: integer
+# owner: integer
+# operator: integer
+
+# The source columns are:
+# ['facid', 'fac_type', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']
+
+# We need to reorder columns to target schema order:
+# ['fac_type', 'facid', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']
+
+df = df_source0[['fac_type', 'facid', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']].copy()
+
+# Cast columns to target types
+# fac_type: string
+df['fac_type'] = df['fac_type'].astype(str)
+
+# facid: integer
+df['facid'] = pd.to_numeric(df['facid'], errors='coerce').fillna(0).astype(int)
+
+# capacity: integer
+df['capacity'] = pd.to_numeric(df['capacity'], errors='coerce').fillna(0).astype(int)
+
+# fac_name: integer
+# The source fac_name is string, target expects integer.
+# Since fac_name is a name, converting to integer directly is not possible.
+# We must convert strings to integers by some mapping or encoding.
+# The instructions do not specify how to handle this.
+# We will encode fac_name strings as integer codes (factorize).
+df['fac_name'] = pd.factorize(df['fac_name'])[0]
+
+# fac_address: integer
+# Same as fac_name, convert string to integer codes
+df['fac_address'] = pd.factorize(df['fac_address'])[0]
+
+# city_state_zip: integer
+# Same approach
+df['city_state_zip'] = pd.factorize(df['city_state_zip'])[0]
+
+# owner: integer
+df['owner'] = pd.factorize(df['owner'])[0]
+
+# operator: integer
+df['operator'] = pd.factorize(df['operator'])[0]
+
+# Save the final dataframe to CSV
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_43/target_multisource_agentic.csv"
+df.to_csv(output_path, index=False)
+```

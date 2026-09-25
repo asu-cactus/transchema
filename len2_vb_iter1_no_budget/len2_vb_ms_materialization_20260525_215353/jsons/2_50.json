@@ -1,0 +1,46 @@
+{
+  "case": "2_50",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7646,
+        "cost": 0.0050892,
+        "latency": 14.294203519821167,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.529) / 2 = 0.765 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.302.\nGround truth candidate keys: {G3}; {sex}; {G2}; {G1}.\nGenerated table candidate keys: {G3}; {sex}; {G2}; {G1}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'G1': range overlap=0.271, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 9.8602, max: 11.4904, mean: 10.6753\n  Column 'G2': range overlap=0.318, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 10.0645, max: 11.4038, mean: 10.7342\n  Column 'G3': range overlap=0.318, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 9.8602, max: 11.25, mean: 10.5551",
+        "generated_samples": "Schema: ['sex', 'G1', 'G2', 'G3']\nNumber of Tuples: 2\nExamples:\nsex        G1        G2        G3\n  M 10.903614 10.662651 10.493976\n  F 11.234783 10.652174 10.052174",
+        "code": "import pandas as pd\n\n# Load the intermediate joined table (result of joining Source2_50_0 and Source2_50_1 on ID)\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_50/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# The intermediate table schema is ['sex', 'G1', 'G2', 'G3']\n# Target schema: ['sex': string, 'G1': float, 'G2': float, 'G3': float]\n# Target examples show that for each sex, the G1, G2, G3 are averages.\n\n# Convert 'sex' to string explicitly (if not already)\ndf['sex'] = df['sex'].astype(str)\n\n# Aggregate by 'sex' taking the mean of G1, G2, G3\ntarget_df = df.groupby('sex', as_index=False)[['G1', 'G2', 'G3']].mean()\n\n# Ensure float dtype for G1, G2, G3\ntarget_df['G1'] = target_df['G1'].astype(float)\ntarget_df['G2'] = target_df['G2'].astype(float)\ntarget_df['G3'] = target_df['G3'].astype(float)\n\n# Sort by sex to have consistent order (optional)\ntarget_df = target_df.sort_values('sex').reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_50/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "sex,G1,G2,G3\nF,11.234782608695651,10.652173913043478,10.05217391304348\nM,10.903614457831326,10.662650602409638,10.49397590361446\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2755393981933594
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7646,
+          "cost": 0.0016084,
+          "latency": 4.978196144104004,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.529) / 2 = 0.765 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.302.\nGround truth candidate keys: {G3}; {sex}; {G2}; {G1}.\nGenerated table candidate keys: {G3}; {sex}; {G2}; {G1}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'G1': range overlap=0.271, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 9.8602, max: 11.4904, mean: 10.6753\n  Column 'G2': range overlap=0.318, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 10.0645, max: 11.4038, mean: 10.7342\n  Column 'G3': range overlap=0.318, JS similarity=0.442\n    Generated    \u2014 min: 10.0522, max: 10.494, mean: 10.2731\n    Ground Truth \u2014 min: 9.8602, max: 11.25, mean: 10.5551",
+          "generated_samples": "Schema: ['sex', 'G1', 'G2', 'G3']\nNumber of Tuples: 2\nExamples:\nsex        G1        G2        G3\n  F 11.234783 10.652174 10.052174\n  M 10.903614 10.662651 10.493976",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_50/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_50/training_1.csv\", index_col=0)\n\n# Join on 'ID'\njoined = pd.merge(source0, source1, on=\"ID\", how=\"inner\")\n\n# Group by 'sex' and aggregate mean of G1, G2, G3\nresult = joined.groupby(\"sex\", as_index=False).agg({\n    \"G1\": \"mean\",\n    \"G2\": \"mean\",\n    \"G3\": \"mean\"\n})\n\n# Ensure columns are in the exact order and names as target schema\nresult = result[[\"sex\", \"G1\", \"G2\", \"G3\"]]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_50/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.703023910522461
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14373.640775680542,
+        "critique": 5045.9043979644775
+      }
+    }
+  ]
+}

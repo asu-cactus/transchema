@@ -1,0 +1,69 @@
+Case: 1_77
+Status: INCORRECT
+Timestamp: 2026-02-24T04:04:41.594599
+Duration: 28.70 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_77/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 1.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_77
+2. Target Schema: ['fac_type': string, 'capacity': integer]
+3. Target Examples: There are 2 available target examples: Empty DataFrame
+Columns: [fac_type, capacity]
+Index: []
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_77_0
+	Source 0 Schema: ['facid', 'fac_type', 'capacity', 'fac_name', 'fac_address', 'city_state_zip', 'owner', 'operator']
+	Source 0 Examples: 	 Source 0 contains 322 tuples, with examples as follows: 
+    facid fac_type  capacity                                         fac_name  \
+0  385008       NF      96.0               Presbyterian Community Care Center   
+1  385010       NF     159.0        Laurelhurst Village Rehabilitation Center   
+2  385015       NF     128.0  Regency Gresham Nursing & Rehabilitation Center   
+
+                fac_address      city_state_zip  \
+0          1085 N Oregon St   Ontario, OR 97914   
+1          3060 SE Stark St  Portland, OR 97214   
+2  5905 SE Powell Valley Rd   Gresham, OR 97080   
+
+                                               owner  \
+0                    Presbyterian Nursing Home, Inc.   
+1                        Laurelhurst Operations, LLC   
+2  Regency Gresham Nursing & Rehabilitation Cente...   
+
+                          operator  
+0  Presbyterian Nursing Home, Inc.  
+1      Laurelhurst Operations, LLC  
+2  Regency Pacific Management, LLC  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Read the source CSV file with index_col=0
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv"
+df_source = pd.read_csv(source_path, index_col=0)
+
+# Select only the columns needed for the target schema
+df_target = df_source[['fac_type', 'capacity']].copy()
+
+# Ensure the data types match the target schema
+df_target['fac_type'] = df_target['fac_type'].astype(str)
+df_target['capacity'] = pd.to_numeric(df_target['capacity'], errors='coerce').fillna(0).astype(int)
+
+# Save the resulting DataFrame to the specified CSV file
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_agentic.csv"
+df_target.to_csv(output_path, index=False)
+```

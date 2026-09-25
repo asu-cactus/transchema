@@ -1,0 +1,46 @@
+{
+  "case": "5_36",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7656,
+        "cost": 0.0041888,
+        "latency": 16.635756969451904,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.531) / 2 = 0.766 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {variable}.\nGenerated table candidate keys: {variable}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'variable': Jaccard=0.531",
+        "generated_samples": "Schema: ['variable']\nNumber of Tuples: 316\nExamples:\n                 variable\n    ['Deaths', 'Liberia']\n['Deaths', 'SierraLeone']\n['Deaths', 'SierraLeone']",
+        "code": "import pandas as pd\n\n# Read the source CSV with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_36/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# We need to unpivot the Cases_* and Deaths_* columns into a single 'variable' column\n# The target schema is ['variable'] where each value is a list like ['Cases', 'Country'] or ['Deaths', 'Country']\n\n# Identify columns for Cases and Deaths\ncases_cols = [col for col in df.columns if col.startswith(\"Cases_\")]\ndeaths_cols = [col for col in df.columns if col.startswith(\"Deaths_\")]\n\n# Melt Cases columns\ncases_melted = df.melt(value_vars=cases_cols, value_name=\"value\")\n# Melt Deaths columns\ndeaths_melted = df.melt(value_vars=deaths_cols, value_name=\"value\")\n\n# For both melted dataframes, extract the type ('Cases' or 'Deaths') and country from the column names\ndef extract_type_country(col_name):\n    # col_name is like 'Cases_Guinea' or 'Deaths_Senegal'\n    parts = col_name.split('_')\n    return parts[0], parts[1]\n\n# Process Cases melted\ncases_melted['type'] = cases_melted['variable'].apply(lambda x: extract_type_country(x)[0])\ncases_melted['country'] = cases_melted['variable'].apply(lambda x: extract_type_country(x)[1])\n\n# Process Deaths melted\ndeaths_melted['type'] = deaths_melted['variable'].apply(lambda x: extract_type_country(x)[0])\ndeaths_melted['country'] = deaths_melted['variable'].apply(lambda x: extract_type_country(x)[1])\n\n# Combine both melted dataframes\ncombined = pd.concat([cases_melted, deaths_melted], ignore_index=True)\n\n# Filter out rows where value is NaN (no data)\ncombined = combined[combined['value'].notna()]\n\n# Create the 'variable' column as list [type, country]\ncombined['variable'] = combined.apply(lambda row: [row['type'], row['country']], axis=1)\n\n# Select only the 'variable' column as per target schema\ntarget_df = combined[['variable']].reset_index(drop=True)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_36/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "variable\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.6825923919677734
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.001496,
+          "latency": 3.455754041671753,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {variable}.\nGenerated table candidate keys: {variable}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['variable']\nNumber of Tuples: 976\nExamples:\n                  variable\n         ['Cases', 'Mali']\n       ['Cases', 'Guinea']\n['Deaths', 'UnitedStates']",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_36/training_0.csv\", index_col=0)\n\n# Unpivot the source table: transform wide format to long format\n# The columns to unpivot are all except 'Date' and 'Day'\nid_vars = ['Date', 'Day']\nvalue_vars = [col for col in source0.columns if col not in id_vars]\n\n# Melt the dataframe\nmelted = source0.melt(id_vars=id_vars, value_vars=value_vars, var_name='variable', value_name='value')\n\n# The 'variable' column contains strings like 'Cases_Guinea', 'Deaths_Spain', etc.\n# We need to split these into two parts: ['Cases', 'Guinea'] or ['Deaths', 'Spain']\n# The target schema shows 'variable' as a list of two strings.\n\n# Split the 'variable' column by underscore into two parts\nmelted['variable'] = melted['variable'].str.split('_')\n\n# Select only the 'variable' column as per target schema\nresult = melted[['variable']]\n\n# Write to output CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_36/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6353855133056641
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 16644.601345062256,
+        "critique": 3513.3323669433594
+      }
+    }
+  ]
+}

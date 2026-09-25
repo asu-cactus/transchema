@@ -1,0 +1,136 @@
+Case: 4_25
+Status: INCORRECT
+Timestamp: 2026-02-23T13:50:11.568579
+Duration: 48.24 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_25/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 1.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_25
+2. Target Schema: ['country_code': string, 'station': integer, 'datetime': integer, 'obs_type': integer, 'obs_value': integer, 'TMAX_F': integer, 'month': integer]
+3. Target Examples: There are 14 available target examples:   country_code  station  datetime  obs_type  obs_value  TMAX_F  month
+5           EI      207       207       207        207     207    207
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_25_0
+	Source 0 Schema: ['datetime', 'station', 'obs_type', 'obs_value', 'TMAX_F', 'month', 'country_code']
+	Source 0 Examples: 	 Source 0 contains 6336 tuples, with examples as follows: 
+     datetime      station obs_type  obs_value  TMAX_F  month country_code
+0  1865-02-11  SZ000006717     TMAX      -22.2   -7.96      2           SZ
+1  1865-02-10  SZ000006717     TMAX      -18.8   -1.84      2           SZ
+2  1865-07-28  USC00288878     TMAX      -17.8   -0.04      7          USC
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_25_1
+	Source 1 Schema: ['datetime', 'station', 'obs_type', 'obs_value', 'TMAX_F', 'month', 'country_code']
+	Source 1 Examples: 	 Source 1 contains 5686 tuples, with examples as follows: 
+     datetime      station obs_type  obs_value  TMAX_F  month country_code
+0  1864-02-26  SZ000006717     TMAX      -34.0  -29.20      2           SZ
+1  1864-02-08  SZ000006717     TMAX      -17.4    0.68      2           SZ
+2  1864-02-17  CA006158350     TMAX      -16.7    1.94      2           CA
+	Source 1 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_25_2
+	Source 2 Schema: ['datetime', 'station', 'obs_type', 'obs_value', 'TMAX_F', 'month', 'country_code']
+	Source 2 Examples: 	 Source 2 contains 8379 tuples, with examples as follows: 
+     datetime      station obs_type  obs_value  TMAX_F  month country_code
+0  1866-01-07  CA006158350     TMAX      -21.1   -5.98      1           CA
+1  1866-01-08  CA006110549     TMAX      -16.7    1.94      1           CA
+2  1866-02-15  CA006110549     TMAX      -16.7    1.94      2           CA
+	Source 2 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_25_3
+	Source 3 Schema: ['datetime', 'station', 'obs_type', 'obs_value', 'TMAX_F', 'month', 'country_code']
+	Source 3 Examples: 	 Source 3 contains 4801 tuples, with examples as follows: 
+     datetime      station obs_type  obs_value  TMAX_F  month country_code
+0  1867-12-12  CA006106362     TMAX      -21.7   -7.06     12           CA
+1  1867-12-12  CA006101872     TMAX      -20.0   -4.00     12           CA
+2  1867-12-13  CA006106362     TMAX      -19.4   -2.92     12           CA
+	Source 3 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_3.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSV files
+source_files = [
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_0.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_1.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_2.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/test_3.csv"
+]
+
+# Read all source files into a list of DataFrames
+dfs = [pd.read_csv(f, index_col=0) for f in source_files]
+
+# Union all rows from the source DataFrames
+union_df = pd.concat(dfs, ignore_index=True)
+
+# Reorder columns to match the target schema
+target_columns = ['country_code', 'station', 'datetime', 'obs_type', 'obs_value', 'TMAX_F', 'month']
+union_df = union_df[target_columns]
+
+# Convert columns to the target types
+# Target schema types:
+# 'country_code': string
+# 'station': integer
+# 'datetime': integer
+# 'obs_type': integer
+# 'obs_value': integer
+# 'TMAX_F': integer
+# 'month': integer
+
+# First, convert 'country_code' to string explicitly
+union_df['country_code'] = union_df['country_code'].astype(str)
+
+# For other columns, convert to numeric (integer) with rounding if needed
+# 'station' column in source is string like SZ000006717, but target expects integer
+# We need to convert 'station' to integer. Since source 'station' is string, we must extract integer part.
+# From examples, station looks like a string with letters and digits.
+# We will extract digits from 'station' and convert to int.
+
+def extract_station_int(station_str):
+    # Extract digits from the string and convert to int
+    digits = ''.join(filter(str.isdigit, station_str))
+    return int(digits) if digits else 0
+
+union_df['station'] = union_df['station'].apply(extract_station_int)
+
+# 'datetime' in source is a date string like '1865-02-11', target expects integer
+# We will convert datetime to an integer in YYYYMMDD format
+union_df['datetime'] = pd.to_datetime(union_df['datetime'], errors='coerce')
+union_df['datetime'] = union_df['datetime'].dt.strftime('%Y%m%d').astype('Int64')
+
+# 'obs_type' in source is string like 'TMAX', target expects integer
+# We need to map obs_type strings to integers.
+# Since only example obs_type is 'TMAX', we can map 'TMAX' to 1 (for example).
+# If there are other obs_type values, map them accordingly.
+obs_type_unique = union_df['obs_type'].unique()
+obs_type_map = {k: i+1 for i, k in enumerate(sorted(obs_type_unique))}
+union_df['obs_type'] = union_df['obs_type'].map(obs_type_map).astype('Int64')
+
+# 'obs_value' is float in source, target expects integer
+# We will round and convert to integer
+union_df['obs_value'] = pd.to_numeric(union_df['obs_value'], errors='coerce').round().astype('Int64')
+
+# 'TMAX_F' is float in source, target expects integer
+union_df['TMAX_F'] = pd.to_numeric(union_df['TMAX_F'], errors='coerce').round().astype('Int64')
+
+# 'month' is integer in source, ensure integer type
+union_df['month'] = pd.to_numeric(union_df['month'], errors='coerce').astype('Int64')
+
+# Save the final DataFrame to CSV
+output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_25/target_multisource_agentic.csv"
+union_df.to_csv(output_path, index=False)
+```

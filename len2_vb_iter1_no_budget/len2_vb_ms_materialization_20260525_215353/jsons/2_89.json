@@ -1,0 +1,46 @@
+{
+  "case": "2_89",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7719,
+        "cost": 0.007361200000000001,
+        "latency": 17.345601558685303,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.544) / 2 = 0.772 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.382, range overlap=0.637.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city}; {fare}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.637, JS similarity=0.382\n    Generated    \u2014 min: 35.79, max: 887.17, mean: 287.532\n    Ground Truth \u2014 min: 202.69, max: 744.64, mean: 439.9212\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+        "generated_samples": "Schema: ['city', 'fare']\nNumber of Tuples: 120\nExamples:\n          city   fare\n    Lewishaven 302.90\nEast Aaronbury 230.95\n   New Raymond 615.16",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_89/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_89/training_1.csv\", index_col=0)\n\n# Perform the JOIN on 'city' between Source2_89_0 and Source2_89_1\n# According to operation history, join keys are ['city', 'city']\n# But the intermediate_step1.csv after join only has ['city', 'fare'], so the join is effectively to keep Source0 rows with matching city in Source1\n# We do an inner join to keep only cities present in both sources\njoined = pd.merge(source0, source1[['city']], on='city', how='inner')\n\n# Group by city and sum the fare from Source2_89_0 (joined DataFrame)\ngrouped = joined.groupby('city', as_index=False)['fare'].sum()\n\n# Ensure the schema matches target: ['city': string, 'fare': float]\ngrouped['city'] = grouped['city'].astype(str)\ngrouped['fare'] = grouped['fare'].astype(float)\n\n# Write the result to the target path\ngrouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_89/target_multisource.csv\", index=False)",
+        "generated_csv_head": "city,fare\nAmandaburgh,97.47\nBarajasview,97.24\nBarronchester,582.76\nBethanyland,593.21\nBradshawfurt,400.64\nBrandonfort,673.31\nCarriemouth,192.23\nChristopherfurt,187.25\nColemanland,679.6800000000001\nDavidfurt,543.93\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.329183578491211
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7719,
+          "cost": 0.0013396,
+          "latency": 4.4304211139678955,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.544) / 2 = 0.772 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.382, range overlap=0.637.\nGround truth candidate keys: {city}; {fare}.\nGenerated table candidate keys: {city}; {fare}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.637, JS similarity=0.382\n    Generated    \u2014 min: 35.79, max: 887.17, mean: 287.532\n    Ground Truth \u2014 min: 202.69, max: 744.64, mean: 439.9212\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+          "generated_samples": "Schema: ['city', 'fare']\nNumber of Tuples: 120\nExamples:\n              city   fare\n     Martinezhaven 162.16\n     Nicolechester 587.28\nNorth Richardhaven 345.86",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_89/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_89/training_1.csv\", index_col=0)\n\n# Join on city (inner join to keep only matching cities)\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by city and sum fare\nresult = joined.groupby(\"city\", as_index=False).agg({\"fare\": \"sum\"})\n\n# Write output with exact target schema\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_89/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2602806091308594
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 17420.25661468506,
+        "critique": 4478.124141693115
+      }
+    }
+  ]
+}

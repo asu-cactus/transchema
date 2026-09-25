@@ -1,0 +1,183 @@
+Case: 4_28
+Status: INCORRECT
+Timestamp: 2026-02-23T14:48:23.904350
+Duration: 96.55 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_28/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 2.25
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_28
+2. Target Schema: ['INCIDENT_TYPE': string, 'ULCS_NO': integer, 'SCHOOL_YEAR': integer, 'INCIDENT_COUNT': integer, 'SCHOOL_ID': integer]
+3. Target Examples: There are 39 available target examples:                    INCIDENT_TYPE  ULCS_NO  SCHOOL_YEAR  INCIDENT_COUNT  \
+33  Threats - Verbal and Written      159          159             159   
+22                       ROBBERY      556          556             556   
+25  SUICIDE - ATTEMPTS & THREATS      121          121             121   
+21               Morals Offenses       73           73              73   
+
+    SCHOOL_ID  
+33        159  
+22        556  
+25        121  
+21         73  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_28_0
+	Source 0 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 0 Examples: 	 Source 0 contains 3672 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR            INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     4020   2014-2015                 BULLYING               0        402
+1     4020   2014-2015  DRUGS & ALCOHOL OFFENSE              20        402
+2     4030   2014-2015        FIRE - INCENDIARY               0        403
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_28_1
+	Source 1 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 1 Examples: 	 Source 1 contains 2057 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     5031   2015-2016      BURGLARY               0         31
+1     5031   2015-2016    HARASSMENT               0         31
+2     5031   2015-2016       ROBBERY               0         31
+	Source 1 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_28_2
+	Source 2 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 2 Examples: 	 Source 2 contains 3723 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     5260   2013-2014    HARASSMENT               1        526
+1     5340   2013-2014      ASSAULTS               5        534
+2     5350   2013-2014       THREATS               8        535
+	Source 2 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_28_3
+	Source 3 Schema: ['ULCS_NO', 'SCHOOL_ID', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT']
+	Source 3 Examples: 	 Source 3 contains 1409 tuples, with examples as follows: 
+   ULCS_NO  SCHOOL_ID SCHOOL_YEAR              INCIDENT_TYPE  INCIDENT_COUNT
+0     1010        101   2016-2017                   Assaults              18
+1     1010        101   2016-2017         Disorderly Conduct              21
+2     1010        101   2016-2017  Drug and Alcohol Offenses               2
+	Source 3 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_3.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSVs
+source_files = [
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_0.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_1.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_2.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/test_3.csv"
+]
+
+# Target schema columns and types
+target_columns = ['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_COUNT', 'SCHOOL_ID']
+
+def normalize_school_year(school_year_str):
+    """
+    Convert SCHOOL_YEAR from format '2014-2015' to integer 2014.
+    If already integer or cannot parse, return as is or NaN.
+    """
+    if pd.isna(school_year_str):
+        return pd.NA
+    if isinstance(school_year_str, int):
+        return school_year_str
+    if isinstance(school_year_str, str):
+        # Extract the first 4 digits as integer year
+        try:
+            return int(school_year_str[:4])
+        except:
+            return pd.NA
+    return pd.NA
+
+def normalize_df(df):
+    """
+    Normalize a source dataframe to match the target schema:
+    ['INCIDENT_TYPE' (string), 'ULCS_NO' (int), 'SCHOOL_YEAR' (int), 'INCIDENT_COUNT' (int), 'SCHOOL_ID' (int)]
+    """
+    # Rename columns if needed to match target schema
+    # All sources have these columns but order and case may differ
+    # Lowercase columns for easier matching
+    df_cols_lower = {col.lower(): col for col in df.columns}
+
+    # Map source columns to target columns
+    col_map = {}
+    # INCIDENT_TYPE
+    if 'incident_type' in df_cols_lower:
+        col_map[df_cols_lower['incident_type']] = 'INCIDENT_TYPE'
+    # ULCS_NO
+    if 'ulcs_no' in df_cols_lower:
+        col_map[df_cols_lower['ulcs_no']] = 'ULCS_NO'
+    # SCHOOL_YEAR
+    if 'school_year' in df_cols_lower:
+        col_map[df_cols_lower['school_year']] = 'SCHOOL_YEAR'
+    # INCIDENT_COUNT
+    if 'incident_count' in df_cols_lower:
+        col_map[df_cols_lower['incident_count']] = 'INCIDENT_COUNT'
+    # SCHOOL_ID
+    if 'school_id' in df_cols_lower:
+        col_map[df_cols_lower['school_id']] = 'SCHOOL_ID'
+
+    df = df.rename(columns=col_map)
+
+    # Keep only target columns (some sources may have extra columns)
+    df = df[[col for col in target_columns if col in df.columns]]
+
+    # Normalize SCHOOL_YEAR to integer year
+    df['SCHOOL_YEAR'] = df['SCHOOL_YEAR'].apply(normalize_school_year)
+
+    # Convert types
+    df['INCIDENT_TYPE'] = df['INCIDENT_TYPE'].astype(str)
+
+    # For integer columns, convert safely (coerce errors to NaN then fill with 0 or drop)
+    for col in ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_COUNT', 'SCHOOL_ID']:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    # Drop rows with missing critical keys (ULCS_NO, SCHOOL_YEAR, INCIDENT_TYPE, SCHOOL_ID)
+    df = df.dropna(subset=['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'SCHOOL_ID'])
+
+    # Convert to int (after dropping NaNs)
+    df['ULCS_NO'] = df['ULCS_NO'].astype(int)
+    df['SCHOOL_YEAR'] = df['SCHOOL_YEAR'].astype(int)
+    df['INCIDENT_COUNT'] = df['INCIDENT_COUNT'].fillna(0).astype(int)
+    df['SCHOOL_ID'] = df['SCHOOL_ID'].astype(int)
+
+    # Reorder columns exactly as target
+    df = df[target_columns]
+
+    return df
+
+# Read and normalize all source dataframes
+dfs = []
+for file_path in source_files:
+    df = pd.read_csv(file_path, index_col=0)
+    df_norm = normalize_df(df)
+    dfs.append(df_norm)
+
+# Union all normalized dataframes
+union_df = pd.concat(dfs, ignore_index=True)
+
+# Group by ['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'SCHOOL_ID'] and sum INCIDENT_COUNT
+agg_df = (
+    union_df
+    .groupby(['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'SCHOOL_ID'], as_index=False)
+    .agg({'INCIDENT_COUNT': 'sum'})
+)
+
+# Reorder columns to target schema order (should already be correct)
+agg_df = agg_df[target_columns]
+
+# Save to CSV
+output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_28/target_multisource_agentic.csv"
+agg_df.to_csv(output_path, index=False)
+```

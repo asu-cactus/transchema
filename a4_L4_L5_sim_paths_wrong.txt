@@ -1,0 +1,1035 @@
+a4 (upper_bound) experiment — L4 & L5 cases that were WRONG (incorrect)
+==============================================================================
+All incorrect cases are included, regardless of RAG hit count.
+For each case: GT pipeline, then each distinct simulated path with its count.
+
+
+##############################################################################
+# LENGTH 4  (40 WRONG cases)
+##############################################################################
+
+------------------------------------------------------------------------------
+case 4_18  (L4)   [WRONG]   RAG hits: 4/34 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (5 distinct, 34 total):
+        30x  groupby>groupby>merge>merge>terminal
+         1x  groupby
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>merge
+
+------------------------------------------------------------------------------
+case 4_19  (L4)   [WRONG]   RAG hits: 4/35 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (5 distinct, 35 total):
+        31x  groupby>groupby>merge>merge>terminal
+         1x  groupby
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>merge
+
+------------------------------------------------------------------------------
+case 4_20  (L4)   [WRONG]   RAG hits: 2/35 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (4 distinct, 35 total):
+        26x  groupby>groupby>terminal
+         7x  groupby>terminal
+         1x  groupby
+         1x  groupby>groupby
+
+------------------------------------------------------------------------------
+case 4_21  (L4)   [WRONG]   RAG hits: 2/23 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (3 distinct, 23 total):
+        21x  groupby>groupby>terminal
+         1x  groupby
+         1x  groupby>groupby
+
+------------------------------------------------------------------------------
+case 4_22  (L4)   [WRONG]   RAG hits: 2/32 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (3 distinct, 32 total):
+        30x  groupby>groupby>terminal
+         1x  groupby
+         1x  groupby>groupby
+
+------------------------------------------------------------------------------
+case 4_23  (L4)   [WRONG]   RAG hits: 7/12 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge']
+  GT path      : merge>merge>merge>merge>terminal
+  Simulated paths (9 distinct, 12 total):
+         3x  merge>merge
+         2x  merge>merge>merge
+         1x  merge
+         1x  merge>merge>merge>merge
+         1x  merge>merge>merge>merge>merge
+         1x  merge>merge>merge>merge>merge>merge
+         1x  merge>merge>merge>merge>merge>merge>groupby
+         1x  merge>merge>merge>merge>merge>merge>groupby>merge
+         1x  merge>merge>merge>merge>merge>merge>groupby>merge>merge
+
+------------------------------------------------------------------------------
+case 4_28  (L4)   [WRONG]   RAG hits: 1/21 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 21 total):
+        19x  groupby>union>terminal
+         1x  union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_29  (L4)   [WRONG]   RAG hits: 2/8 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (5 distinct, 8 total):
+         4x  groupby>union>terminal
+         1x  union
+         1x  union>union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_30  (L4)   [WRONG]   RAG hits: 1/1 sim calls
+  GT operators : ['union', 'union', 'union', 'union']
+  GT path      : union>union>union>union>terminal
+  Simulated paths (1 distinct, 1 total):
+         1x  union
+
+------------------------------------------------------------------------------
+case 4_45  (L4)   [WRONG]   RAG hits: 0/18 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (9 distinct, 18 total):
+         5x  merge>merge
+         3x  merge>merge>merge
+         3x  union>merge>merge>merge>merge>terminal
+         2x  merge>merge>merge>terminal
+         1x  merge
+         1x  union>merge
+         1x  union>merge>merge
+         1x  union>merge>merge>merge
+         1x  union>merge>merge>merge>merge
+
+------------------------------------------------------------------------------
+case 4_46  (L4)   [WRONG]   RAG hits: 0/20 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (8 distinct, 20 total):
+         9x  merge>merge
+         5x  merge>merge>merge
+         1x  merge
+         1x  union>merge
+         1x  union>merge>merge
+         1x  union>merge>merge>merge
+         1x  union>merge>merge>merge>terminal
+         1x  merge>merge>merge>merge
+
+------------------------------------------------------------------------------
+case 4_47  (L4)   [WRONG]   RAG hits: 0/20 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (10 distinct, 20 total):
+         6x  merge>merge
+         5x  merge>merge>merge
+         2x  merge>merge>merge>terminal
+         1x  merge
+         1x  union>merge
+         1x  union>merge>merge
+         1x  merge>terminal
+         1x  merge>merge>merge>merge
+         1x  merge>merge>merge>merge>merge
+         1x  merge>merge>merge>merge>merge>terminal
+
+------------------------------------------------------------------------------
+case 4_48  (L4)   [WRONG]   RAG hits: 0/9 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (9 distinct, 9 total):
+         1x  groupby
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge>merge>merge
+
+------------------------------------------------------------------------------
+case 4_49  (L4)   [WRONG]   RAG hits: 0/11 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (11 distinct, 11 total):
+         1x  groupby
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>groupby
+         1x  groupby>merge>merge>merge>merge>merge>groupby>merge
+         1x  groupby>merge>merge>merge>merge>merge>groupby>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>groupby>merge>merge>merge>groupby
+
+------------------------------------------------------------------------------
+case 4_50  (L4)   [WRONG]   RAG hits: 0/12 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (10 distinct, 12 total):
+         3x  groupby>merge>merge>merge>merge>merge>merge>merge>merge>terminal
+         1x  groupby
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge>merge>merge
+
+------------------------------------------------------------------------------
+case 4_51  (L4)   [WRONG]   RAG hits: 4/14 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (6 distinct, 14 total):
+         9x  union>union>union>groupby>terminal
+         1x  union
+         1x  merge>merge
+         1x  union>union
+         1x  union>union>union
+         1x  union>union>union>groupby
+
+------------------------------------------------------------------------------
+case 4_52  (L4)   [WRONG]   RAG hits: 1/15 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (13 distinct, 15 total):
+         3x  merge>union
+         1x  union
+         1x  merge>union>merge
+         1x  merge>union>terminal
+         1x  merge>union>merge>merge
+         1x  merge>merge
+         1x  merge>merge>union
+         1x  merge>merge>union>merge
+         1x  merge>merge>union>merge>merge
+         1x  merge>merge>union>merge>merge>merge
+         1x  merge>merge>union>merge>merge>merge>union
+         1x  merge>merge>union>merge>merge>merge>union>merge
+         1x  merge>merge>union>merge>merge>merge>union>merge>merge
+
+------------------------------------------------------------------------------
+case 4_53  (L4)   [WRONG]   RAG hits: 5/13 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (5 distinct, 13 total):
+         8x  union>union>union>groupby>terminal
+         2x  union>union
+         1x  union
+         1x  union>union>union
+         1x  union>union>union>groupby
+
+------------------------------------------------------------------------------
+case 4_55  (L4)   [WRONG]   RAG hits: 1/40 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 40 total):
+        38x  groupby>union>terminal
+         1x  union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_58  (L4)   [WRONG]   RAG hits: 1/40 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 40 total):
+        38x  groupby>union>terminal
+         1x  union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_59  (L4)   [WRONG]   RAG hits: 1/22 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 22 total):
+        19x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_60  (L4)   [WRONG]   RAG hits: 1/29 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 29 total):
+        26x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_61  (L4)   [WRONG]   RAG hits: 1/17 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 17 total):
+        14x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_62  (L4)   [WRONG]   RAG hits: 0/12 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 12 total):
+         7x  merge>terminal
+         4x  terminal
+         1x  union>terminal
+
+------------------------------------------------------------------------------
+case 4_63  (L4)   [WRONG]   RAG hits: 0/12 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 12 total):
+         6x  merge>terminal
+         4x  terminal
+         2x  union>terminal
+
+------------------------------------------------------------------------------
+case 4_64  (L4)   [WRONG]   RAG hits: 0/10 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 10 total):
+         6x  merge>terminal
+         3x  terminal
+         1x  union>terminal
+
+------------------------------------------------------------------------------
+case 4_67  (L4)   [WRONG]   RAG hits: 1/40 sim calls
+  GT operators : ['groupby', 'groupby', 'groupby', 'groupby']
+  GT path      : groupby>groupby>groupby>groupby>terminal
+  Simulated paths (2 distinct, 40 total):
+        39x  groupby>terminal
+         1x  groupby
+
+------------------------------------------------------------------------------
+case 4_68  (L4)   [WRONG]   RAG hits: 1/34 sim calls
+  GT operators : ['groupby', 'groupby', 'groupby', 'merge']
+  GT path      : groupby>groupby>groupby>merge>terminal
+  Simulated paths (6 distinct, 34 total):
+        29x  groupby>groupby>merge>merge>groupby>terminal
+         1x  merge
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>merge
+         1x  groupby>groupby>merge>merge>groupby
+
+------------------------------------------------------------------------------
+case 4_70  (L4)   [WRONG]   RAG hits: 1/28 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat']
+  GT path      : union>union>union>union>terminal
+  Simulated paths (5 distinct, 28 total):
+        21x  groupby>union>terminal
+         4x  merge>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_73  (L4)   [WRONG]   RAG hits: 3/33 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (11 distinct, 33 total):
+        23x  groupby>groupby>merge>merge>terminal
+         1x  merge
+         1x  groupby>merge
+         1x  groupby>merge>groupby
+         1x  groupby>merge>groupby>merge
+         1x  groupby>merge>groupby>merge>merge
+         1x  groupby>merge>groupby>merge>merge>merge
+         1x  groupby>merge>groupby>merge>merge>merge>merge
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>merge
+
+------------------------------------------------------------------------------
+case 4_84  (L4)   [WRONG]   RAG hits: 1/39 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat']
+  GT path      : union>union>union>union>terminal
+  Simulated paths (4 distinct, 39 total):
+        36x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 4_86  (L4)   [WRONG]   RAG hits: 1/40 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat']
+  GT path      : union>union>union>union>terminal
+  Simulated paths (5 distinct, 40 total):
+        36x  merge>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+         1x  groupby>union>terminal
+
+------------------------------------------------------------------------------
+case 4_87  (L4)   [WRONG]   RAG hits: 0/11 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 11 total):
+         7x  merge>terminal
+         3x  terminal
+         1x  union>terminal
+
+------------------------------------------------------------------------------
+case 4_92  (L4)   [WRONG]   RAG hits: 7/10 sim calls
+  GT operators : ['merge', 'merge', 'groupby', 'merge']
+  GT path      : merge>merge>groupby>merge>terminal
+  Simulated paths (6 distinct, 10 total):
+         3x  merge>merge
+         2x  merge>merge>groupby
+         2x  merge>merge>merge>terminal
+         1x  merge
+         1x  merge>merge>merge
+         1x  merge>merge>groupby>merge
+
+------------------------------------------------------------------------------
+case 4_93  (L4)   [WRONG]   RAG hits: 4/16 sim calls
+  GT operators : ['merge', 'merge', 'groupby', 'merge']
+  GT path      : merge>merge>groupby>merge>terminal
+  Simulated paths (5 distinct, 16 total):
+        11x  merge>terminal
+         2x  merge>merge
+         1x  merge
+         1x  merge>merge>groupby
+         1x  merge>merge>terminal
+
+------------------------------------------------------------------------------
+case 4_94  (L4)   [WRONG]   RAG hits: 1/20 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (10 distinct, 20 total):
+         7x  merge>merge>merge>terminal
+         3x  merge>merge>merge
+         2x  merge>merge>merge>groupby
+         2x  merge>merge>merge>groupby>terminal
+         1x  union
+         1x  merge>union
+         1x  merge>merge
+         1x  merge>merge>merge>groupby>merge
+         1x  merge>union>groupby
+         1x  merge>union>groupby>merge
+
+------------------------------------------------------------------------------
+case 4_96  (L4)   [WRONG]   RAG hits: 1/16 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 16 total):
+        11x  merge>merge>merge>terminal
+         2x  merge>merge
+         2x  merge>merge>merge
+         1x  union
+
+------------------------------------------------------------------------------
+case 4_97  (L4)   [WRONG]   RAG hits: 0/24 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (4 distinct, 24 total):
+        21x  groupby>merge>merge>terminal
+         1x  terminal
+         1x  groupby>merge
+         1x  groupby>merge>merge
+
+------------------------------------------------------------------------------
+case 4_98  (L4)   [WRONG]   RAG hits: 3/18 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (6 distinct, 18 total):
+        13x  groupby>groupby>merge>merge>terminal
+         1x  merge
+         1x  terminal
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>merge
+
+------------------------------------------------------------------------------
+case 4_99  (L4)   [WRONG]   RAG hits: 0/17 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>merge>merge>terminal
+  Simulated paths (3 distinct, 17 total):
+        15x  groupby>merge>terminal
+         1x  merge
+         1x  groupby>merge
+
+##############################################################################
+# LENGTH 5  (50 WRONG cases)
+##############################################################################
+
+------------------------------------------------------------------------------
+case 5_0  (L5)   [WRONG]   RAG hits: 1/21 sim calls
+  GT operators : ['merge', 'groupby', 'groupby', 'groupby', 'groupby']
+  GT path      : merge>groupby>groupby>groupby>groupby>terminal
+  Simulated paths (10 distinct, 21 total):
+        12x  groupby>merge>merge>merge>groupby>groupby>merge>groupby>groupby>terminal
+         1x  merge
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>groupby
+         1x  groupby>merge>merge>merge>groupby>groupby
+         1x  groupby>merge>merge>merge>groupby>groupby>merge
+         1x  groupby>merge>merge>merge>groupby>groupby>merge>groupby
+         1x  groupby>merge>merge>merge>groupby>groupby>merge>groupby>groupby
+
+------------------------------------------------------------------------------
+case 5_1  (L5)   [WRONG]   RAG hits: 1/1 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (1 distinct, 1 total):
+         1x  union
+
+------------------------------------------------------------------------------
+case 5_6  (L5)   [WRONG]   RAG hits: 0/22 sim calls
+  GT operators : ['concat', 'split', 'groupby', 'merge', 'groupby']
+  GT path      : union>groupby>merge>groupby>terminal
+  Simulated paths (17 distinct, 22 total):
+         6x  merge>groupby>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge
+         1x  merge
+         1x  merge>union
+         1x  merge>groupby
+         1x  merge>groupby>merge
+         1x  merge>groupby>merge>merge
+         1x  merge>groupby>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge
+         1x  merge>groupby>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge>merge
+
+------------------------------------------------------------------------------
+case 5_7  (L5)   [WRONG]   RAG hits: 16/17 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 17 total):
+         6x  merge>merge>merge
+         5x  merge>merge>merge>merge
+         3x  merge>merge
+         1x  merge
+         1x  merge>merge>merge>merge>groupby
+         1x  merge>merge>merge>merge>groupby>terminal
+
+------------------------------------------------------------------------------
+case 5_8  (L5)   [WRONG]   RAG hits: 0/29 sim calls
+  GT operators : ['merge', 'groupby', 'groupby', 'groupby', 'groupby']
+  GT path      : merge>groupby>groupby>groupby>groupby>terminal
+  Simulated paths (3 distinct, 29 total):
+        27x  groupby>merge>terminal
+         1x  groupby
+         1x  groupby>merge
+
+------------------------------------------------------------------------------
+case 5_9  (L5)   [WRONG]   RAG hits: 1/24 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 24 total):
+        21x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_14  (L5)   [WRONG]   RAG hits: 17/19 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 19 total):
+         7x  merge>merge>merge
+         4x  merge>merge>merge>merge
+         3x  merge>merge
+         2x  merge>merge>merge>merge>groupby
+         2x  merge>merge>merge>merge>groupby>terminal
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_16  (L5)   [WRONG]   RAG hits: 1/23 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 23 total):
+        20x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_18  (L5)   [WRONG]   RAG hits: 17/17 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (5 distinct, 17 total):
+         7x  merge>merge>merge
+         4x  merge>merge>merge>merge
+         3x  merge>merge
+         2x  merge>merge>merge>merge>groupby
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_19  (L5)   [WRONG]   RAG hits: 1/17 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 17 total):
+        14x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_20  (L5)   [WRONG]   RAG hits: 1/26 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 26 total):
+        24x  groupby>union>terminal
+         1x  union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_21  (L5)   [WRONG]   RAG hits: 18/18 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (4 distinct, 18 total):
+         8x  merge>merge>merge
+         6x  merge>merge>merge>merge
+         3x  merge>merge
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_23  (L5)   [WRONG]   RAG hits: 4/4 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'merge']
+  GT path      : merge>merge>merge>merge>merge>terminal
+  Simulated paths (3 distinct, 4 total):
+         2x  merge>merge
+         1x  merge
+         1x  merge>merge>merge
+
+------------------------------------------------------------------------------
+case 5_24  (L5)   [WRONG]   RAG hits: 1/31 sim calls
+  GT operators : ['merge', 'groupby', 'groupby', 'groupby', 'groupby']
+  GT path      : merge>groupby>groupby>groupby>groupby>terminal
+  Simulated paths (9 distinct, 31 total):
+        23x  groupby>merge>merge>merge>merge>merge>merge>merge>terminal
+         1x  merge
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>merge>merge>merge
+
+------------------------------------------------------------------------------
+case 5_25  (L5)   [WRONG]   RAG hits: 1/29 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 29 total):
+        27x  groupby>union>terminal
+         1x  union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_26  (L5)   [WRONG]   RAG hits: 14/16 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 16 total):
+         6x  merge>merge>merge
+         3x  merge>merge
+         2x  merge>merge>merge>merge
+         2x  merge>merge>merge>merge>groupby
+         2x  merge>merge>merge>merge>groupby>terminal
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_28  (L5)   [WRONG]   RAG hits: 1/16 sim calls
+  GT operators : ['merge', 'groupby', 'groupby', 'merge', 'merge']
+  GT path      : merge>groupby>groupby>merge>merge>terminal
+  Simulated paths (9 distinct, 16 total):
+         8x  groupby>merge>groupby>merge>groupby>merge>groupby>groupby>terminal
+         1x  merge
+         1x  groupby>merge
+         1x  groupby>merge>groupby
+         1x  groupby>merge>groupby>merge
+         1x  groupby>merge>groupby>merge>groupby
+         1x  groupby>merge>groupby>merge>groupby>merge
+         1x  groupby>merge>groupby>merge>groupby>merge>groupby
+         1x  groupby>merge>groupby>merge>groupby>merge>groupby>groupby
+
+------------------------------------------------------------------------------
+case 5_33  (L5)   [WRONG]   RAG hits: 1/16 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 16 total):
+        13x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_35  (L5)   [WRONG]   RAG hits: 23/25 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 25 total):
+         8x  merge>merge>merge
+         7x  merge>merge>merge>merge
+         4x  merge>merge>merge>merge>groupby
+         3x  merge>merge
+         2x  merge>merge>merge>merge>groupby>terminal
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_39  (L5)   [WRONG]   RAG hits: 18/19 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 19 total):
+         6x  merge>merge>merge
+         4x  merge>merge
+         4x  merge>merge>merge>merge
+         3x  merge>merge>merge>merge>groupby
+         1x  merge
+         1x  merge>merge>merge>merge>groupby>terminal
+
+------------------------------------------------------------------------------
+case 5_40  (L5)   [WRONG]   RAG hits: 16/18 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 18 total):
+         7x  merge>merge>merge
+         3x  merge>merge
+         3x  merge>merge>merge>merge
+         2x  merge>merge>merge>merge>groupby
+         2x  merge>merge>merge>merge>groupby>terminal
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_45  (L5)   [WRONG]   RAG hits: 1/1 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'groupby', 'merge']
+  GT path      : groupby>groupby>merge>groupby>merge>terminal
+  Simulated paths (1 distinct, 1 total):
+         1x  groupby
+
+------------------------------------------------------------------------------
+case 5_46  (L5)   [WRONG]   RAG hits: 17/18 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 18 total):
+         7x  merge>merge>merge
+         5x  merge>merge>merge>merge
+         3x  merge>merge
+         1x  merge
+         1x  merge>merge>merge>merge>groupby
+         1x  merge>merge>merge>merge>groupby>terminal
+
+------------------------------------------------------------------------------
+case 5_47  (L5)   [WRONG]   RAG hits: 1/24 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 24 total):
+        22x  terminal
+         1x  union
+         1x  merge>union
+
+------------------------------------------------------------------------------
+case 5_48  (L5)   [WRONG]   RAG hits: 15/19 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (7 distinct, 19 total):
+         4x  merge>merge>merge
+         4x  merge>merge>merge>merge
+         3x  merge>merge
+         3x  merge>merge>merge>merge>groupby
+         3x  merge>merge>merge>merge>groupby>terminal
+         1x  merge
+         1x  merge>merge>merge>merge>groupby>merge
+
+------------------------------------------------------------------------------
+case 5_49  (L5)   [WRONG]   RAG hits: 1/26 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 26 total):
+        24x  groupby>union>terminal
+         1x  union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_50  (L5)   [WRONG]   RAG hits: 19/20 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 20 total):
+         6x  merge>merge>merge
+         5x  merge>merge>merge>merge
+         4x  merge>merge
+         3x  merge>merge>merge>merge>groupby
+         1x  merge
+         1x  merge>merge>merge>merge>groupby>terminal
+
+------------------------------------------------------------------------------
+case 5_52  (L5)   [WRONG]   RAG hits: 1/1 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (1 distinct, 1 total):
+         1x  union
+
+------------------------------------------------------------------------------
+case 5_56  (L5)   [WRONG]   RAG hits: 1/16 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (5 distinct, 16 total):
+        10x  merge>merge>union>groupby>terminal
+         2x  merge>union
+         2x  merge>merge>union
+         1x  union
+         1x  merge>merge>union>groupby
+
+------------------------------------------------------------------------------
+case 5_59  (L5)   [WRONG]   RAG hits: 5/31 sim calls
+  GT operators : ['groupby', 'groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>groupby>merge>merge>terminal
+  Simulated paths (4 distinct, 31 total):
+        26x  groupby>groupby>groupby>terminal
+         2x  groupby>groupby
+         2x  groupby>groupby>groupby
+         1x  groupby
+
+------------------------------------------------------------------------------
+case 5_60  (L5)   [WRONG]   RAG hits: 5/9 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'groupby', 'merge']
+  GT path      : groupby>groupby>merge>groupby>merge>terminal
+  Simulated paths (6 distinct, 9 total):
+         4x  groupby>groupby>merge>groupby>merge>terminal
+         1x  groupby
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>groupby
+         1x  groupby>groupby>merge>groupby>merge
+
+------------------------------------------------------------------------------
+case 5_61  (L5)   [WRONG]   RAG hits: 1/1 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (1 distinct, 1 total):
+         1x  union
+
+------------------------------------------------------------------------------
+case 5_62  (L5)   [WRONG]   RAG hits: 1/29 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 29 total):
+        27x  groupby>union>terminal
+         1x  union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_64  (L5)   [WRONG]   RAG hits: 17/20 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 20 total):
+         7x  merge>merge>merge
+         4x  merge>merge>merge>merge
+         3x  merge>merge
+         3x  merge>merge>merge>merge>groupby>terminal
+         2x  merge>merge>merge>merge>groupby
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_65  (L5)   [WRONG]   RAG hits: 15/17 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (7 distinct, 17 total):
+         6x  merge>merge>merge
+         4x  merge>merge>merge>merge
+         3x  merge>merge
+         1x  merge
+         1x  merge>merge>merge>merge>groupby
+         1x  merge>merge>merge>groupby
+         1x  merge>merge>merge>merge>groupby>terminal
+
+------------------------------------------------------------------------------
+case 5_67  (L5)   [WRONG]   RAG hits: 19/23 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 23 total):
+         6x  merge>merge>merge
+         5x  merge>merge>merge>merge
+         4x  merge>merge>merge>merge>groupby
+         4x  merge>merge>merge>merge>groupby>terminal
+         3x  merge>merge
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_69  (L5)   [WRONG]   RAG hits: 14/25 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 25 total):
+        11x  merge>merge>merge>merge>groupby>terminal
+         4x  merge>merge>merge
+         3x  merge>merge
+         3x  merge>merge>merge>merge
+         3x  merge>merge>merge>merge>groupby
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_70  (L5)   [WRONG]   RAG hits: 1/30 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 30 total):
+        28x  terminal
+         1x  union
+         1x  merge>union
+
+------------------------------------------------------------------------------
+case 5_71  (L5)   [WRONG]   RAG hits: 13/17 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (6 distinct, 17 total):
+         4x  merge>merge>merge>merge>groupby>terminal
+         3x  merge>merge
+         3x  merge>merge>merge
+         3x  merge>merge>merge>merge
+         3x  merge>merge>merge>merge>groupby
+         1x  merge
+
+------------------------------------------------------------------------------
+case 5_74  (L5)   [WRONG]   RAG hits: 0/24 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (2 distinct, 24 total):
+        23x  groupby>terminal
+         1x  groupby
+
+------------------------------------------------------------------------------
+case 5_79  (L5)   [WRONG]   RAG hits: 1/15 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (4 distinct, 15 total):
+        12x  groupby>union>terminal
+         1x  union
+         1x  merge>union
+         1x  groupby>union
+
+------------------------------------------------------------------------------
+case 5_80  (L5)   [WRONG]   RAG hits: 1/7 sim calls
+  GT operators : ['groupby', 'groupby', 'groupby', 'merge', 'merge']
+  GT path      : groupby>groupby>groupby>merge>merge>terminal
+  Simulated paths (5 distinct, 7 total):
+         3x  groupby>groupby>merge>merge>terminal
+         1x  merge
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>merge
+
+------------------------------------------------------------------------------
+case 5_82  (L5)   [WRONG]   RAG hits: 5/7 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'groupby', 'merge']
+  GT path      : groupby>groupby>merge>groupby>merge>terminal
+  Simulated paths (6 distinct, 7 total):
+         2x  groupby>groupby>merge>groupby>merge>terminal
+         1x  groupby
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>groupby
+         1x  groupby>groupby>merge>groupby>merge
+
+------------------------------------------------------------------------------
+case 5_83  (L5)   [WRONG]   RAG hits: 2/27 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (7 distinct, 27 total):
+        21x  groupby>merge>merge>merge>merge>terminal
+         1x  merge
+         1x  merge>merge
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+
+------------------------------------------------------------------------------
+case 5_84  (L5)   [WRONG]   RAG hits: 5/7 sim calls
+  GT operators : ['groupby', 'groupby', 'merge', 'groupby', 'merge']
+  GT path      : groupby>groupby>merge>groupby>merge>terminal
+  Simulated paths (6 distinct, 7 total):
+         2x  groupby>groupby>merge>groupby>merge>terminal
+         1x  groupby
+         1x  groupby>groupby
+         1x  groupby>groupby>merge
+         1x  groupby>groupby>merge>groupby
+         1x  groupby>groupby>merge>groupby>merge
+
+------------------------------------------------------------------------------
+case 5_86  (L5)   [WRONG]   RAG hits: 2/20 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (8 distinct, 20 total):
+        13x  groupby>merge>merge>merge>merge>groupby>terminal
+         1x  merge
+         1x  merge>merge
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>groupby
+
+------------------------------------------------------------------------------
+case 5_87  (L5)   [WRONG]   RAG hits: 2/24 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (8 distinct, 24 total):
+        17x  groupby>merge>merge>merge>merge>groupby>terminal
+         1x  merge
+         1x  merge>merge
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>groupby
+
+------------------------------------------------------------------------------
+case 5_88  (L5)   [WRONG]   RAG hits: 2/26 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (7 distinct, 26 total):
+        20x  groupby>merge>merge>merge>groupby>terminal
+         1x  merge
+         1x  merge>merge
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>groupby
+
+------------------------------------------------------------------------------
+case 5_89  (L5)   [WRONG]   RAG hits: 0/17 sim calls
+  GT operators : ['merge', 'merge', 'merge', 'merge', 'groupby']
+  GT path      : merge>merge>merge>merge>groupby>terminal
+  Simulated paths (7 distinct, 17 total):
+        11x  groupby>merge>merge>merge>merge>groupby>terminal
+         1x  groupby
+         1x  groupby>merge
+         1x  groupby>merge>merge
+         1x  groupby>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge
+         1x  groupby>merge>merge>merge>merge>groupby
+
+------------------------------------------------------------------------------
+case 5_91  (L5)   [WRONG]   RAG hits: 1/24 sim calls
+  GT operators : ['concat', 'concat', 'concat', 'concat', 'groupby']
+  GT path      : union>union>union>union>groupby>terminal
+  Simulated paths (3 distinct, 24 total):
+        22x  groupby>union>terminal
+         1x  union
+         1x  groupby>union

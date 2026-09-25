@@ -1,0 +1,109 @@
+Case: 4_70
+Status: INCORRECT
+Timestamp: 2026-02-25T11:45:24.475477
+Duration: 106.65 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_70/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_70
+2. Target Schema: ['GEO.id': string, 'GEO.id2': string, 'GEO.display-label': string, 'HD01_VD01': string, 'HD02_VD01': string, 'Year': integer]
+3. Target Examples: There are 149044 available target examples:                 GEO.id  GEO.id2 GEO.display-label HD01_VD01 HD02_VD01  Year
+136015  8600000US59043  59043.0       ZCTA5 59043    2927.0     269.0  2016
+82608   8600000US99577  99577.0       ZCTA5 99577   27955.0    1035.0  2014
+102580  8600000US58262  58262.0       ZCTA5 58262     114.0      64.0  2015
+117719  8600000US06350   6350.0       ZCTA5 06350      59.0      19.0  2016
+62750   8600000US40208  40208.0       ZCTA5 40208   15480.0    1508.0  2014
+...                ...      ...               ...       ...       ...   ...
+107169  8600000US70754  70754.0       ZCTA5 70754   10796.0     915.0  2015
+76237   8600000US76667  76667.0       ZCTA5 76667   11106.0     501.0  2014
+43691   8600000US78202  78202.0       ZCTA5 78202   13165.0     934.0  2013
+22693   8600000US19555  19555.0       ZCTA5 19555    3458.0     277.0  2013
+60402   8600000US33125  33125.0       ZCTA5 33125   56018.0    1940.0  2014
+
+[14904 rows x 6 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_70_0
+	Source 0 Schema: ['GEO.id', 'GEO.id2', 'GEO.display-label', 'HD01_VD01', 'HD02_VD01', 'Year']
+	Source 0 Examples: 	 Source 0 contains 33121 tuples, with examples as follows: 
+           GEO.id GEO.id2 GEO.display-label        HD01_VD01  \
+0              Id     Id2         Geography  Estimate; Total   
+1  8600000US00601   601.0       ZCTA5 00601          17982.0   
+2  8600000US00602   602.0       ZCTA5 00602          40260.0   
+
+                HD02_VD01  Year  
+0  Margin of Error; Total  2015  
+1                   287.0  2015  
+2                   167.0  2015  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_70/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_70_1
+	Source 1 Schema: ['GEO.id', 'GEO.id2', 'GEO.display-label', 'HD01_VD01', 'HD02_VD01', 'Year']
+	Source 1 Examples: 	 Source 1 contains 16560 tuples, with examples as follows: 
+           GEO.id GEO.id2 GEO.display-label        HD01_VD01  \
+0              Id     Id2         Geography  Estimate; Total   
+1  8600000US00601   601.0       ZCTA5 00601          18544.0   
+2  8600000US00602   602.0       ZCTA5 00602          41640.0   
+
+                HD02_VD01  Year  
+0  Margin of Error; Total  2012  
+1                   271.0  2012  
+2                   147.0  2012  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_70/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_70_2
+	Source 2 Schema: ['GEO.id', 'GEO.id2', 'GEO.display-label', 'HD01_VD01', 'HD02_VD01', 'Year']
+	Source 2 Examples: 	 Source 2 contains 33121 tuples, with examples as follows: 
+           GEO.id GEO.id2 GEO.display-label        HD01_VD01  \
+0              Id     Id2         Geography  Estimate; Total   
+1  8600000US00601   601.0       ZCTA5 00601          17800.0   
+2  8600000US00602   602.0       ZCTA5 00602          39716.0   
+
+                HD02_VD01  Year  
+0  Margin of Error; Total  2016  
+1                   299.0  2016  
+2                   188.0  2016  
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_70/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_70_3
+	Source 3 Schema: ['GEO.id', 'GEO.id2', 'GEO.display-label', 'HD01_VD01', 'HD02_VD01', 'Year']
+	Source 3 Examples: 	 Source 3 contains 33121 tuples, with examples as follows: 
+           GEO.id GEO.id2 GEO.display-label        HD01_VD01  \
+0              Id     Id2         Geography  Estimate; Total   
+1  8600000US00601   601.0       ZCTA5 00601          18450.0   
+2  8600000US00602   602.0       ZCTA5 00602          41302.0   
+
+                HD02_VD01  Year  
+0  Margin of Error; Total  2013  
+1                   290.0  2013  
+2                   163.0  2013  
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_70/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_70_4
+	Source 4 Schema: ['GEO.id', 'GEO.id2', 'GEO.display-label', 'HD01_VD01', 'HD02_VD01', 'Year']
+	Source 4 Examples: 	 Source 4 contains 33121 tuples, with examples as follows: 
+           GEO.id GEO.id2 GEO.display-label        HD01_VD01  \
+0              Id     Id2         Geography  Estimate; Total   
+1  8600000US00601   601.0       ZCTA5 00601          18088.0   
+2  8600000US00602   602.0       ZCTA5 00602          40859.0   
+
+                HD02_VD01  Year  
+0  Margin of Error; Total  2014  
+1                   295.0  2014  
+2                   154.0  2014  
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_70/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_70/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

@@ -1,0 +1,46 @@
+{
+  "case": "3_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4429,
+        "cost": 0.00204,
+        "latency": 12.584145069122314,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.029) / 2 = 0.443 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['m1403'] \u2192 m1401.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.000\n  Column 'm1401': Jaccard=0.039\n  Column 'm1403': Jaccard=0.047",
+        "generated_samples": "Schema: ['County', 'm1401', 'm1403']\nNumber of Tuples: 32\nExamples:\n    County m1401 m1403\n     Logan    NR    NR\n      Mesa    NR    NR\nWashington    NR    NR",
+        "code": "import pandas as pd\n\n# File paths for source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_85/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_85/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length3_85/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length3_85/training_3.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # Columns: County, m1403\ndf1 = pd.read_csv(source1_path, index_col=0)  # Columns: County, m1402\ndf2 = pd.read_csv(source2_path, index_col=0)  # Columns: County, m1401\ndf3 = pd.read_csv(source3_path, index_col=0)  # Columns: County\n\n# Transformation plan:\n# Target schema: ['County', 'm1401', 'm1403']\n# Source tables:\n# - df0 has County, m1403\n# - df1 has County, m1402 (not needed in target)\n# - df2 has County, m1401\n# - df3 has County only (some counties missing m1401 or m1403)\n#\n# We need to produce a table with County, m1401, m1403.\n# So we join all sources on County:\n# - Start from df3 (County dimension table, contains 32 counties)\n# - Left join df2 on County to get m1401\n# - Left join df0 on County to get m1403\n# We do NOT use df1 (m1402) because target does not have m1402.\n#\n# After join, fill missing m1401 or m1403 with \"NR\" (as seen in target examples).\n# Also ensure all columns are string type.\n#\n# Finally, save to the target CSV file.\n\n# Merge step by step\ndf = df3.copy()\n\n# Join m1401 from df2\ndf = df.merge(df2[['County', 'm1401']], on='County', how='left')\n\n# Join m1403 from df0\ndf = df.merge(df0[['County', 'm1403']], on='County', how='left')\n\n# Fill missing values in m1401 and m1403 with \"NR\"\ndf['m1401'] = df['m1401'].fillna(\"NR\")\ndf['m1403'] = df['m1403'].fillna(\"NR\")\n\n# Convert all columns to string type to match target schema\ndf['County'] = df['County'].astype(str)\ndf['m1401'] = df['m1401'].astype(str)\ndf['m1403'] = df['m1403'].astype(str)\n\n# Reorder columns to match target schema explicitly\ndf = df[['County', 'm1401', 'm1403']]\n\n# Write the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_85/target_multisource_cot.csv\"\ndf.to_csv(target_path, index=False)",
+        "generated_csv_head": "County,m1401,m1403\nKit Carson,NR,NR\nLa Plata,\"$523,193\",\"$587,114\"\nLake,NR,NR\nLarimer,\"$964,948\",\"$1,234,344\"\nLas Animas,NR,NR\nLincoln,NR,NR\nLogan,NR,NR\nMesa,NR,NR\nMineral,NR,NR\nMoffat,NR,NR\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4834403991699219
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.4429,
+          "cost": 0.0017272,
+          "latency": 6.262569904327393,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.029) / 2 = 0.443 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['m1403'] \u2192 m1401.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.000\n  Column 'm1401': Jaccard=0.039\n  Column 'm1403': Jaccard=0.047",
+          "generated_samples": "Schema: ['County', 'm1401', 'm1403']\nNumber of Tuples: 16\nExamples:\n  County    m1401    m1403\n  Summit $271,441 $253,937\nLa Plata $523,193 $587,114\n  Pitkin $194,865 $157,541",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/training_3.csv\", index_col=0)\n\n# Join all tables on 'County'\ndf = source2.merge(source0, on='County', how='inner') \\\n            .merge(source1, on='County', how='inner') \\\n            .merge(source3, on='County', how='inner')\n\n# Group by 'County' and 'm1401' to enforce uniqueness and match target keys\ndf = df.groupby(['County', 'm1401'], as_index=False).first()\n\n# Select only the columns needed in the target schema\ndf = df[['County', 'm1401', 'm1403']]\n\n# Write output\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_85/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.383066177368164
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12645.840406417847,
+        "critique": 6327.677965164185
+      }
+    }
+  ]
+}

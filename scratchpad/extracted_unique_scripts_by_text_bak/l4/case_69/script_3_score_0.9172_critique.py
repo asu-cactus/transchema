@@ -1,0 +1,13 @@
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_69/training_0.csv", index_col=0)
+df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_69/training_1.csv", index_col=0)
+df2 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_69/training_2.csv", index_col=0)
+
+# Use left joins to preserve all rows from df0 (42 rows)
+join_01 = pd.merge(df0, df1, on="user_id", how="left")
+final_df = pd.merge(join_01, df2, on="user_id", how="left")
+
+final_df = final_df[['user_id', 'year_school', 'floor', 'party', 'libcon', 'fav_music']]
+
+final_df.to_csv("autopipeline-benchmarks/github-pipelines/length4_69/target_multisource_mcts.csv", index=False)

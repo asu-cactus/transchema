@@ -1,0 +1,46 @@
+{
+  "case": "2_37",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.513,
+        "cost": 0.005124,
+        "latency": 8.961808443069458,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.359) / 2 = 0.513 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.742, range overlap=0.680.\nGround truth candidate keys: {Date}.\nGenerated table candidate keys: {Date}; {NumMosquitos}.\nSpurious keys in generated not present in ground truth: {NumMosquitos}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['NumMosquitos'] \u2192 Date.\nDistribution Analysis (numerical columns with issues):\n  Column 'NumMosquitos': range overlap=0.680, JS similarity=0.742\n    Generated    \u2014 min: 258.0, max: 9592.0, mean: 2653.1111\n    Ground Truth \u2014 min: 80.0, max: 13808.0, mean: 2954.6667\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+        "generated_samples": "Schema: ['Date', 'NumMosquitos']\nNumber of Tuples: 45\nExamples:\n      Date  NumMosquitos\n2013-08-29          5290\n2011-08-26           980\n2013-08-15          3892",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_37/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_37/training_1.csv\"\n\nsource0 = pd.read_csv(source0_path, index_col=0)\nsource1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source2_37_0 and Source2_37_1 on \"Date\"\n# According to operation history: JOIN : [[\"Source2_37_0\", \"Source2_37_1\"], [\"Date\", \"Date\"]]\njoined = pd.merge(source0, source1, left_on=\"Date\", right_on=\"Date\", how=\"inner\", suffixes=('_0', '_1'))\n\n# Operation 2: group_by = [Source2_37_0.Date], aggregations = [sum(Source2_37_1.NumMosquitos)]\n# Group by Date (from Source2_37_0, which is the same as joined[\"Date\"])\n# Aggregate sum of NumMosquitos from Source2_37_1 (which is joined[\"NumMosquitos\"])\ngrouped = joined.groupby('Date', as_index=False)['NumMosquitos'].sum()\n\n# Ensure the target schema: ['Date': string, 'NumMosquitos': integer]\n# Convert Date to string (if not already)\ngrouped['Date'] = grouped['Date'].astype(str)\n# Convert NumMosquitos to integer\ngrouped['NumMosquitos'] = grouped['NumMosquitos'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_37/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "Date,NumMosquitos\n2009-08-07,1270\n2009-08-13,1204\n2009-08-25,1382\n2009-08-27,350\n2009-09-03,258\n2009-09-14,1126\n2009-09-17,1486\n2009-09-25,1404\n2009-10-01,424\n2011-06-10,858\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8223056793212891
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.513,
+          "cost": 0.0016476000000000001,
+          "latency": 4.0146729946136475,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.359) / 2 = 0.513 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.742, range overlap=0.680.\nGround truth candidate keys: {Date}.\nGenerated table candidate keys: {Date}; {NumMosquitos}.\nSpurious keys in generated not present in ground truth: {NumMosquitos}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['NumMosquitos'] \u2192 Date.\nDistribution Analysis (numerical columns with issues):\n  Column 'NumMosquitos': range overlap=0.680, JS similarity=0.742\n    Generated    \u2014 min: 258.0, max: 9592.0, mean: 2653.1111\n    Ground Truth \u2014 min: 80.0, max: 13808.0, mean: 2954.6667\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+          "generated_samples": "Schema: ['Date', 'NumMosquitos']\nNumber of Tuples: 45\nExamples:\n      Date  NumMosquitos\n2011-08-12          1648\n2011-09-30           368\n2013-07-19          8336",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_37/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_37/training_1.csv\", index_col=0)\n\n# Join on Date (inner join to keep all matching dates)\njoined = pd.merge(source0, source1, how='inner', left_on='Date', right_on='Date')\n\n# Group by Date and sum NumMosquitos\nresult = joined.groupby('Date', as_index=False)['NumMosquitos'].sum()\n\n# Ensure column names exactly as target schema\nresult = result[['Date', 'NumMosquitos']]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_37/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7770061492919922
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9026.208400726318,
+        "critique": 4096.557378768921
+      }
+    }
+  ]
+}

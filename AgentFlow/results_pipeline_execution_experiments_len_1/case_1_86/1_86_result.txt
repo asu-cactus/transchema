@@ -1,0 +1,81 @@
+Case: 1_86
+Status: INCORRECT
+Timestamp: 2026-02-24T04:30:45.704931
+Duration: 23.80 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_86/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 1.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_86
+2. Target Schema: ['neighbourhood': string, 'price_24': integer]
+3. Target Examples: There are 70 available target examples:            neighbourhood  price_24
+57    la Sagrada Família       523
+38           el Guinardó        86
+41           el Poblenou       254
+5            Hostafrancs       108
+33             el Carmel        25
+51          la Guineueta         5
+49  la Font d'en Fargues        10
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_86_0
+	Source 0 Schema: ['id', 'name', 'host_id', 'host_name', 'neighbourhood_group', 'neighbourhood', 'latitude', 'longitude', 'room_type', 'price', 'minimum_nights', 'number_of_reviews', 'last_review', 'reviews_per_month', 'calculated_host_listings_count', 'availability_365']
+	Source 0 Examples: 	 Source 0 contains 8610 tuples, with examples as follows: 
+      id                                             name  host_id  \
+0  18666                          Flat with Sunny Terrace    71615   
+1  18674  Huge flat for 8 people close to Sagrada Familia    71615   
+2  19157              Great Place in Sagrada Familia, Bcn    73099   
+
+          host_name neighbourhood_group               neighbourhood  \
+0  Mireia And Maria          Sant Martí  el Camp de l'Arpa del Clot   
+1  Mireia And Maria            Eixample          la Sagrada Família   
+2            Urania            Eixample          la Sagrada Família   
+
+    latitude  longitude        room_type  price  minimum_nights  \
+0  41.408886   2.185545  Entire home/apt    130               3   
+1  41.404197   2.173058  Entire home/apt    110               1   
+2  41.407929   2.174540     Private room     30               2   
+
+   number_of_reviews last_review  reviews_per_month  \
+0                  1  2015-10-10               0.03   
+1                  4  2016-06-20               0.07   
+2                160  2018-05-18               1.68   
+
+   calculated_host_listings_count  availability_365  
+0                              29                61  
+1                              29               148  
+2                               2                69  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Read the source CSV file with index_col=0
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv"
+df_source = pd.read_csv(source_path, index_col=0)
+
+# Select the required columns: 'neighbourhood' and 'price'
+df_selected = df_source[['neighbourhood', 'price']]
+
+# Convert 'price' to integer and rename to 'price_24'
+df_selected['price_24'] = df_selected['price'].astype(int)
+
+# Select final columns in order
+df_final = df_selected[['neighbourhood', 'price_24']]
+
+# Save the resulting dataframe to the specified CSV file
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_agentic.csv"
+df_final.to_csv(output_path, index=False)
+```

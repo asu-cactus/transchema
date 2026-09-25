@@ -1,0 +1,215 @@
+Case: 1_83
+Status: CORRECT
+Timestamp: 2026-02-24T04:16:03.006459
+Duration: 373.59 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_83/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Country', 'Region', 'Happiness_Rank_15', 'Happiness_Score_15', 'Standard_Error_15', 'Economy_15', 'Family_15', 'Life_Expectancy_15', 'Freedom_15', 'Trust_15', 'Generosity_15', 'Dystopia_15', 'Happiness_Rank_17', 'Happiness_Score_17', 'Whisker_High_17', 'Whisker_Low_17', 'Economy_17', 'Family_17', 'Life_Expectancy_17', 'Freedom_17', 'Generosity_17', 'Trust_17', 'Dystopia_17']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_83
+2. Target Schema: ['Country': string, 'Region': string, 'Happiness_Rank_15': integer, 'Happiness_Score_15': float, 'Standard_Error_15': float, 'Economy_15': float, 'Family_15': float, 'Life_Expectancy_15': float, 'Freedom_15': float, 'Trust_15': float, 'Generosity_15': float, 'Dystopia_15': float, 'Happiness_Rank_17': integer, 'Happiness_Score_17': float, 'Whisker_High_17': float, 'Whisker_Low_17': float, 'Economy_17': float, 'Family_17': float, 'Life_Expectancy_17': float, 'Freedom_17': float, 'Generosity_17': float, 'Trust_17': float, 'Dystopia_17': float]
+3. Target Examples: There are 75 available target examples:            Country                           Region  Happiness_Rank_15  \
+45         Bahrain  Middle East and Northern Africa                 49   
+10          Israel  Middle East and Northern Africa                 11   
+0      Switzerland                   Western Europe                  1   
+7           Sweden                   Western Europe                  8   
+29  Czech Republic       Central and Eastern Europe                 31   
+5          Finland                   Western Europe                  6   
+53       Nicaragua      Latin America and Caribbean                 57   
+39       Guatemala      Latin America and Caribbean                 43   
+
+    Happiness_Score_15  Standard_Error_15  Economy_15  Family_15  \
+45               5.960            0.05412     1.32376    1.21624   
+10               7.278            0.03470     1.22857    1.22393   
+0                7.587            0.03411     1.39651    1.34951   
+7                7.364            0.03157     1.33171    1.28907   
+29               6.505            0.04168     1.17898    1.20643   
+5                7.406            0.03140     1.29025    1.31826   
+53               5.828            0.05371     0.59325    1.14184   
+39               6.123            0.05224     0.74553    1.04356   
+
+    Life_Expectancy_15  Freedom_15  Trust_15  Generosity_15  Dystopia_15  \
+45             0.74716     0.45492   0.30600        0.17362      1.73797   
+10             0.91387     0.41319   0.07785        0.33172      3.08854   
+0              0.94143     0.66557   0.41978        0.29678      2.51738   
+7              0.91087     0.65980   0.43844        0.36262      2.37119   
+29             0.84483     0.46364   0.02652        0.10686      2.67782   
+5              0.88911     0.64169   0.41372        0.23351      2.61955   
+53             0.74314     0.55475   0.19317        0.27815      2.32407   
+39             0.64425     0.57733   0.09472        0.27489      2.74255   
+
+    Happiness_Rank_17  Happiness_Score_17  Whisker_High_17  Whisker_Low_17  \
+45                 41               6.087         6.178989        5.995011   
+10                 11               7.213         7.279853        7.146146   
+0                   4               7.494         7.561772        7.426227   
+7                   9               7.284         7.344095        7.223905   
+29                 23               6.609         6.683862        6.534138   
+5                   5               7.469         7.527542        7.410458   
+53                 43               6.071         6.186584        5.955417   
+39                 29               6.454         6.566874        6.341126   
+
+    Economy_17  Family_17  Life_Expectancy_17  Freedom_17  Generosity_17  \
+45    1.488412   1.323110            0.653133    0.536747       0.172668   
+10    1.375382   1.376290            0.838404    0.405989       0.330083   
+0     1.564980   1.516912            0.858131    0.620071       0.290549   
+7     1.494387   1.478162            0.830875    0.612924       0.385399   
+29    1.352682   1.433885            0.754444    0.490946       0.088107   
+5     1.443572   1.540247            0.809158    0.617951       0.245483   
+53    0.737299   1.287216            0.653096    0.447552       0.301674   
+39    0.872002   1.255585            0.540240    0.531311       0.283488   
+
+    Trust_17  Dystopia_17  
+45  0.257042     1.656149  
+10  0.085242     2.801757  
+0   0.367007     2.276716  
+7   0.384399     2.097538  
+29  0.036873     2.451862  
+5   0.382612     2.430182  
+53  0.130688     2.513931  
+39  0.077223     2.893891  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_83_0
+	Source 0 Schema: ['Country', 'Region', 'Happiness Rank', 'Happiness Score', 'Standard Error', 'Economy (GDP per Capita)', 'Family', 'Health (Life Expectancy)', 'Freedom', 'Trust (Government Corruption)', 'Generosity', 'Dystopia Residual']
+	Source 0 Examples: 	 Source 0 contains 79 tuples, with examples as follows: 
+       Country          Region  Happiness Rank  Happiness Score  \
+0  Switzerland  Western Europe               1            7.587   
+1      Iceland  Western Europe               2            7.561   
+2      Denmark  Western Europe               3            7.527   
+
+   Standard Error  Economy (GDP per Capita)   Family  \
+0         0.03411                   1.39651  1.34951   
+1         0.04884                   1.30232  1.40223   
+2         0.03328                   1.32548  1.36058   
+
+   Health (Life Expectancy)  Freedom  Trust (Government Corruption)  \
+0                   0.94143  0.66557                        0.41978   
+1                   0.94784  0.62877                        0.14145   
+2                   0.87464  0.64938                        0.48357   
+
+   Generosity  Dystopia Residual  
+0     0.29678            2.51738  
+1     0.43630            2.70201  
+2     0.34139            2.49204  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_83_1
+	Source 1 Schema: ['Country', 'Happiness_Rank_17', 'Happiness_Score_17', 'Whisker_High_17', 'Whisker_Low_17', 'Economy_17', 'Family_17', 'Life_Expectancy_17', 'Freedom_17', 'Generosity_17', 'Trust_17', 'Dystopia_17']
+	Source 1 Examples: 	 Source 1 contains 155 tuples, with examples as follows: 
+   Country  Happiness_Rank_17  Happiness_Score_17  Whisker_High_17  \
+0   Norway                  1               7.537         7.594445   
+1  Denmark                  2               7.522         7.581728   
+2  Iceland                  3               7.504         7.622030   
+
+   Whisker_Low_17  Economy_17  Family_17  Life_Expectancy_17  Freedom_17  \
+0        7.479556    1.616463   1.533524            0.796667    0.635423   
+1        7.462272    1.482383   1.551122            0.792566    0.626007   
+2        7.385970    1.480633   1.610574            0.833552    0.627163   
+
+   Generosity_17  Trust_17  Dystopia_17  
+0       0.362012  0.315964     2.277027  
+1       0.355280  0.400770     2.313707  
+2       0.475540  0.153527     2.322715  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Read source CSV files with index_col=0 as specified
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/test_1.csv"
+
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Rename columns in df0 to match target schema suffix _15
+df0_renamed = df0.rename(columns={
+    'Happiness Rank': 'Happiness_Rank_15',
+    'Happiness Score': 'Happiness_Score_15',
+    'Standard Error': 'Standard_Error_15',
+    'Economy (GDP per Capita)': 'Economy_15',
+    'Family': 'Family_15',
+    'Health (Life Expectancy)': 'Life_Expectancy_15',
+    'Freedom': 'Freedom_15',
+    'Trust (Government Corruption)': 'Trust_15',
+    'Generosity': 'Generosity_15',
+    'Dystopia Residual': 'Dystopia_15'
+})
+
+# df1 columns already match target schema for 2017 data, no renaming needed
+
+# Perform INNER join on 'Country' to keep only countries present in both sources
+df_merged = pd.merge(df0_renamed, df1, on='Country', how='inner', suffixes=('_15', '_17'))
+
+# Select and order columns exactly as per target schema
+target_columns = [
+    'Country',
+    'Region',
+    'Happiness_Rank_15',
+    'Happiness_Score_15',
+    'Standard_Error_15',
+    'Economy_15',
+    'Family_15',
+    'Life_Expectancy_15',
+    'Freedom_15',
+    'Trust_15',
+    'Generosity_15',
+    'Dystopia_15',
+    'Happiness_Rank_17',
+    'Happiness_Score_17',
+    'Whisker_High_17',
+    'Whisker_Low_17',
+    'Economy_17',
+    'Family_17',
+    'Life_Expectancy_17',
+    'Freedom_17',
+    'Generosity_17',
+    'Trust_17',
+    'Dystopia_17'
+]
+
+df_final = df_merged[target_columns]
+
+# Enforce data types as per target schema
+df_final = df_final.astype({
+    'Country': 'string',
+    'Region': 'string',
+    'Happiness_Rank_15': 'Int64',
+    'Happiness_Score_15': 'float64',
+    'Standard_Error_15': 'float64',
+    'Economy_15': 'float64',
+    'Family_15': 'float64',
+    'Life_Expectancy_15': 'float64',
+    'Freedom_15': 'float64',
+    'Trust_15': 'float64',
+    'Generosity_15': 'float64',
+    'Dystopia_15': 'float64',
+    'Happiness_Rank_17': 'Int64',
+    'Happiness_Score_17': 'float64',
+    'Whisker_High_17': 'float64',
+    'Whisker_Low_17': 'float64',
+    'Economy_17': 'float64',
+    'Family_17': 'float64',
+    'Life_Expectancy_17': 'float64',
+    'Freedom_17': 'float64',
+    'Generosity_17': 'float64',
+    'Trust_17': 'float64',
+    'Dystopia_17': 'float64'
+})
+
+# Save the final dataframe to CSV as specified
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_83/target_multisource_agentic.csv"
+df_final.to_csv(output_path, index=False)
+```

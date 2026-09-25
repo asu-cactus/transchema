@@ -1,0 +1,141 @@
+Case: 1_5
+Status: INCORRECT
+Timestamp: 2026-02-24T02:10:46.011071
+Duration: 123.90 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_5/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.6
+  matched_columns: ['1-1-2', '1-1-1', '1-2-3']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_5
+2. Target Schema: ['ProvinciaID': integer, 'ProvinciaNombre': string, 'RegionID': integer, 'ComunaID': integer, 'ComunaNombre': string]
+3. Target Examples: There are 172 available target examples:      ProvinciaID            ProvinciaNombre  RegionID  ComunaID  \
+58            17                 'Quillota'         6        59   
+152           28            'Cardenal Caro'         8       153   
+31            11                   'Choapa'         5        32   
+62            18              'San Antonio'         6        63   
+2              2               'Parinacota'         1         3   
+4              3                  'Iquique'         2         5   
+112           25                 'Santiago'         7       113   
+149           27                'Cachapoal'         8       150   
+65            18              'San Antonio'         6        66   
+124           25                 'Santiago'         7       125   
+140           27                'Cachapoal'         8       141   
+68            19  'San Felipe de Aconcagua'         6        69   
+46            15                'Los Andes'         6        47   
+41            13                   'Limarí'         5        42   
+158           29                'Colchagua'         8       159   
+122           25                 'Santiago'         7       123   
+35            12                    'Elqui'         5        36   
+
+                     ComunaNombre  
+58                        'Olmué'  
+152                   'Marchihue'  
+31                    'Los Vilos'  
+62                    'El Quisco'  
+2                 'General Lagos'  
+4                 'Alto Hospicio'  
+112                       'Macul'  
+149  'San Vicente de Tagua Tagua'  
+65                'Santo Domingo'  
+124                 'San Joaquín'  
+140                      'Malloa'  
+68                    'Panquehue'  
+46                    'Los Andes'  
+41                       'Ovalle'  
+158                       'Lolol'  
+122                       'Renca'  
+35                   'La Higuera'  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_5_0
+	Source 0 Schema: ['ComunaID', 'ComunaNombre', 'ProvinciaID']
+	Source 0 Examples: 	 Source 0 contains 172 tuples, with examples as follows: 
+   ComunaID     ComunaNombre  ProvinciaID
+0         1          'Arica'            1
+1         2      'Camarones'            1
+2         3  'General Lagos'            2
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_5_1
+	Source 1 Schema: ['ProvinciaID', 'ProvinciaNombre', 'RegionID']
+	Source 1 Examples: 	 Source 1 contains 53 tuples, with examples as follows: 
+   ProvinciaID ProvinciaNombre  RegionID
+0            1         'Arica'         1
+1            2    'Parinacota'         1
+2            3       'Iquique'         2
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSVs
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/test_1.csv"
+
+# Output file path
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/target_multisource_agentic.csv"
+
+# Read source CSV files with index_col=0 as specified
+df_source0 = pd.read_csv(source0_path, index_col=0)
+df_source1 = pd.read_csv(source1_path, index_col=0)
+
+# Ensure data types before join:
+# ProvinciaID and RegionID as integers
+df_source0['ProvinciaID'] = pd.to_numeric(df_source0['ProvinciaID'], errors='coerce').astype('Int64')
+df_source1['ProvinciaID'] = pd.to_numeric(df_source1['ProvinciaID'], errors='coerce').astype('Int64')
+df_source1['RegionID'] = pd.to_numeric(df_source1['RegionID'], errors='coerce').astype('Int64')
+
+# ComunaNombre and ProvinciaNombre as strings, strip quotes and whitespace if any
+df_source0['ComunaNombre'] = df_source0['ComunaNombre'].astype(str).str.strip().str.strip("'").str.strip()
+df_source1['ProvinciaNombre'] = df_source1['ProvinciaNombre'].astype(str).str.strip().str.strip("'").str.strip()
+
+# Drop rows with missing ProvinciaID in either dataframe to avoid join issues
+df_source0 = df_source0.dropna(subset=['ProvinciaID'])
+df_source1 = df_source1.dropna(subset=['ProvinciaID', 'RegionID'])
+
+# Convert ProvinciaID and RegionID to int (from Int64 nullable) after dropping NaNs
+df_source0['ProvinciaID'] = df_source0['ProvinciaID'].astype(int)
+df_source1['ProvinciaID'] = df_source1['ProvinciaID'].astype(int)
+df_source1['RegionID'] = df_source1['RegionID'].astype(int)
+
+# Perform INNER JOIN on ProvinciaID
+df_joined = pd.merge(
+    df_source0,
+    df_source1,
+    how='inner',
+    on='ProvinciaID',
+    validate='many_to_one'  # Each ProvinciaID in source1 is unique, source0 can have many
+)
+
+# Select and reorder columns to match target schema exactly:
+# ['ProvinciaID' (int), 'ProvinciaNombre' (string), 'RegionID' (int), 'ComunaID' (int), 'ComunaNombre' (string)]
+df_result = df_joined[['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']].copy()
+
+# Ensure data types exactly as target schema
+df_result['ProvinciaID'] = df_result['ProvinciaID'].astype(int)
+df_result['ProvinciaNombre'] = df_result['ProvinciaNombre'].astype(str)
+df_result['RegionID'] = df_result['RegionID'].astype(int)
+df_result['ComunaID'] = df_result['ComunaID'].astype(int)
+df_result['ComunaNombre'] = df_result['ComunaNombre'].astype(str)
+
+# Optionally, add quotes around ProvinciaNombre and ComunaNombre to match example style
+# But since target schema is string, saving without quotes is standard CSV practice.
+# If quotes are required exactly as in examples, uncomment below lines:
+# df_result['ProvinciaNombre'] = df_result['ProvinciaNombre'].apply(lambda x: f"'{x}'")
+# df_result['ComunaNombre'] = df_result['ComunaNombre'].apply(lambda x: f"'{x}'")
+
+# Save to CSV without the index column
+df_result.to_csv(output_path, index=False)
+```

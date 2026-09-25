@@ -1,0 +1,46 @@
+{
+  "case": "1_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2187,
+        "cost": 0.001814,
+        "latency": 4.719936370849609,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.437) / 2 = 0.219 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.625, range overlap=0.530.\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category, Median}.\nKeys present in ground truth but absent in generated: {Major_category}; {Median}.\nSpurious keys in generated not present in ground truth: {Median, Major_category}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Major_category'] \u2192 Median; ['Median'] \u2192 Major_category.\nDistribution Analysis (numerical columns with issues):\n  Column 'Median': range overlap=0.530, JS similarity=0.625\n    Generated    \u2014 min: 35000.0, max: 106000.0, mean: 54600.0\n    Ground Truth \u2014 min: 40250.0, max: 77857.1429, mean: 52839.5172\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Major_category': Jaccard=0.297",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 87\nExamples:\n           Major_category  Median\nHumanities & Liberal Arts 45000.0\n           Social Science 50000.0\nHumanities & Liberal Arts 43000.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_21/training_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['Major_category': string, 'Median': float]\n# - Source0 contains these columns among others: 'Major_category', 'Median'\n# - We only need to select these two columns from source0\n# - Since only one source table is given, no union or join is needed\n# - Just select and rename columns if needed (names already match target)\n# - Ensure data types: 'Major_category' as string, 'Median' as float\n# - Write the result to the target CSV path\n\n# Select relevant columns\ndf_target = df0[['Major_category', 'Median']].copy()\n\n# Ensure correct data types\ndf_target['Major_category'] = df_target['Major_category'].astype(str)\ndf_target['Median'] = df_target['Median'].astype(float)\n\n# Write to target CSV file without the index\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nBiology & Life Science,50000.0\nBiology & Life Science,55000.0\nBiology & Life Science,35000.0\nBiology & Life Science,52000.0\nComputers & Mathematics,66000.0\nComputers & Mathematics,70000.0\nComputers & Mathematics,70000.0\nIndustrial Arts & Consumer Services,64000.0\nInterdisciplinary,43000.0\nHumanities & Liberal Arts,45000.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0724067687988281
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7635,
+          "cost": 0.0012608,
+          "latency": 2.446143865585327,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.527) / 2 = 0.763 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.663, range overlap=0.851.\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Median': range overlap=0.851, JS similarity=0.663\n    Generated    \u2014 min: 43000.0, max: 75000.0, mean: 55428.2286\n    Ground Truth \u2014 min: 40250.0, max: 77857.1429, mean: 52839.5172\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Major_category': Jaccard=0.297",
+          "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 13\nExamples:\n          Major_category       Median\n     Law & Public Policy 55333.333333\n          Social Science 53222.222222\nPsychology & Social Work 44555.555556",
+          "code": "import pandas as pd\n\n# Read source table\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_21/training_0.csv\", index_col=0)\n\n# Since only one source table exists, no join or union needed beyond this single table\n\n# Group by 'Major_category' and aggregate by mean of 'Median'\nresult = source1.groupby('Major_category', as_index=False).agg({'Median': 'mean'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_21/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3360977172851562
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4730.704307556152,
+        "critique": 2483.6573600769043
+      }
+    }
+  ]
+}

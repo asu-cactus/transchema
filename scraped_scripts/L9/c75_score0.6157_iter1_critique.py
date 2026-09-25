@@ -1,0 +1,66 @@
+import pandas as pd
+
+paths = [
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_0.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_1.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_2.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_3.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_4.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_5.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_6.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_7.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_8.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_9.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_10.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_11.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_12.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_13.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_14.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_15.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_16.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_17.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_18.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_19.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_20.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_21.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_22.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_23.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_24.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_25.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_26.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_27.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_28.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_29.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_30.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_31.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_32.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_33.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_34.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_35.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_36.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_37.csv",
+    "autopipeline-benchmarks/github-pipelines/length9_75/training_38.csv",
+]
+
+dfs = [pd.read_csv(p, index_col=0) for p in paths]
+
+df = pd.concat(dfs, ignore_index=True)
+
+# Convert columns to correct types
+df['anime_id'] = df['anime_id'].astype(int)
+df['name'] = df['name'].astype(str)
+df['genre'] = df['genre'].astype(str)
+df['type'] = df['type'].astype(str)
+df['episodes'] = pd.to_numeric(df['episodes'], errors='coerce').fillna(0).astype(int)
+df['rating'] = pd.to_numeric(df['rating'], errors='coerce').astype(float)
+df['members'] = pd.to_numeric(df['members'], errors='coerce').fillna(0).astype(int)
+
+# Group by anime_id, name, type, episodes
+# Aggregate genre by first, rating by mean, members by sum
+agg_df = df.groupby(['anime_id', 'name', 'type', 'episodes'], as_index=False).agg({
+    'genre': 'first',
+    'rating': 'mean',
+    'members': 'sum'
+})
+
+agg_df.to_csv("autopipeline-benchmarks/github-pipelines/length9_75/target_multisource_mcts.csv", index=False)

@@ -1,0 +1,29 @@
+{
+  "case": "9_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.975,
+        "cost": 0.0032652000000000002,
+        "latency": 16.314752101898193,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.950) / 2 = 0.975 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.900, range overlap=1.000.\nGround truth candidate keys: {TECHSUPPORT_NUM}.\nGenerated table candidate keys: {TECHSUPPORT_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'TECHSUPPORT_NUM': range overlap=1.000, JS similarity=0.900\n    Generated    \u2014 min: 1.0, max: 119.0, mean: 6.7272\n    Ground Truth \u2014 min: 1.0, max: 119.0, mean: 8.8909",
+        "generated_samples": "Schema: ['TECHSUPPORT_NUM']\nNumber of Tuples: 10302\nExamples:\n TECHSUPPORT_NUM\n               1\n               2\n               7",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = {\n    \"source0\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_0.csv\",\n    \"source1\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_1.csv\",\n    \"source2\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_2.csv\",\n    \"source3\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_3.csv\",\n    \"source4\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_4.csv\",\n    \"source5\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_5.csv\",\n    \"source6\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_6.csv\",\n    \"source7\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_7.csv\",\n    \"source8\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_8.csv\",\n    \"source9\": \"autopipeline-benchmarks/github-pipelines/length9_35/training_9.csv\",\n}\n\n# Step 1: Load all source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source_files[\"source0\"], index_col=0)\ndf1 = pd.read_csv(source_files[\"source1\"], index_col=0)\ndf2 = pd.read_csv(source_files[\"source2\"], index_col=0)\ndf3 = pd.read_csv(source_files[\"source3\"], index_col=0)\ndf4 = pd.read_csv(source_files[\"source4\"], index_col=0)\ndf5 = pd.read_csv(source_files[\"source5\"], index_col=0)\ndf6 = pd.read_csv(source_files[\"source6\"], index_col=0)\ndf7 = pd.read_csv(source_files[\"source7\"], index_col=0)\ndf8 = pd.read_csv(source_files[\"source8\"], index_col=0)\ndf9 = pd.read_csv(source_files[\"source9\"], index_col=0)\n\n# Step 2: Union all source tables that share the same schema as source0:\n# Source0, Source1, Source8, Source9 have the same schema:\n# ['CANCELED', 'ROW_WID', 'ACCNT_LOC', 'ARPU', 'SES', 'HOME_PASSED', 'CUST_SINCE_DT', 'MONTHS_AGE', 'CANCEL_DT', 'CITY', 'POP']\ndf_dim_list = [df0, df1, df8, df9]\ndf_dim = pd.concat(df_dim_list, ignore_index=True)\n\n# Step 3: Join all other source tables (aspect tables) on ROW_WID with the unioned dimension table\n# Source2: ['ROW_WID', 'INBOUND_CALLS_NUM']\n# Source3: ['ROW_WID', 'KEYWORDS_NUM']\n# Source4: ['ROW_WID', 'TECHSUPPORT_NUM']  <-- contains the target column\n# Source5: ['ROW_WID', 'INTERACTIONS_NUM']\n# Source6: ['ROW_WID', 'COLLECTION_EVENTS_NUM']\n# Source7: ['ROW_WID', 'VISITS_NUM']\n\n# We join all aspect tables on ROW_WID with df_dim (dimension table)\n# Start with df_dim, then left join each aspect table on ROW_WID\n\ndf_merged = df_dim.copy()\n\n# Join Source2\ndf_merged = df_merged.merge(df2, on=\"ROW_WID\", how=\"left\")\n\n# Join Source3\ndf_merged = df_merged.merge(df3, on=\"ROW_WID\", how=\"left\")\n\n# Join Source4 (contains TECHSUPPORT_NUM)\ndf_merged = df_merged.merge(df4, on=\"ROW_WID\", how=\"left\")\n\n# Join Source5\ndf_merged = df_merged.merge(df5, on=\"ROW_WID\", how=\"left\")\n\n# Join Source6\ndf_merged = df_merged.merge(df6, on=\"ROW_WID\", how=\"left\")\n\n# Join Source7\ndf_merged = df_merged.merge(df7, on=\"ROW_WID\", how=\"left\")\n\n# Step 4: Extract the target column TECHSUPPORT_NUM from the merged dataframe\n# According to the target schema, only TECHSUPPORT_NUM (integer) is needed\n\n# TECHSUPPORT_NUM may have missing values if no match in Source4, drop rows without TECHSUPPORT_NUM\ndf_target = df_merged[[\"TECHSUPPORT_NUM\"]].dropna()\n\n# Convert TECHSUPPORT_NUM to integer type (as target schema requires integer)\ndf_target[\"TECHSUPPORT_NUM\"] = df_target[\"TECHSUPPORT_NUM\"].astype(int)\n\n# Step 5: Save the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length9_35/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "TECHSUPPORT_NUM\n2\n3\n16\n33\n1\n4\n3\n5\n3\n1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8053779602050781
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 16378.416299819946,
+        "critique": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "4_32",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6301,
+        "cost": 0.004674,
+        "latency": 16.957843780517578,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.815 + 0.445) / 2 = 0.630 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.815 (precision=1.000, recall=0.688).\nMissing FDs from ground truth: ['r1402'] \u2192 r1403_y; ['r1401'] \u2192 r1402; ['r1401'] \u2192 r1403_y; ['r1402'] \u2192 r1403_x; ['r1401'] \u2192 r1403_x.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.359\n  Column 'r1401': Jaccard=0.555\n  Column 'r1402': Jaccard=0.516\n  Column 'r1403_x': Jaccard=0.398\n  Column 'r1403_y': Jaccard=0.398",
+        "generated_samples": "Schema: ['County', 'r1401', 'r1402', 'r1403_x', 'r1403_y']\nNumber of Tuples: 19\nExamples:\n  County        r1401    r1402  r1403_x  r1403_y\nGunnison           NR       NR       NR       NR\n   Total $14,022,213  14248473 19881631 19881631\n    Lake           NR       NR       NR       NR",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_32/training_0.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length4_32/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length4_32/training_3.csv\"\nsource4_path = \"autopipeline-benchmarks/github-pipelines/length4_32/training_4.csv\"\n\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source2 = pd.read_csv(source2_path, index_col=0)\ndf_source3 = pd.read_csv(source3_path, index_col=0)\ndf_source4 = pd.read_csv(source4_path, index_col=0)\n\n# According to operation_history:\n# 1) JOIN : [[\"Source4_32_3\", \"Source4_32_2\"], [\"County\", \"County\"]]\n# Join df_source3 and df_source2 on 'County'\ndf_join_32_3_2 = pd.merge(df_source3, df_source2, on=\"County\", how=\"outer\")\n\n# 2) JOIN : [[\"Source4_32_0\", \"Source4_32_4\"], [\"County\", \"County\"]]\n# Join df_source0 and df_source4 on 'County'\ndf_join_32_0_4 = pd.merge(df_source0, df_source4, on=\"County\", how=\"outer\", suffixes=('_x', '_y'))\n\n# Now we have two joined dataframes:\n# df_join_32_3_2 with columns: County, r1401, r1402\n# df_join_32_0_4 with columns: County, r1403_x, r1403_y\n\n# Next, join these two on 'County' to form the final target table\ndf_target = pd.merge(df_join_32_3_2, df_join_32_0_4, on=\"County\", how=\"outer\")\n\n# The target schema is:\n# ['County': string, 'r1401': string, 'r1402': string, 'r1403_x': string, 'r1403_y': string]\n\n# Ensure columns are in the correct order\ndf_target = df_target[['County', 'r1401', 'r1402', 'r1403_x', 'r1403_y']]\n\n# Fill missing values with 'NR' to match target examples\ndf_target = df_target.fillna('NR')\n\n# Save the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_32/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "County,r1401,r1402,r1403_x,r1403_y\nAdams,NR,NR,NR,NR\nClear Creek,\"$459,640\",\"$445,976\",\"$524,541\",\"$524,541\"\nDenver,\"$8,482,593\",\"$8,349,069\",\"$10,746,117\",\"$10,746,117\"\nGarfield,NR,NR,NR,NR\nGilpin,\"$197,379\",\"$113,337\",\"$131,685\",\"$131,685\"\nGunnison,NR,NR,NR,NR\nJefferson,\"$853,675\",\"$880,367\",\"$1,056,723\",\"$1,056,723\"\nLake,NR,NR,NR,NR\nOuray,NR,NR,NR,NR\nPark,NR,NR,NR,NR\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4660358428955078
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6889,
+          "cost": 0.0020884,
+          "latency": 7.37902045249939,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.897 + 0.481) / 2 = 0.689 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.897 (precision=1.000, recall=0.812).\nMissing FDs from ground truth: ['r1401'] \u2192 r1403_y; ['r1401'] \u2192 r1403_x; ['r1401'] \u2192 r1402.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.398\n  Column 'r1401': Jaccard=0.555\n  Column 'r1402': Jaccard=0.516\n  Column 'r1403_x': Jaccard=0.469\n  Column 'r1403_y': Jaccard=0.469",
+          "generated_samples": "Schema: ['County', 'r1401', 'r1402', 'r1403_x', 'r1403_y']\nNumber of Tuples: 17\nExamples:\n   County    r1401    r1402    r1403_x    r1403_y\nJefferson $853,675 $880,367 $1,056,723 $1,056,723\n   Gilpin $197,379 $113,337   $131,685   $131,685\n Garfield       NR       NR         NR         NR",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_4.csv\", index_col=0)\n\n# Join Source4_32_3 and Source4_32_2 on County\njoined_32_3_2 = pd.merge(source3, source2, on=\"County\", how=\"inner\")\n\n# Join the above result with Source4_32_0 on County\njoined_32_3_2_0 = pd.merge(joined_32_3_2, source0, on=\"County\", how=\"inner\", suffixes=('_x', '_y'))\n\n# Join the above result with Source4_32_4 on County\nfinal_join = pd.merge(joined_32_3_2_0, source4, on=\"County\", how=\"inner\", suffixes=('_x', '_y'))\n\n# The target schema is ['County', 'r1401', 'r1402', 'r1403_x', 'r1403_y']\n# After the joins, columns are: County, r1401, r1402, r1403_x, r1403_y (from source0 and source4)\n# Group by County to ensure uniqueness and match target keys\nfinal = final_join.groupby(\"County\", as_index=False).first()\n\n# Write to target file\nfinal.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.9626617431640625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 17082.120895385742,
+        "critique": 7453.826189041138
+      }
+    }
+  ]
+}

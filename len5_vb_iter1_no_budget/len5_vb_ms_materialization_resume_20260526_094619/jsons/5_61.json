@@ -1,0 +1,46 @@
+{
+  "case": "5_61",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0046636,
+        "latency": 9.29695200920105,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "Schema: ['Time', 'Date', 'Room', 'Room_Capacity', 'Module', 'Registered_Students']\nNumber of Tuples: 45\nExamples:\n Time  Date  Room  Room_Capacity  Module  Registered_Students\n  NaN   NaN   NaN            NaN     NaN                  NaN\n  NaN   NaN   NaN            NaN     NaN                  NaN\n  NaN   NaN   NaN            NaN     NaN                  NaN",
+        "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_61/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_61/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_61/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_61/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_61/training_4.csv\", index_col=0)\n\n# Union all source tables (concatenate rows)\ntarget_df = pd.concat([source0, source1, source2, source3, source4], ignore_index=True)\n\n# The target schema is the same as source schema:\n# ['Time', 'Date', 'Room', 'Room_Capacity', 'Module', 'Registered_Students']\n\n# Save the final result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_61/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Time,Date,Room,Room_Capacity,Module,Registered_Students\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4348030090332031
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.0,
+          "cost": 0.0017396,
+          "latency": 4.353948593139648,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_61/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_61/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_61/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_61/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_61/training_4.csv\", index_col=0)\n\n# UNION all sources\ndf = pd.concat([source0, source1, source2, source3, source4], ignore_index=True)\n\n# Filter out rows where all columns are NaN\ndf = df.dropna(how='all')\n\n# Write the final output with exact column names as target schema\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_61/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.02193450927734375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9367.02013015747,
+        "critique": 4372.042655944824
+      }
+    }
+  ]
+}

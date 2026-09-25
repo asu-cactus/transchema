@@ -1,0 +1,29 @@
+{
+  "case": "6_49",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9278,
+        "cost": 0.0062636,
+        "latency": 17.771029233932495,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.856) / 2 = 0.928 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=1.000.\nGround truth candidate keys: {nombre, a\u00f1o}.\nGenerated table candidate keys: {nombre, a\u00f1o}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'n_aprobados': range overlap=1.000, JS similarity=0.942\n    Generated    \u2014 min: 0.0, max: 152.0, mean: 11.6943\n    Ground Truth \u2014 min: 0.0, max: 152.0, mean: 13.8868\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'nombre': Jaccard=0.469",
+        "generated_samples": "Schema: ['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']\nNumber of Tuples: 265\nExamples:\n                         nombre  n_concursados  n_aprobados  a\u00f1o\n              UNIV. DEL BIO-BIO             17            5 2010\n       UNIV. CATOLICA DEL MAULE             10            1 2015\nUNIVERSIDAD CATO\u0301LICA DE TEMUCO              8            1 2013",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nfiles = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_49/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_49/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_49/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_49/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_49/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_49/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_49/training_6.csv\"\n]\n\n# Read all source tables with index_col=0 to ignore the first numeric index column\ndfs = [pd.read_csv(f, index_col=0) for f in files]\n\n# Union all source tables by concatenation\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure columns have correct types as per target schema\nunion_df['nombre'] = union_df['nombre'].astype(str)\nunion_df['n_concursados'] = union_df['n_concursados'].astype(int)\nunion_df['n_aprobados'] = union_df['n_aprobados'].astype(int)\nunion_df['a\u00f1o'] = union_df['a\u00f1o'].astype(int)\n\n# The target schema and examples indicate no further transformation is needed\n# Just save the unioned dataframe as the target output\nunion_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_49/target_multisource.csv\", index=False)",
+        "generated_csv_head": "nombre,n_concursados,n_aprobados,a\u00f1o\nUNIV. DE CHILE,204,86,2010\nPONT. UNIV. CATOLICA DE CHILE,180,100,2010\nUNIV. DE CONCEPCION,95,41,2010\nUNIV. AUSTRAL DE CHILE,48,25,2010\nUNIV. DE SANTIAGO DE CHILE,62,21,2010\nUNIV. TECNICA FEDERICO SANTA MARIA,37,19,2010\nPONT. UNIV. CATOLICA DE VALPARAISO,53,13,2010\nUNIV. DE LA FRONTERA,20,12,2010\nUNIV. ANDRES BELLO,22,8,2010\nUNIV. CATOLICA DEL NORTE,22,9,2010\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6281604766845703
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 17842.402935028076,
+        "critique": 0.0
+      }
+    }
+  ]
+}

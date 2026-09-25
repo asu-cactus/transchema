@@ -1,0 +1,46 @@
+{
+  "case": "5_29",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.708,
+        "cost": 0.0022232,
+        "latency": 12.432552576065063,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.749) / 2 = 0.708 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.904.\nGround truth candidate keys: {school_name}; {math_score}.\nGenerated table candidate keys: {school_name}.\nKeys present in ground truth but absent in generated: {math_score}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['math_score'] \u2192 school_name.\nDistribution Analysis (numerical columns with issues):\n  Column 'math_score': range overlap=0.904, JS similarity=1.000\n    Generated    \u2014 min: 76.8427, max: 83.8399, mean: 80.3478\n    Ground Truth \u2014 min: 76.6294, max: 83.3595, mean: 80.0974\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.547",
+        "generated_samples": "Schema: ['school_name', 'math_score']\nNumber of Tuples: 15\nExamples:\n       school_name  math_score\nBailey High School   77.020540\n Huang High School         NaN\nHolden High School   83.803279",
+        "code": "import pandas as pd\n\n# File paths for the source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_29/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_29/training_1.csv\"\n\n# Load Source 0: detailed student scores including school_name and math_score\n# index_col=0 to ignore the first numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: school metadata including school_name\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['school_name': string, 'math_score': float]\n# - Source0 has 'school_name' and 'math_score' per student.\n# - Source1 has school metadata but no math_score.\n# - Target examples show aggregated math_score per school (one row per school).\n# \n# Therefore:\n# 1) From Source0, group by 'school_name' and average 'math_score' to get average math score per school.\n# 2) Join with Source1 on 'school_name' to ensure all schools from Source1 are included.\n#    However, Source1 has only 15 schools, Source0 has many more schools.\n# 3) The target examples show schools like \"Wilson High School\", \"Cabrera High School\", \"Griffin High School\"\n#    which are not in Source1 examples snippet, so we should rely on Source0's schools.\n# 4) Since target examples have 8 schools, presumably from Source0's schools with math_score averages,\n#    and Source1 does not add math_score info, we do not need to join Source1 for math_score.\n# 5) But Hint 6 and Hint 28 say all source tables must be used.\n# 6) Since Source1 has no math_score, and target schema only has school_name and math_score,\n#    we can join Source1 to Source0 aggregated data on school_name to ensure all schools in Source1 appear,\n#    filling missing math_score with NaN or ignoring those without math_score.\n# 7) Final output: school_name and math_score (average math_score per school from Source0).\n#\n# Implementation:\n# - Aggregate Source0 by school_name to get average math_score.\n# - Left join Source1 on school_name to keep all Source1 schools.\n# - For schools in Source1 but not in Source0, math_score will be NaN.\n# - For schools in Source0 but not in Source1, they will be excluded by left join.\n# - To include all schools from both sources, do outer join.\n# - But target examples show only schools with math_score, so outer join is better.\n# - Fill missing math_score with NaN (no aggregation possible).\n# - Finally, select columns ['school_name', 'math_score'] and write to CSV.\n\n# Aggregate Source0 math_score by school_name (average)\ndf_avg_math = df_source0.groupby('school_name', as_index=False)['math_score'].mean()\n\n# Join aggregated math_score with Source1 on school_name using outer join to include all schools\ndf_merged = pd.merge(df_avg_math, df_source1[['school_name']], on='school_name', how='outer')\n\n# After merge, df_merged has 'school_name' and 'math_score' columns\n# Some schools may have math_score NaN if they appear only in Source1\n\n# For schools only in Source0 but not in Source1, they are included because of outer join\n\n# Sort by school_name for consistent output (optional)\ndf_merged = df_merged.sort_values('school_name').reset_index(drop=True)\n\n# Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_29/target_multisource_cot.csv\"\ndf_merged.to_csv(output_path, index=False)",
+        "generated_csv_head": "school_name,math_score\nBailey High School,77.02053954629062\nCabrera High School,\nFigueroa High School,\nFord High School,77.10259218692954\nGriffin High School,\nHernandez High School,\nHolden High School,83.80327868852459\nHuang High School,\nJohnson High School,77.07246376811594\nPena High School,83.83991683991684\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4777183532714844
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7516,
+          "cost": 0.0014184000000000002,
+          "latency": 3.4516217708587646,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.503) / 2 = 0.752 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.904.\nGround truth candidate keys: {school_name}; {math_score}.\nGenerated table candidate keys: {school_name}; {math_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'math_score': range overlap=0.904, JS similarity=1.000\n    Generated    \u2014 min: 76.8427, max: 83.8399, mean: 80.3478\n    Ground Truth \u2014 min: 76.6294, max: 83.3595, mean: 80.0974\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+          "generated_samples": "Schema: ['school_name', 'math_score']\nNumber of Tuples: 8\nExamples:\n          school_name  math_score\n     Ford High School   77.102592\nRodriguez High School   76.842711\n  Johnson High School   77.072464",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_29/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_29/training_1.csv\", index_col=0)\n\n# Join Source5_29_0 and Source5_29_1 on school_name (inner join to avoid NaNs)\njoined = pd.merge(source0, source1, on=\"school_name\", how=\"inner\")\n\n# Group by school_name and aggregate mean of math_score\nresult = joined.groupby(\"school_name\", as_index=False).agg({\"math_score\": \"mean\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_29/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2545585632324219
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12495.026350021362,
+        "critique": 3546.781539916992
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_38/training_0.csv", index_col=0)
+df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_38/training_1.csv", index_col=0)
+df2 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_38/training_2.csv", index_col=0)
+df3 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_38/training_3.csv", index_col=0)
+df4 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_38/training_4.csv", index_col=0)
+
+# Start with main dimension table df0
+join_01 = pd.merge(df0, df1, on="placeID", how="left")
+join_012 = pd.merge(join_01, df2, on="placeID", how="left")
+join_0123 = pd.merge(join_012, df3, on="placeID", how="left")
+join_result = pd.merge(join_0123, df4, on="placeID", how="left")
+
+cols = ['placeID', 'Rpayment', 'latitude', 'longitude', 'the_geom_meter', 'name', 'address', 'city', 'state', 'country', 'fax', 'zip', 'alcohol', 'smoking_area', 'dress_code', 'accessibility', 'price', 'url', 'Rambience', 'franchise', 'area', 'other_services', 'Rcuisine', 'hours', 'days', 'parking_lot']
+
+result = join_result[cols]
+
+result['placeID'] = result['placeID'].astype(int)
+result['latitude'] = result['latitude'].astype(float)
+result['longitude'] = result['longitude'].astype(float)
+
+for col in ['Rpayment', 'the_geom_meter', 'name', 'address', 'city', 'state', 'country', 'fax', 'zip', 'alcohol', 'smoking_area', 'dress_code', 'accessibility', 'price', 'url', 'Rambience', 'franchise', 'area', 'other_services', 'Rcuisine', 'hours', 'days', 'parking_lot']:
+    result[col] = result[col].astype(str)
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length4_38/target_multisource_mcts.csv", index=False)

@@ -1,0 +1,46 @@
+{
+  "case": "3_12",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.1754,
+        "cost": 0.0015628,
+        "latency": 5.530449628829956,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.351) / 2 = 0.175 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.482, range overlap=0.413.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN, Price}; {SN, count}.\nKeys present in ground truth but absent in generated: {SN}.\nSpurious keys in generated not present in ground truth: {SN, Price}; {SN, count}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['count'] \u2192 Price; ['Price'] \u2192 count.\nMissing FDs from ground truth: ['SN'] \u2192 count; ['SN'] \u2192 Price.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.326, JS similarity=0.759\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\n  Column 'count': range overlap=0.501, JS similarity=0.206\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 3.0, mean: 1.1818\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+        "generated_samples": "Schema: ['SN', 'Price', 'count']\nNumber of Tuples: 390\nExamples:\n             SN  Price  count\nPheosurllorin41   1.33      1\n   Phaestycal84   2.18      1\n        Eusri70   2.94      1",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length3_12/training_0.csv\"\n]\n\n# List to hold transformed DataFrames\ndfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Extract only the columns needed for the target schema: ['SN', 'Price']\n    # 'count' is not present in source, so we will add it as 1 for each row\n    df_transformed = df[['SN', 'Price']].copy()\n    df_transformed['count'] = 1\n    \n    # Ensure correct dtypes as per target schema\n    df_transformed['SN'] = df_transformed['SN'].astype(str)\n    df_transformed['Price'] = df_transformed['Price'].astype(float)\n    df_transformed['count'] = df_transformed['count'].astype(int)\n    \n    dfs.append(df_transformed)\n\n# Since there is only one source table, no union needed beyond this\n# But if there were multiple, we would concat here\n\n# Concatenate all transformed DataFrames (union)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target examples show that each SN appears once with count=1,\n# but source has multiple Purchase IDs with possibly repeated SNs.\n# The target schema has count as integer, presumably count of occurrences.\n# So we group by SN and Price, summing count to get total count per SN and Price.\n\n# Group by SN and Price, sum count\ntarget_df = target_df.groupby(['SN', 'Price'], as_index=False)['count'].sum()\n\n# Ensure dtypes again after groupby\ntarget_df['SN'] = target_df['SN'].astype(str)\ntarget_df['Price'] = target_df['Price'].astype(float)\ntarget_df['count'] = target_df['count'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_12/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "SN,Price,count\nAdairialis76,2.28,1\nAelaria33,1.79,1\nAelastirin39,4.14,1\nAelidru27,1.09,1\nAelin32,2.04,1\nAelly27,2.61,1\nAellyria80,3.08,1\nAelollo59,3.14,1\nAeral68,4.0,1\nAeralstical35,2.96,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6736984252929688
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8328,
+          "cost": 0.0018436,
+          "latency": 6.025538206100464,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.666) / 2 = 0.833 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.952, range overlap=0.888.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.777, JS similarity=0.917\n    Generated    \u2014 min: 1.0, max: 10.52, mean: 3.4873\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+          "generated_samples": "Schema: ['SN', 'Price', 'count']\nNumber of Tuples: 333\nExamples:\n          SN  Price  count\nSondastsda82   1.70      1\n    Lirtim36   1.33      1\nLassilsala30   6.57      2",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/training_0.csv\", index_col=0)\n\n# Since only one source table exists, no join or union with other tables is possible.\n# The target schema is ['SN': string, 'Price': float, 'count': integer]\n# We need to group by SN, sum Price, and count occurrences (count)\n\n# Group by SN, aggregate sum of Price and count of Price\nresult = source0.groupby('SN', as_index=False).agg({'Price': 'sum', 'Purchase ID': 'count'})\n\n# Rename columns to match target schema\nresult.rename(columns={'Purchase ID': 'count'}, inplace=True)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.6922950744628906
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5532.878160476685,
+        "critique": 6097.251176834106
+      }
+    }
+  ]
+}

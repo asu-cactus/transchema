@@ -1,0 +1,46 @@
+{
+  "case": "1_78",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2646,
+        "cost": 0.001728,
+        "latency": 4.40860652923584,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.529) / 2 = 0.265 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.965, range overlap=0.729.\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product, Price}.\nKeys present in ground truth but absent in generated: {Product}.\nSpurious keys in generated not present in ground truth: {Product, Price}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Product'] \u2192 Price.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.729, JS similarity=0.965\n    Generated    \u2014 min: 10.0, max: 320000.0, mean: 1843.3344\n    Ground Truth \u2014 min: 15.0, max: 438888.0, mean: 2316.1784\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Product': Jaccard=0.211",
+        "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 20000\nExamples:\n    Product  Price\nP0017086392  999.0\nP0005634672  880.0\nP0005572394  888.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_78/training_0.csv\"\n]\n\n# List to hold transformed DataFrames\ndfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Extract only the columns needed for the target schema: ['Product', 'Price']\n    # According to source schema: ['Dates', 'Action', 'User', 'Product', 'Quantity', 'Price']\n    # We only keep 'Product' and 'Price'\n    df_target = df[['Product', 'Price']].copy()\n    \n    # Ensure correct data types as per target schema\n    df_target['Product'] = df_target['Product'].astype(str)\n    df_target['Price'] = df_target['Price'].astype(float)\n    \n    dfs.append(df_target)\n\n# Since all source tables have the same schema and target schema matches these columns,\n# we union (concatenate) all source DataFrames\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the specified target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Product,Price\nP0006323656,1680.0\nP0000266534,277.0\nP0003719085,209.0\nP0023521912,240.0\nP0018404050000,890.0\nP0023379510,1400.0\nP0006036273,2899.0\nP0022576256,719.0\nP0024957270004,833.0\nP0024838710013,699.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.33514404296875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7658,
+          "cost": 0.0012044,
+          "latency": 2.50917911529541,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.532) / 2 = 0.766 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.976, range overlap=0.729.\nGround truth candidate keys: {Product}.\nGenerated table candidate keys: {Product}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.729, JS similarity=0.976\n    Generated    \u2014 min: 10.0, max: 320000.0, mean: 1991.2706\n    Ground Truth \u2014 min: 15.0, max: 438888.0, mean: 2316.1784\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Product': Jaccard=0.211",
+          "generated_samples": "Schema: ['Product', 'Price']\nNumber of Tuples: 9467\nExamples:\n       Product  Price\n   P0000711395  899.0\nP0014270460013  199.0\n   P0005909083  599.0",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_78/training_0.csv\", index_col=0)\n\n# Union all source tables (only one source here)\ndf_union = source0\n\n# Group by Product and aggregate Price by max (to ensure one price per product)\ndf_result = df_union.groupby(\"Product\", as_index=False).agg({\"Price\": \"max\"})\n\n# Write output\ndf_result.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_78/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.269268035888672
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4411.560297012329,
+        "critique": 2975.900411605835
+      }
+    }
+  ]
+}

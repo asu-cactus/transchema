@@ -1,0 +1,46 @@
+{
+  "case": "1_95",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4369,
+        "cost": 0.0016912,
+        "latency": 4.412105083465576,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.874) / 2 = 0.437 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.871, range overlap=0.999.\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id, date}.\nKeys present in ground truth but absent in generated: {customer_id}.\nSpurious keys in generated not present in ground truth: {customer_id, date}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['customer_id'] \u2192 date.\nDistribution Analysis (numerical columns with issues):\n  Column 'customer_id': range overlap=0.999, JS similarity=0.871\n    Generated    \u2014 min: 10.0, max: 264200.0, mean: 109238.651\n    Ground Truth \u2014 min: 80.0, max: 263890.0, mean: 129665.7304\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'date': Jaccard=0.812",
+        "generated_samples": "Schema: ['customer_id', 'date']\nNumber of Tuples: 20000\nExamples:\n customer_id       date\n       81480 2014-02-07\n       88400 2007-11-28\n       95700 2014-10-24",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_95/training_0.csv\"\n]\n\n# List to hold transformed DataFrames\ndfs = []\n\n# Process each source file\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Select only the columns needed for the target schema: ['customer_id', 'date']\n    # Source schema: ['customer_id', 'amount', 'date']\n    # We drop 'amount' column\n    df_target = df[['customer_id', 'date']].copy()\n    \n    # Ensure data types match target schema\n    df_target['customer_id'] = df_target['customer_id'].astype(int)\n    df_target['date'] = df_target['date'].astype(str)\n    \n    dfs.append(df_target)\n\n# Since there is only one source table, no union needed beyond this\n# If there were multiple source tables with the same schema, we would concat here\n\n# Concatenate all transformed DataFrames (union)\nresult_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target path\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_95/target_multisource.csv\", index=False)",
+        "generated_csv_head": "customer_id,date\n105870,2012-03-08\n169270,2012-12-31\n86170,2007-11-08\n13290,2012-12-21\n70390,2007-04-25\n99820,2008-06-18\n179560,2012-08-23\n209030,2013-10-29\n161770,2011-11-09\n14410,2005-11-25\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1754035949707031
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.9522,
+          "cost": 0.0021000000000000003,
+          "latency": 16.218427419662476,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.904) / 2 = 0.952 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.979, range overlap=0.999.\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'date': Jaccard=0.820",
+          "generated_samples": "Schema: ['customer_id', 'date']\nNumber of Tuples: 10993\nExamples:\n customer_id       date\n      208950 2014-04-09\n      144610 2011-04-20\n      162140 2011-11-09",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_95/training_0.csv\", index_col=0)\n\n# Since only one source table is given, no join or union with other tables is possible.\n# The target schema is ['customer_id', 'date'] with customer_id as primary key.\n# The source table has multiple rows per customer_id with different dates.\n# To reduce duplicates and match target row count, aggregate by customer_id taking the earliest date.\n\n# Aggregate: group by customer_id, take min date\nresult = source0.groupby('customer_id', as_index=False).agg({'date': 'min'})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_95/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9362697601318359
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4472.696542739868,
+        "critique": 17610.26620864868
+      }
+    }
+  ]
+}

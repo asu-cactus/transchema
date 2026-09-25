@@ -1,0 +1,62 @@
+Case: 1_86
+Status: INCORRECT
+Timestamp: 2026-02-24T13:55:50.162120
+Duration: 105.05 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_86/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.5
+  matched_columns: ['Can Baró-Canyelles-Ciutat Meridiana']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_86
+2. Target Schema: ['neighbourhood': string, 'price_24': integer]
+3. Target Examples: There are 70 available target examples:               neighbourhood  price_24
+10  Provençals del Poblenou        52
+1                 Canyelles         2
+67                les Corts        97
+62        la Trinitat Vella         3
+19            Sants - Badal        63
+30            el Bon Pastor         3
+5               Hostafrancs       108
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_86_0
+	Source 0 Schema: ['id', 'name', 'host_id', 'host_name', 'neighbourhood_group', 'neighbourhood', 'latitude', 'longitude', 'room_type', 'price', 'minimum_nights', 'number_of_reviews', 'last_review', 'reviews_per_month', 'calculated_host_listings_count', 'availability_365']
+	Source 0 Examples: 	 Source 0 contains 8610 tuples, with examples as follows: 
+      id                                             name  host_id  \
+0  18666                          Flat with Sunny Terrace    71615   
+1  18674  Huge flat for 8 people close to Sagrada Familia    71615   
+2  19157              Great Place in Sagrada Familia, Bcn    73099   
+
+          host_name neighbourhood_group               neighbourhood  \
+0  Mireia And Maria          Sant Martí  el Camp de l'Arpa del Clot   
+1  Mireia And Maria            Eixample          la Sagrada Família   
+2            Urania            Eixample          la Sagrada Família   
+
+    latitude  longitude        room_type  price  minimum_nights  \
+0  41.408886   2.185545  Entire home/apt    130               3   
+1  41.404197   2.173058  Entire home/apt    110               1   
+2  41.407929   2.174540     Private room     30               2   
+
+   number_of_reviews last_review  reviews_per_month  \
+0                  1  2015-10-10               0.03   
+1                  4  2016-06-20               0.07   
+2                160  2018-05-18               1.68   
+
+   calculated_host_listings_count  availability_365  
+0                              29                61  
+1                              29               148  
+2                               2                69  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

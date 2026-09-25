@@ -1,0 +1,121 @@
+Case: 1_73
+Status: INCORRECT
+Timestamp: 2026-02-24T13:32:02.530271
+Duration: 310.62 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_73/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_73
+2. Target Schema: ['Country': string, 'Region': string, 'Happiness_Rank_15': integer, 'Happiness_Score_15': float, 'Standard_Error_15': float, 'Economy_15': float, 'Family_15': float, 'Life_Expectancy_15': float, 'Freedom_15': float, 'Trust_15': float, 'Generosity_15': float, 'Dystopia_15': float, 'Happiness_Rank_17': integer, 'Happiness_Score_17': float, 'Whisker_High_17': float, 'Whisker_Low_17': float, 'Economy_17': float, 'Family_17': float, 'Life_Expectancy_17': float, 'Freedom_17': float, 'Generosity_17': float, 'Trust_17': float, 'Dystopia_17': float]
+3. Target Examples: There are 75 available target examples:            Country                           Region  Happiness_Rank_15  \
+57        Malaysia                Southeastern Asia                 61   
+35           Malta                   Western Europe                 37   
+66    Turkmenistan       Central and Eastern Europe                 70   
+20  United Kingdom                   Western Europe                 21   
+26           Qatar  Middle East and Northern Africa                 28   
+47         Bolivia      Latin America and Caribbean                 51   
+42           Japan                     Eastern Asia                 46   
+10          Israel  Middle East and Northern Africa                 11   
+
+    Happiness_Score_15  Standard_Error_15  Economy_15  Family_15  \
+57               5.770            0.04330     1.12486    1.07023   
+35               6.302            0.04206     1.20740    1.30203   
+66               5.548            0.04175     0.95847    1.22668   
+20               6.867            0.01866     1.26637    1.28548   
+26               6.611            0.06257     1.69042    1.07860   
+47               5.890            0.05642     0.68133    0.97841   
+42               5.987            0.03581     1.27074    1.25712   
+10               7.278            0.03470     1.22857    1.22393   
+
+    Life_Expectancy_15  Freedom_15  Trust_15  Generosity_15  Dystopia_15  \
+57             0.72394     0.53024   0.10501        0.33075      1.88541   
+35             0.88721     0.60365   0.13586        0.51752      1.64880   
+66             0.53886     0.47610   0.30844        0.16979      1.86984   
+20             0.90943     0.59625   0.32067        0.51912      1.96994   
+26             0.79733     0.64040   0.52208        0.32573      1.55674   
+47             0.53920     0.57414   0.08800        0.20536      2.82334   
+42             0.99111     0.49615   0.18060        0.10705      1.68435   
+10             0.91387     0.41319   0.07785        0.33172      3.08854   
+
+    Happiness_Rank_17  Happiness_Score_17  Whisker_High_17  Whisker_Low_17  \
+57                 42               6.084         6.179980        5.988021   
+35                 27               6.527         6.598397        6.455603   
+66                 59               5.822         5.885181        5.758819   
+20                 19               6.714         6.783792        6.644209   
+26                 35               6.375         6.568477        6.181523   
+47                 58               5.823         5.903977        5.742023   
+42                 51               5.920         5.990719        5.849281   
+10                 11               7.213         7.279853        7.146146   
+
+    Economy_17  Family_17  Life_Expectancy_17  Freedom_17  Generosity_17  \
+57    1.291215   1.284646            0.618784    0.402265       0.416609   
+35    1.343280   1.488412            0.821944    0.588767       0.574731   
+66    1.130777   1.493149            0.437726    0.418272       0.249925   
+20    1.441634   1.496460            0.805336    0.508190       0.492774   
+26    1.870766   1.274297            0.710098    0.604131       0.330474   
+47    0.833757   1.227619            0.473630    0.558733       0.225561   
+42    1.416915   1.436338            0.913476    0.505626       0.120573   
+10    1.375382   1.376290            0.838404    0.405989       0.330083   
+
+    Trust_17  Dystopia_17  
+57  0.065601     2.004449  
+35  0.153066     1.556863  
+66  0.259270     1.832910  
+20  0.265428     1.704144  
+26  0.439299     1.145464  
+47  0.060478     2.443279  
+42  0.163761     1.363224  
+10  0.085242     2.801757  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_73_0
+	Source 0 Schema: ['Country', 'Happiness_Rank_17', 'Happiness_Score_17', 'Whisker_High_17', 'Whisker_Low_17', 'Economy_17', 'Family_17', 'Life_Expectancy_17', 'Freedom_17', 'Generosity_17', 'Trust_17', 'Dystopia_17']
+	Source 0 Examples: 	 Source 0 contains 155 tuples, with examples as follows: 
+   Country  Happiness_Rank_17  Happiness_Score_17  Whisker_High_17  \
+0   Norway                  1               7.537         7.594445   
+1  Denmark                  2               7.522         7.581728   
+2  Iceland                  3               7.504         7.622030   
+
+   Whisker_Low_17  Economy_17  Family_17  Life_Expectancy_17  Freedom_17  \
+0        7.479556    1.616463   1.533524            0.796667    0.635423   
+1        7.462272    1.482383   1.551122            0.792566    0.626007   
+2        7.385970    1.480633   1.610574            0.833552    0.627163   
+
+   Generosity_17  Trust_17  Dystopia_17  
+0       0.362012  0.315964     2.277027  
+1       0.355280  0.400770     2.313707  
+2       0.475540  0.153527     2.322715  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_73/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_73_1
+	Source 1 Schema: ['Country', 'Region', 'Happiness Rank', 'Happiness Score', 'Standard Error', 'Economy (GDP per Capita)', 'Family', 'Health (Life Expectancy)', 'Freedom', 'Trust (Government Corruption)', 'Generosity', 'Dystopia Residual']
+	Source 1 Examples: 	 Source 1 contains 79 tuples, with examples as follows: 
+       Country          Region  Happiness Rank  Happiness Score  \
+0  Switzerland  Western Europe               1            7.587   
+1      Iceland  Western Europe               2            7.561   
+2      Denmark  Western Europe               3            7.527   
+
+   Standard Error  Economy (GDP per Capita)   Family  \
+0         0.03411                   1.39651  1.34951   
+1         0.04884                   1.30232  1.40223   
+2         0.03328                   1.32548  1.36058   
+
+   Health (Life Expectancy)  Freedom  Trust (Government Corruption)  \
+0                   0.94143  0.66557                        0.41978   
+1                   0.94784  0.62877                        0.14145   
+2                   0.87464  0.64938                        0.48357   
+
+   Generosity  Dystopia Residual  
+0     0.29678            2.51738  
+1     0.43630            2.70201  
+2     0.34139            2.49204  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_73/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_73/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

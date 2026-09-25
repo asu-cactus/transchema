@@ -1,0 +1,1707 @@
+Case: 1_64
+Status: CORRECT
+Timestamp: 2026-02-24T13:00:20.066376
+Duration: 1143.88 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_64/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['name', 'Gender', 'Eye color', 'Race', 'Hair color', 'Height', 'Publisher', 'Skin color', 'Alignment', 'Weight', 'hero_names', 'Agility', 'Accelerated Healing', 'Lantern Power Ring', 'Dimensional Awareness', 'Cold Resistance', 'Durability', 'Stealth', 'Energy Absorption', 'Flight', 'Danger Sense', 'Underwater breathing', 'Marksmanship', 'Weapons Master', 'Power Augmentation', 'Animal Attributes', 'Longevity', 'Intelligence', 'Super Strength', 'Cryokinesis', 'Telepathy', 'Energy Armor', 'Energy Blasts', 'Duplication', 'Size Changing', 'Density Control', 'Stamina', 'Astral Travel', 'Audio Control', 'Dexterity', 'Omnitrix', 'Super Speed', 'Possession', 'Animal Oriented Powers', 'Weapon-based Powers', 'Electrokinesis', 'Darkforce Manipulation', 'Death Touch', 'Teleportation', 'Enhanced Senses', 'Telekinesis', 'Energy Beams', 'Magic', 'Hyperkinesis', 'Jump', 'Clairvoyance', 'Dimensional Travel', 'Power Sense', 'Shapeshifting', 'Peak Human Condition', 'Immortality', 'Camouflage', 'Element Control', 'Phasing', 'Astral Projection', 'Electrical Transport', 'Fire Control', 'Projection', 'Summoning', 'Enhanced Memory', 'Reflexes', 'Invulnerability', 'Energy Constructs', 'Force Fields', 'Self-Sustenance', 'Anti-Gravity', 'Empathy', 'Power Nullifier', 'Radiation Control', 'Psionic Powers', 'Elasticity', 'Substance Secretion', 'Elemental Transmogrification', 'Technopath/Cyberpath', 'Photographic Reflexes', 'Seismic Power', 'Animation', 'Precognition', 'Mind Control', 'Fire Resistance', 'Power Absorption', 'Enhanced Hearing', 'Nova Force', 'Insanity', 'Hypnokinesis', 'Animal Control', 'Natural Armor', 'Intangibility', 'Enhanced Sight', 'Molecular Manipulation', 'Heat Generation', 'Adaptation', 'Gliding', 'Power Suit', 'Mind Blast', 'Probability Manipulation', 'Gravity Control', 'Regeneration', 'Light Control', 'Echolocation', 'Levitation', 'Toxin and Disease Control', 'Banish', 'Energy Manipulation', 'Heat Resistance', 'Natural Weapons', 'Time Travel', 'Enhanced Smell', 'Illusions', 'Thirstokinesis', 'Hair Manipulation', 'Illumination', 'Omnipotent', 'Cloaking', 'Changing Armor', 'Power Cosmic', 'Biokinesis', 'Water Control', 'Radiation Immunity', 'Vision - Telescopic', 'Toxin and Disease Resistance', 'Spatial Awareness', 'Energy Resistance', 'Telepathy Resistance', 'Molecular Combustion', 'Omnilingualism', 'Portal Creation', 'Magnetism', 'Mind Control Resistance', 'Plant Control', 'Sonar', 'Sonic Scream', 'Time Manipulation', 'Enhanced Touch', 'Magic Resistance', 'Invisibility', 'Sub-Mariner', 'Radiation Absorption', 'Intuitive aptitude', 'Vision - Microscopic', 'Melting', 'Wind Control', 'Super Breath', 'Wallcrawling', 'Vision - Night', 'Vision - Infrared', 'Grim Reaping', 'Matter Absorption', 'The Force', 'Resurrection', 'Terrakinesis', 'Vision - Heat', 'Vitakinesis', 'Radar Sense', 'Qwardian Power Ring', 'Weather Control', 'Vision - X-Ray', 'Vision - Thermal', 'Web Creation', 'Reality Warping', 'Odin Force', 'Symbiote Costume', 'Speed Force', 'Phoenix Force', 'Molecular Dissipation', 'Vision - Cryo', 'Omnipresent', 'Omniscient']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_64
+2. Target Schema: ['name': string, 'Gender': string, 'Eye color': string, 'Race': string, 'Hair color': string, 'Height': integer, 'Publisher': string, 'Skin color': string, 'Alignment': string, 'Weight': float, 'hero_names': string, 'Agility': boolean, 'Accelerated Healing': boolean, 'Lantern Power Ring': boolean, 'Dimensional Awareness': boolean, 'Cold Resistance': boolean, 'Durability': boolean, 'Stealth': boolean, 'Energy Absorption': boolean, 'Flight': boolean, 'Danger Sense': boolean, 'Underwater breathing': boolean, 'Marksmanship': boolean, 'Weapons Master': boolean, 'Power Augmentation': boolean, 'Animal Attributes': boolean, 'Longevity': boolean, 'Intelligence': boolean, 'Super Strength': boolean, 'Cryokinesis': boolean, 'Telepathy': boolean, 'Energy Armor': boolean, 'Energy Blasts': boolean, 'Duplication': boolean, 'Size Changing': boolean, 'Density Control': boolean, 'Stamina': boolean, 'Astral Travel': boolean, 'Audio Control': boolean, 'Dexterity': boolean, 'Omnitrix': boolean, 'Super Speed': boolean, 'Possession': boolean, 'Animal Oriented Powers': boolean, 'Weapon-based Powers': boolean, 'Electrokinesis': boolean, 'Darkforce Manipulation': boolean, 'Death Touch': boolean, 'Teleportation': boolean, 'Enhanced Senses': boolean, 'Telekinesis': boolean, 'Energy Beams': boolean, 'Magic': boolean, 'Hyperkinesis': boolean, 'Jump': boolean, 'Clairvoyance': boolean, 'Dimensional Travel': boolean, 'Power Sense': boolean, 'Shapeshifting': boolean, 'Peak Human Condition': boolean, 'Immortality': boolean, 'Camouflage': boolean, 'Element Control': boolean, 'Phasing': boolean, 'Astral Projection': boolean, 'Electrical Transport': boolean, 'Fire Control': boolean, 'Projection': boolean, 'Summoning': boolean, 'Enhanced Memory': boolean, 'Reflexes': boolean, 'Invulnerability': boolean, 'Energy Constructs': boolean, 'Force Fields': boolean, 'Self-Sustenance': boolean, 'Anti-Gravity': boolean, 'Empathy': boolean, 'Power Nullifier': boolean, 'Radiation Control': boolean, 'Psionic Powers': boolean, 'Elasticity': boolean, 'Substance Secretion': boolean, 'Elemental Transmogrification': boolean, 'Technopath/Cyberpath': boolean, 'Photographic Reflexes': boolean, 'Seismic Power': boolean, 'Animation': boolean, 'Precognition': boolean, 'Mind Control': boolean, 'Fire Resistance': boolean, 'Power Absorption': boolean, 'Enhanced Hearing': boolean, 'Nova Force': boolean, 'Insanity': boolean, 'Hypnokinesis': boolean, 'Animal Control': boolean, 'Natural Armor': boolean, 'Intangibility': boolean, 'Enhanced Sight': boolean, 'Molecular Manipulation': boolean, 'Heat Generation': boolean, 'Adaptation': boolean, 'Gliding': boolean, 'Power Suit': boolean, 'Mind Blast': boolean, 'Probability Manipulation': boolean, 'Gravity Control': boolean, 'Regeneration': boolean, 'Light Control': boolean, 'Echolocation': boolean, 'Levitation': boolean, 'Toxin and Disease Control': boolean, 'Banish': boolean, 'Energy Manipulation': boolean, 'Heat Resistance': boolean, 'Natural Weapons': boolean, 'Time Travel': boolean, 'Enhanced Smell': boolean, 'Illusions': boolean, 'Thirstokinesis': boolean, 'Hair Manipulation': boolean, 'Illumination': boolean, 'Omnipotent': boolean, 'Cloaking': boolean, 'Changing Armor': boolean, 'Power Cosmic': boolean, 'Biokinesis': boolean, 'Water Control': boolean, 'Radiation Immunity': boolean, 'Vision - Telescopic': boolean, 'Toxin and Disease Resistance': boolean, 'Spatial Awareness': boolean, 'Energy Resistance': boolean, 'Telepathy Resistance': boolean, 'Molecular Combustion': boolean, 'Omnilingualism': boolean, 'Portal Creation': boolean, 'Magnetism': boolean, 'Mind Control Resistance': boolean, 'Plant Control': boolean, 'Sonar': boolean, 'Sonic Scream': boolean, 'Time Manipulation': boolean, 'Enhanced Touch': boolean, 'Magic Resistance': boolean, 'Invisibility': boolean, 'Sub-Mariner': boolean, 'Radiation Absorption': boolean, 'Intuitive aptitude': boolean, 'Vision - Microscopic': boolean, 'Melting': boolean, 'Wind Control': boolean, 'Super Breath': boolean, 'Wallcrawling': boolean, 'Vision - Night': boolean, 'Vision - Infrared': boolean, 'Grim Reaping': boolean, 'Matter Absorption': boolean, 'The Force': boolean, 'Resurrection': boolean, 'Terrakinesis': boolean, 'Vision - Heat': boolean, 'Vitakinesis': boolean, 'Radar Sense': boolean, 'Qwardian Power Ring': boolean, 'Weather Control': boolean, 'Vision - X-Ray': boolean, 'Vision - Thermal': boolean, 'Web Creation': boolean, 'Reality Warping': boolean, 'Odin Force': boolean, 'Symbiote Costume': boolean, 'Speed Force': boolean, 'Phoenix Force': boolean, 'Molecular Dissipation': boolean, 'Vision - Cryo': boolean, 'Omnipresent': boolean, 'Omniscient': boolean]
+3. Target Examples: There are 326 available target examples:                  name  Gender                Eye color            Race  \
+228             Feral       -  yellow (without irises)               -   
+297              Husk  Female                     blue          Mutant   
+319     Jennifer Kale  Female                     blue               -   
+91       Black Canary  Female                     blue       Metahuman   
+33           Aquababy    Male                     blue               -   
+246            Gambit    Male                      red          Mutant   
+54             Azrael    Male                    brown           Human   
+296          Huntress  Female                     blue               -   
+208      Dr Manhattan    Male                    white  Human / Cosmic   
+214       Elle Bishop  Female                     blue               -   
+65          Batman II    Male                     blue           Human   
+161     Claire Bennet  Female                     blue               -   
+56               Bane    Male                        -           Human   
+153         Chameleon    Male                        -               -   
+166       Cottonmouth    Male                    brown           Human   
+142    Captain Marvel    Male                     blue           Human   
+82           Bird-Man    Male                        -           Human   
+113       Blue Beetle    Male                     blue               -   
+84            Birdman    Male                        -   God / Eternal   
+224     Fabian Cortez       -                     blue               -   
+52             Aurora  Female                     blue          Mutant   
+300          Hyperion    Male                     blue         Eternal   
+16   Allan Quatermain    Male                        -               -   
+58             Bantam    Male                    brown               -   
+168    Crimson Dynamo    Male                    brown               -   
+12         Alan Scott    Male                     blue               -   
+1          Abe Sapien    Male                     blue   Icthyo Sapien   
+125        Brundlefly    Male                        -          Mutant   
+217       Enchantress  Female                     blue           Human   
+43          Astro Boy    Male                    brown               -   
+86            Bizarro    Male                    black         Bizarro   
+9          Agent Zero    Male                        -               -   
+60            Batgirl  Female                    green           Human   
+
+         Hair color  Height          Publisher Skin color Alignment  Weight  \
+228  Orange / White     175      Marvel Comics          -      good    50.0   
+297           Blond     170      Marvel Comics          -      good    58.0   
+319           Blond     168      Marvel Comics          -      good    55.0   
+91            Blond     170          DC Comics          -      good    59.0   
+33            Blond     -99          DC Comics          -      good   -99.0   
+246           Brown     185      Marvel Comics          -      good    81.0   
+54            Black     -99          DC Comics          -      good   -99.0   
+296           Black     180          DC Comics          -      good    59.0   
+208         No Hair     -99          DC Comics       blue      good   -99.0   
+214           Blond     -99       NBC - Heroes          -       bad   -99.0   
+65            Black     178          DC Comics          -      good    79.0   
+161           Blond     -99       NBC - Heroes          -      good   -99.0   
+56                -     203          DC Comics          -       bad   180.0   
+153               -     -99          DC Comics          -       bad   -99.0   
+166           Black     183      Marvel Comics          -       bad    99.0   
+142           Black     193          DC Comics          -      good   101.0   
+82                -     -99      Marvel Comics          -       bad   -99.0   
+113           Brown     -99          DC Comics          -      good   -99.0   
+84                -     -99      Hanna-Barbera          -      good   -99.0   
+224           Brown     196      Marvel Comics          -       bad    96.0   
+52            Black     180      Marvel Comics          -      good    63.0   
+300             Red     183      Marvel Comics          -      good   207.0   
+16                -     -99          Wildstorm          -      good   -99.0   
+58            Black     165      Marvel Comics          -      good    54.0   
+168         No Hair     180      Marvel Comics          -      good   104.0   
+12            Blond     180          DC Comics          -      good    90.0   
+1           No Hair     191  Dark Horse Comics       blue      good    65.0   
+125               -     193                NaN          -         -   -99.0   
+217           Blond     168          DC Comics          -      good    57.0   
+43            Black     -99                NaN          -      good   -99.0   
+86            Black     191          DC Comics      white   neutral   155.0   
+9                 -     191      Marvel Comics          -      good   104.0   
+60              Red     170          DC Comics          -      good    57.0   
+
+           hero_names  Agility  Accelerated Healing  Lantern Power Ring  \
+228             Feral     True                 True               False   
+297              Husk    False                False               False   
+319     Jennifer Kale    False                False               False   
+91       Black Canary     True                False               False   
+33           Aquababy    False                False               False   
+246            Gambit     True                False               False   
+54             Azrael    False                False               False   
+296          Huntress    False                False               False   
+208      Dr Manhattan    False                 True               False   
+214       Elle Bishop    False                False               False   
+65          Batman II     True                False               False   
+161     Claire Bennet    False                 True               False   
+56               Bane    False                False               False   
+153         Chameleon    False                False               False   
+166       Cottonmouth    False                False               False   
+142    Captain Marvel     True                 True               False   
+82           Bird-Man    False                False               False   
+113       Blue Beetle    False                False               False   
+84            Birdman     True                False               False   
+224     Fabian Cortez    False                False               False   
+52             Aurora    False                 True               False   
+300          Hyperion     True                False               False   
+16   Allan Quatermain    False                False               False   
+58             Bantam    False                False               False   
+168    Crimson Dynamo    False                False               False   
+12         Alan Scott    False                False               False   
+1          Abe Sapien     True                 True               False   
+125        Brundlefly     True                False               False   
+217       Enchantress    False                 True               False   
+43          Astro Boy    False                False               False   
+86            Bizarro     True                 True               False   
+9          Agent Zero    False                False               False   
+60            Batgirl    False                False               False   
+
+     Dimensional Awareness  Cold Resistance  Durability  Stealth  \
+228                  False            False       False    False   
+297                  False            False        True    False   
+319                  False            False       False    False   
+91                   False            False       False     True   
+33                   False            False       False    False   
+246                  False            False       False    False   
+54                   False            False       False    False   
+296                  False            False       False    False   
+208                  False            False        True    False   
+214                  False            False       False    False   
+65                   False            False       False     True   
+161                  False            False       False    False   
+56                   False            False        True    False   
+153                  False            False       False    False   
+166                  False            False       False    False   
+142                  False             True        True    False   
+82                   False            False       False    False   
+113                  False            False       False    False   
+84                   False            False       False    False   
+224                  False            False       False    False   
+52                   False            False        True    False   
+300                  False            False        True    False   
+16                   False            False       False    False   
+58                   False            False        True    False   
+168                  False            False        True    False   
+12                   False            False       False    False   
+1                    False             True        True    False   
+125                  False            False       False     True   
+217                  False            False        True    False   
+43                   False            False       False    False   
+86                   False            False        True    False   
+9                    False            False       False    False   
+60                   False            False       False     True   
+
+     Energy Absorption  Flight  Danger Sense  Underwater breathing  \
+228              False   False         False                 False   
+297              False   False         False                 False   
+319              False   False         False                 False   
+91               False   False         False                 False   
+33               False   False         False                  True   
+246              False   False         False                 False   
+54               False   False         False                 False   
+296              False   False         False                 False   
+208               True    True         False                 False   
+214              False   False         False                 False   
+65               False   False         False                 False   
+161              False   False         False                 False   
+56               False   False         False                 False   
+153              False   False         False                 False   
+166              False   False         False                 False   
+142               True    True          True                 False   
+82               False    True         False                 False   
+113              False    True         False                 False   
+84                True    True         False                 False   
+224              False   False         False                 False   
+52               False    True         False                 False   
+300              False    True         False                 False   
+16               False   False         False                 False   
+58               False   False         False                 False   
+168              False    True         False                 False   
+12               False    True          True                 False   
+1                False   False         False                  True   
+125              False   False         False                 False   
+217              False    True         False                 False   
+43               False    True         False                 False   
+86                True    True         False                 False   
+9                 True   False         False                 False   
+60               False   False         False                 False   
+
+     Marksmanship  Weapons Master  Power Augmentation  Animal Attributes  \
+228         False           False               False              False   
+297         False           False               False              False   
+319         False           False               False              False   
+91           True            True               False              False   
+33          False           False               False              False   
+246         False           False               False              False   
+54          False            True               False              False   
+296          True           False               False              False   
+208         False           False               False              False   
+214         False           False               False              False   
+65           True            True               False              False   
+161         False           False               False              False   
+56          False           False               False              False   
+153         False           False               False              False   
+166         False           False               False              False   
+142          True           False               False              False   
+82          False           False               False              False   
+113         False           False               False              False   
+84          False           False               False              False   
+224         False           False                True              False   
+52          False           False               False              False   
+300         False           False               False              False   
+16           True           False               False              False   
+58          False           False               False              False   
+168         False           False               False              False   
+12          False           False               False              False   
+1            True            True               False              False   
+125         False           False               False              False   
+217         False           False               False              False   
+43          False           False               False              False   
+86           True           False               False              False   
+9           False           False               False              False   
+60           True            True               False              False   
+
+     Longevity  Intelligence  Super Strength  Cryokinesis  Telepathy  \
+228      False         False            True        False      False   
+297      False         False            True        False      False   
+319      False         False           False        False      False   
+91       False          True           False        False      False   
+33       False         False            True        False      False   
+246      False         False           False        False      False   
+54       False         False            True        False      False   
+296      False         False           False        False      False   
+208       True          True            True        False      False   
+214      False         False           False        False      False   
+65       False          True           False        False      False   
+161      False         False           False        False      False   
+56       False         False            True        False      False   
+153      False         False           False        False      False   
+166      False         False            True        False      False   
+142       True          True            True        False      False   
+82       False         False            True        False      False   
+113      False         False            True        False      False   
+84        True          True            True        False      False   
+224      False         False           False        False      False   
+52       False         False           False        False      False   
+300       True          True            True        False      False   
+16       False         False           False        False      False   
+58       False         False            True        False      False   
+168      False         False            True        False      False   
+12       False          True           False        False       True   
+1         True          True            True        False       True   
+125      False         False            True        False      False   
+217      False         False            True        False      False   
+43       False         False            True        False      False   
+86        True         False            True         True      False   
+9         True         False            True        False      False   
+60       False          True           False        False      False   
+
+     Energy Armor  Energy Blasts  Duplication  Size Changing  Density Control  \
+228         False          False        False          False            False   
+297         False          False        False          False             True   
+319         False          False        False          False            False   
+91          False          False        False          False            False   
+33          False          False        False          False            False   
+246         False          False        False          False            False   
+54          False          False        False          False            False   
+296         False          False        False          False            False   
+208         False           True         True           True             True   
+214         False          False        False          False            False   
+65          False          False        False          False            False   
+161         False          False        False          False            False   
+56          False          False        False          False            False   
+153         False          False        False          False            False   
+166         False          False        False          False            False   
+142         False           True        False          False            False   
+82          False          False        False          False            False   
+113         False           True        False          False            False   
+84          False           True        False          False            False   
+224         False          False        False          False            False   
+52          False           True        False          False            False   
+300         False          False        False          False            False   
+16          False          False        False          False            False   
+58          False          False        False          False            False   
+168         False           True        False          False            False   
+12          False           True        False          False            False   
+1           False          False        False          False            False   
+125         False          False        False          False            False   
+217         False          False        False          False            False   
+43          False           True        False          False            False   
+86          False          False        False          False            False   
+9           False           True        False          False            False   
+60          False          False        False          False            False   
+
+     Stamina  Astral Travel  Audio Control  Dexterity  Omnitrix  Super Speed  \
+228    False          False          False      False     False         True   
+297    False          False          False      False     False         True   
+319    False          False          False      False     False        False   
+91      True          False           True      False     False        False   
+33     False          False          False      False     False        False   
+246    False          False          False      False     False        False   
+54      True          False          False      False     False         True   
+296    False          False          False      False     False        False   
+208    False          False          False      False     False         True   
+214    False          False          False      False     False        False   
+65      True          False          False      False     False        False   
+161    False          False          False      False     False        False   
+56      True          False          False      False     False         True   
+153    False          False          False      False     False        False   
+166    False          False          False      False     False        False   
+142     True          False          False      False     False         True   
+82     False          False          False      False     False        False   
+113    False          False          False      False     False        False   
+84      True          False          False      False     False        False   
+224    False          False          False      False     False        False   
+52     False          False          False      False     False         True   
+300     True          False          False      False     False         True   
+16     False          False          False      False     False        False   
+58      True          False          False      False     False        False   
+168    False          False          False      False     False        False   
+12     False          False          False      False     False         True   
+1       True          False          False      False     False        False   
+125     True          False          False      False     False        False   
+217    False          False          False      False     False        False   
+43     False          False          False      False     False         True   
+86      True          False          False      False     False         True   
+9      False          False          False      False     False        False   
+60      True          False          False      False     False        False   
+
+     Possession  Animal Oriented Powers  Weapon-based Powers  Electrokinesis  \
+228       False                    True                False           False   
+297       False                   False                False           False   
+319       False                   False                False           False   
+91        False                   False                False           False   
+33        False                   False                False           False   
+246       False                   False                False           False   
+54        False                   False                 True           False   
+296       False                   False                False           False   
+208       False                   False                False           False   
+214       False                   False                False            True   
+65        False                   False                 True           False   
+161       False                   False                False           False   
+56        False                   False                False           False   
+153       False                   False                False           False   
+166       False                   False                False           False   
+142       False                   False                False           False   
+82        False                    True                False           False   
+113       False                   False                False           False   
+84        False                   False                False           False   
+224       False                   False                False           False   
+52        False                   False                False           False   
+300       False                   False                False           False   
+16        False                   False                False           False   
+58        False                   False                False           False   
+168       False                   False                False           False   
+12        False                   False                False           False   
+1         False                   False                False           False   
+125       False                   False                False           False   
+217       False                   False                False           False   
+43        False                   False                 True           False   
+86        False                   False                False           False   
+9         False                   False                False           False   
+60        False                   False                 True           False   
+
+     Darkforce Manipulation  Death Touch  Teleportation  Enhanced Senses  \
+228                   False        False          False             True   
+297                   False        False          False            False   
+319                   False        False          False            False   
+91                    False        False          False            False   
+33                    False        False          False            False   
+246                   False        False          False            False   
+54                    False        False          False            False   
+296                   False        False          False            False   
+208                   False        False           True            False   
+214                   False        False          False            False   
+65                    False        False          False            False   
+161                   False        False          False            False   
+56                    False        False          False            False   
+153                   False        False          False            False   
+166                   False        False          False            False   
+142                   False        False           True            False   
+82                    False        False          False            False   
+113                   False        False          False            False   
+84                    False        False          False            False   
+224                   False        False          False            False   
+52                    False        False          False            False   
+300                   False        False          False             True   
+16                    False        False          False            False   
+58                    False        False          False            False   
+168                   False        False          False            False   
+12                    False        False           True            False   
+1                     False        False          False            False   
+125                   False        False          False            False   
+217                   False        False           True             True   
+43                    False        False          False            False   
+86                    False        False          False             True   
+9                     False        False          False            False   
+60                    False        False          False            False   
+
+     Telekinesis  Energy Beams  Magic  Hyperkinesis   Jump  Clairvoyance  \
+228        False         False  False         False   True         False   
+297        False         False  False         False  False         False   
+319        False         False   True         False  False         False   
+91         False         False  False         False  False         False   
+33         False         False  False         False  False         False   
+246         True         False  False         False  False         False   
+54         False         False  False         False  False         False   
+296        False         False  False         False  False         False   
+208         True         False  False         False  False         False   
+214        False         False  False         False  False         False   
+65         False         False  False         False  False         False   
+161        False         False  False         False  False         False   
+56         False         False  False         False  False         False   
+153        False         False  False         False  False         False   
+166        False         False  False         False  False         False   
+142        False         False   True         False  False          True   
+82         False         False  False         False  False         False   
+113        False         False  False         False  False         False   
+84         False         False  False         False  False         False   
+224        False         False  False         False  False         False   
+52         False         False  False         False  False         False   
+300        False          True  False         False  False         False   
+16         False         False  False         False  False         False   
+58         False         False  False         False  False         False   
+168        False         False  False         False  False         False   
+12         False          True  False         False  False         False   
+1          False         False  False         False  False         False   
+125        False         False  False         False  False         False   
+217        False         False   True         False  False         False   
+43         False         False  False         False  False         False   
+86         False         False  False         False   True         False   
+9          False          True  False         False  False         False   
+60         False         False  False         False  False         False   
+
+     Dimensional Travel  Power Sense  Shapeshifting  Peak Human Condition  \
+228               False        False          False                 False   
+297               False        False           True                 False   
+319               False        False          False                 False   
+91                False        False          False                 False   
+33                False        False          False                 False   
+246               False        False          False                 False   
+54                False        False          False                 False   
+296               False        False          False                  True   
+208               False        False          False                 False   
+214               False        False          False                 False   
+65                False        False          False                  True   
+161               False        False          False                 False   
+56                False        False          False                 False   
+153               False        False           True                 False   
+166               False        False          False                 False   
+142               False        False          False                 False   
+82                False        False          False                 False   
+113               False        False          False                 False   
+84                False        False          False                 False   
+224               False        False          False                 False   
+52                False        False          False                 False   
+300               False        False          False                 False   
+16                False        False          False                 False   
+58                False        False          False                 False   
+168               False        False          False                 False   
+12                False        False          False                 False   
+1                 False        False          False                 False   
+125               False        False          False                 False   
+217               False        False          False                 False   
+43                False        False          False                 False   
+86                False        False          False                 False   
+9                 False        False          False                 False   
+60                False        False          False                 False   
+
+     Immortality  Camouflage  Element Control  Phasing  Astral Projection  \
+228        False       False            False    False              False   
+297        False       False            False    False              False   
+319        False       False            False    False              False   
+91         False       False            False    False              False   
+33         False       False            False    False              False   
+246        False       False            False    False              False   
+54         False       False            False    False              False   
+296        False       False            False    False              False   
+208         True       False            False     True              False   
+214        False       False            False    False              False   
+65         False       False            False    False              False   
+161        False       False            False    False              False   
+56         False       False            False    False              False   
+153        False       False            False    False              False   
+166        False       False            False    False              False   
+142         True       False            False    False              False   
+82         False       False            False    False              False   
+113        False       False            False    False              False   
+84          True       False            False    False              False   
+224        False       False            False    False              False   
+52         False       False            False    False              False   
+300        False       False            False    False              False   
+16         False       False            False    False              False   
+58         False       False            False    False              False   
+168        False       False            False    False              False   
+12         False       False            False     True              False   
+1           True       False            False    False              False   
+125        False       False            False    False              False   
+217        False       False             True     True              False   
+43         False       False            False    False              False   
+86         False       False            False    False              False   
+9          False       False            False    False              False   
+60         False       False            False    False              False   
+
+     Electrical Transport  Fire Control  Projection  Summoning  \
+228                 False         False       False      False   
+297                 False         False       False      False   
+319                 False         False       False      False   
+91                  False         False       False      False   
+33                  False         False       False      False   
+246                 False         False       False      False   
+54                  False         False       False      False   
+296                 False         False       False      False   
+208                 False         False       False      False   
+214                 False         False       False      False   
+65                  False         False       False      False   
+161                 False         False       False      False   
+56                  False         False       False      False   
+153                 False         False       False      False   
+166                 False         False       False      False   
+142                 False         False       False      False   
+82                  False         False       False      False   
+113                 False         False       False      False   
+84                  False         False       False      False   
+224                 False         False       False      False   
+52                  False         False       False      False   
+300                 False         False       False      False   
+16                  False         False       False      False   
+58                  False         False       False      False   
+168                 False         False       False      False   
+12                  False         False       False      False   
+1                   False         False       False      False   
+125                 False         False       False      False   
+217                 False          True       False      False   
+43                  False         False       False      False   
+86                  False         False       False      False   
+9                   False         False       False      False   
+60                  False         False       False      False   
+
+     Enhanced Memory  Reflexes  Invulnerability  Energy Constructs  \
+228            False      True            False              False   
+297            False     False            False              False   
+319            False     False            False              False   
+91             False      True            False              False   
+33             False     False            False              False   
+246            False     False            False              False   
+54             False     False            False              False   
+296            False     False            False              False   
+208            False     False             True               True   
+214            False     False            False              False   
+65             False     False            False              False   
+161            False     False            False              False   
+56              True      True            False              False   
+153            False     False            False              False   
+166            False     False            False              False   
+142             True      True             True               True   
+82             False     False            False              False   
+113            False     False            False              False   
+84             False     False            False              False   
+224            False     False            False              False   
+52             False      True            False              False   
+300            False     False             True              False   
+16             False     False            False              False   
+58             False     False            False              False   
+168            False     False            False              False   
+12             False     False            False              False   
+1              False      True            False              False   
+125            False     False            False              False   
+217            False      True            False               True   
+43             False     False            False              False   
+86             False     False             True              False   
+9              False     False            False              False   
+60             False      True            False              False   
+
+     Force Fields  Self-Sustenance  Anti-Gravity  Empathy  Power Nullifier  \
+228         False            False         False    False            False   
+297         False            False         False    False            False   
+319          True            False         False    False            False   
+91          False            False         False    False            False   
+33          False            False         False    False            False   
+246         False            False         False    False            False   
+54          False            False         False    False            False   
+296         False            False         False    False            False   
+208          True             True         False    False            False   
+214         False            False         False    False            False   
+65          False            False         False    False            False   
+161         False            False         False    False            False   
+56          False            False         False    False            False   
+153         False            False         False    False            False   
+166         False            False         False    False            False   
+142         False             True         False    False            False   
+82          False            False         False    False            False   
+113         False            False         False    False            False   
+84           True            False         False    False            False   
+224         False            False         False    False            False   
+52          False            False         False    False            False   
+300         False            False         False    False            False   
+16          False            False         False    False            False   
+58          False            False         False    False            False   
+168         False            False         False    False            False   
+12           True            False         False    False            False   
+1           False            False         False    False            False   
+125         False            False         False    False            False   
+217         False            False         False    False            False   
+43          False            False         False    False            False   
+86          False             True         False    False            False   
+9           False            False         False    False            False   
+60          False            False         False    False            False   
+
+     Radiation Control  Psionic Powers  Elasticity  Substance Secretion  \
+228              False           False       False                False   
+297              False           False       False                False   
+319              False           False       False                False   
+91               False           False       False                False   
+33               False           False       False                False   
+246              False            True       False                False   
+54               False           False       False                False   
+296              False           False       False                False   
+208              False           False       False                False   
+214              False           False       False                False   
+65               False           False       False                False   
+161              False           False       False                False   
+56               False           False       False                False   
+153              False           False       False                False   
+166              False           False       False                False   
+142              False           False       False                False   
+82               False           False       False                False   
+113              False           False       False                False   
+84               False           False       False                False   
+224              False           False       False                False   
+52               False           False       False                False   
+300              False           False       False                False   
+16               False           False       False                False   
+58               False           False       False                False   
+168              False           False       False                False   
+12               False           False       False                False   
+1                False           False       False                False   
+125              False           False       False                False   
+217              False           False       False                False   
+43               False           False       False                False   
+86               False           False       False                False   
+9                False           False       False                False   
+60               False           False       False                False   
+
+     Elemental Transmogrification  Technopath/Cyberpath  \
+228                         False                 False   
+297                         False                 False   
+319                         False                 False   
+91                          False                 False   
+33                          False                 False   
+246                         False                 False   
+54                          False                 False   
+296                         False                 False   
+208                         False                 False   
+214                         False                 False   
+65                          False                 False   
+161                         False                 False   
+56                          False                 False   
+153                         False                 False   
+166                         False                 False   
+142                         False                 False   
+82                          False                 False   
+113                         False                 False   
+84                          False                 False   
+224                         False                 False   
+52                          False                 False   
+300                         False                 False   
+16                          False                 False   
+58                          False                 False   
+168                         False                 False   
+12                          False                 False   
+1                           False                 False   
+125                         False                 False   
+217                         False                 False   
+43                          False                 False   
+86                          False                 False   
+9                           False                 False   
+60                          False                 False   
+
+     Photographic Reflexes  Seismic Power  Animation  Precognition  \
+228                  False          False      False         False   
+297                  False          False      False         False   
+319                  False          False      False         False   
+91                   False          False      False         False   
+33                   False          False      False         False   
+246                  False          False      False         False   
+54                   False          False      False         False   
+296                  False          False      False         False   
+208                  False          False      False          True   
+214                  False          False      False         False   
+65                   False          False      False         False   
+161                  False          False      False         False   
+56                   False          False      False         False   
+153                  False          False      False         False   
+166                  False          False      False         False   
+142                  False          False      False          True   
+82                   False          False      False         False   
+113                  False          False      False         False   
+84                   False          False      False         False   
+224                  False          False      False         False   
+52                   False          False      False         False   
+300                  False          False      False         False   
+16                   False          False      False         False   
+58                   False          False      False         False   
+168                  False          False      False         False   
+12                   False          False      False         False   
+1                    False          False      False         False   
+125                  False          False      False         False   
+217                  False          False      False         False   
+43                   False          False      False         False   
+86                   False          False      False         False   
+9                    False          False      False         False   
+60                   False          False      False         False   
+
+     Mind Control  Fire Resistance  Power Absorption  Enhanced Hearing  \
+228         False            False             False             False   
+297         False            False             False             False   
+319         False            False             False             False   
+91          False            False             False             False   
+33          False            False             False             False   
+246         False            False             False             False   
+54          False            False             False             False   
+296         False            False             False             False   
+208         False            False             False             False   
+214         False            False             False             False   
+65          False            False             False             False   
+161         False            False             False             False   
+56          False            False             False             False   
+153         False            False             False             False   
+166         False            False             False             False   
+142         False            False             False              True   
+82          False            False             False             False   
+113         False            False             False             False   
+84          False            False             False             False   
+224         False            False             False             False   
+52          False            False             False             False   
+300         False            False             False              True   
+16          False            False             False             False   
+58          False            False             False             False   
+168         False            False             False             False   
+12          False            False             False             False   
+1           False            False             False             False   
+125         False            False             False             False   
+217         False            False             False             False   
+43          False            False             False              True   
+86          False            False             False              True   
+9           False            False             False             False   
+60          False            False             False             False   
+
+     Nova Force  Insanity  Hypnokinesis  Animal Control  Natural Armor  \
+228       False     False         False           False          False   
+297       False     False         False           False          False   
+319       False     False         False           False          False   
+91        False     False         False           False          False   
+33        False     False         False           False          False   
+246       False     False         False           False          False   
+54        False     False         False           False          False   
+296       False     False         False           False          False   
+208       False     False         False           False          False   
+214       False     False         False           False          False   
+65        False     False         False           False          False   
+161       False     False         False           False          False   
+56        False     False         False           False          False   
+153       False     False         False           False          False   
+166       False     False         False           False          False   
+142       False     False          True           False          False   
+82        False     False         False           False          False   
+113       False     False         False           False          False   
+84        False     False         False           False          False   
+224       False     False         False           False          False   
+52        False     False         False           False          False   
+300       False     False         False           False          False   
+16        False     False         False           False          False   
+58        False     False         False           False          False   
+168       False     False         False           False          False   
+12        False     False          True           False          False   
+1         False     False         False           False          False   
+125       False     False         False           False          False   
+217       False     False         False           False          False   
+43        False     False         False           False          False   
+86        False     False          True           False          False   
+9         False     False         False           False          False   
+60        False     False         False           False          False   
+
+     Intangibility  Enhanced Sight  Molecular Manipulation  Heat Generation  \
+228          False           False                   False            False   
+297          False           False                    True            False   
+319          False           False                   False            False   
+91           False           False                   False            False   
+33           False           False                   False            False   
+246          False           False                   False            False   
+54           False           False                   False            False   
+296          False           False                   False            False   
+208           True           False                    True            False   
+214          False           False                   False            False   
+65           False           False                   False            False   
+161          False           False                   False            False   
+56           False           False                   False            False   
+153          False           False                   False            False   
+166          False           False                   False            False   
+142          False           False                   False            False   
+82           False           False                   False            False   
+113          False           False                   False            False   
+84           False           False                   False            False   
+224          False           False                   False            False   
+52           False           False                    True            False   
+300          False            True                   False            False   
+16           False           False                   False            False   
+58           False           False                   False            False   
+168          False           False                   False            False   
+12           False           False                   False            False   
+1            False            True                   False            False   
+125          False           False                   False            False   
+217           True           False                   False            False   
+43           False           False                   False            False   
+86           False            True                   False            False   
+9            False           False                   False            False   
+60           False           False                   False            False   
+
+     Adaptation  Gliding  Power Suit  Mind Blast  Probability Manipulation  \
+228       False    False       False       False                     False   
+297       False    False       False       False                     False   
+319       False    False       False       False                     False   
+91        False    False       False       False                     False   
+33        False    False       False       False                     False   
+246       False    False       False       False                     False   
+54        False    False       False       False                     False   
+296       False    False       False       False                     False   
+208       False    False       False       False                     False   
+214       False    False       False       False                     False   
+65        False    False       False       False                     False   
+161       False    False       False       False                     False   
+56        False    False       False       False                     False   
+153       False    False       False       False                     False   
+166       False    False       False       False                     False   
+142       False    False       False       False                     False   
+82        False    False       False       False                     False   
+113       False    False       False       False                     False   
+84        False    False       False       False                     False   
+224       False    False       False       False                     False   
+52        False    False       False       False                     False   
+300       False    False       False       False                     False   
+16        False    False       False       False                     False   
+58        False    False       False       False                     False   
+168       False    False       False       False                     False   
+12        False    False       False       False                     False   
+1         False    False       False       False                     False   
+125       False    False       False       False                     False   
+217       False    False       False       False                     False   
+43        False    False       False       False                     False   
+86        False    False       False       False                     False   
+9         False    False        True       False                     False   
+60        False    False       False       False                     False   
+
+     Gravity Control  Regeneration  Light Control  Echolocation  Levitation  \
+228            False         False          False         False       False   
+297            False         False          False         False       False   
+319            False         False          False         False       False   
+91             False         False          False         False       False   
+33             False         False          False         False       False   
+246            False         False          False         False       False   
+54             False         False          False         False       False   
+296            False         False          False         False       False   
+208            False         False          False         False       False   
+214            False         False          False         False       False   
+65             False         False          False         False       False   
+161            False          True          False         False       False   
+56             False         False          False         False       False   
+153            False         False          False         False       False   
+166            False         False          False         False       False   
+142            False         False          False         False        True   
+82             False         False          False         False       False   
+113            False         False          False         False       False   
+84             False         False          False         False       False   
+224            False         False          False         False       False   
+52             False         False           True         False       False   
+300            False         False          False         False       False   
+16             False         False          False         False       False   
+58             False         False          False         False       False   
+168            False         False          False         False       False   
+12             False         False          False         False       False   
+1              False         False          False         False       False   
+125            False         False          False         False       False   
+217            False         False          False         False       False   
+43             False         False          False         False       False   
+86             False         False          False         False       False   
+9              False         False          False         False       False   
+60             False         False          False         False       False   
+
+     Toxin and Disease Control  Banish  Energy Manipulation  Heat Resistance  \
+228                      False   False                False            False   
+297                      False   False                False            False   
+319                      False   False                False            False   
+91                       False   False                False            False   
+33                       False   False                False            False   
+246                      False   False                 True            False   
+54                       False   False                False            False   
+296                      False   False                False            False   
+208                      False   False                 True            False   
+214                      False   False                False            False   
+65                       False   False                False            False   
+161                      False   False                False            False   
+56                       False   False                False            False   
+153                      False   False                False            False   
+166                      False   False                False            False   
+142                      False   False                 True             True   
+82                       False   False                False            False   
+113                      False   False                False            False   
+84                       False   False                False            False   
+224                      False   False                False            False   
+52                       False   False                False            False   
+300                      False   False                False            False   
+16                       False   False                False            False   
+58                       False   False                False            False   
+168                      False   False                False            False   
+12                       False   False                 True            False   
+1                        False   False                False            False   
+125                       True   False                False            False   
+217                      False   False                False            False   
+43                       False   False                False            False   
+86                       False   False                False            False   
+9                        False   False                False            False   
+60                       False   False                False            False   
+
+     Natural Weapons  Time Travel  Enhanced Smell  Illusions  Thirstokinesis  \
+228             True        False           False      False           False   
+297            False        False           False      False           False   
+319            False        False           False      False           False   
+91             False        False           False      False           False   
+33             False        False           False      False           False   
+246            False        False           False      False           False   
+54             False        False           False      False           False   
+296            False        False           False      False           False   
+208            False         True           False      False           False   
+214            False        False           False      False           False   
+65             False        False           False      False           False   
+161            False        False           False      False           False   
+56             False        False           False      False           False   
+153            False        False           False      False           False   
+166            False        False           False      False           False   
+142            False        False           False      False           False   
+82              True        False           False      False           False   
+113            False        False           False      False           False   
+84             False        False           False      False           False   
+224            False        False           False      False           False   
+52             False        False           False      False           False   
+300            False        False           False      False           False   
+16             False        False           False      False           False   
+58             False        False           False      False           False   
+168            False        False           False      False           False   
+12             False        False           False      False           False   
+1              False        False           False      False           False   
+125            False        False           False      False           False   
+217            False        False           False       True           False   
+43             False        False           False      False           False   
+86             False        False           False      False           False   
+9              False        False           False      False           False   
+60             False        False           False      False           False   
+
+     Hair Manipulation  Illumination  Omnipotent  Cloaking  Changing Armor  \
+228              False         False       False     False           False   
+297              False         False       False     False           False   
+319              False         False       False     False           False   
+91               False         False       False     False           False   
+33               False         False       False     False           False   
+246              False         False       False     False           False   
+54               False         False       False     False           False   
+296              False         False       False     False           False   
+208              False         False       False     False           False   
+214              False         False       False     False           False   
+65               False         False       False     False           False   
+161              False         False       False     False           False   
+56               False         False       False     False           False   
+153              False         False       False     False           False   
+166              False         False       False     False           False   
+142              False         False       False     False           False   
+82               False         False       False     False           False   
+113              False         False       False     False           False   
+84               False         False       False     False           False   
+224              False         False       False     False           False   
+52               False          True       False     False           False   
+300              False         False       False     False           False   
+16               False         False       False     False           False   
+58               False         False       False     False           False   
+168              False         False       False     False           False   
+12               False         False       False     False           False   
+1                False         False       False     False           False   
+125              False         False       False     False           False   
+217              False         False       False     False           False   
+43               False         False       False     False           False   
+86               False         False       False     False           False   
+9                False         False       False     False           False   
+60               False         False       False     False           False   
+
+     Power Cosmic  Biokinesis  Water Control  Radiation Immunity  \
+228         False       False          False               False   
+297         False       False          False               False   
+319         False       False          False               False   
+91          False       False          False               False   
+33          False       False           True               False   
+246         False       False          False               False   
+54          False       False          False               False   
+296         False       False          False               False   
+208         False       False          False               False   
+214         False       False          False               False   
+65          False       False          False               False   
+161         False       False          False               False   
+56          False       False          False               False   
+153         False       False          False               False   
+166         False       False          False               False   
+142         False       False          False               False   
+82          False       False          False               False   
+113         False       False          False               False   
+84          False       False          False               False   
+224         False       False          False               False   
+52          False       False          False               False   
+300         False       False          False               False   
+16          False       False          False               False   
+58          False       False          False               False   
+168         False       False          False               False   
+12          False       False          False               False   
+1           False       False          False               False   
+125         False       False          False               False   
+217         False       False          False               False   
+43          False       False          False               False   
+86          False       False          False               False   
+9           False       False          False               False   
+60          False       False          False               False   
+
+     Vision - Telescopic  Toxin and Disease Resistance  Spatial Awareness  \
+228                False                         False              False   
+297                False                         False              False   
+319                False                         False              False   
+91                 False                         False              False   
+33                 False                         False              False   
+246                False                         False              False   
+54                 False                         False              False   
+296                False                         False              False   
+208                False                         False              False   
+214                False                         False              False   
+65                 False                         False              False   
+161                False                         False              False   
+56                 False                         False              False   
+153                False                         False              False   
+166                False                         False              False   
+142                False                          True              False   
+82                 False                         False              False   
+113                False                         False              False   
+84                 False                         False              False   
+224                False                         False              False   
+52                 False                         False              False   
+300                False                         False              False   
+16                 False                         False              False   
+58                 False                         False              False   
+168                False                         False              False   
+12                 False                         False              False   
+1                  False                         False              False   
+125                False                         False              False   
+217                False                         False              False   
+43                  True                         False              False   
+86                  True                         False              False   
+9                  False                         False              False   
+60                 False                         False              False   
+
+     Energy Resistance  Telepathy Resistance  Molecular Combustion  \
+228              False                 False                 False   
+297              False                 False                 False   
+319              False                 False                 False   
+91               False                 False                 False   
+33               False                 False                 False   
+246              False                  True                 False   
+54               False                 False                 False   
+296              False                 False                 False   
+208              False                 False                 False   
+214              False                 False                 False   
+65               False                 False                 False   
+161              False                 False                 False   
+56               False                 False                 False   
+153              False                 False                 False   
+166              False                 False                 False   
+142              False                 False                 False   
+82               False                 False                 False   
+113              False                 False                 False   
+84               False                 False                 False   
+224              False                 False                 False   
+52               False                 False                  True   
+300              False                 False                 False   
+16               False                 False                 False   
+58               False                 False                 False   
+168              False                 False                 False   
+12               False                 False                 False   
+1                False                 False                 False   
+125              False                 False                 False   
+217              False                 False                 False   
+43               False                 False                 False   
+86               False                 False                 False   
+9                False                 False                 False   
+60               False                 False                 False   
+
+     Omnilingualism  Portal Creation  Magnetism  Mind Control Resistance  \
+228           False            False      False                    False   
+297           False            False      False                    False   
+319           False             True      False                    False   
+91            False            False      False                    False   
+33            False            False      False                    False   
+246           False            False      False                    False   
+54            False            False      False                    False   
+296           False            False      False                    False   
+208            True            False      False                    False   
+214           False            False      False                    False   
+65            False            False      False                    False   
+161           False            False      False                    False   
+56            False            False      False                    False   
+153           False            False      False                    False   
+166           False            False      False                    False   
+142            True            False      False                    False   
+82            False            False      False                    False   
+113           False            False      False                    False   
+84            False            False      False                    False   
+224           False            False      False                    False   
+52            False            False      False                    False   
+300           False            False      False                    False   
+16            False            False      False                    False   
+58            False            False      False                    False   
+168           False            False      False                    False   
+12            False            False      False                    False   
+1             False            False      False                    False   
+125           False            False      False                    False   
+217           False            False      False                    False   
+43             True            False      False                    False   
+86            False            False      False                    False   
+9             False            False      False                    False   
+60            False            False      False                    False   
+
+     Plant Control  Sonar  Sonic Scream  Time Manipulation  Enhanced Touch  \
+228          False  False         False              False           False   
+297          False  False         False              False           False   
+319          False  False         False              False           False   
+91           False  False          True              False           False   
+33           False  False         False              False           False   
+246          False  False         False              False           False   
+54           False  False         False              False           False   
+296          False  False         False              False           False   
+208          False  False         False               True           False   
+214          False  False         False              False           False   
+65           False  False         False              False           False   
+161          False  False         False              False           False   
+56           False  False         False              False           False   
+153          False  False         False              False           False   
+166          False  False         False              False           False   
+142          False  False         False              False           False   
+82           False  False         False              False           False   
+113          False  False         False              False           False   
+84           False  False         False              False           False   
+224          False  False         False              False           False   
+52           False  False         False              False           False   
+300          False  False         False              False           False   
+16           False  False         False              False           False   
+58           False  False         False              False           False   
+168          False  False         False              False           False   
+12           False  False         False              False           False   
+1            False  False         False              False           False   
+125          False  False         False              False           False   
+217          False  False         False              False           False   
+43           False  False         False              False           False   
+86           False  False         False              False           False   
+9            False  False         False              False           False   
+60           False  False         False              False           False   
+
+     Magic Resistance  Invisibility  Sub-Mariner  Radiation Absorption  \
+228             False         False        False                 False   
+297             False         False        False                 False   
+319             False         False        False                 False   
+91              False         False        False                 False   
+33              False         False        False                 False   
+246             False         False        False                 False   
+54              False         False        False                 False   
+296             False         False        False                 False   
+208             False         False        False                 False   
+214             False         False        False                 False   
+65              False         False        False                 False   
+161             False         False        False                 False   
+56              False         False        False                 False   
+153             False         False        False                 False   
+166             False         False        False                 False   
+142              True         False        False                 False   
+82              False         False        False                 False   
+113             False         False        False                 False   
+84              False         False        False                 False   
+224             False         False        False                 False   
+52              False         False        False                 False   
+300             False         False        False                 False   
+16              False         False        False                 False   
+58              False         False        False                 False   
+168             False         False        False                 False   
+12              False          True        False                 False   
+1               False         False         True                 False   
+125             False         False        False                 False   
+217             False         False        False                 False   
+43              False         False        False                 False   
+86              False         False        False                 False   
+9               False         False        False                 False   
+60              False         False        False                 False   
+
+     Intuitive aptitude  Vision - Microscopic  Melting  Wind Control  \
+228               False                 False    False         False   
+297               False                 False    False         False   
+319               False                 False    False         False   
+91                False                 False    False         False   
+33                False                 False    False         False   
+246               False                 False    False         False   
+54                False                 False    False         False   
+296               False                 False    False         False   
+208               False                 False    False         False   
+214               False                 False    False         False   
+65                False                 False    False         False   
+161               False                 False    False         False   
+56                False                 False    False         False   
+153               False                 False    False         False   
+166               False                 False    False         False   
+142               False                 False    False         False   
+82                False                 False    False         False   
+113               False                 False    False         False   
+84                False                 False    False         False   
+224               False                 False    False         False   
+52                False                 False    False         False   
+300               False                  True    False         False   
+16                False                 False    False         False   
+58                False                 False    False         False   
+168               False                 False    False         False   
+12                False                 False    False         False   
+1                 False                 False    False         False   
+125               False                 False    False         False   
+217               False                 False    False         False   
+43                False                 False    False         False   
+86                False                  True    False         False   
+9                 False                 False    False         False   
+60                False                 False    False         False   
+
+     Super Breath  Wallcrawling  Vision - Night  Vision - Infrared  \
+228         False         False           False              False   
+297         False         False           False              False   
+319         False         False           False              False   
+91          False         False           False              False   
+33          False         False           False              False   
+246         False         False           False              False   
+54          False         False           False              False   
+296         False         False           False              False   
+208         False         False           False              False   
+214         False         False           False              False   
+65          False         False           False              False   
+161         False         False           False              False   
+56          False         False           False              False   
+153         False         False           False              False   
+166         False         False           False              False   
+142          True         False           False              False   
+82          False         False           False              False   
+113         False         False           False              False   
+84          False         False           False              False   
+224         False         False           False              False   
+52          False         False           False              False   
+300          True         False           False               True   
+16          False         False           False              False   
+58          False         False           False              False   
+168         False         False           False              False   
+12          False         False           False              False   
+1           False         False           False              False   
+125         False          True           False              False   
+217         False         False           False              False   
+43          False         False           False              False   
+86           True         False           False              False   
+9           False         False           False              False   
+60          False         False           False              False   
+
+     Grim Reaping  Matter Absorption  The Force  Resurrection  Terrakinesis  \
+228         False              False      False         False         False   
+297         False              False      False         False         False   
+319         False              False      False         False         False   
+91          False              False      False         False         False   
+33          False              False      False         False         False   
+246         False              False      False         False         False   
+54          False              False      False         False         False   
+296         False              False      False         False         False   
+208         False               True      False         False         False   
+214         False              False      False         False         False   
+65          False              False      False         False         False   
+161         False              False      False         False         False   
+56          False              False      False         False         False   
+153         False              False      False         False         False   
+166         False              False      False         False         False   
+142         False              False      False         False         False   
+82          False              False      False         False         False   
+113         False              False      False         False         False   
+84          False              False      False         False         False   
+224         False              False      False         False         False   
+52          False              False      False         False         False   
+300         False              False      False         False         False   
+16          False              False      False         False         False   
+58          False              False      False         False         False   
+168         False              False      False         False         False   
+12          False              False      False         False         False   
+1           False              False      False         False         False   
+125         False              False      False         False         False   
+217         False              False      False         False         False   
+43          False              False      False         False         False   
+86          False              False      False         False         False   
+9           False              False      False         False         False   
+60          False              False      False         False         False   
+
+     Vision - Heat  Vitakinesis  Radar Sense  Qwardian Power Ring  \
+228          False        False        False                False   
+297          False        False        False                False   
+319          False        False        False                False   
+91           False        False        False                False   
+33           False        False        False                False   
+246          False        False        False                False   
+54           False        False        False                False   
+296          False        False        False                False   
+208          False        False        False                False   
+214          False        False        False                False   
+65           False        False        False                False   
+161          False        False        False                False   
+56           False        False        False                False   
+153          False        False        False                False   
+166          False        False        False                False   
+142          False        False        False                False   
+82           False        False        False                False   
+113          False        False        False                False   
+84           False        False        False                False   
+224          False        False        False                False   
+52           False        False        False                False   
+300           True        False        False                False   
+16           False        False        False                False   
+58           False        False        False                False   
+168          False        False        False                False   
+12           False        False        False                False   
+1            False        False        False                False   
+125          False        False        False                False   
+217          False        False        False                False   
+43           False        False        False                False   
+86           False        False        False                False   
+9            False        False        False                False   
+60           False        False        False                False   
+
+     Weather Control  Vision - X-Ray  Vision - Thermal  Web Creation  \
+228            False           False             False         False   
+297            False           False             False         False   
+319            False           False             False         False   
+91             False           False             False         False   
+33             False           False             False         False   
+246            False           False             False         False   
+54             False           False             False         False   
+296            False           False             False         False   
+208            False           False             False         False   
+214            False           False             False         False   
+65             False           False             False         False   
+161            False           False             False         False   
+56             False           False             False         False   
+153            False           False             False         False   
+166            False           False             False         False   
+142            False           False             False         False   
+82             False           False             False         False   
+113            False           False             False         False   
+84             False           False             False         False   
+224            False           False             False         False   
+52             False           False             False         False   
+300            False            True             False         False   
+16             False           False             False         False   
+58             False           False             False         False   
+168            False           False             False         False   
+12             False           False             False         False   
+1              False           False             False         False   
+125            False           False             False         False   
+217            False           False             False         False   
+43             False           False             False         False   
+86             False            True             False         False   
+9              False           False             False         False   
+60             False           False             False         False   
+
+     Reality Warping  Odin Force  Symbiote Costume  Speed Force  \
+228            False       False             False        False   
+297            False       False             False        False   
+319            False       False             False        False   
+91             False       False             False        False   
+33             False       False             False        False   
+246            False       False             False        False   
+54             False       False             False        False   
+296            False       False             False        False   
+208            False       False             False        False   
+214            False       False             False        False   
+65             False       False             False        False   
+161            False       False             False        False   
+56             False       False             False        False   
+153            False       False             False        False   
+166            False       False             False        False   
+142            False       False             False        False   
+82             False       False             False        False   
+113            False       False             False        False   
+84             False       False             False        False   
+224            False       False             False        False   
+52             False       False             False        False   
+300            False       False             False        False   
+16             False       False             False        False   
+58             False       False             False        False   
+168            False       False             False        False   
+12             False       False             False        False   
+1              False       False             False        False   
+125            False       False             False        False   
+217            False       False             False        False   
+43             False       False             False        False   
+86             False       False             False        False   
+9              False       False             False        False   
+60             False       False             False        False   
+
+     Phoenix Force  Molecular Dissipation  Vision - Cryo  Omnipresent  \
+228          False                  False          False        False   
+297          False                  False          False        False   
+319          False                  False          False        False   
+91           False                  False          False        False   
+33           False                  False          False        False   
+246          False                  False          False        False   
+54           False                  False          False        False   
+296          False                  False          False        False   
+208          False                   True          False        False   
+214          False                  False          False        False   
+65           False                  False          False        False   
+161          False                  False          False        False   
+56           False                  False          False        False   
+153          False                  False          False        False   
+166          False                  False          False        False   
+142          False                  False          False        False   
+82           False                  False          False        False   
+113          False                  False          False        False   
+84           False                  False          False        False   
+224          False                  False          False        False   
+52           False                  False          False        False   
+300          False                  False          False        False   
+16           False                  False          False        False   
+58           False                  False          False        False   
+168          False                  False          False        False   
+12           False                  False          False        False   
+1            False                  False          False        False   
+125          False                  False          False        False   
+217          False                  False          False        False   
+43           False                  False          False        False   
+86           False                  False           True        False   
+9            False                  False          False        False   
+60           False                  False          False        False   
+
+     Omniscient  
+228       False  
+297       False  
+319       False  
+91        False  
+33        False  
+246       False  
+54        False  
+296       False  
+208       False  
+214       False  
+65        False  
+161       False  
+56        False  
+153       False  
+166       False  
+142       False  
+82        False  
+113       False  
+84        False  
+224       False  
+52        False  
+300       False  
+16        False  
+58        False  
+168       False  
+12        False  
+1         False  
+125       False  
+217       False  
+43        False  
+86        False  
+9         False  
+60        False  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_64_0
+	Source 0 Schema: ['name', 'Gender', 'Eye color', 'Race', 'Hair color', 'Height', 'Publisher', 'Skin color', 'Alignment', 'Weight']
+	Source 0 Examples: 	 Source 0 contains 367 tuples, with examples as follows: 
+         name Gender Eye color           Race Hair color  Height  \
+0      A-Bomb   Male    yellow          Human    No Hair     203   
+1  Abe Sapien   Male      blue  Icthyo Sapien    No Hair     191   
+2    Abin Sur   Male      blue        Ungaran    No Hair     185   
+
+           Publisher Skin color Alignment  Weight  
+0      Marvel Comics          -      good   441.0  
+1  Dark Horse Comics       blue      good    65.0  
+2          DC Comics        red      good    90.0  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_64/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_64_1
+	Source 1 Schema: ['hero_names', 'Agility', 'Accelerated Healing', 'Lantern Power Ring', 'Dimensional Awareness', 'Cold Resistance', 'Durability', 'Stealth', 'Energy Absorption', 'Flight', 'Danger Sense', 'Underwater breathing', 'Marksmanship', 'Weapons Master', 'Power Augmentation', 'Animal Attributes', 'Longevity', 'Intelligence', 'Super Strength', 'Cryokinesis', 'Telepathy', 'Energy Armor', 'Energy Blasts', 'Duplication', 'Size Changing', 'Density Control', 'Stamina', 'Astral Travel', 'Audio Control', 'Dexterity', 'Omnitrix', 'Super Speed', 'Possession', 'Animal Oriented Powers', 'Weapon-based Powers', 'Electrokinesis', 'Darkforce Manipulation', 'Death Touch', 'Teleportation', 'Enhanced Senses', 'Telekinesis', 'Energy Beams', 'Magic', 'Hyperkinesis', 'Jump', 'Clairvoyance', 'Dimensional Travel', 'Power Sense', 'Shapeshifting', 'Peak Human Condition', 'Immortality', 'Camouflage', 'Element Control', 'Phasing', 'Astral Projection', 'Electrical Transport', 'Fire Control', 'Projection', 'Summoning', 'Enhanced Memory', 'Reflexes', 'Invulnerability', 'Energy Constructs', 'Force Fields', 'Self-Sustenance', 'Anti-Gravity', 'Empathy', 'Power Nullifier', 'Radiation Control', 'Psionic Powers', 'Elasticity', 'Substance Secretion', 'Elemental Transmogrification', 'Technopath/Cyberpath', 'Photographic Reflexes', 'Seismic Power', 'Animation', 'Precognition', 'Mind Control', 'Fire Resistance', 'Power Absorption', 'Enhanced Hearing', 'Nova Force', 'Insanity', 'Hypnokinesis', 'Animal Control', 'Natural Armor', 'Intangibility', 'Enhanced Sight', 'Molecular Manipulation', 'Heat Generation', 'Adaptation', 'Gliding', 'Power Suit', 'Mind Blast', 'Probability Manipulation', 'Gravity Control', 'Regeneration', 'Light Control', 'Echolocation', 'Levitation', 'Toxin and Disease Control', 'Banish', 'Energy Manipulation', 'Heat Resistance', 'Natural Weapons', 'Time Travel', 'Enhanced Smell', 'Illusions', 'Thirstokinesis', 'Hair Manipulation', 'Illumination', 'Omnipotent', 'Cloaking', 'Changing Armor', 'Power Cosmic', 'Biokinesis', 'Water Control', 'Radiation Immunity', 'Vision - Telescopic', 'Toxin and Disease Resistance', 'Spatial Awareness', 'Energy Resistance', 'Telepathy Resistance', 'Molecular Combustion', 'Omnilingualism', 'Portal Creation', 'Magnetism', 'Mind Control Resistance', 'Plant Control', 'Sonar', 'Sonic Scream', 'Time Manipulation', 'Enhanced Touch', 'Magic Resistance', 'Invisibility', 'Sub-Mariner', 'Radiation Absorption', 'Intuitive aptitude', 'Vision - Microscopic', 'Melting', 'Wind Control', 'Super Breath', 'Wallcrawling', 'Vision - Night', 'Vision - Infrared', 'Grim Reaping', 'Matter Absorption', 'The Force', 'Resurrection', 'Terrakinesis', 'Vision - Heat', 'Vitakinesis', 'Radar Sense', 'Qwardian Power Ring', 'Weather Control', 'Vision - X-Ray', 'Vision - Thermal', 'Web Creation', 'Reality Warping', 'Odin Force', 'Symbiote Costume', 'Speed Force', 'Phoenix Force', 'Molecular Dissipation', 'Vision - Cryo', 'Omnipresent', 'Omniscient']
+	Source 1 Examples: 	 Source 1 contains 667 tuples, with examples as follows: 
+   hero_names  Agility  Accelerated Healing  Lantern Power Ring  \
+0     3-D Man     True                False               False   
+1      A-Bomb    False                 True               False   
+2  Abe Sapien     True                 True               False   
+
+   Dimensional Awareness  Cold Resistance  Durability  Stealth  \
+0                  False            False       False    False   
+1                  False            False        True    False   
+2                  False             True        True    False   
+
+   Energy Absorption  Flight  Danger Sense  Underwater breathing  \
+0              False   False         False                 False   
+1              False   False         False                 False   
+2              False   False         False                  True   
+
+   Marksmanship  Weapons Master  Power Augmentation  Animal Attributes  \
+0         False           False               False              False   
+1         False           False               False              False   
+2          True            True               False              False   
+
+   Longevity  Intelligence  Super Strength  Cryokinesis  Telepathy  \
+0      False         False            True        False      False   
+1       True         False            True        False      False   
+2       True          True            True        False       True   
+
+   Energy Armor  Energy Blasts  Duplication  Size Changing  Density Control  \
+0         False          False        False          False            False   
+1         False          False        False          False            False   
+2         False          False        False          False            False   
+
+   Stamina  Astral Travel  Audio Control  Dexterity  Omnitrix  Super Speed  \
+0     True          False          False      False     False         True   
+1     True          False          False      False     False        False   
+2     True          False          False      False     False        False   
+
+   Possession  Animal Oriented Powers  Weapon-based Powers  Electrokinesis  \
+0       False                   False                False           False   
+1       False                   False                False           False   
+2       False                   False                False           False   
+
+   Darkforce Manipulation  Death Touch  Teleportation  Enhanced Senses  \
+0                   False        False          False            False   
+1                   False        False          False            False   
+2                   False        False          False            False   
+
+   Telekinesis  Energy Beams  Magic  Hyperkinesis   Jump  Clairvoyance  \
+0        False         False  False         False  False         False   
+1        False         False  False         False  False         False   
+2        False         False  False         False  False         False   
+
+   Dimensional Travel  Power Sense  Shapeshifting  Peak Human Condition  \
+0               False        False          False                 False   
+1               False        False          False                 False   
+2               False        False          False                 False   
+
+   Immortality  Camouflage  Element Control  Phasing  Astral Projection  \
+0        False       False            False    False              False   
+1        False        True            False    False              False   
+2         True       False            False    False              False   
+
+   Electrical Transport  Fire Control  Projection  Summoning  Enhanced Memory  \
+0                 False         False       False      False            False   
+1                 False         False       False      False            False   
+2                 False         False       False      False            False   
+
+   Reflexes  Invulnerability  Energy Constructs  Force Fields  \
+0     False            False              False         False   
+1     False            False              False         False   
+2      True            False              False         False   
+
+   Self-Sustenance  Anti-Gravity  Empathy  Power Nullifier  Radiation Control  \
+0            False         False    False            False              False   
+1             True         False    False            False              False   
+2            False         False    False            False              False   
+
+   Psionic Powers  Elasticity  Substance Secretion  \
+0           False       False                False   
+1           False       False                False   
+2           False       False                False   
+
+   Elemental Transmogrification  Technopath/Cyberpath  Photographic Reflexes  \
+0                         False                 False                  False   
+1                         False                 False                  False   
+2                         False                 False                  False   
+
+   Seismic Power  Animation  Precognition  Mind Control  Fire Resistance  \
+0          False      False         False         False            False   
+1          False      False         False         False            False   
+2          False      False         False         False            False   
+
+   Power Absorption  Enhanced Hearing  Nova Force  Insanity  Hypnokinesis  \
+0             False             False       False     False         False   
+1             False             False       False     False         False   
+2             False             False       False     False         False   
+
+   Animal Control  Natural Armor  Intangibility  Enhanced Sight  \
+0           False          False          False           False   
+1           False          False          False           False   
+2           False          False          False            True   
+
+   Molecular Manipulation  Heat Generation  Adaptation  Gliding  Power Suit  \
+0                   False            False       False    False       False   
+1                   False            False       False    False       False   
+2                   False            False       False    False       False   
+
+   Mind Blast  Probability Manipulation  Gravity Control  Regeneration  \
+0       False                     False            False         False   
+1       False                     False            False         False   
+2       False                     False            False         False   
+
+   Light Control  Echolocation  Levitation  Toxin and Disease Control  Banish  \
+0          False         False       False                      False   False   
+1          False         False       False                      False   False   
+2          False         False       False                      False   False   
+
+   Energy Manipulation  Heat Resistance  Natural Weapons  Time Travel  \
+0                False            False            False        False   
+1                False            False            False        False   
+2                False            False            False        False   
+
+   Enhanced Smell  Illusions  Thirstokinesis  Hair Manipulation  Illumination  \
+0           False      False           False              False         False   
+1           False      False           False              False         False   
+2           False      False           False              False         False   
+
+   Omnipotent  Cloaking  Changing Armor  Power Cosmic  Biokinesis  \
+0       False     False           False         False       False   
+1       False     False           False         False       False   
+2       False     False           False         False       False   
+
+   Water Control  Radiation Immunity  Vision - Telescopic  \
+0          False               False                False   
+1          False               False                False   
+2          False               False                False   
+
+   Toxin and Disease Resistance  Spatial Awareness  Energy Resistance  \
+0                         False              False              False   
+1                         False              False              False   
+2                         False              False              False   
+
+   Telepathy Resistance  Molecular Combustion  Omnilingualism  \
+0                 False                 False           False   
+1                 False                 False           False   
+2                 False                 False           False   
+
+   Portal Creation  Magnetism  Mind Control Resistance  Plant Control  Sonar  \
+0            False      False                    False          False  False   
+1            False      False                    False          False  False   
+2            False      False                    False          False  False   
+
+   Sonic Scream  Time Manipulation  Enhanced Touch  Magic Resistance  \
+0         False              False           False             False   
+1         False              False           False             False   
+2         False              False           False             False   
+
+   Invisibility  Sub-Mariner  Radiation Absorption  Intuitive aptitude  \
+0         False        False                 False               False   
+1         False        False                 False               False   
+2         False         True                 False               False   
+
+   Vision - Microscopic  Melting  Wind Control  Super Breath  Wallcrawling  \
+0                 False    False         False         False         False   
+1                 False    False         False         False         False   
+2                 False    False         False         False         False   
+
+   Vision - Night  Vision - Infrared  Grim Reaping  Matter Absorption  \
+0           False              False         False              False   
+1           False              False         False              False   
+2           False              False         False              False   
+
+   The Force  Resurrection  Terrakinesis  Vision - Heat  Vitakinesis  \
+0      False         False         False          False        False   
+1      False         False         False          False        False   
+2      False         False         False          False        False   
+
+   Radar Sense  Qwardian Power Ring  Weather Control  Vision - X-Ray  \
+0        False                False            False           False   
+1        False                False            False           False   
+2        False                False            False           False   
+
+   Vision - Thermal  Web Creation  Reality Warping  Odin Force  \
+0             False         False            False       False   
+1             False         False            False       False   
+2             False         False            False       False   
+
+   Symbiote Costume  Speed Force  Phoenix Force  Molecular Dissipation  \
+0             False        False          False                  False   
+1             False        False          False                  False   
+2             False        False          False                  False   
+
+   Vision - Cryo  Omnipresent  Omniscient  
+0          False        False       False  
+1          False        False       False  
+2          False        False       False  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_64/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_64/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

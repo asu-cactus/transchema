@@ -1,0 +1,29 @@
+{
+  "case": "1_0",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9796,
+        "cost": 0.0033948000000000003,
+        "latency": 8.8413827419281,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.959) / 2 = 0.980 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.920, range overlap=0.917.\nGround truth candidate keys: {State}; {AverageTemperature}.\nGenerated table candidate keys: {State}; {AverageTemperature}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'AverageTemperature': range overlap=0.917, JS similarity=0.920\n    Generated    \u2014 min: -16.4544, max: 27.8268, mean: 9.4435\n    Ground Truth \u2014 min: -13.196, max: 27.3959, mean: 9.466",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n         State  AverageTemperature\n    Washington            7.875710\nMaga Buryatdan          -12.962649\n        Oregon            8.389818",
+        "code": "import pandas as pd\n\n# Read the intermediate result after the group_by and avg aggregation operation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_0/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# Ensure the schema and types match the target schema\ndf = df.rename(columns={\"State\": \"State\", \"AverageTemperature\": \"AverageTemperature\"})\ndf[\"State\"] = df[\"State\"].astype(str)\ndf[\"AverageTemperature\"] = df[\"AverageTemperature\"].astype(float)\n\n# Write the final target table to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource.csv\"\ndf.to_csv(output_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.75826530612245\nAdygey,11.235405405405409\nAga Buryat,-0.7430779220779226\nAlabama,17.102721649484536\nAlagoas,25.07078125\nAlaska,-5.60140625\nAlberta,-0.4699775280898875\nAltay,2.1109859154929578\nAmazonas,26.2013137254902\nAmur,-7.252254237288136\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9129047393798828
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 8886.971473693848,
+        "critique": 0.0
+      }
+    }
+  ]
+}

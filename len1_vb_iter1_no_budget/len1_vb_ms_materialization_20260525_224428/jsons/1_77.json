@@ -1,0 +1,46 @@
+{
+  "case": "1_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5742,
+        "cost": 0.0017428,
+        "latency": 3.122600793838501,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.148) / 2 = 0.574 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'fac_type': Jaccard=0.297",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 322\nExamples:\nfac_type  capacity\n     ALF        87\n     RCF        40\n     ALF        70",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_77/training_0.csv\"\n\n# Load source data\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Source0 schema contains these columns plus many others.\n# We only need to select 'fac_type' and 'capacity' columns.\n# The target examples show capacity as integer, so ensure dtype conversion.\n# Since only one source table is given, no union or join is needed.\n# Just select and convert types accordingly.\n\ndf_target = df_source0[['fac_type', 'capacity']].copy()\n\n# Ensure correct types\ndf_target['fac_type'] = df_target['fac_type'].astype(str)\ndf_target['capacity'] = pd.to_numeric(df_target['capacity'], errors='coerce').fillna(0).astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "fac_type,capacity\nRCF,40\nRCF,16\nRCF,15\nRCF,16\nRCF,20\nRCF,40\nRCF,45\nRCF,22\nRCF,32\nRCF,60\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7855892181396484
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7459,
+          "cost": 0.0012192,
+          "latency": 6.256665945053101,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.492) / 2 = 0.746 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.373.\nGround truth candidate keys: {fac_type}; {capacity}.\nGenerated table candidate keys: {fac_type}; {capacity}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'capacity': range overlap=0.373, JS similarity=1.000\n    Generated    \u2014 min: 3833.0, max: 14721.0, mean: 9277.0\n    Ground Truth \u2014 min: 7136.0, max: 11201.0, mean: 9168.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'fac_type': Jaccard=0.297",
+          "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      3833\n     ALF     14721",
+          "code": "import pandas as pd\n\n# Read source table\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/training_0.csv\", index_col=0)\n\n# Union all source tables (only one source here)\ndf_union = source1\n\n# Group by 'fac_type' and sum 'capacity'\nresult = df_union.groupby('fac_type', as_index=False).agg({'capacity': 'sum'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2202262878417969
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 3136.826276779175,
+        "critique": 6293.966770172119
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "4_76",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0031412000000000002,
+        "latency": 7.930615425109863,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=1.000.\nGround truth candidate keys: {Code}; {Description_x}; {Rank}; {Description_y}.\nGenerated table candidate keys: {Code}; {Description_x}; {Rank}; {Description_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['Code', 'Rank', 'Description_x', 'Description_y']\nNumber of Tuples: 10\nExamples:\n Code  Rank                                          Description_x                                          Description_y\n11298     6 Dallas/Fort Worth, TX: Dallas/Fort Worth International Dallas/Fort Worth, TX: Dallas/Fort Worth International\n11433     7                Detroit, MI: Detroit Metro Wayne County                Detroit, MI: Detroit Metro Wayne County\n14107     8          Phoenix, AZ: Phoenix Sky Harbor International          Phoenix, AZ: Phoenix Sky Harbor International",
+        "code": "import pandas as pd\n\n# File paths for source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_76/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_76/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(source0_path, index_col=0)\nsource1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation: JOIN on \"Code\"\n# Both source0 and source1 have \"Code\" column, join on it\n# source0 schema: ['Rank', 'Code', 'Description', 'x(t)']\n# source1 schema: ['Code', 'Description']\n\n# Perform inner join on 'Code'\njoined = pd.merge(\n    source0,\n    source1,\n    how='inner',\n    on='Code',\n    suffixes=('_x', '_y')\n)\n\n# Select and reorder columns to match target schema:\n# Target schema: ['Code': int, 'Rank': int, 'Description_x': str, 'Description_y': str]\n\n# Ensure correct dtypes:\njoined['Code'] = joined['Code'].astype(int)\njoined['Rank'] = joined['Rank'].astype(int)\njoined['Description_x'] = joined['Description_x'].astype(str)\njoined['Description_y'] = joined['Description_y'].astype(str)\n\ntarget = joined[['Code', 'Rank', 'Description_x', 'Description_y']]\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_76/target_multisource.csv\"\ntarget.to_csv(target_path, index=False)",
+        "generated_csv_head": "Code,Rank,Description_x,Description_y\n10397,1,\"Atlanta, GA: Hartsfield-Jackson Atlanta International\",\"Atlanta, GA: Hartsfield-Jackson Atlanta International\"\n13930,2,\"Chicago, IL: Chicago O'Hare International\",\"Chicago, IL: Chicago O'Hare International\"\n11292,3,\"Denver, CO: Denver International\",\"Denver, CO: Denver International\"\n13487,4,\"Minneapolis, MN: Minneapolis-St Paul International\",\"Minneapolis, MN: Minneapolis-St Paul International\"\n12266,5,\"Houston, TX: George Bush Intercontinental/Houston\",\"Houston, TX: George Bush Intercontinental/Houston\"\n11298,6,\"Dallas/Fort Worth, TX: Dallas/Fort Worth International\",\"Dallas/Fort Worth, TX: Dallas/Fort Worth International\"\n11433,7,\"Detroit, MI: Detroit Metro Wayne County\",\"Detroit, MI: Detroit Metro Wayne County\"\n14107,8,\"Phoenix, AZ: Phoenix Sky Harbor International\",\"Phoenix, AZ: Phoenix Sky Harbor International\"\n14869,9,\"Salt Lake City, UT: Salt Lake City International\",\"Salt Lake City, UT: Salt Lake City International\"\n11618,10,\"Newark, NJ: Newark Liberty International\",\"Newark, NJ: Newark Liberty International\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6140937805175781
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 8019.472599029541,
+        "critique": 0.0
+      }
+    }
+  ]
+}

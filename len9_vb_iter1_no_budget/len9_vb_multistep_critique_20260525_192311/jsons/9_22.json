@@ -1,0 +1,46 @@
+{
+  "case": "9_22",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8915,
+        "cost": 0.005293600000000001,
+        "latency": 11.415292501449585,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.783) / 2 = 0.891 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.875, range overlap=0.691.\nGround truth candidate keys: {INBOUND_CALLS_NUM}.\nGenerated table candidate keys: {INBOUND_CALLS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'INBOUND_CALLS_NUM': range overlap=0.691, JS similarity=0.875\n    Generated    \u2014 min: 1.0, max: 195.0, mean: 6.6392\n    Ground Truth \u2014 min: 1.0, max: 135.0, mean: 10.0375",
+        "generated_samples": "Schema: ['INBOUND_CALLS_NUM']\nNumber of Tuples: 13440\nExamples:\n INBOUND_CALLS_NUM\n                 2\n                14\n                 6",
+        "code": "import pandas as pd\n\n# File paths for the source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length9_22/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length9_22/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history: JOIN Source9_22_0 and Source9_22_1 on \"ROW_WID\"\n# Source9_22_0 schema: ['ROW_WID', 'KEYWORDS_NUM']\n# Source9_22_1 schema: ['ROW_WID', 'INBOUND_CALLS_NUM']\n# Target schema: ['INBOUND_CALLS_NUM'] (integer)\n\n# Perform inner join on 'ROW_WID'\ndf_joined = pd.merge(df_source0, df_source1, on=\"ROW_WID\", how=\"inner\")\n\n# Project only the target column 'INBOUND_CALLS_NUM' as integer type\ndf_target = df_joined[['INBOUND_CALLS_NUM']].copy()\ndf_target['INBOUND_CALLS_NUM'] = df_target['INBOUND_CALLS_NUM'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length9_22/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "INBOUND_CALLS_NUM\n1\n12\n1\n1\n2\n10\n7\n3\n30\n16\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1715888977050781
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8216,
+          "cost": 0.0031992,
+          "latency": 15.22187614440918,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.643) / 2 = 0.822 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.824, range overlap=0.463.\nGround truth candidate keys: {INBOUND_CALLS_NUM}.\nGenerated table candidate keys: {INBOUND_CALLS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'INBOUND_CALLS_NUM': range overlap=0.463, JS similarity=0.824\n    Generated    \u2014 min: 1.0, max: 63.0, mean: 6.2333\n    Ground Truth \u2014 min: 1.0, max: 135.0, mean: 10.0375",
+          "generated_samples": "Schema: ['INBOUND_CALLS_NUM']\nNumber of Tuples: 1920\nExamples:\n INBOUND_CALLS_NUM\n                 2\n                 2\n                 9",
+          "code": "import pandas as pd\n\n# Read all source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_22/training_9.csv\", index_col=0)\n\n# Union the dimension tables with the same schema (sources 3,4,7,8)\nunioned_dim = pd.concat([source3, source4, source7, source8], ignore_index=True)\n\n# Join unioned_dim with source0 on ROW_WID\njoined_0 = pd.merge(unioned_dim, source0, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source1 on ROW_WID\njoined_1 = pd.merge(joined_0, source1, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source2 on ROW_WID\njoined_2 = pd.merge(joined_1, source2, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source5 on ROW_WID\njoined_3 = pd.merge(joined_2, source5, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source6 on ROW_WID\njoined_4 = pd.merge(joined_3, source6, on=\"ROW_WID\", how=\"inner\")\n\n# Join with source9 on ROW_WID\nfinal_join = pd.merge(joined_4, source9, on=\"ROW_WID\", how=\"inner\")\n\n# Group by ROW_WID and aggregate sum of INBOUND_CALLS_NUM\n# Since target schema only has INBOUND_CALLS_NUM, we aggregate it by sum per ROW_WID\nresult = final_join.groupby(\"ROW_WID\", as_index=False).agg({\"INBOUND_CALLS_NUM\": \"sum\"})\n\n# Write the final output with exact target schema\nresult[[\"INBOUND_CALLS_NUM\"]].to_csv(\n    \"autopipeline-benchmarks/github-pipelines/length9_22/target_multisource_critique_history.csv\",\n    index=False\n)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6580352783203125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11490.434408187866,
+        "critique": 15411.466598510742
+      }
+    }
+  ]
+}

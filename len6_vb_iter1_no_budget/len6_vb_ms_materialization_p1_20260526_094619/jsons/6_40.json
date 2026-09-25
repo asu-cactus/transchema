@@ -1,0 +1,29 @@
+{
+  "case": "6_40",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.024644,
+        "latency": 27.169979095458984,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=1.000.\nGround truth candidate keys: {vet_pop}.\nGenerated table candidate keys: {vet_pop}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['state', 'vet_pop', 'vet_males', 'vet_females']\nNumber of Tuples: 300\nExamples:\n     state   vet_pop  vet_males  vet_females\nCalifornia 2142367.0      655.0         10.0\n     Maine  128940.0        NaN          NaN\n  Nebraska  144695.0        NaN          NaN",
+        "code": "import pandas as pd\n\n# Paths to source files\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_40/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_40/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_40/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_40/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_40/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_40/training_6.csv\"\n]\n\n# Read all source tables with the same schema and union them\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target\n    df_subset = df[['state', 'vet_pop', 'vet_males', 'vet_females']]\n    dfs.append(df_subset)\n\n# UNION operation: concatenate all dataframes\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# According to the operation history, the JOIN with Source6_40_2 results in empty dataframe,\n# so it does not contribute to the final output and can be ignored.\n\n# Ensure correct dtypes as per target schema\nunion_df['state'] = union_df['state'].astype(str)\nunion_df['vet_pop'] = union_df['vet_pop'].astype(float)\nunion_df['vet_males'] = union_df['vet_males'].astype(float)\nunion_df['vet_females'] = union_df['vet_females'].astype(float)\n\n# Save the final target table\nunion_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/target_multisource.csv\", index=False)",
+        "generated_csv_head": "state,vet_pop,vet_males,vet_females\nAlabama,406762.0,,\nAlaska,74614.0,29.0,1.0\nArizona,555500.0,,\nArkansas,251482.0,82.0,2.0\nCalifornia,2079606.0,634.0,21.0\nColorado,414228.0,185.0,11.0\nConnecticut,245359.0,,\nDelaware,78075.0,15.0,0.0\nFlorida*,1709427.0,,\nGeorgia,710726.0,,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4276504516601562
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 27249.50337409973,
+        "critique": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "3_64",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5875,
+        "cost": 0.0035568000000000006,
+        "latency": 13.397773027420044,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.364 + 0.811) / 2 = 0.588 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.928, range overlap=0.695.\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id, amount_y}; {customer_id, avg_amount_spent}; {customer_id, amount_x}.\nKeys present in ground truth but absent in generated: {customer_id}.\nSpurious keys in generated not present in ground truth: {customer_id, avg_amount_spent}; {amount_x, customer_id}; {amount_y, customer_id}.\nFunctional dependency F1: 0.364 (precision=0.333, recall=0.400).\nSpurious FDs in generated (not in ground truth): ['amount_y'] \u2192 amount_x; ['amount_x'] \u2192 amount_y; ['avg_amount_spent'] \u2192 amount_x; ['amount_x'] \u2192 avg_amount_spent.\nMissing FDs from ground truth: ['customer_id'] \u2192 amount_x; ['customer_id'] \u2192 avg_amount_spent; ['customer_id'] \u2192 amount_y.\nDistribution Analysis (numerical columns with issues):\n  Column 'customer_id': range overlap=0.999, JS similarity=0.865\n    Generated    \u2014 min: 10.0, max: 264200.0, mean: 108370.0905\n    Ground Truth \u2014 min: 80.0, max: 263890.0, mean: 129665.7304\n  Column 'amount_x': range overlap=0.004, JS similarity=0.893\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 63.8832\n    Ground Truth \u2014 min: 1.0, max: 22.0, mean: 1.994\n  Column 'amount_y': range overlap=0.889, JS similarity=0.976\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 63.8832\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103\n  Column 'avg_amount_spent': range overlap=0.889, JS similarity=0.976\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 63.8832\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103",
+        "generated_samples": "Schema: ['customer_id', 'amount_x', 'amount_y', 'avg_amount_spent']\nNumber of Tuples: 20000\nExamples:\n customer_id  amount_x  amount_y  avg_amount_spent\n       51610       130      20.0         21.666667\n       61520        90      30.0         30.000000\n      137950        30      30.0         30.000000",
+        "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length3_64/training_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Operation 1: group_by on Source3_64_0.customer_id with aggregations sum(amount), avg(amount)\nagg_df = df_source0.groupby(\"customer_id\", as_index=False).agg(\n    amount_x=pd.NamedAgg(column=\"amount\", aggfunc=\"sum\"),\n    avg_amount_spent=pd.NamedAgg(column=\"amount\", aggfunc=\"mean\"),\n)\n\n# Rename avg_amount_spent to float type explicitly (pandas mean returns float by default)\nagg_df[\"avg_amount_spent\"] = agg_df[\"avg_amount_spent\"].astype(float)\n\n# Operation 2: JOIN : [[\"Source3_64_0\", \"Source3_64_0\"], [\"customer_id\", \"customer_id\"]]\n# Join the aggregated result with the original source on customer_id\njoined_df = pd.merge(\n    agg_df,\n    df_source0[[\"customer_id\", \"amount\"]],\n    how=\"inner\",\n    on=\"customer_id\",\n    suffixes=(\"\", \"_y\"),\n)\n\n# Rename columns to match target schema\n# amount_x already from aggregation sum(amount)\n# amount_y is the amount column from the original source (float in target schema)\n# avg_amount_spent is from aggregation avg(amount)\njoined_df.rename(columns={\"amount\": \"amount_y\"}, inplace=True)\n\n# Convert amount_x to integer as per target schema\njoined_df[\"amount_x\"] = joined_df[\"amount_x\"].astype(int)\n\n# Convert amount_y to float as per target schema\njoined_df[\"amount_y\"] = joined_df[\"amount_y\"].astype(float)\n\n# Select and reorder columns to match target schema\ntarget_df = joined_df[[\"customer_id\", \"amount_x\", \"amount_y\", \"avg_amount_spent\"]]\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_64/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "customer_id,amount_x,amount_y,avg_amount_spent\n10,30,30.0,30.0\n80,200,50.0,66.66666666666667\n80,200,70.0,66.66666666666667\n80,200,80.0,66.66666666666667\n90,430,100.0,107.5\n90,430,80.0,107.5\n90,430,150.0,107.5\n90,430,100.0,107.5\n120,20,20.0,20.0\n130,40,40.0,40.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.8095970153808594
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.9143,
+          "cost": 0.001774,
+          "latency": 7.558049917221069,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.829) / 2 = 0.914 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.963, range overlap=0.694.\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount_x': range overlap=0.000, JS similarity=0.913\n    Generated    \u2014 min: 5.0, max: 56000.0, mean: 349.7347\n    Ground Truth \u2014 min: 1.0, max: 22.0, mean: 1.994\n  Column 'amount_y': range overlap=0.889, JS similarity=0.981\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 60.8999\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103\n  Column 'avg_amount_spent': range overlap=0.889, JS similarity=0.981\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 60.8999\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103",
+          "generated_samples": "Schema: ['customer_id', 'amount_x', 'amount_y', 'avg_amount_spent']\nNumber of Tuples: 10932\nExamples:\n customer_id  amount_x  amount_y  avg_amount_spent\n       97030        30      30.0              30.0\n      214050       500     500.0             500.0\n      105880        20      20.0              20.0",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 as per hint 21\nsource = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_64/training_0.csv\", index_col=0)\n\n# Join source with itself on customer_id\njoined = source.merge(source, on=\"customer_id\", suffixes=('_x', '_y'))\n\n# Group by customer_id and aggregate\nresult = joined.groupby(\"customer_id\", as_index=False).agg({\n    \"amount_x\": \"sum\",\n    \"amount_y\": \"mean\"\n})\n\n# avg_amount_spent is the same as amount_y average\nresult[\"avg_amount_spent\"] = result[\"amount_y\"]\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_64/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.626729965209961
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13400.188207626343,
+        "critique": 7841.468095779419
+      }
+    }
+  ]
+}

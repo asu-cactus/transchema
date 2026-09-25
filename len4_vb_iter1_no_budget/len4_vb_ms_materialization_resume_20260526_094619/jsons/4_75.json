@@ -1,0 +1,46 @@
+{
+  "case": "4_75",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7404,
+        "cost": 0.0073560000000000006,
+        "latency": 17.92059016227722,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.481) / 2 = 0.740 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.000.\nGround truth candidate keys: {a}; {b}; {type}.\nGenerated table candidate keys: {a}; {b}; {type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'a': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1455.4308, max: 4226.8786, mean: 2841.1547\n    Ground Truth \u2014 min: 76.9661, max: 83.2564, mean: 80.1113\n  Column 'b': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1455.4308, max: 4226.8786, mean: 2841.1547\n    Ground Truth \u2014 min: 81.037, max: 83.8886, mean: 82.4628",
+        "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type           a            b\nDistrict 4226.878599 2.706146e+06\n Charter 1455.430763 8.839067e+05",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_75/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_75/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: Join Source4_75_0 and Source4_75_1 on 'school_name'\njoined = pd.merge(df0, df1, on=\"school_name\", how=\"inner\")\n\n# Operation 2: Group by Source4_75_0.type and aggregate avg(size) and avg(budget)\n# Note: size and budget come from df0, so after join they are columns in joined\ngrouped = joined.groupby(\"type\", as_index=False).agg({\n    \"size\": \"mean\",\n    \"budget\": \"mean\"\n})\n\n# Rename columns to match target schema ['type', 'a', 'b']\ngrouped = grouped.rename(columns={\"size\": \"a\", \"budget\": \"b\"})\n\n# The target columns 'a' and 'b' are floats, ensure dtype\ngrouped[\"a\"] = grouped[\"a\"].astype(float)\ngrouped[\"b\"] = grouped[\"b\"].astype(float)\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,a,b\nCharter,1455.4307628524043,883906.7361111111\nDistrict,4226.878599010907,2706145.542104193\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.373291015625
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.99,
+          "cost": 0.0014868,
+          "latency": 5.67118763923645,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.980) / 2 = 0.990 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.940.\nGround truth candidate keys: {a}; {b}; {type}.\nGenerated table candidate keys: {a}; {b}; {type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'a': range overlap=0.938, JS similarity=1.000\n    Generated    \u2014 min: 77.0043, max: 83.635, mean: 80.3196\n    Ground Truth \u2014 min: 76.9661, max: 83.2564, mean: 80.1113\n  Column 'b': range overlap=0.943, JS similarity=1.000\n    Generated    \u2014 min: 80.9008, max: 83.9245, mean: 82.4127\n    Ground Truth \u2014 min: 81.037, max: 83.8886, mean: 82.4628",
+          "generated_samples": "Schema: ['type', 'a', 'b']\nNumber of Tuples: 2\nExamples:\n    type         a         b\nDistrict 80.900820 77.004336\n Charter 83.924544 83.634950",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_75/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_75/training_1.csv\", index_col=0)\n\n# Join on school_name\njoined = pd.merge(source0, source1, on=\"school_name\", how=\"inner\")\n\n# Group by 'type' (string, leftmost key in target schema)\n# Aggregate average reading_score and math_score as 'a' and 'b' respectively\nresult = joined.groupby(\"type\").agg({\n    \"reading_score\": \"mean\",\n    \"math_score\": \"mean\"\n}).reset_index()\n\n# Rename columns to match target schema\nresult.columns = [\"type\", \"a\", \"b\"]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_75/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.247406005859375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 18000.171422958374,
+        "critique": 5770.238876342773
+      }
+    }
+  ]
+}

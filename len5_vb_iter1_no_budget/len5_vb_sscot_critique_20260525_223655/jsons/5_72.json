@@ -1,0 +1,46 @@
+{
+  "case": "5_72",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5536,
+        "cost": 0.0017844000000000002,
+        "latency": 6.457489490509033,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.250) / 2 = 0.554 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {state}.\nGenerated table candidate keys: {latitude}; {state}; {missing_count}; {longitude}.\nSpurious keys in generated not present in ground truth: {longitude}; {missing_count}; {latitude}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['longitude'] \u2192 state; ['latitude'] \u2192 state; ['missing_count'] \u2192 state.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['state', 'missing_count', 'latitude', 'longitude']\nNumber of Tuples: 225\nExamples:\n   state  missing_count  latitude  longitude\nOklahoma              0        36        -97\nNebraska              0        41        -98\n   Texas              0        31        -98",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length5_72/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_72/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_72/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_72/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_72/training_4.csv\"\n]\n\n# Read all source CSV files into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# All source tables have the same schema: ['missing_count', 'state', 'latitude', 'longitude']\n# The target schema is ['state': string, 'missing_count': integer, 'latitude': integer, 'longitude': integer]\n# The source latitude and longitude are floats, but target expects integers.\n# The target examples show integer values for latitude and longitude.\n# The target examples also show missing_count as integer.\n# The state column is string in both.\n\n# Step 1: Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Step 2: Convert latitude and longitude to integers by rounding\ncombined_df['latitude'] = combined_df['latitude'].round().astype(int)\ncombined_df['longitude'] = combined_df['longitude'].round().astype(int)\n\n# Step 3: Convert missing_count to integer (already integer but ensure type)\ncombined_df['missing_count'] = combined_df['missing_count'].astype(int)\n\n# Step 4: Reorder columns to match target schema: ['state', 'missing_count', 'latitude', 'longitude']\ncombined_df = combined_df[['state', 'missing_count', 'latitude', 'longitude']]\n\n# Step 5: Write the result to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_72/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "state,missing_count,latitude,longitude\nAlabama,0,33,-87\nAlaska,0,61,-152\nArizona,0,34,-111\nArkansas,0,35,-92\nCalifornia,0,36,-120\nColorado,0,39,-105\nConnecticut,0,42,-73\nDelaware,0,39,-76\nFlorida,0,28,-82\nGeorgia,0,33,-84\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6431808471679688
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0024920000000000003,
+          "latency": 13.256429433822632,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_72/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_72/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_72/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_72/training_3.csv\", index_col=0)\ndf4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_72/training_4.csv\", index_col=0)\n\n# Join all tables on 'state' column (inner join)\ndf = df0.merge(df1, on='state', suffixes=('_0', '_1'))\ndf = df.merge(df2, on='state', suffixes=('', '_2'))\ndf = df.merge(df3, on='state', suffixes=('', '_3'))\ndf = df.merge(df4, on='state', suffixes=('', '_4'))\n\n# After join, sum the corresponding columns from all sources for each state\n# Columns to sum: missing_count, latitude, longitude from each source\n# Columns after merge:\n# missing_count_0, latitude_0, longitude_0\n# missing_count_1, latitude_1, longitude_1\n# missing_count_2, latitude_2, longitude_2\n# missing_count_3, latitude_3, longitude_3\n# missing_count, latitude, longitude (from df4, no suffix)\n\n# Sum all missing_count columns\ndf['missing_count'] = (\n    df['missing_count_0'] + df['missing_count_1'] + df['missing_count_2'] + df['missing_count_3'] + df['missing_count']\n)\n\n# Sum all latitude columns\ndf['latitude'] = (\n    df['latitude_0'] + df['latitude_1'] + df['latitude_2'] + df['latitude_3'] + df['latitude']\n)\n\n# Sum all longitude columns\ndf['longitude'] = (\n    df['longitude_0'] + df['longitude_1'] + df['longitude_2'] + df['longitude_3'] + df['longitude']\n)\n\n# Group by 'state' to ensure uniqueness and aggregate sums (in case of duplicates)\nresult = df.groupby('state', as_index=False).agg({\n    'missing_count': 'sum',\n    'latitude': 'sum',\n    'longitude': 'sum'\n})\n\n# Convert latitude and longitude to integer as per target schema\nresult['missing_count'] = result['missing_count'].astype(int)\nresult['latitude'] = result['latitude'].astype(int)\nresult['longitude'] = result['longitude'].astype(int)\n\n# Write the final output CSV with exact target schema column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_72/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.024557113647460938
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6520.9643840789795,
+        "critique": 13281.086921691895
+      }
+    }
+  ]
+}

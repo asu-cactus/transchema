@@ -1,0 +1,29 @@
+{
+  "case": "1_98",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9449,
+        "cost": 0.0048576,
+        "latency": 19.953740119934082,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.890) / 2 = 0.945 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.900, range overlap=0.880.\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0_x': range overlap=0.901, JS similarity=0.896\n    Generated    \u2014 min: -5.6438, max: 7.5809, mean: 0.9646\n    Ground Truth \u2014 min: -4.8071, max: 8.0997, mean: 1.0802\n  Column '0_y': range overlap=0.858, JS similarity=0.904\n    Generated    \u2014 min: -3.0508, max: 3.537, mean: -0.0297\n    Ground Truth \u2014 min: -2.2789, max: 3.3716, mean: 0.0913",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n     0_x       0_y\n0.988057 -0.875360\n1.188406  2.840642\n1.540728  1.734627",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/training_1.csv\"\n\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history:\n# JOIN : [[\"Source1_98_0\", \"Source1_98_1\"], [\"right_index\", \"0\"]]\n# Join df_source0 and df_source1 on df_source0's 'right_index' and df_source1's index (which is 0 after reading)\n# Since df_source1 has only one column '0' and no index column specified, its index is default 0..N-1\n# So join on df_source0['right_index'] == df_source1.index\n\n# Set df_source1 index to default integer index (already is), so join on df_source0.right_index == df_source1.index\n# We do a left join of df_source0 with df_source1 on df_source0.right_index == df_source1.index\n# But operation says JOIN with keys [\"right_index\", \"0\"], which means join on df_source0.right_index and df_source1 index (0)\n# The join type is not explicitly stated, but since the operation_history says JOIN only, default to inner join\n\n# Perform join:\n# We can set df_source1 index to default (already is), then join df_source0 with df_source1 on df_source0.right_index == df_source1.index\n# Use pd.merge with left_on='right_index', right_index=True\n\ndf_joined = pd.merge(df_source0, df_source1, how='inner', left_on='right_index', right_index=True)\n\n# The joined dataframe columns are: ['right_index', '0_x', '0_y']\n# Target schema is ['0_x': float, '0_y': float]\n# We need to keep only '0_x' and '0_y' columns, where '0_x' is from df_source0['0'], '0_y' is from df_source1['0']\n\ndf_result = df_joined[['0_x', '0_y']].copy()\n\n# Ensure columns are float type as per target schema\ndf_result['0_x'] = df_result['0_x'].astype(float)\ndf_result['0_y'] = df_result['0_y'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n1.5535905298108363,2.4987809283052016\n0.8612692087361715,0.0133425261497927\n0.8895942697011837,2.534671693499352\n0.0602362017859538,0.5811081366035176\n0.7789282082331804,2.018172584896102\n-0.9910209705213724,2.515579022386913\n0.186425781826631,2.8916114660838748\n-0.1234325630801392,-2.998452312590473\n1.0112687929772022,-0.531943661720521\n0.4733496229304084,5.52570392194699\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8943080902099609
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 20019.33741569519,
+        "critique": 0.0
+      }
+    }
+  ]
+}

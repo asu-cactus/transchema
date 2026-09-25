@@ -1,0 +1,46 @@
+{
+  "case": "4_58",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7936,
+        "cost": 0.004399200000000001,
+        "latency": 13.816143274307251,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.587) / 2 = 0.794 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.673, range overlap=0.502.\nGround truth candidate keys: {WarNum}.\nGenerated table candidate keys: {WarNum}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'WarNum': range overlap=1.000, JS similarity=0.531\n    Generated    \u2014 min: 1.0, max: 1594.0, mean: 493.3557\n    Ground Truth \u2014 min: 1.0, max: 1594.0, mean: 565.2016\n  Column 'TransTo': range overlap=0.004, JS similarity=0.814\n    Generated    \u2014 min: 0.0, max: 1581.0, mean: 39.0795\n    Ground Truth \u2014 min: 0.0, max: 6.0, mean: 0.1265",
+        "generated_samples": "Schema: ['WarNum', 'TransTo']\nNumber of Tuples: 818\nExamples:\n WarNum  TransTo\n    878        0\n    753        0\n     88        0",
+        "code": "import pandas as pd\nimport numpy as np\n\n# Read source files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_58/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_58/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_58/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_58/training_3.csv\", index_col=0)\n\n# All sources have same schema ['WarNum', 'TransTo'] with TransTo mostly NaN\n# According to intermediate_step1.csv, TransTo is filled with 0 instead of NaN\n# So fill NaN in TransTo with 0 in all sources\nfor df in [source0, source1, source2, source3]:\n    df['TransTo'] = df['TransTo'].fillna(0).astype(int)\n\n# UNION all sources (concatenate)\ntarget_df = pd.concat([source0, source1, source2, source3], ignore_index=True)\n\n# Ensure target schema and types\ntarget_df = target_df[['WarNum', 'TransTo']]\ntarget_df['WarNum'] = target_df['WarNum'].astype(int)\ntarget_df['TransTo'] = target_df['TransTo'].astype(int)\n\n# Write to target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_58/target_multisource.csv\", index=False)",
+        "generated_csv_head": "WarNum,TransTo\n300,0\n300,0\n301,0\n302,0\n303,0\n304,0\n305,0\n306,0\n307,0\n308,0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7188320159912109
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.0,
+          "cost": 0.002216,
+          "latency": 9.081735610961914,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_58/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_58/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_58/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_58/training_3.csv\", index_col=0)\n\n# Join Source4_58_0 and Source4_58_1 on WarNum\njoin_01 = pd.merge(source0, source1, on=\"WarNum\", how=\"inner\", suffixes=('_0', '_1'))\n\n# Join Source4_58_2 and Source4_58_3 on WarNum\njoin_23 = pd.merge(source2, source3, on=\"WarNum\", how=\"inner\", suffixes=('_2', '_3'))\n\n# Join the two joined tables on WarNum\njoined_all = pd.merge(join_01, join_23, on=\"WarNum\", how=\"inner\")\n\n# Aggregate TransTo columns by taking min per WarNum\n# Columns: TransTo_0, TransTo_1, TransTo_2, TransTo_3\ntrans_to_cols = ['TransTo_0', 'TransTo_1', 'TransTo_2', 'TransTo_3']\njoined_all['TransTo'] = joined_all[trans_to_cols].min(axis=1)\n\n# Select final columns as per target schema\nresult = joined_all[['WarNum', 'TransTo']]\n\n# Convert TransTo to integer type (target schema)\nresult['TransTo'] = result['TransTo'].fillna(0).astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_58/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.025033950805664062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13896.509885787964,
+        "critique": 9107.460975646973
+      }
+    }
+  ]
+}

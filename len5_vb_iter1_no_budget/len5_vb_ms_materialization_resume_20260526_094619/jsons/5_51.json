@@ -1,0 +1,46 @@
+{
+  "case": "5_51",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6535,
+        "cost": 0.0195252,
+        "latency": 64.39310693740845,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.640) / 2 = 0.653 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.566, range overlap=0.475.\nGround truth candidate keys: {Prod_id}; {Ord_id}; {Ship_Mode}; {Ship_id}.\nGenerated table candidate keys: {Ship_Mode, Prod_id}; {Ship_Mode, Ship_id}; {Ship_Mode, Ord_id}.\nKeys present in ground truth but absent in generated: {Ord_id}; {Ship_Mode}; {Prod_id}; {Ship_id}.\nSpurious keys in generated not present in ground truth: {Ship_Mode, Ord_id}; {Prod_id, Ship_Mode}; {Ship_id, Ship_Mode}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['Ship_Mode'] \u2192 Prod_id; ['Ship_Mode'] \u2192 Ord_id; ['Ship_id'] \u2192 Ship_Mode; ['Ship_Mode'] \u2192 Ship_id; ['Ord_id'] \u2192 Ship_Mode (and 1 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'Ord_id': range overlap=0.475, JS similarity=0.566\n    Generated    \u2014 min: 1.0, max: 5505.0, mean: 2726.3064\n    Ground Truth \u2014 min: 500.0, max: 3116.0, mean: 1399.6667\n  Column 'Prod_id': range overlap=0.475, JS similarity=0.566\n    Generated    \u2014 min: 1.0, max: 5505.0, mean: 2726.3064\n    Ground Truth \u2014 min: 500.0, max: 3116.0, mean: 1399.6667\n  Column 'Ship_id': range overlap=0.475, JS similarity=0.566\n    Generated    \u2014 min: 1.0, max: 5505.0, mean: 2726.3064\n    Ground Truth \u2014 min: 500.0, max: 3116.0, mean: 1399.6667",
+        "generated_samples": "Schema: ['Ship_Mode', 'Ord_id', 'Prod_id', 'Ship_id']\nNumber of Tuples: 4200\nExamples:\n     Ship_Mode  Ord_id  Prod_id  Ship_id\n   EXPRESS AIR    3872        8     5366\nDELIVERY TRUCK    4158       15     5794\n   REGULAR AIR    2553        8     3495",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_51/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_51/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_51/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_51/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_51/training_4.csv\", index_col=0)\n\n# Step 1: Join Source5_51_4 and Source5_51_1 on Ship_id\n# Source4 has Ship_id as e.g. \"SHP_1495\", Source1 Ship_id also \"SHP_1\" etc.\n# Join on Ship_id to get Ship_Mode from Source1\ndf_join1 = pd.merge(source4, source1[['Ship_Mode', 'Ship_id']], on='Ship_id', how='inner')\n\n# Step 2: Join the result with Source5_51_0 on Ord_id to keep only matching orders\n# Source0 Ord_id is like \"Ord_1\", Source4 Ord_id is also like \"Ord_1082\"\n# Join on Ord_id to keep only orders present in Source0 (to filter and align)\ndf_join2 = pd.merge(df_join1, source0[['Ord_id']], on='Ord_id', how='inner')\n\n# Step 3: Convert Ord_id, Prod_id, Ship_id to integers by extracting the numeric part\n# Ord_id: \"Ord_1082\" -> 1082\ndf_join2['Ord_id'] = df_join2['Ord_id'].str.extract(r'Ord_(\\d+)').astype(int)\n# Prod_id: \"Prod_8\" -> 8\ndf_join2['Prod_id'] = df_join2['Prod_id'].str.extract(r'Prod_(\\d+)').astype(int)\n# Ship_id: \"SHP_1495\" -> 1495\ndf_join2['Ship_id'] = df_join2['Ship_id'].str.extract(r'SHP_(\\d+)').astype(int)\n\n# Step 4: Ensure Ship_Mode is string and columns are in target order\ntarget_df = df_join2[['Ship_Mode', 'Ord_id', 'Prod_id', 'Ship_id']].copy()\n\n# Step 5: Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Ship_Mode,Ord_id,Prod_id,Ship_id\nREGULAR AIR,1082,8,1495\nEXPRESS AIR,1080,2,1493\nEXPRESS AIR,3538,3,4899\nREGULAR AIR,3555,8,4923\nREGULAR AIR,3560,15,4930\nREGULAR AIR,292,16,394\nREGULAR AIR,140,9,187\nREGULAR AIR,140,8,187\nREGULAR AIR,140,12,188\nEXPRESS AIR,59,6,79\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0843276977539062
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9961,
+          "cost": 0.002254,
+          "latency": 7.078014373779297,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.992) / 2 = 0.996 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.979.\nGround truth candidate keys: {Prod_id}; {Ord_id}; {Ship_Mode}; {Ship_id}.\nGenerated table candidate keys: {Prod_id}; {Ord_id}; {Ship_Mode}; {Ship_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['Ship_Mode', 'Ord_id', 'Prod_id', 'Ship_id']\nNumber of Tuples: 3\nExamples:\n     Ship_Mode  Ord_id  Prod_id  Ship_id\n   REGULAR AIR    3154     3154     3154\nDELIVERY TRUCK     563      563      563\n   EXPRESS AIR     483      483      483",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_51/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_51/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_51/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_51/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_51/training_4.csv\", index_col=0)\n\n# Join Source5_51_4 with Source5_51_1 on Ship_id\ndf = pd.merge(source4, source1, how='inner', on='Ship_id')\n\n# Join with Source5_51_0 on Ord_id\ndf = pd.merge(df, source0, how='inner', on='Ord_id')\n\n# Join with Source5_51_2 on Cust_id\ndf = pd.merge(df, source2, how='inner', on='Cust_id')\n\n# Join with Source5_51_3 on Prod_id\ndf = pd.merge(df, source3, how='inner', on='Prod_id')\n\n# Group by Ship_Mode and aggregate counts of Ord_id, Prod_id, Ship_id\nresult = df.groupby('Ship_Mode').agg(\n    Ord_id=('Ord_id', 'count'),\n    Prod_id=('Prod_id', 'count'),\n    Ship_id=('Ship_id', 'count')\n).reset_index()\n\n# Ensure column types match target schema: Ship_Mode (string), Ord_id (int), Prod_id (int), Ship_id (int)\nresult['Ord_id'] = result['Ord_id'].astype(int)\nresult['Prod_id'] = result['Prod_id'].astype(int)\nresult['Ship_id'] = result['Ship_id'].astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_51/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9853839874267578
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 64470.23344039917,
+        "critique": 7197.196483612061
+      }
+    }
+  ]
+}

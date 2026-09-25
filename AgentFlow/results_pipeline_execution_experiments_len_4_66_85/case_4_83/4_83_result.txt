@@ -1,0 +1,51 @@
+Case: 4_83
+Status: CORRECT
+Timestamp: 2026-02-25T12:30:34.247920
+Duration: 52.13 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_83/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['city', 'driver_count', 'type', 'average_fare']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_83
+2. Target Schema: ['city': string, 'driver_count': integer, 'type': string, 'average_fare': float]
+3. Target Examples: There are 66 available target examples:                 city  driver_count   type  average_fare
+19          Sarabury            46  Urban     23.592381
+7        Travisville            37  Urban     26.046250
+31  West Brittanyton             9  Urban     24.258000
+18        Alyssaberg            67  Urban     21.716364
+11        Smithhaven            67  Urban     23.743810
+35     New Christine            22  Urban     23.592941
+28       Swansonbury            64  Urban     27.706667
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_83_0
+	Source 0 Schema: ['city', 'date', 'fare', 'ride_id']
+	Source 0 Examples: 	 Source 0 contains 1187 tuples, with examples as follows: 
+          city                 date   fare        ride_id
+0     Sarabury  2016-01-16 13:49:27  38.35  5403689035038
+1    South Roy  2016-01-02 18:42:34  17.49  4036272335942
+2  Wiseborough  2016-01-21 17:35:29  44.18  3645042422587
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_83/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_83_1
+	Source 1 Schema: ['city', 'driver_count', 'type']
+	Source 1 Examples: 	 Source 1 contains 126 tuples, with examples as follows: 
+           city  driver_count   type
+0    Kelseyland            63  Urban
+1    Nguyenbury             8  Urban
+2  East Douglas            12  Urban
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_83/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_83/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

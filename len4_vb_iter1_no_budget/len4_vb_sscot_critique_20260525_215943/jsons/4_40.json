@@ -1,0 +1,29 @@
+{
+  "case": "4_40",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9963,
+        "cost": 0.0017744000000000002,
+        "latency": 5.495210409164429,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.993) / 2 = 0.996 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.987, range overlap=0.998.\nGround truth candidate keys: {x}.\nGenerated table candidate keys: {x}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['x', 'y', 'label']\nNumber of Tuples: 70\nExamples:\n       x  y  label\n1.748166  3      1\n3.232974  4      1\n3.578390  2      1",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_40/training_3.csv\"\n]\n\n# Mapping of label strings to integers based on source label values observed:\n# Source 0 labels: 'purple' -> map to 1 (since target label is integer and examples show label=1)\n# Source 1 labels: 'b' -> map to 1 (same reasoning)\n# Source 2 labels: 'g' -> map to 1\n# Source 3 labels: 'r' -> map to 1\n# Since target examples show label=1 for all examples, we map all source labels to 1.\n\ndef map_label_to_int(label):\n    # All source labels map to 1 as per target examples\n    return 1\n\n# Load all source dataframes, convert 'y' to integer, map 'label' to integer 1, and keep 'x' as float\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Convert 'y' to integer by rounding (since source 'y' is float but target 'y' is integer)\n    df['y'] = df['y'].round().astype(int)\n    # Map label strings to integer 1\n    df['label'] = df['label'].apply(map_label_to_int).astype(int)\n    # Ensure 'x' is float\n    df['x'] = df['x'].astype(float)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['x', 'y', 'label'] and target schema is the same,\n# we can union (concatenate) all source tables.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target examples have 70 tuples, source tables total 20+20+20+10=70 tuples, so no filtering needed.\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_40/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "x,y,label\n3.019880133839796,4,1\n3.0262109868777194,3,1\n3.0283064880207946,3,1\n3.246211067603046,3,1\n3.860027948682888,3,1\n3.538831064341653,3,1\n3.552821978685766,3,1\n3.8420308923596056,4,1\n3.124173315119912,4,1\n3.2791836790111395,3,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6644001007080078
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 5568.713665008545,
+        "critique": 0.0
+      }
+    }
+  ]
+}

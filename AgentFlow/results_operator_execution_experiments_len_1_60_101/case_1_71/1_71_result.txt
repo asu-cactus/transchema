@@ -1,0 +1,41 @@
+Case: 1_71
+Status: CORRECT
+Timestamp: 2026-02-24T13:30:45.824989
+Duration: 36.54 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_71/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Region', 'Poblacion', 'Superficie']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_71
+2. Target Schema: ['Region': string, 'Poblacion': integer, 'Superficie': float]
+3. Target Examples: There are 9 available target examples:      Region  Poblacion  Superficie
+7  Tarapacá     205566     41632.6
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_71_0
+	Source 0 Schema: ['RegionID', 'Region', 'Provincia', 'Comuna', 'Superficie', 'Poblacion', 'Densidad', 'IDH_2005']
+	Source 0 Examples: 	 Source 0 contains 173 tuples, with examples as follows: 
+   RegionID              Region   Provincia         Comuna  Superficie  \
+0         1  Arica y Parinacota       Arica          Arica      4799.4   
+1         1  Arica y Parinacota       Arica      Camarones      3927.0   
+2         1  Arica y Parinacota  Parinacota  General Lagos      2244.4   
+
+   Poblacion  Densidad  IDH_2005  
+0     210936      38.4     0.736  
+1        679       0.3     0.751  
+2        739       0.5     0.670  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_71/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_71/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

@@ -1,0 +1,46 @@
+{
+  "case": "1_18",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6105,
+        "cost": 0.0020188000000000003,
+        "latency": 6.3819897174835205,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.221) / 2 = 0.611 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.000.\nGround truth candidate keys: {petal length (cm)}; {y}; {sepal length (cm)}; {sepal width (cm)}; {petal width (cm)}.\nGenerated table candidate keys: {petal length (cm)}; {y}; {sepal length (cm)}; {sepal width (cm)}; {petal width (cm)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'y': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.5\n  Column 'sepal length (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'sepal width (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal length (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal width (cm)': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.6667\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5",
+        "generated_samples": "Schema: ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\nNumber of Tuples: 75\nExamples:\n y  sepal length (cm)  sepal width (cm)  petal length (cm)  petal width (cm)\n 2                  6                 3                  5                 2\n 2                  5                 2                  4                 2\n 2                  6                 3                  5                 2",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_18/training_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table and its schema matches the target schema except the order of columns,\n# we just need to reorder columns and convert all columns to integer type as per target schema.\n\n# Target schema columns and types\ntarget_columns = ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\n\n# Transform each source DataFrame to match the target schema\ntransformed_dfs = []\nfor df in source_dfs:\n    # Reorder columns to match target schema\n    # Source schema: ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)', 'y']\n    # Target schema: ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\n    df_reordered = df[['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']].copy()\n\n    # Convert all columns to integer type as required by target schema\n    # Use rounding before converting to int to avoid truncation errors\n    df_reordered = df_reordered.round(0).astype(int)\n\n    transformed_dfs.append(df_reordered)\n\n# Since only one source table, the transformed DataFrame is the final target DataFrame\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_18/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "y,sepal length (cm),sepal width (cm),petal length (cm),petal width (cm)\n1,7,3,4,1\n1,7,3,5,1\n1,7,3,5,2\n1,6,3,4,2\n1,6,3,4,1\n1,6,2,4,1\n1,6,2,4,1\n1,6,3,4,1\n1,6,3,5,2\n1,5,3,4,2\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6300678253173828
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6579,
+          "cost": 0.0013160000000000001,
+          "latency": 3.565448522567749,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.316) / 2 = 0.658 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.189.\nGround truth candidate keys: {petal length (cm)}; {y}; {sepal length (cm)}; {sepal width (cm)}; {petal width (cm)}.\nGenerated table candidate keys: {petal length (cm)}; {y}; {sepal length (cm)}; {sepal width (cm)}; {petal width (cm)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'y': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 1.0, max: 2.0, mean: 1.5\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.5\n  Column 'sepal length (cm)': range overlap=0.237, JS similarity=0.442\n    Generated    \u2014 min: 32.0, max: 101.0, mean: 66.5\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'sepal width (cm)': range overlap=0.237, JS similarity=0.442\n    Generated    \u2014 min: 32.0, max: 101.0, mean: 66.5\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal length (cm)': range overlap=0.237, JS similarity=0.442\n    Generated    \u2014 min: 32.0, max: 101.0, mean: 66.5\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5\n  Column 'petal width (cm)': range overlap=0.237, JS similarity=0.442\n    Generated    \u2014 min: 32.0, max: 101.0, mean: 66.5\n    Ground Truth \u2014 min: 25.0, max: 50.0, mean: 37.5",
+          "generated_samples": "Schema: ['y', 'sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']\nNumber of Tuples: 2\nExamples:\n y  sepal length (cm)  sepal width (cm)  petal length (cm)  petal width (cm)\n 2                329               148                277               101\n 1                146                69                105                32",
+          "code": "import pandas as pd\n\n# Read source table\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_18/training_0.csv\", index_col=0)\n\n# Group by 'y' and sum the other columns\nresult = source1.groupby('y', as_index=True).agg({\n    'sepal length (cm)': 'sum',\n    'sepal width (cm)': 'sum',\n    'petal length (cm)': 'sum',\n    'petal width (cm)': 'sum'\n})\n\n# Convert aggregated columns to integer type to match target schema\nresult = result.astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_18/target_multisource_critique_history.csv\")",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.7273426055908203
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6401.160717010498,
+        "critique": 3663.8176441192627
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "1_71",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6447,
+        "cost": 0.0037876000000000003,
+        "latency": 20.08329749107361,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.289) / 2 = 0.645 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.684, range overlap=0.168.\nGround truth candidate keys: {Superficie}; {Region}; {Poblacion}.\nGenerated table candidate keys: {Superficie}; {Region}; {Poblacion}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Poblacion': range overlap=0.259, JS similarity=0.643\n    Generated    \u2014 min: 106893.0, max: 2025995.0, mean: 745323.1429\n    Ground Truth \u2014 min: 205566.0, max: 7150480.0, mean: 1364831.8889\n  Column 'Superficie': range overlap=0.078, JS similarity=0.725\n    Generated    \u2014 min: 18577.6, max: 1392783.7, mean: 236750.5\n    Ground Truth \u2014 min: 9391.8, max: 126048.8, mean: 39452.2311\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Region': Jaccard=0.016",
+        "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 7\nExamples:\n                                   Region  Poblacion  Superficie\n                                 Los R\u00edos     380618     18577.6\n                                   Biob\u00edo    2025995     37068.7\nAis\u00e9n del General Carlos Ib\u00e1\u00f1ez del Campo     106893    107449.4",
+        "code": "import pandas as pd\n\n# Read source CSV with index_col=0 to ignore the numerical index column\ndf = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_71/training_0.csv\", index_col=0)\n\n# Group by 'Region' and aggregate sum of 'Poblacion' and 'Superficie'\nagg_df = df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Ensure correct types as per target schema\nagg_df['Region'] = agg_df['Region'].astype(str)\nagg_df['Poblacion'] = agg_df['Poblacion'].astype(int)\nagg_df['Superficie'] = agg_df['Superficie'].astype(float)\n\n# Write the result to the target CSV path without the index\nagg_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Region,Poblacion,Superficie\nAis\u00e9n del General Carlos Ib\u00e1\u00f1ez del Campo,106893,107449.4\nBiob\u00edo,2025995,37068.7\nLa Araucan\u00eda,933537,31842.3\nLos Lagos,835829,48583.3\nLos R\u00edos,380618,18577.6\nMagallanes y de la Ant\u00e1rtica Chilena,158828,1392783.7000000002\nMaule,775562,20948.5\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0325908660888672
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6447,
+          "cost": 0.0020616000000000002,
+          "latency": 28.860190629959106,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.289) / 2 = 0.645 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.684, range overlap=0.168.\nGround truth candidate keys: {Superficie}; {Region}; {Poblacion}.\nGenerated table candidate keys: {Superficie}; {Region}; {Poblacion}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Poblacion': range overlap=0.259, JS similarity=0.643\n    Generated    \u2014 min: 106893.0, max: 2025995.0, mean: 745323.1429\n    Ground Truth \u2014 min: 205566.0, max: 7150480.0, mean: 1364831.8889\n  Column 'Superficie': range overlap=0.078, JS similarity=0.725\n    Generated    \u2014 min: 18577.6, max: 1392783.7, mean: 236750.5\n    Ground Truth \u2014 min: 9391.8, max: 126048.8, mean: 39452.2311\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Region': Jaccard=0.016",
+          "generated_samples": "Schema: ['Region', 'Poblacion', 'Superficie']\nNumber of Tuples: 7\nExamples:\n                                   Region  Poblacion  Superficie\n                                 Los R\u00edos     380618     18577.6\n     Magallanes y de la Ant\u00e1rtica Chilena     158828   1392783.7\nAis\u00e9n del General Carlos Ib\u00e1\u00f1ez del Campo     106893    107449.4",
+          "code": "import pandas as pd\n\n# Read source table\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_71/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Strip whitespace from Region column to match target formatting\ndf['Region'] = df['Region'].str.strip()\n\n# Group by Region and aggregate sum of Poblacion and Superficie\nresult = df.groupby('Region', as_index=False).agg({\n    'Poblacion': 'sum',\n    'Superficie': 'sum'\n})\n\n# Ensure column order and names exactly as target\nresult = result[['Region', 'Poblacion', 'Superficie']]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_71/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9770393371582031
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 20095.702409744263,
+        "critique": 28902.422666549683
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "2_93",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2107,
+        "cost": 0.0030432000000000002,
+        "latency": 15.150397777557373,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.421) / 2 = 0.211 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.208, range overlap=0.057.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Timepoint}; {Drug, Mouse ID}.\nSpurious keys in generated not present in ground truth: {Mouse ID, Drug}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Timepoint'] \u2192 Mouse ID; ['Mouse ID'] \u2192 Timepoint.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.000, JS similarity=0.099\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.114, JS similarity=0.317\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+        "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 952\nExamples:\n     Drug  Timepoint Mouse ID\n Naftisol         45     t724\nCapomulin         45     u364\n Ceftamin         45     l471",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_93/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_93/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history, perform JOIN on [\"Source2_93_0\", \"Source2_93_1\"] using keys [\"Source2_93_0.Mouse ID\", \"Source2_93_1.Mouse ID\"]\n# Join df0 and df1 on \"Mouse ID\"\ndf_joined = pd.merge(df0, df1, on=\"Mouse ID\", how=\"inner\")\n\n# Target schema: ['Drug': string, 'Timepoint': integer, 'Mouse ID': integer]\n# From df_joined, select and reorder columns to match target schema\n# Note: In source, Mouse ID is string (e.g. 'n763'), but target examples show Mouse ID as integer (e.g. 20, 22, 25).\n# However, source Mouse ID values are strings like 'n763', 'q787', etc.\n# Target examples show Mouse ID as integer, but source Mouse ID is string.\n# This is a discrepancy. Since the source Mouse ID is string and target examples show integer, \n# but the source Mouse ID values are not numeric strings, we cannot convert them to int.\n# The prompt states to ensure the same type and name for each column in target examples.\n# But source Mouse ID is string, target Mouse ID is integer.\n# Given this, we must convert Mouse ID to integer if possible.\n# However, source Mouse ID values are not numeric strings, so conversion will fail.\n# The only way is to keep Mouse ID as string to preserve join correctness.\n# But target schema says Mouse ID is integer.\n# Since the join keys are Mouse ID, and source Mouse ID is string, we keep it as string.\n# We will convert Timepoint to integer.\n# Drug is string.\n\n# So we will keep Mouse ID as string (to preserve join correctness), Timepoint as int, Drug as string.\n\n# Select columns and convert types accordingly\nresult = df_joined[['Drug', 'Timepoint', 'Mouse ID']].copy()\n\n# Convert Timepoint to integer\nresult['Timepoint'] = result['Timepoint'].astype(int)\n\n# For Mouse ID, keep as string (since source values are strings like 'n763')\n# For Drug, keep as string\n\n# Reorder columns to match target schema order: Drug, Timepoint, Mouse ID\nresult = result[['Drug', 'Timepoint', 'Mouse ID']]\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_93/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "Drug,Timepoint,Mouse ID\nPlacebo,20,n763\nPlacebo,25,n763\nPlacebo,30,n763\nPlacebo,35,n763\nPlacebo,40,n763\nPlacebo,20,q787\nPlacebo,25,q787\nPlacebo,30,q787\nPlacebo,35,q787\nPlacebo,40,q787\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4581680297851562
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.19,
+          "cost": 0.0017108,
+          "latency": 5.639049053192139,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.380) / 2 = 0.190 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.140, range overlap=0.000.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug}.\nKeys present in ground truth but absent in generated: {Drug, Timepoint}.\nSpurious keys in generated not present in ground truth: {Drug}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Drug'] \u2192 Timepoint; ['Timepoint'] \u2192 Mouse ID; ['Drug'] \u2192 Mouse ID; ['Mouse ID'] \u2192 Timepoint.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.000, JS similarity=0.140\n    Generated    \u2014 min: 20.0, max: 20.0, mean: 20.0\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.000, JS similarity=0.140\n    Generated    \u2014 min: 20.0, max: 20.0, mean: 20.0\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+          "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 10\nExamples:\n     Drug  Timepoint  Mouse ID\nCapomulin         20       957\n Ramicane         20       758\n Ketapril         20       550",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_93/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_93/training_1.csv\", index_col=0)\n\n# Join on Mouse ID\njoined = pd.merge(source0, source1, on=\"Mouse ID\", how=\"inner\")\n\n# Select and reorder columns to match target schema: ['Drug', 'Timepoint', 'Mouse ID']\n# Convert Mouse ID to integer if possible (target schema says integer)\n# But source Mouse ID is string, target Mouse ID is integer - so convert Mouse ID to integer if possible\n# Check if Mouse ID values are numeric strings, else map them to integers by some method\n# From examples, Mouse ID in source is string like 'n763', 'q787', 'y163' but target Mouse ID is integer like 25, 24\n# So we need to convert Mouse ID strings to integers by extracting digits only\n\n# Extract digits from Mouse ID string to convert to integer\njoined[\"Mouse ID\"] = joined[\"Mouse ID\"].str.extract(\"(\\d+)\").astype(int)\n\n# Reorder columns\nresult = joined[[\"Drug\", \"Timepoint\", \"Mouse ID\"]]\n\n# Group by Drug (primary key) to ensure uniqueness (FD: Drug -> Mouse ID)\n# Since FD says Drug determines Mouse ID, group by Drug and take first Mouse ID and first Timepoint\nresult = result.groupby(\"Drug\", as_index=False).agg({\n    \"Timepoint\": \"first\",\n    \"Mouse ID\": \"first\"\n})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_93/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2879371643066406
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15216.18366241455,
+        "critique": 5706.73394203186
+      }
+    }
+  ]
+}

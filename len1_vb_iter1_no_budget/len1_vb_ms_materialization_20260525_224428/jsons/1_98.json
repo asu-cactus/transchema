@@ -1,0 +1,29 @@
+{
+  "case": "1_98",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9449,
+        "cost": 0.005960400000000001,
+        "latency": 23.594690799713135,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.890) / 2 = 0.945 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.900, range overlap=0.880.\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0_x': range overlap=0.901, JS similarity=0.896\n    Generated    \u2014 min: -5.6438, max: 7.5809, mean: 0.9646\n    Ground Truth \u2014 min: -4.8071, max: 8.0997, mean: 1.0802\n  Column '0_y': range overlap=0.858, JS similarity=0.904\n    Generated    \u2014 min: -3.0508, max: 3.537, mean: -0.0297\n    Ground Truth \u2014 min: -2.2789, max: 3.3716, mean: 0.0913",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n-0.175272 -0.834844\n-0.897946 -0.187016\n 1.472050  0.174552",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first column which is an index\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_98/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_98/training_1.csv\", index_col=0)\n\n# Perform the join on Source0.right_index == Source1.index (which is the implicit index after reading)\n# But since source1 has no index_col=0, its index is default 0..n-1, and source0.right_index matches that index.\n# So join source0 and source1 on source0.right_index == source1.index\n# source1 has only column '0', source0 has columns ['right_index', '0']\n\n# Reset index of source1 to have 'right_index' as index for join\n# Actually, source1 index is 0..499, source0.right_index is 0..999, so join on source0.right_index == source1.index\n# We can do left join source0 with source1 on source0.right_index == source1.index\n\n# Join source0 and source1 on source0.right_index == source1.index\njoined = source0.merge(source1, left_on='right_index', right_index=True, suffixes=('_x', '_y'))\n\n# Select columns as per target schema ['0_x', '0_y'] and convert to float\ntarget = joined[['0_x', '0_y']].astype(float)\n\n# Write the result to the specified path without the index\ntarget.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\", index=False)",
+        "generated_csv_head": "0_x,0_y\n1.5535905298108363,2.4987809283052016\n0.8612692087361715,0.0133425261497927\n0.8895942697011837,2.534671693499352\n0.0602362017859538,0.5811081366035176\n0.7789282082331804,2.018172584896102\n-0.9910209705213724,2.515579022386913\n0.186425781826631,2.8916114660838748\n-0.1234325630801392,-2.998452312590473\n1.0112687929772022,-0.531943661720521\n0.4733496229304084,5.52570392194699\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9438991546630859
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 23672.979593276978,
+        "critique": 0.0
+      }
+    }
+  ]
+}

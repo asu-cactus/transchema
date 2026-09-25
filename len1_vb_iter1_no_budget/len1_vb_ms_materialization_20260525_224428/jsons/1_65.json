@@ -1,0 +1,46 @@
+{
+  "case": "1_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8871,
+        "cost": 0.0075148,
+        "latency": 26.995763778686523,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.774) / 2 = 0.887 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.688, range overlap=0.861.\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'year': range overlap=0.752, JS similarity=0.585\n    Generated    \u2014 min: 1916.0, max: 2017.0, mean: 1972.1222\n    Ground Truth \u2014 min: 1940.0, max: 2016.0, mean: 1988.9245\n  Column '0': range overlap=0.970, JS similarity=0.790\n    Generated    \u2014 min: 1.0, max: 133.0, mean: 26.6778\n    Ground Truth \u2014 min: 1.0, max: 129.0, mean: 45.3019",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 90\nExamples:\n year  0\n 1960  2\n 1994 20\n 1944  2",
+        "code": "import pandas as pd\n\n# Read the intermediate result after the group by and count aggregation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_65/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# Ensure the schema and types match the target schema: ['year': int, '0': int]\ndf = df.astype({'year': int, '0': int})\n\n# Write the final target table to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource.csv\"\ndf.to_csv(output_path, index=False)",
+        "generated_csv_head": "year,0\n1916,1\n1925,1\n1927,1\n1929,2\n1930,1\n1932,1\n1933,2\n1934,1\n1935,1\n1936,2\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7522106170654297
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0019908,
+          "latency": 5.661855220794678,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_65/training_0.csv\", index_col=0)\n\n# Filter out invalid years (year == 0 or NaN)\nsource0 = source0[source0['year'].notna() & (source0['year'] != 0)]\n\n# Group by 'year' and count the number of rows per year\nresult = source0.groupby('year', as_index=False).agg({'year':'count'})\n\n# Rename the count column to '0' as per target schema\nresult = result.rename(columns={'year':'0'})\n\n# Ensure 'year' column is integer type (matches target schema)\nresult['year'] = result['year'].astype(int) if 'year' in result.columns else result['year']\nresult['0'] = result['0'].astype(int)\n\n# Write output to the required path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.0247955322265625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 27020.538330078125,
+        "critique": 5734.298229217529
+      }
+    }
+  ]
+}

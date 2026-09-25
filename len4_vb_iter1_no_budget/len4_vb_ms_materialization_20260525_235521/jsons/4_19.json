@@ -1,0 +1,46 @@
+{
+  "case": "4_19",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8977,
+        "cost": 0.0065896,
+        "latency": 20.589958429336548,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.795) / 2 = 0.898 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.665, range overlap=0.789.\nGround truth candidate keys: {is_goal, is_goal_count1}; {is_goal, shot_basics_sum}; {shot_basics, is_goal}.\nGenerated table candidate keys: {is_goal, is_goal_count1}; {is_goal, shot_basics_sum}; {shot_basics, is_goal}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'shot_basics_sum': range overlap=0.430, JS similarity=0.554\n    Generated    \u2014 min: 28.0, max: 4593.0, mean: 1526.0\n    Ground Truth \u2014 min: 1.0, max: 2005.0, mean: 1499.9993\n  Column 'is_goal_count1': range overlap=0.938, JS similarity=0.478\n    Generated    \u2014 min: 28.0, max: 4593.0, mean: 1526.0\n    Ground Truth \u2014 min: 29.0, max: 4895.0, mean: 3327.7224",
+        "generated_samples": "Schema: ['shot_basics', 'is_goal', 'shot_basics_sum', 'is_goal_count1']\nNumber of Tuples: 16\nExamples:\n    shot_basics  is_goal  shot_basics_sum  is_goal_count1\n      Mid Range      1.0             5790            4593\n   Right Corner      1.0              196             162\nMid Ground Line      0.0               31              28",
+        "code": "import pandas as pd\n\n# Load the source data\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_19/intermediate_step1.csv\"\ndf = pd.read_csv(source_path)\n\n# The intermediate_step1.csv schema is:\n# ['shot_basics', 'is_goal', 'shot_basics_sum', 'is_goal_count1']\n# But 'is_goal' column contains NaNs and is not matching target distribution.\n# From the operation history, 'is_goal' is not aggregated properly and should be the original is_goal values (0.0 or 1.0).\n# The target schema is:\n# ['shot_basics': string, 'is_goal': float, 'shot_basics_sum': integer, 'is_goal_count1': integer]\n\n# The intermediate table has one row per shot_basics with aggregated sums and counts, but 'is_goal' is NaN.\n# The target examples show multiple rows per shot_basics with different is_goal values (0.0 and 1.0).\n# So we need to expand the aggregated data to have one row per shot_basics and is_goal (0.0 or 1.0),\n# and assign shot_basics_sum and is_goal_count1 accordingly.\n\n# From the source data and operation history, we only have aggregated sums and counts per shot_basics,\n# but no direct counts split by is_goal=0 or 1.\n# However, the target examples show that for each shot_basics, there are rows for is_goal=0.0 and is_goal=1.0,\n# with the same shot_basics_sum and is_goal_count1 values repeated.\n\n# So the best we can do is to create two rows per shot_basics:\n# one with is_goal=0.0 and one with is_goal=1.0,\n# and keep shot_basics_sum and is_goal_count1 the same for both rows.\n\n# This matches the target examples given:\n# e.g. shot_basics=Goal Line, is_goal=1.0 and is_goal=0.0 both have shot_basics_sum=722 and is_goal_count1=1572.\n\n# Prepare the expanded dataframe:\ndf_expanded = pd.concat([\n    df.assign(is_goal=1.0),\n    df.assign(is_goal=0.0)\n], ignore_index=True)\n\n# Ensure correct dtypes:\ndf_expanded['shot_basics'] = df_expanded['shot_basics'].astype(str)\ndf_expanded['is_goal'] = df_expanded['is_goal'].astype(float)\ndf_expanded['shot_basics_sum'] = df_expanded['shot_basics_sum'].astype(int)\ndf_expanded['is_goal_count1'] = df_expanded['is_goal_count1'].astype(int)\n\n# Reorder columns to match target schema exactly\ndf_expanded = df_expanded[['shot_basics', 'is_goal', 'shot_basics_sum', 'is_goal_count1']]\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_19/target_multisource.csv\"\ndf_expanded.to_csv(target_path, index=False)",
+        "generated_csv_head": "shot_basics,is_goal,shot_basics_sum,is_goal_count1\nGoal Area,1.0,3221,2507\nGoal Line,1.0,2399,1943\nLeft Corner,1.0,152,123\nMid Ground Line,1.0,31,28\nMid Range,1.0,5790,4593\nPenalty Spot,1.0,2805,2253\nRight Corner,1.0,196,162\n,1.0,0,599\nGoal Area,0.0,3221,2507\nGoal Line,0.0,2399,1943\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2116432189941406
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0022908,
+          "latency": 8.561906337738037,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source data\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_19/training_0.csv\", index_col=0)\n\n# The target schema is ['shot_basics': string, 'is_goal': float, 'shot_basics_sum': integer, 'is_goal_count1': integer]\n# From the source, we have shot_basics and is_goal columns.\n# The target columns shot_basics_sum and is_goal_count1 correspond to sum and count aggregations respectively.\n\n# Clean data: keep relevant columns and handle NaNs in is_goal\ndf = source0[['shot_basics', 'is_goal', 'shot_id_number']].copy()\ndf['is_goal'] = pd.to_numeric(df['is_goal'], errors='coerce').fillna(0)\ndf['shot_id_number'] = pd.to_numeric(df['shot_id_number'], errors='coerce').fillna(0).astype(int)\n\n# Group by shot_basics (primary key), aggregate sum of is_goal, sum of shot_id_number (as shot_basics_sum), and count of is_goal (as is_goal_count1)\nresult = df.groupby('shot_basics', as_index=False).agg({\n    'is_goal': 'sum',\n    'shot_id_number': 'sum',\n    'is_goal': 'count'\n})\n\n# Rename columns to match target schema\nresult.columns = ['shot_basics', 'is_goal', 'shot_basics_sum', 'is_goal_count1']\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_19/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.030279159545898438
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 20629.213571548462,
+        "critique": 8651.976585388184
+      }
+    }
+  ]
+}

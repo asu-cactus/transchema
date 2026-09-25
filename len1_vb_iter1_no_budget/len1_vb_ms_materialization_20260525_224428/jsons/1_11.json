@@ -1,0 +1,46 @@
+{
+  "case": "1_11",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6406,
+        "cost": 0.003142,
+        "latency": 9.039846897125244,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.281) / 2 = 0.641 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'sex': Jaccard=0.562",
+        "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 1\nExamples:\nsex  births\n  M   30291",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_11/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by 'sex' and sum the 'births' column\ngrouped = df.groupby('sex', as_index=False)['births'].sum()\n\n# Ensure the data types match the target schema\ngrouped['sex'] = grouped['sex'].astype(str)\ngrouped['births'] = grouped['births'].astype(int)\n\n# Rename the dataframe to the target table name\nTarget1_11 = grouped\n\n# Write the result to the specified output path without the index column\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource.csv\"\nTarget1_11.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,births\nM,30291\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7507801055908203
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6406,
+          "cost": 0.0014156,
+          "latency": 4.460226535797119,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.281) / 2 = 0.641 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {sex}; {births}.\nGenerated table candidate keys: {sex}; {births}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'sex': Jaccard=0.562",
+          "generated_samples": "Schema: ['sex', 'births']\nNumber of Tuples: 1\nExamples:\nsex  births\n  M   30291",
+          "code": "import pandas as pd\n\n# Read source CSV with index_col=0 to ignore the index column\nsource = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_11/training_0.csv\", index_col=0)\n\n# Group by 'sex' and sum 'births'\nresult = source.groupby('sex', as_index=False)['births'].sum()\n\n# Write output with exact column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_11/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.110076904296875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9050.572633743286,
+        "critique": 4488.5101318359375
+      }
+    }
+  ]
+}

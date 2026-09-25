@@ -1,0 +1,46 @@
+{
+  "case": "5_38",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5536,
+        "cost": 0.0033016,
+        "latency": 8.840169668197632,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.250) / 2 = 0.554 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {state}.\nGenerated table candidate keys: {state}; {longitude}; {missing_count}; {latitude}.\nSpurious keys in generated not present in ground truth: {missing_count}; {longitude}; {latitude}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['latitude'] \u2192 state; ['missing_count'] \u2192 state; ['longitude'] \u2192 state.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['state', 'missing_count', 'latitude', 'longitude']\nNumber of Tuples: 200\nExamples:\n      state  missing_count  latitude  longitude\n     Alaska              0        61       -152\nConnecticut              0        42        -73\n   Nebraska              0        41        -98",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length5_38/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_38/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_38/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length5_38/training_3.csv\"\n]\n\n# Load all source tables with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(path, index_col=0) for path in source_files]\n\n# According to operation_history: UNION of Source5_38_0, Source5_38_1, Source5_38_2, Source5_38_3\n# All have the same schema: ['missing_count', 'state', 'latitude', 'longitude']\n\n# Concatenate (union) all dataframes\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['state': string, 'missing_count': integer, 'latitude': integer, 'longitude': integer]\n# Current columns: ['missing_count', 'state', 'latitude', 'longitude']\n\n# Reorder columns to match target schema order\nunion_df = union_df[['state', 'missing_count', 'latitude', 'longitude']]\n\n# Convert data types according to target schema\nunion_df['state'] = union_df['state'].astype(str)\nunion_df['missing_count'] = union_df['missing_count'].astype(int)\n# latitude and longitude in target are integers, so convert by rounding\nunion_df['latitude'] = union_df['latitude'].round().astype(int)\nunion_df['longitude'] = union_df['longitude'].round().astype(int)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_38/target_multisource.csv\"\nunion_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "state,missing_count,latitude,longitude\nAlabama,0,33,-87\nAlaska,0,61,-152\nArizona,0,34,-111\nArkansas,0,35,-92\nCalifornia,0,36,-120\nColorado,0,39,-105\nConnecticut,0,42,-73\nDelaware,0,39,-76\nFlorida,0,28,-82\nGeorgia,0,33,-84\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2090206146240234
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.4842,
+          "cost": 0.0022348000000000003,
+          "latency": 9.085255861282349,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.111) / 2 = 0.484 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {state}.\nGenerated table candidate keys: {state}; {longitude}; {missing_count}; {latitude}.\nSpurious keys in generated not present in ground truth: {missing_count}; {longitude}; {latitude}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['latitude'] \u2192 state; ['missing_count'] \u2192 state; ['longitude'] \u2192 state.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'state': Jaccard=0.445",
+          "generated_samples": "Schema: ['state', 'missing_count', 'latitude', 'longitude']\nNumber of Tuples: 25\nExamples:\n       state  missing_count  latitude  longitude\n    Nebraska              0   41.1289   -98.2883\nNorth Dakota              0   47.5362   -99.7930\n   Tennessee              0   35.7449   -86.7489",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_38/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_38/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_38/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_38/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_38/training_4.csv\", index_col=0)\n\n# Join Source5_38_0 and Source5_38_1 on 'state'\njoin_01 = pd.merge(source0, source1, on='state', suffixes=('_0', '_1'))\n\n# Join Source5_38_2 and Source5_38_3 on 'state'\njoin_23 = pd.merge(source2, source3, on='state', suffixes=('_2', '_3'))\n\n# Join the above two results on 'state'\njoin_0123 = pd.merge(join_01, join_23, on='state')\n\n# Join the above with Source5_38_4 on 'state'\nfull_join = pd.merge(join_0123, source4, on='state', suffixes=('', '_4'))\n\n# Now aggregate to get one row per state\n# Group by 'state' (primary key)\n# Aggregate missing_count, latitude, longitude by min (to get consistent values)\nresult = full_join.groupby('state', as_index=False).agg({\n    'missing_count_0': 'min',\n    'latitude_0': 'min',\n    'longitude_0': 'min'\n})\n\n# Rename columns to match target schema\nresult = result.rename(columns={\n    'missing_count_0': 'missing_count',\n    'latitude_0': 'latitude',\n    'longitude_0': 'longitude'\n})\n\n# Write to target CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_38/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.1295547485351562
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8909.273386001587,
+        "critique": 9146.344661712646
+      }
+    }
+  ]
+}

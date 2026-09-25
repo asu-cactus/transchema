@@ -1,0 +1,29 @@
+{
+  "case": "3_97",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9485,
+        "cost": 0.0081472,
+        "latency": 21.82403016090393,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.897) / 2 = 0.949 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.900, range overlap=1.000.\nGround truth candidate keys: {movie title}.\nGenerated table candidate keys: {movie title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'rating': range overlap=1.000, JS similarity=0.900\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.192\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'movie title': Jaccard=0.844",
+        "generated_samples": "Schema: ['movie title', 'rating']\nNumber of Tuples: 1388\nExamples:\n           movie title   rating\n         Caught (1996) 3.666667\n   Crimson Tide (1995) 3.743590\nOscar & Lucinda (1997) 3.800000",
+        "code": "import pandas as pd\n\n# Load source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_97/training_0.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_97/training_2.csv\", index_col=0)\n\n# Join Source3_97_0 and Source3_97_2 on 'movie id'\nmerged = pd.merge(source0, source2, on=\"movie id\", how=\"inner\")\n\n# Group by 'movie title' and calculate average rating\nresult = merged.groupby(\"movie title\", as_index=False)[\"rating\"].mean()\n\n# Ensure correct column types\nresult[\"movie title\"] = result[\"movie title\"].astype(str)\nresult[\"rating\"] = result[\"rating\"].astype(float)\n\n# Save to target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_97/target_multisource.csv\", index=False)",
+        "generated_csv_head": "movie title,rating\n'Til There Was You (1997),3.0\n1-900 (1994),2.5\n101 Dalmatians (1996),2.761904761904762\n12 Angry Men (1957),4.275862068965517\n187 (1997),2.75\n2 Days in the Valley (1996),2.9473684210526314\n\"20,000 Leagues Under the Sea (1954)\",3.588235294117647\n2001: A Space Odyssey (1968),3.849056603773585\n\"39 Steps, The (1935)\",4.0\n8 1/2 (1963),4.333333333333333\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9491443634033203
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 21903.213024139404,
+        "critique": 0.0
+      }
+    }
+  ]
+}

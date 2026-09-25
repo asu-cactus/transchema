@@ -1,0 +1,29 @@
+{
+  "case": "3_39",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.978,
+        "cost": 0.0017448000000000001,
+        "latency": 9.640931129455566,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.956) / 2 = 0.978 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.921, range overlap=0.991.\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'movieId': range overlap=0.983, JS similarity=0.926\n    Generated    \u2014 min: 1.0, max: 190221.0, mean: 31760.1377\n    Ground Truth \u2014 min: 1.0, max: 193587.0, mean: 38719.887\n  Column 'rating': range overlap=1.000, JS similarity=0.916\n    Generated    \u2014 min: 0.5, max: 5.0, mean: 3.2552\n    Ground Truth \u2014 min: 0.5, max: 5.0, mean: 3.3801",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 5445\nExamples:\n movieId  rating\n  133195     1.5\n    8464     3.5\n    5986     4.0",
+        "code": "import pandas as pd\n\n# File paths for the source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_39/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_39/training_1.csv\"\n\n# Load Source 0: movie metadata (movieId, title, genres)\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: user ratings (userId, movieId, rating, timestamp)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['movieId': int, 'rating': float]\n# - Source 0 has movieId, title, genres (no rating)\n# - Source 1 has movieId, rating (plus userId and timestamp)\n# - Target requires average rating per movieId (float rating)\n# \n# Steps:\n# 1. From Source 1, group by movieId and compute average rating.\n# 2. Source 0 is not needed for rating aggregation but must be used as per Hint 6 and 28.\n#    Since Source 0 has no rating info, we can join the aggregated ratings from Source 1 with Source 0 on movieId.\n# 3. The final output is movieId and average rating.\n# 4. Ensure movieId is integer and rating is float.\n# 5. Write the result to the specified output path.\n\n# Aggregate ratings from Source 1 by movieId\ndf_ratings_avg = df_source1.groupby('movieId', as_index=False)['rating'].mean()\n\n# Join aggregated ratings with Source 0 on movieId to ensure all movieIds from Source 0 are considered\n# This also ensures all source tables are used.\n# Use inner join to keep only movieIds present in both sources (since target examples have 6920 tuples, less than Source 0's 9742)\ndf_merged = pd.merge(df_source0[['movieId']], df_ratings_avg, on='movieId', how='inner')\n\n# Ensure correct dtypes\ndf_merged['movieId'] = df_merged['movieId'].astype(int)\ndf_merged['rating'] = df_merged['rating'].astype(float)\n\n# Output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_39/target_multisource_cot.csv\"\n\n# Save the result with header and no index\ndf_merged.to_csv(output_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.865853658536585\n2,3.53125\n3,2.4166666666666665\n4,2.0\n5,2.4375\n6,3.9210526315789473\n7,3.083333333333333\n8,3.0\n9,2.9\n10,3.517857142857143\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0716915130615234
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 9780.39026260376,
+        "critique": 0.0
+      }
+    }
+  ]
+}

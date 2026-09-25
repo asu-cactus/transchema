@@ -1,0 +1,46 @@
+{
+  "case": "1_88",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0,
+        "cost": 0.0084176,
+        "latency": 19.043628215789795,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path(s)\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_88/training_0.csv\"\n    ]\n\n    # Target schema columns and types\n    target_columns = ['Airline', 'Date_of_Journey', 'Source', 'Destination', 'Route',\n                      'Dep_Time', 'Arrival_Time', 'Duration', 'Total_Stops', 'Additional_Info', 'Price']\n\n    # Read all source files (only one in this case) and concatenate (union) since schemas are identical\n    dfs = []\n    for file in source_files:\n        # Read CSV with index_col=0 to ignore the first numerical index column\n        df = pd.read_csv(file, index_col=0)\n\n        # Check if all target columns exist in source\n        missing_cols = set(target_columns) - set(df.columns)\n        if missing_cols:\n            raise ValueError(f\"Source file {file} is missing columns: {missing_cols}\")\n\n        # Select only target columns in correct order\n        df = df[target_columns]\n\n        # Ensure Price is integer type (convert if needed)\n        df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0).astype(int)\n\n        # Convert all other columns to string type (as per target schema)\n        for col in target_columns:\n            if col != 'Price':\n                df[col] = df[col].astype(str)\n\n        dfs.append(df)\n\n    # Since only one source table with same schema as target, union is just that dataframe\n    target_df = pd.concat(dfs, ignore_index=True)\n\n    # Write the result to the target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length1_88/target_multisource.csv\"\n    target_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.0438690185546875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0,
+          "cost": 0.0013568,
+          "latency": 17.990988969802856,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the first numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_88/training_0.csv\", index_col=0)\n\n# Since there is only one source table, and the target schema matches the source schema,\n# we just need to ensure the data types match the target schema.\n# Target schema: ['Airline': string, 'Date_of_Journey': string, 'Source': string, 'Destination': string,\n# 'Route': string, 'Dep_Time': string, 'Arrival_Time': string, 'Duration': string,\n# 'Total_Stops': string, 'Additional_Info': string, 'Price': integer]\n\n# Convert Price to integer (if not already)\nsource1['Price'] = source1['Price'].astype(int)\n\n# Write the final output to the target path\nsource1.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_88/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03814697265625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 19046.793460845947,
+        "critique": 18574.976205825806
+      }
+    }
+  ]
+}

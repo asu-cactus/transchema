@@ -1,0 +1,46 @@
+{
+  "case": "2_74",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2107,
+        "cost": 0.006377600000000001,
+        "latency": 28.525089740753174,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.421) / 2 = 0.211 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.208, range overlap=0.057.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Mouse ID}; {Drug, Timepoint}.\nSpurious keys in generated not present in ground truth: {Mouse ID, Drug}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Mouse ID'] \u2192 Timepoint; ['Timepoint'] \u2192 Mouse ID.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.000, JS similarity=0.099\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.114, JS similarity=0.317\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6124\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+        "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 952\nExamples:\n    Drug  Timepoint  Mouse ID\nKetapril         30       107\nPropriva         40       699\nKetapril         45       497",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_74/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_74/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Inspect and convert 'Mouse ID' columns to a common type for join\n# Source0 'Mouse ID' looks like strings with letters, e.g. 'f234'\n# Source1 'Mouse ID' looks like strings with letters, e.g. 'n763'\n# But the intermediate join failed due to type mismatch, so ensure both are strings\n\ndf0['Mouse ID'] = df0['Mouse ID'].astype(str)\ndf1['Mouse ID'] = df1['Mouse ID'].astype(str)\n\n# Perform inner join on 'Mouse ID'\ndf_joined = pd.merge(df0, df1[['Mouse ID', 'Timepoint']], on='Mouse ID', how='inner')\n\n# Reorder columns to match target schema: ['Drug': string, 'Timepoint': integer, 'Mouse ID': integer]\n# Target 'Mouse ID' is integer, but source 'Mouse ID' is string with letters.\n# The target examples show 'Mouse ID' as integers (e.g., 5, 20, 25).\n# The source 'Mouse ID' values are strings like 'f234', 'x402', 'a492', 'n763', etc.\n# So we need to convert these string IDs to integers matching the target examples.\n# Since no direct mapping is given, we can extract the numeric part from the string and convert to int.\n\ndef extract_numeric_id(s):\n    # Extract digits from string and convert to int\n    digits = ''.join(filter(str.isdigit, s))\n    return int(digits) if digits else None\n\ndf_joined['Mouse ID'] = df_joined['Mouse ID'].apply(extract_numeric_id)\n\n# Convert 'Timepoint' to integer type\ndf_joined['Timepoint'] = df_joined['Timepoint'].astype(int)\n\n# Ensure 'Drug' is string type\ndf_joined['Drug'] = df_joined['Drug'].astype(str)\n\n# Select and reorder columns as per target schema\ndf_target = df_joined[['Drug', 'Timepoint', 'Mouse ID']]\n\n# Write the result to the target path without the index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_74/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Drug,Timepoint,Mouse ID\nStelasyn,20,234\nStelasyn,25,234\nStelasyn,30,234\nStelasyn,35,234\nStelasyn,20,402\nStelasyn,25,402\nStelasyn,30,402\nStelasyn,35,402\nStelasyn,40,402\nStelasyn,45,402\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5404224395751953
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0015108,
+          "latency": 4.108530044555664,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_74/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_74/training_1.csv\", index_col=0)\n\n# Join on Mouse ID\njoined = pd.merge(source0, source1, how=\"inner\", left_on=\"Mouse ID\", right_on=\"Mouse ID\")\n\n# Group by Drug and Timepoint, aggregate Mouse ID by max (to get integer Mouse ID consistent with target)\nresult = joined.groupby([\"Drug\", \"Timepoint\"], as_index=False).agg({\"Mouse ID\": \"max\"})\n\n# Ensure column order and types match target schema: ['Drug': string, 'Timepoint': integer, 'Mouse ID': integer]\nresult = result.astype({\"Drug\": str, \"Timepoint\": int, \"Mouse ID\": int})\nresult = result[[\"Drug\", \"Timepoint\", \"Mouse ID\"]]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_74/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.0324249267578125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 28625.975370407104,
+        "critique": 4140.296697616577
+      }
+    }
+  ]
+}

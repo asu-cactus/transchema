@@ -1,0 +1,183 @@
+Case: 1_19
+Status: CORRECT
+Timestamp: 2026-02-24T13:15:42.736639
+Duration: 110.34 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_0_30/case_1_19/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['ocd_prop_id', 'calaccess_prop_id', 'ccdc_prop_id', 'prop_name', 'ccdc_committee_id', 'calaccess_committee_id', 'committee_name_x', 'committee_position', 'committee_name_y', 'calaccess_filing_id', 'date_received', 'contributor_lastname', 'contributor_firstname', 'contributor_city', 'contributor_state', 'contributor_zip', 'contributor_employer', 'contributor_occupation', 'contributor_is_self_employed', 'amount']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_19
+2. Target Schema: ['ocd_prop_id': string, 'calaccess_prop_id': integer, 'ccdc_prop_id': integer, 'prop_name': string, 'ccdc_committee_id': integer, 'calaccess_committee_id': integer, 'committee_name_x': string, 'committee_position': string, 'committee_name_y': string, 'calaccess_filing_id': integer, 'date_received': string, 'contributor_lastname': string, 'contributor_firstname': string, 'contributor_city': string, 'contributor_state': string, 'contributor_zip': string, 'contributor_employer': string, 'contributor_occupation': string, 'contributor_is_self_employed': boolean, 'amount': float]
+3. Target Examples: There are 56326 available target examples:                                             ocd_prop_id  calaccess_prop_id  \
+789    ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+38257  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+5381   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+8931   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+55694  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+...                                                 ...                ...   
+34584  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+40795  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+12369  ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+9866   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+4166   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+
+       ccdc_prop_id                                          prop_name  \
+789              81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+38257            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+5381             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+8931             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+55694            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+...             ...                                                ...   
+34584            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+40795            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+12369            81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+9866             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+4166             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+
+       ccdc_committee_id  calaccess_committee_id  \
+789                  446                 1302403   
+38257                469                 1302403   
+5381                 446                 1302403   
+8931                 446                 1302403   
+55694                469                 1302403   
+...                  ...                     ...   
+34584                469                 1302403   
+40795                469                 1302403   
+12369                446                 1302403   
+9866                 446                 1302403   
+4166                 446                 1302403   
+
+                                        committee_name_x committee_position  \
+789    CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+38257  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+5381   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+8931   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+55694  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+...                                                  ...                ...   
+34584  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+40795  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+12369  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+9866   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+4166   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+
+                                        committee_name_y  calaccess_filing_id  \
+789    CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+38257  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+5381   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+8931   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+55694  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+...                                                  ...                  ...   
+34584  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+40795  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+12369  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+9866   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+4166   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+
+      date_received contributor_lastname contributor_firstname  \
+789      2015-12-16                PEREZ               ELNER G   
+38257    2015-12-16             PETERSON               LARRY A   
+5381     2015-12-16                AVILA               ABIGAIL   
+8931     2015-12-16             GONZALEZ                JUAN J   
+55694    2015-12-16              VINCENT             TIMOTHY K   
+...             ...                  ...                   ...   
+34584    2015-12-16                REYES              ANGELA M   
+40795    2015-12-16               MCSHAN              MILTON M   
+12369    2015-12-16                PEREY              JOSEPH S   
+9866     2015-12-16                USHER           JAQUELINE L   
+4166     2015-12-16                NUNEZ           DAGOBERTO G   
+
+      contributor_city contributor_state contributor_zip contributor_employer  \
+789    WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+38257  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+5381   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+8931   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+55694  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+...                ...               ...             ...                  ...   
+34584  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+40795  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+12369  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+9866   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+4166   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+
+      contributor_occupation  contributor_is_self_employed  amount  
+789     CORRECTIONAL OFFICER                         False  287.08  
+38257   CORRECTIONAL OFFICER                         False  287.08  
+5381    CORRECTIONAL OFFICER                         False  287.08  
+8931    CORRECTIONAL OFFICER                         False  287.08  
+55694   CORRECTIONAL OFFICER                         False  287.08  
+...                      ...                           ...     ...  
+34584   CORRECTIONAL OFFICER                         False  287.08  
+40795   CORRECTIONAL OFFICER                         False  287.08  
+12369   CORRECTIONAL OFFICER                         False  287.08  
+9866    CORRECTIONAL OFFICER                         False  287.08  
+4166    CORRECTIONAL OFFICER                         False  287.08  
+
+[5633 rows x 20 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_19_0
+	Source 0 Schema: ['ocd_prop_id', 'calaccess_prop_id', 'ccdc_prop_id', 'prop_name', 'ccdc_committee_id', 'calaccess_committee_id', 'committee_name', 'committee_position']
+	Source 0 Examples: 	 Source 0 contains 102 tuples, with examples as follows: 
+                                        ocd_prop_id  calaccess_prop_id  \
+0  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+1  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+2  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+
+   ccdc_prop_id                                          prop_name  \
+0            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+1            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+2            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+
+   ccdc_committee_id  calaccess_committee_id  \
+0                382                 1374469   
+1                383                 1220380   
+2                384                 1282321   
+
+                                      committee_name committee_position  
+0  YES ON PROPOSITION 51 - CALIFORNIANS FOR QUALI...            SUPPORT  
+1  COMMUNITY COLLEGE FACILITY COALITION ISSUES CO...            SUPPORT  
+2  TORLAKSON'S INVEST IN CALIFORNIA A BALLOT MEAS...            SUPPORT  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_19/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_19_1
+	Source 1 Schema: ['calaccess_committee_id', 'committee_name', 'calaccess_filing_id', 'date_received', 'contributor_lastname', 'contributor_firstname', 'contributor_city', 'contributor_state', 'contributor_zip', 'contributor_employer', 'contributor_occupation', 'contributor_is_self_employed', 'amount']
+	Source 1 Examples: 	 Source 1 contains 28189 tuples, with examples as follows: 
+   calaccess_committee_id                              committee_name  \
+0                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+1                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+2                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+
+   calaccess_filing_id date_received contributor_lastname  \
+0              2083796    2016-09-18              BERGMAN   
+1              2083796    2016-09-18                KAHLE   
+2              2083796    2016-07-15             MCDEVITT   
+
+  contributor_firstname contributor_city contributor_state contributor_zip  \
+0              GRETCHEN    SPRING VALLEY                CA           91978   
+1                 MYRNA        SAN DIEGO                CA           92109   
+2                   LEO        ESCONDIDO                CA           92025   
+
+       contributor_employer contributor_occupation  \
+0                A NEW PATH     EXECUTIVE DIRECTOR   
+1  NATIONAL SCHOOL DISTRICT                TEACHER   
+2             LIFE IONIZERS    SEO/CONTENT MANAGER   
+
+   contributor_is_self_employed  amount  
+0                         False    84.0  
+1                         False    35.0  
+2                         False   198.0  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_19/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_19/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

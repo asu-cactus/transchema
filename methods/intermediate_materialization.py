@@ -20,6 +20,9 @@ import time
 from test_scope import get_test_cases_ids
 from llm.llm_models import TokenUsageTracker, LLMClient
 from util.utils import (
+    drop_leading_index_col_if_present,
+    resolve_main_folder,
+    resolve_case_json,
     get_test_info,
     execute_python,
 )
@@ -48,6 +51,7 @@ allowed_operation_list = [
     "GROUP_BY/AGGREGATE",
     "PIVOT",
     "UNPIVOT",
+    "COLUMN_TRANSFORM",
     "NO_MORE_OPERATION",
 ]
 
@@ -319,7 +323,7 @@ def verify_result(target_file_location, ground_truth_location, config):
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
     # if (is_column_numerical(df_ground_truth.columns[0])):
-    df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+    drop_leading_index_col_if_present(df_ground_truth)
     try:
         (
             hard_avg_similarity,
@@ -362,22 +366,20 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    data_split = getattr(args, "data_split", "test")
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with data_split prefix in this subfolder
     file_count = sum(
         1
         for _, _, files in os.walk(path_to_files)
         for file in files
-        if file.startswith("test")
+        if file.startswith(data_split)
     )
 
     # print(file_count)
 
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+    json_file_path = resolve_case_json(benchmark, file_count)
 
     source_space_dir = create_source_space(main_folder, len_id, target_id)
 
@@ -413,6 +415,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         len_idx_target_idx,
         main_folder,
         anon_flag=0,
+        data_split=data_split,
     )
 
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)

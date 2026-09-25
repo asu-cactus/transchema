@@ -1,0 +1,86 @@
+Case: 4_93
+Status: INCORRECT
+Timestamp: 2026-02-25T12:00:07.389790
+Duration: 202.17 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_86_100/case_4_93/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_93
+2. Target Schema: ['movie_id': integer, 'user_id': integer, 'rating': integer, 'timestamp': integer, 'gender': integer, 'age': integer, 'occupation': integer, 'zip': integer, 'title_x': integer, 'genres_x': integer, 'title_y': string, 'genres_y': string]
+3. Target Examples: There are 1044 available target examples:       movie_id  user_id  rating  timestamp  gender  age  occupation  zip  \
+28          61        1       1          1       1    1           1    1   
+1009      3788        1       1          1       1    1           1    1   
+617       2327        1       1          1       1    1           1    1   
+14          27        1       1          1       1    1           1    1   
+291       1089       13      13         13      13   13          13   13   
+...        ...      ...     ...        ...     ...  ...         ...  ...   
+932       3528        3       3          3       3    3           3    3   
+466       1831        4       4          4       4    4           4    4   
+548       2087        7       7          7       7    7           7    7   
+535       2043        3       3          3       3    3           3    3   
+539       2055        1       1          1       1    1           1    1   
+
+      title_x  genres_x                                    title_y  \
+28          1         1                      Eye for an Eye (1996)   
+1009        1         1                              Blowup (1966)   
+617         1         1  Tales from the Darkside: The Movie (1990)   
+14          1         1                        Now and Then (1995)   
+291        13        13                      Reservoir Dogs (1992)   
+...       ...       ...                                        ...   
+932         3         3                Prince of Tides, The (1991)   
+466         4         4                       Lost in Space (1998)   
+548         7         7                           Peter Pan (1953)   
+535         3         3  Darby O'Gill and the Little People (1959)   
+539         1         1              Hot Lead and Cold Feet (1978)   
+
+                                  genres_y  
+28                          Drama|Thriller  
+1009                         Drama|Mystery  
+617                                 Horror  
+14                                   Drama  
+291                         Crime|Thriller  
+...                                    ...  
+932                          Drama|Romance  
+466                 Action|Sci-Fi|Thriller  
+548   Animation|Children's|Fantasy|Musical  
+535           Adventure|Children's|Fantasy  
+539                         Comedy|Western  
+
+[104 rows x 12 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_93_0
+	Source 0 Schema: ['user_id', 'gender', 'age', 'occupation', 'zip']
+	Source 0 Examples: 	 Source 0 contains 2000 tuples, with examples as follows: 
+   user_id gender  age  occupation         zip
+0     4354      M   35          14       78611
+1     2313      F   50           6  48103-4711
+2     5333      F   25           7       02332
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_93/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_93_1
+	Source 1 Schema: ['movie_id', 'title', 'genres']
+	Source 1 Examples: 	 Source 1 contains 2000 tuples, with examples as follows: 
+   movie_id                                      title          genres
+0      2380  Police Academy 3: Back in Training (1986)          Comedy
+1       832                              Ransom (1996)  Drama|Thriller
+2      2759                                Dick (1999)          Comedy
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_93/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_93_2
+	Source 2 Schema: ['user_id', 'movie_id', 'rating', 'timestamp']
+	Source 2 Examples: 	 Source 2 contains 20000 tuples, with examples as follows: 
+   user_id  movie_id  rating  timestamp
+0     4107       296       5  965963229
+1     4354      2344       2  965193700
+2     4948      1209       2  962643528
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_93/test_2.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_93/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

@@ -1,0 +1,46 @@
+{
+  "case": "1_68",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8398,
+        "cost": 0.0012016000000000002,
+        "latency": 5.223847150802612,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.680) / 2 = 0.840 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'V_GENE': Jaccard=0.680",
+        "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV3\n IGHV3\n IGHV4",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_68/training_0.csv\"\n\n# Load source data with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Transformation:\n# Target schema: ['V_GENE']\n# Source schema: ['V_CALL']\n# Target examples show values like \"IGHV3\", \"IGHV1\", \"IGHV3\"\n# Source examples show values like \"IGHV3-30*18\", \"IGHV3-15*01\", \"IGHV4-30-2*01\"\n# The transformation is to extract the V_GENE part from V_CALL.\n# The V_GENE is the substring before the first '-' in V_CALL.\n\ndf_source0['V_GENE'] = df_source0['V_CALL'].str.split('-', n=1).str[0]\n\n# Select only the target column\ndf_target = df_source0[['V_GENE']]\n\n# Write the result to the specified output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "V_GENE\nIGHV3\nIGHV3\nIGHV4\nIGHV3\nIGHV1\nIGHV3\nIGHV4\nIGHV2\nIGHV1\nIGHV3\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3132095336914062
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8398,
+          "cost": 0.0012464000000000002,
+          "latency": 5.929283857345581,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.680) / 2 = 0.840 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {V_GENE}.\nGenerated table candidate keys: {V_GENE}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'V_GENE': Jaccard=0.680",
+          "generated_samples": "Schema: ['V_GENE']\nNumber of Tuples: 6583\nExamples:\nV_GENE\n IGHV3\n IGHV3\n IGHV4",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_68/training_0.csv\", index_col=0)\n\n# Extract the V_GENE column by trimming the string before the first '*'\n# and also remove any suffix after '-' if present (to match target examples like IGHV3)\n# For example: IGHV3-30*18 -> IGHV3, IGHV3-15*01 -> IGHV3, IGHV4-30-2*01 -> IGHV4\nv_gene = source1['V_CALL'].str.split('*').str[0].str.split('-').str[0]\n\n# Create the final DataFrame with the exact target schema column name\nresult = pd.DataFrame({'V_GENE': v_gene})\n\n# Write the output CSV without the index\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_68/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7326602935791016
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5226.237058639526,
+        "critique": 6123.1818199157715
+      }
+    }
+  ]
+}

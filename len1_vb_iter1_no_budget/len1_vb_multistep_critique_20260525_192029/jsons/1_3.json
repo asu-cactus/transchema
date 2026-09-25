@@ -1,0 +1,46 @@
+{
+  "case": "1_3",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.5956,
+        "cost": 0.0018928,
+        "latency": 4.6674113273620605,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.525) / 2 = 0.596 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.654, range overlap=0.851.\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}.\nKeys present in ground truth but absent in generated: {Median}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['Median'] \u2192 Major_category.\nDistribution Analysis (numerical columns with issues):\n  Column 'Median': range overlap=0.851, JS similarity=0.654\n    Generated    \u2014 min: 43000.0, max: 75000.0, mean: 55153.8462\n    Ground Truth \u2014 min: 40250.0, max: 77857.1429, mean: 52839.5172\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Major_category': Jaccard=0.297",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 13\nExamples:\n                     Major_category  Median\n            Computers & Mathematics 70000.0\n                     Social Science 52000.0\nIndustrial Arts & Consumer Services 64000.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_3/training_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file\nfor file in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, transformation is straightforward:\n# Target schema: ['Major_category': string, 'Median': float]\n# Source schema contains these columns, so we just select and ensure types.\n\n# Extract relevant columns from the single source dataframe\ndf_source = dfs[0][['Major_category', 'Median']].copy()\n\n# Ensure correct types\ndf_source['Major_category'] = df_source['Major_category'].astype(str)\ndf_source['Median'] = df_source['Median'].astype(float)\n\n# According to the target examples, the target table has 9 rows.\n# The source has 87 rows, so we need to aggregate by Major_category to get one Median per category.\n# The target examples show Median as a single float per Major_category.\n# We will compute the median of Median values per Major_category to match the target style.\n\ndf_target = df_source.groupby('Major_category', as_index=False)['Median'].median()\n\n# Save the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nArts,45000.0\nBiology & Life Science,52000.0\nBusiness,60000.0\nComputers & Mathematics,70000.0\nEngineering,75000.0\nHealth,50000.0\nHumanities & Liberal Arts,45000.0\nIndustrial Arts & Consumer Services,64000.0\nInterdisciplinary,43000.0\nLaw & Public Policy,56000.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1162757873535156
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7635,
+          "cost": 0.0012072000000000003,
+          "latency": 3.025062322616577,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.527) / 2 = 0.763 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.663, range overlap=0.851.\nGround truth candidate keys: {Major_category}; {Median}.\nGenerated table candidate keys: {Major_category}; {Median}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Median': range overlap=0.851, JS similarity=0.663\n    Generated    \u2014 min: 43000.0, max: 75000.0, mean: 55428.2286\n    Ground Truth \u2014 min: 40250.0, max: 77857.1429, mean: 52839.5172\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Major_category': Jaccard=0.297",
+          "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 13\nExamples:\n         Major_category       Median\nComputers & Mathematics 74500.000000\n      Physical Sciences 62400.000000\n               Business 60615.384615",
+          "code": "import pandas as pd\n\n# Read source table\nsource1_3_0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_3/training_0.csv\", index_col=0)\n\n# Group by Major_category and aggregate Median by mean\nresult = source1_3_0.groupby(\"Major_category\", as_index=False).agg({\"Median\": \"mean\"})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8835792541503906
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4669.739007949829,
+        "critique": 3052.809715270996
+      }
+    }
+  ]
+}

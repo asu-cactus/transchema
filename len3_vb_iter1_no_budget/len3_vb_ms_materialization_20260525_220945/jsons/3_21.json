@@ -1,0 +1,46 @@
+{
+  "case": "3_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6143,
+        "cost": 0.0041031999999999996,
+        "latency": 46.15306639671326,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.500 + 0.729) / 2 = 0.614 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.604, range overlap=0.606.\nGround truth candidate keys: {Country}.\nGenerated table candidate keys: {AverageTemperature_y}; {Country}; {AverageTemperature_x}.\nSpurious keys in generated not present in ground truth: {AverageTemperature_x}; {AverageTemperature_y}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['AverageTemperature_y'] \u2192 Country; ['AverageTemperature_y'] \u2192 AverageTemperature_x; ['AverageTemperature_x'] \u2192 AverageTemperature_y; ['AverageTemperature_x'] \u2192 Country.\nDistribution Analysis (numerical columns with issues):\n  Column 'AverageTemperature_x': range overlap=0.531, JS similarity=0.610\n    Generated    \u2014 min: -19.7565, max: 30.4071, mean: 18.814\n    Ground Truth \u2014 min: -0.548, max: 38.495, mean: 25.9275\n  Column 'AverageTemperature_y': range overlap=0.680, JS similarity=0.598\n    Generated    \u2014 min: -19.7565, max: 30.4071, mean: 18.814\n    Ground Truth \u2014 min: -36.738, max: 25.895, mean: 9.8935",
+        "generated_samples": "Schema: ['Country', 'AverageTemperature_x', 'AverageTemperature_y']\nNumber of Tuples: 238\nExamples:\n  Country  AverageTemperature_x  AverageTemperature_y\n     Cuba             25.369052             25.369052\nNicaragua             25.850200             25.850200\n  Iceland              1.425866              1.425866",
+        "code": "import pandas as pd\n\n# Read the intermediate joined table (result of joining Source3_21_0 with itself on Country)\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_21/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# The target schema is ['Country': string, 'AverageTemperature_x': float, 'AverageTemperature_y': float]\n# The intermediate table already has these columns.\n\n# From the analysis, the key difference is that the target's Country values do not have suffixes like \" (Europe)\".\n# So we need to clean the 'Country' column by removing any trailing parenthesis and content inside it.\n\n# Define a function to clean country names by removing trailing parenthesis and trimming spaces\ndef clean_country(name):\n    if pd.isna(name):\n        return name\n    # Remove trailing \" (something)\" if present\n    if \" (\" in name:\n        return name[:name.index(\" (\")].strip()\n    return name.strip()\n\ndf['Country'] = df['Country'].map(clean_country)\n\n# After cleaning, there might be duplicate rows for the same Country with different AverageTemperature_x and AverageTemperature_y.\n# The target examples show one row per Country, so we need to aggregate.\n\n# Aggregate by Country, taking the mean of AverageTemperature_x and AverageTemperature_y\nresult = df.groupby('Country', as_index=False).agg({\n    'AverageTemperature_x': 'mean',\n    'AverageTemperature_y': 'mean'\n})\n\n# Ensure the column types match the target schema\nresult['Country'] = result['Country'].astype(str)\nresult['AverageTemperature_x'] = result['AverageTemperature_x'].astype(float)\nresult['AverageTemperature_y'] = result['AverageTemperature_y'].astype(float)\n\n# Write the final result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_21/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "Country,AverageTemperature_x,AverageTemperature_y\nAfghanistan,14.479696202531647,14.479696202531647\nAfrica,24.20669117647059,24.20669117647059\nAlbania,11.583702970297027,11.583702970297027\nAlgeria,24.684470588235296,24.684470588235296\nAmerican Samoa,26.722204545454545,26.722204545454545\nAndorra,10.249689320388349,10.249689320388349\nAngola,22.31950909090909,22.31950909090909\nAnguilla,26.66350666666667,26.66350666666667\nAntarctica,,\nAntigua And Barbuda,26.47390625,26.47390625\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.0029544830322266
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6172,
+          "cost": 0.001424,
+          "latency": 5.7077178955078125,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.500 + 0.734) / 2 = 0.617 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.598, range overlap=0.606.\nGround truth candidate keys: {Country}.\nGenerated table candidate keys: {AverageTemperature_y}; {Country}; {AverageTemperature_x}.\nSpurious keys in generated not present in ground truth: {AverageTemperature_x}; {AverageTemperature_y}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['AverageTemperature_y'] \u2192 Country; ['AverageTemperature_y'] \u2192 AverageTemperature_x; ['AverageTemperature_x'] \u2192 AverageTemperature_y; ['AverageTemperature_x'] \u2192 Country.\nDistribution Analysis (numerical columns with issues):\n  Column 'AverageTemperature_x': range overlap=0.531, JS similarity=0.602\n    Generated    \u2014 min: -19.7565, max: 30.4071, mean: 18.5982\n    Ground Truth \u2014 min: -0.548, max: 38.495, mean: 25.9275\n  Column 'AverageTemperature_y': range overlap=0.680, JS similarity=0.593\n    Generated    \u2014 min: -19.7565, max: 30.4071, mean: 18.5982\n    Ground Truth \u2014 min: -36.738, max: 25.895, mean: 9.8935",
+          "generated_samples": "Schema: ['Country', 'AverageTemperature_x', 'AverageTemperature_y']\nNumber of Tuples: 243\nExamples:\n     Country  AverageTemperature_x  AverageTemperature_y\n     Albania             11.583703             11.583703\n Timor Leste             25.739382             25.739382\nBurkina Faso             28.057189             28.057189",
+          "code": "import pandas as pd\n\n# Read source data with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_21/training_0.csv\", index_col=0)\n\n# Rename columns to prepare for join (simulate two different source tables with same schema)\n# Since only one source table is given, we join it with itself to produce two temperature columns\ndf_left = source0.rename(columns={\"AverageTemperature\": \"AverageTemperature_x\"})\ndf_right = source0.rename(columns={\"AverageTemperature\": \"AverageTemperature_y\"})\n\n# Perform inner join on 'Country'\njoined = pd.merge(df_left, df_right, on=\"Country\", how=\"inner\")\n\n# Group by 'Country' and aggregate AverageTemperature_x and AverageTemperature_y by mean\nresult = joined.groupby(\"Country\", as_index=False).agg({\n    \"AverageTemperature_x\": \"mean\",\n    \"AverageTemperature_y\": \"mean\"\n})\n\n# Write output with exact target schema column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_21/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.9359588623046875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 46174.62062835693,
+        "critique": 12790.514945983887
+      }
+    }
+  ]
+}

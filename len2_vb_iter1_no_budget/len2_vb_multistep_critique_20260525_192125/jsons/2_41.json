@@ -1,0 +1,46 @@
+{
+  "case": "2_41",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.2667,
+        "cost": 0.0037384000000000002,
+        "latency": 10.395679950714111,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.533) / 2 = 0.267 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.279, range overlap=0.321.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Timepoint}; {Drug, Metastatic Sites}.\nSpurious keys in generated not present in ground truth: {Drug, Metastatic Sites}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Metastatic Sites'] \u2192 Timepoint; ['Timepoint'] \u2192 Metastatic Sites.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Metastatic Sites.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.151, JS similarity=0.308\n    Generated    \u2014 min: 0.3478, max: 3.3636, mean: 1.764\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Metastatic Sites': range overlap=0.491, JS similarity=0.251\n    Generated    \u2014 min: 0.3478, max: 3.3636, mean: 1.764\n    Ground Truth \u2014 min: 0.0, max: 2.0, mean: 0.5104",
+        "generated_samples": "Schema: ['Drug', 'Timepoint', 'Metastatic Sites']\nNumber of Tuples: 60\nExamples:\n     Drug  Timepoint  Metastatic Sites\n Propriva         35          2.300000\nCapomulin         25          0.818182\n Ramicane         45          1.250000",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_41/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_41/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)  # Source2_41_0: ['Mouse ID', 'Drug']\ndf1 = pd.read_csv(source1_path, index_col=0)  # Source2_41_1: ['Mouse ID', 'Timepoint', 'Tumor Volume (mm3)', 'Metastatic Sites']\n\n# Operation 1: JOIN on \"Mouse ID\"\ndf_joined = pd.merge(df0, df1, on=\"Mouse ID\", how=\"inner\")\n\n# Operation 2: group_by [Source2_41_0.Drug, Source2_41_1.Timepoint], aggregations = avg(Source2_41_1.Metastatic Sites)\n# Group by 'Drug' and 'Timepoint', aggregate mean of 'Metastatic Sites'\ndf_grouped = (\n    df_joined.groupby(['Drug', 'Timepoint'], as_index=False)\n    .agg({'Metastatic Sites': 'mean'})\n)\n\n# Ensure the target schema types:\n# 'Drug': string, 'Timepoint': integer, 'Metastatic Sites': float\ndf_grouped['Drug'] = df_grouped['Drug'].astype(str)\ndf_grouped['Timepoint'] = df_grouped['Timepoint'].astype(int)\ndf_grouped['Metastatic Sites'] = df_grouped['Metastatic Sites'].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_41/target_multisource.csv\"\ndf_grouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "Drug,Timepoint,Metastatic Sites\nCapomulin,20,0.6111111111111112\nCapomulin,25,0.8181818181818182\nCapomulin,30,1.0909090909090908\nCapomulin,35,1.181818181818182\nCapomulin,40,1.380952380952381\nCapomulin,45,1.4761904761904765\nCeftamin,20,1.1111111111111112\nCeftamin,25,1.5\nCeftamin,30,1.9375\nCeftamin,35,2.071428571428572\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.7666816711425781
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.2667,
+          "cost": 0.0015236,
+          "latency": 5.186566114425659,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.533) / 2 = 0.267 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.279, range overlap=0.321.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Timepoint}; {Drug, Metastatic Sites}.\nSpurious keys in generated not present in ground truth: {Drug, Metastatic Sites}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Metastatic Sites'] \u2192 Timepoint; ['Timepoint'] \u2192 Metastatic Sites.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Metastatic Sites.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.151, JS similarity=0.308\n    Generated    \u2014 min: 0.3478, max: 3.3636, mean: 1.764\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Metastatic Sites': range overlap=0.491, JS similarity=0.251\n    Generated    \u2014 min: 0.3478, max: 3.3636, mean: 1.764\n    Ground Truth \u2014 min: 0.0, max: 2.0, mean: 0.5104",
+          "generated_samples": "Schema: ['Drug', 'Timepoint', 'Metastatic Sites']\nNumber of Tuples: 60\nExamples:\n     Drug  Timepoint  Metastatic Sites\n Naftisol         20          1.150000\nZoniferol         20          1.250000\n Naftisol         35          2.266667",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_41/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_41/training_1.csv\", index_col=0)\n\n# Join on Mouse ID\njoined = pd.merge(source0, source1, on=\"Mouse ID\", how=\"inner\")\n\n# Group by Drug and Timepoint, aggregate average of Metastatic Sites\nresult = joined.groupby([\"Drug\", \"Timepoint\"], as_index=False).agg({\"Metastatic Sites\": \"mean\"})\n\n# Ensure column order and types match target schema\nresult = result[[\"Drug\", \"Timepoint\", \"Metastatic Sites\"]]\nresult[\"Drug\"] = result[\"Drug\"].astype(str)\nresult[\"Timepoint\"] = result[\"Timepoint\"].astype(int)\nresult[\"Metastatic Sites\"] = result[\"Metastatic Sites\"].astype(float)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_41/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3573169708251953
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10457.93628692627,
+        "critique": 5251.839399337769
+      }
+    }
+  ]
+}

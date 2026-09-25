@@ -1,0 +1,26 @@
+MCTS Action Trace — case 2_5
+============================================================
+
+── Iteration 0 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=JOIN
+            → JOIN : [[Source2_5_0, Source2_5_1]] columns=[[Source2_5_0.city, Source2_5_1.city]]
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000  ★ NEW BEST
+            history: ['JOIN : [[Source2_5_0, Source2_5_1]] columns=[[Source2_5_0.city, Source2_5_1.city]]']
+  BACKPROP  reward=1.0000
+
+── Iteration 1 ──────────────────────────────────────────────
+  SELECT    depth=0  parent_op=None
+  EXPAND    op=NO_MORE_OPERATION
+            → NO_MORE_OPERATION
+  SIMULATE  ✓ Success  (trials used: 1)
+  SCORE     1.0000
+            history: ['NO_MORE_OPERATION']
+  BACKPROP  reward=1.0000
+
+============================================================
+SUMMARY
+  Total iterations : 2
+  Best score       : 1.0000
+  Best history     : ['JOIN : [[Source2_5_0, Source2_5_1]] columns=[[Source2_5_0.city, Source2_5_1.city]]']

@@ -6,7 +6,7 @@ import traceback
 import pdb
 
 from auto_suggest_llm_util import get_filtered_functional_dependency, calculate_score
-from util.utils import execute_python, get_test_info
+from util.utils import execute_python, get_test_info, resolve_main_folder, resolve_case_json, drop_leading_index_col_if_present
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
@@ -19,7 +19,7 @@ def critique(args, length, id_, log_dir_, flags, is_def, operation_history):
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
     # Counting files starting with 'test' in this subfolder
     file_count = sum(
@@ -99,7 +99,7 @@ Previous Python Code : ```Python
     ground_truth_location = f"{main_folder}/length{len_idx_target_idx}/target.csv"
 
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
-    df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+    drop_leading_index_col_if_present(df_ground_truth)
 
     target_critique_locations = []
     # Iterate through {main_folder}/length{len_idx_target_idx}/, get csv files that start with 'target_critique_'

@@ -1,0 +1,147 @@
+Case: 1_46
+Status: INCORRECT
+Timestamp: 2026-02-24T01:55:21.222766
+Duration: 331.28 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_46/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_46
+2. Target Schema: ['Date': string, 'Water Use': float, 'Power Use': integer]
+3. Target Examples: There are 96 available target examples:         Date  Water Use  Power Use
+76  Nov_2009    6499.58      32486
+31  Feb_2013     720.80      29284
+64  May_2006    5152.45      35114
+58  Mar_2008    6871.26      30829
+50  Jun_2008    4234.22      35830
+55  Jun_2013    1067.03      29305
+42  Jul_2007    4169.70      42916
+74  Nov_2007    2924.57      32746
+0   Apr_2006    4351.10      25274
+28  Feb_2010    2812.00      30864
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_46_0
+	Source 0 Schema: ['Text Date', 'Value Date', 'Zip Code', 'Water Use', 'Power Use']
+	Source 0 Examples: 	 Source 0 contains 6960 tuples, with examples as follows: 
+  Text Date Value Date                                         Zip Code  \
+0  Mar_2008     Mar-08  90230\n(33.99506171100046, -118.39500957899969)   
+1  Jul_2011     Jul-11  90272\n(34.04886156900045, -118.53572692799969)   
+2  Apr_2010     Apr-10  90272\n(34.04886156900045, -118.53572692799969)   
+
+   Water Use  Power Use  
+0      16.70        396  
+1      35.73       1013  
+2      23.53        916  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_46/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_46/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+import logging
+import sys
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+def convert_text_date_to_yyyymm(text_date):
+    """
+    Convert 'Text Date' in format like 'Mar_2008' to 'YYYY-MM-DD' string with day as '01'.
+    If conversion fails, return None.
+    """
+    try:
+        # Replace underscore with space to parse easily
+        # e.g. 'Mar_2008' -> 'Mar 2008'
+        date_str = text_date.replace('_', ' ')
+        # Parse with pandas to datetime
+        dt = pd.to_datetime(date_str, format='%b %Y', errors='coerce')
+        if pd.isna(dt):
+            return None
+        return dt.strftime('%Y-%m-%d')
+    except Exception as e:
+        logging.warning(f"Failed to convert Text Date '{text_date}': {e}")
+        return None
+
+def main():
+    # Source file path
+    source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_46/test_0.csv"
+    # Output file path
+    output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_46/target_multisource_agentic.csv"
+    expected_row_count = 96
+
+    # Step 1: Read source CSV with index_col=0
+    try:
+        df = pd.read_csv(source0_path, index_col=0)
+        logging.info(f"Source data loaded with {len(df)} rows.")
+    except Exception as e:
+        logging.error(f"Failed to read source file: {e}")
+        sys.exit(1)
+
+    # Step 2: Validate 'Text Date' format preliminarily (must match pattern like 'Mon_YYYY')
+    # We'll consider valid if convert_text_date_to_yyyymm returns non-None
+    df['Date'] = df['Text Date'].apply(convert_text_date_to_yyyymm)
+    invalid_dates = df['Date'].isna()
+    if invalid_dates.any():
+        count_invalid = invalid_dates.sum()
+        logging.error(f"Found {count_invalid} rows with invalid 'Text Date' format that cannot be converted.")
+        # Drop rows with invalid dates
+        df = df.loc[~invalid_dates]
+        logging.info(f"Dropped {count_invalid} rows with invalid 'Text Date'. Remaining rows: {len(df)}")
+
+    # Step 3: Cast 'Water Use' to float with error handling
+    df['Water Use'] = pd.to_numeric(df['Water Use'], errors='coerce')
+    # Step 4: Cast 'Power Use' to integer with error handling
+    # First convert to numeric (float), then to Int64 (nullable integer) to handle NaNs
+    df['Power Use'] = pd.to_numeric(df['Power Use'], errors='coerce')
+    # After numeric conversion, convert to Int64 dtype (nullable integer)
+    df['Power Use'] = df['Power Use'].astype('Int64')
+
+    # Step 5: Remove rows with NaN in 'Water Use' or 'Power Use' or 'Date'
+    before_drop = len(df)
+    df = df.dropna(subset=['Water Use', 'Power Use', 'Date'])
+    dropped = before_drop - len(df)
+    if dropped > 0:
+        logging.info(f"Dropped {dropped} rows due to NaN in 'Water Use', 'Power Use', or 'Date'.")
+
+    # Step 6: Select only required columns in order and rename 'Date' column is already set
+    df_final = df[['Date', 'Water Use', 'Power Use']].copy()
+
+    # Step 7: Remove duplicate rows based on all three columns
+    before_dedup = len(df_final)
+    df_final = df_final.drop_duplicates(subset=['Date', 'Water Use', 'Power Use'])
+    deduped = before_dedup - len(df_final)
+    if deduped > 0:
+        logging.info(f"Removed {deduped} duplicate rows.")
+
+    # Step 8: Validate final row count equals expected 96
+    final_count = len(df_final)
+    if final_count != expected_row_count:
+        logging.error(f"Final row count {final_count} does not match expected {expected_row_count}.")
+        sys.exit(1)
+    else:
+        logging.info(f"Final row count validation passed: {final_count} rows.")
+
+    # Step 9: Ensure data types exactly match target schema
+    # 'Date' as string (already string)
+    df_final['Date'] = df_final['Date'].astype(str)
+    # 'Water Use' as float64
+    df_final['Water Use'] = df_final['Water Use'].astype(float)
+    # 'Power Use' as int64 (convert from Int64 nullable to int)
+    df_final['Power Use'] = df_final['Power Use'].astype(int)
+
+    # Step 10: Save to CSV without the index
+    try:
+        df_final.to_csv(output_path, index=False)
+        logging.info(f"Saved transformed data to {output_path}")
+    except Exception as e:
+        logging.error(f"Failed to save output CSV: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+```

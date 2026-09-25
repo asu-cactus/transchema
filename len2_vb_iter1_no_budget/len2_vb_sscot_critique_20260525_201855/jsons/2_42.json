@@ -1,0 +1,46 @@
+{
+  "case": "2_42",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7082,
+        "cost": 0.001742,
+        "latency": 8.586013793945312,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.750) / 2 = 0.708 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.544, range overlap=0.455.\nGround truth candidate keys: {Store}; {StoreType}.\nGenerated table candidate keys: {Store}.\nKeys present in ground truth but absent in generated: {StoreType}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['StoreType'] \u2192 Store.\nDistribution Analysis (numerical columns with issues):\n  Column 'Store': range overlap=0.455, JS similarity=0.544\n    Generated    \u2014 min: 1.0, max: 45.0, mean: 23.0\n    Ground Truth \u2014 min: 6.0, max: 26.0, mean: 15.0",
+        "generated_samples": "Schema: ['StoreType', 'Store']\nNumber of Tuples: 45\nExamples:\nStoreType  Store\n        a      9\n        a     40\n        c     37",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_42/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_42/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Inspect schemas:\n# Source0 columns: ['Date', 'Store', 'Dept', 'Weekly_Sales', 'IsHoliday']\n# Source1 columns: ['Store', 'StoreType', 'Assortment', 'CompetitionDistance', 'CompetitionOpenSinceMonth',\n#                   'CompetitionOpenSinceYear', 'Promo2', 'Promo2SinceWeek', 'Promo2SinceYear', 'PromoInterval']\n# Target schema: ['StoreType': string, 'Store': integer]\n\n# Transformation plan:\n# - Target requires StoreType and Store columns.\n# - Source0 has Store but no StoreType.\n# - Source1 has Store and StoreType.\n# - To get StoreType for each Store in Source0, join Source0 with Source1 on 'Store'.\n# - After join, select ['StoreType', 'Store'] columns.\n# - The target examples show StoreType as string and Store as integer.\n# - Ensure types match.\n# - Remove duplicates if any, since target examples have unique StoreType-Store pairs.\n# - Write the result to the specified output path.\n\n# Perform inner join on 'Store' to get StoreType for each Store in Source0\ndf_joined = pd.merge(df0[['Store']], df1[['Store', 'StoreType']], on='Store', how='inner')\n\n# Select and reorder columns as per target schema\ndf_target = df_joined[['StoreType', 'Store']]\n\n# Ensure correct dtypes: StoreType as string, Store as integer\ndf_target['StoreType'] = df_target['StoreType'].astype(str)\ndf_target['Store'] = df_target['Store'].astype(int)\n\n# Drop duplicates to match target examples uniqueness\ndf_target = df_target.drop_duplicates().reset_index(drop=True)\n\n# Write to CSV without the index column\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_42/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "StoreType,Store\nd,13\na,9\na,44\nc,4\na,6\nd,41\na,10\na,12\na,16\nd,26\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8711814880371094
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8531,
+          "cost": 0.0016792,
+          "latency": 5.374836444854736,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.706) / 2 = 0.853 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.544, range overlap=0.280.\nGround truth candidate keys: {Store}; {StoreType}.\nGenerated table candidate keys: {Store}; {StoreType}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Store': range overlap=0.280, JS similarity=0.544\n    Generated    \u2014 min: 1.0, max: 13.0, mean: 5.3333\n    Ground Truth \u2014 min: 6.0, max: 26.0, mean: 15.0",
+          "generated_samples": "Schema: ['StoreType', 'Store']\nNumber of Tuples: 3\nExamples:\nStoreType  Store\n        d     13\n        c      1\n        a      2",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_42/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_42/training_1.csv\", index_col=0)\n\n# Join on Store\njoined = pd.merge(source0, source1, on=\"Store\", how=\"inner\")\n\n# Group by StoreType and aggregate Store by min to ensure uniqueness\nresult = joined.groupby(\"StoreType\", as_index=False).agg({\"Store\": \"min\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_42/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8008480072021484
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8648.500442504883,
+        "critique": 5481.909275054932
+      }
+    }
+  ]
+}

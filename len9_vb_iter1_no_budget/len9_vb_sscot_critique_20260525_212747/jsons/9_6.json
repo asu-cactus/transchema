@@ -1,0 +1,29 @@
+{
+  "case": "9_6",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9857,
+        "cost": 0.0025572,
+        "latency": 9.64216661453247,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.971) / 2 = 0.986 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.948, range overlap=1.000.\nGround truth candidate keys: {country, cpi}.\nGenerated table candidate keys: {country, cpi}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'cpi': range overlap=1.000, JS similarity=0.948\n    Generated    \u2014 min: 2.3, max: 10.0, mean: 5.7683\n    Ground Truth \u2014 min: 2.3, max: 10.0, mean: 5.9522",
+        "generated_samples": "Schema: ['country', 'cpi']\nNumber of Tuples: 799\nExamples:\n     country  cpi\n   Luxemburg 8.61\n    Armenia  2.50\nNew Zealand  9.40",
+        "code": "import pandas as pd\n\n# List all source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_14.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_15.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_6/training_16.csv\"\n]\n\n# Read all source CSV files into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)  # ignore the first index column\n    # Ensure columns are exactly ['country', 'cpi'] and types are correct\n    df = df[['country', 'cpi']].copy()\n    df['country'] = df['country'].astype(str)\n    df['cpi'] = df['cpi'].astype(float)\n    dfs.append(df)\n\n# Since all source tables have the same schema as the target,\n# we can concatenate (union) all rows from all sources.\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# The target table schema is ['country': string, 'cpi': float]\n# The target examples show multiple entries per country with different cpi values.\n# So no aggregation or grouping is needed, just union all rows.\n\n# Optional: sort by country for better readability (not required)\ncombined_df = combined_df.sort_values(by='country').reset_index(drop=True)\n\n# Write the combined DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length9_6/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "country,cpi\nAlbania,3.3\nAlbania ,2.3\nAlbania ,2.3\nAlbania ,2.3\nAlbania ,2.3\nAlbania ,2.3\nAlbania ,2.3\nAlbania ,2.3\nAlbania ,2.3\nAlbania ,2.3\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9365081787109375
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 9708.386659622192,
+        "critique": 0.0
+      }
+    }
+  ]
+}

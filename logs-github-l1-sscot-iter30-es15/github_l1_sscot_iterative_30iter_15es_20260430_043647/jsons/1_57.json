@@ -1,0 +1,240 @@
+{
+  "case": "1_57",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5749,
+        "cost": 0.0011764000000000002,
+        "latency": 3.7231414318084717,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (0.000 + 1.000 + 0.725) / 3 = 0.575 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId, rating}.\nKeys present in ground truth but absent in generated: {movieId}.\nSpurious keys in generated not present in ground truth: {movieId, rating}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['movieId'] \u2192 rating.\nDistribution Analysis (numerical columns with issues):\n  Column 'movieId': range overlap=1.000, JS similarity=0.820\n    Generated    \u2014 min: 1.0, max: 162376.0, mean: 12115.1152\n    Ground Truth \u2014 min: 1.0, max: 162376.0, mean: 25814.8439\n  Column 'rating': range overlap=1.000, JS similarity=0.629\n    Generated    \u2014 min: 0.5, max: 5.0, mean: 3.548\n    Ground Truth \u2014 min: 0.5, max: 5.0, mean: 3.3365",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 50002\nExamples:\n movieId  rating\n  106100     3.0\n   84152     4.5\n     921     2.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n]\n\n# List to hold transformed DataFrames\ndfs = []\n\n# Load each source file, select needed columns, and append to list\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Select only the columns needed for the target schema\n    df_selected = df[['movieId', 'rating']].copy()\n    # Ensure correct dtypes as per target schema\n    df_selected['movieId'] = df_selected['movieId'].astype(int)\n    df_selected['rating'] = df_selected['rating'].astype(float)\n    dfs.append(df_selected)\n\n# Since all source tables have the same schema and match target schema,\n# union (concatenate) all source data\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n31,2.5\n1029,3.0\n1061,3.0\n1129,2.0\n1172,4.0\n1263,2.0\n1287,2.0\n1293,2.0\n1339,3.5\n1343,2.0\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.002594,
+          "latency": 7.232085227966309,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+          "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n    6920     4.5\n    1468     3.0\n    4006     3.4",
+          "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Read source CSV with index_col=0 as per Hint 21\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Since there is only one source table, and the target schema is ['movieId', 'rating']\n# The target table has movieId as primary key and rating as float.\n# The source has multiple ratings per movieId (multiple users rating same movie).\n# So we need to group by movieId and aggregate rating by average (float in target).\n# GroupBy on movieId (leftmost, integer, unique in target)\n# Aggregate rating by average (mean)\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_critique_history.csv\", index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0013152,
+        "latency": 33.68460774421692,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n   31184 4.500000\n    1912 4.083333\n    2827 2.800000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['movieId': int, 'rating': float]\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0014808,
+        "latency": 2.953613519668579,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n    3104 3.866667\n   48744 3.250000\n    5292 4.250000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['movieId': int, 'rating': float]\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.001646,
+        "latency": 3.7195205688476562,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n    3327 2.000000\n     355 2.425000\n    2161 3.195652",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['movieId': int, 'rating': float]\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0018104,
+        "latency": 4.616715908050537,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n     465 4.250000\n   50641 5.000000\n    3869 3.294118",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['movieId': int, 'rating': float]\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019720000000000002,
+        "latency": 3.097119092941284,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n   27837     3.0\n  131451     1.0\n    5208     4.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0021356,
+        "latency": 2.5799713134765625,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n    9005 2.500000\n     836 2.357143\n    8859 0.500000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0022996,
+        "latency": 2.355783462524414,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n   59615 2.600000\n    5297 4.000000\n    5693 3.071429",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024652000000000003,
+        "latency": 2.847809314727783,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n   27838 3.500000\n    4952 3.000000\n    3977 2.735294",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026304,
+        "latency": 2.5406148433685303,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n     422 3.750000\n     632 5.000000\n    1111 4.333333",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0027928000000000002,
+        "latency": 2.7390971183776855,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n    3264    2.75\n   89840    1.00\n     687    3.00",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 12,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.002958,
+        "latency": 2.6693835258483887,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n    8643     3.0\n   79293     2.5\n    3199     5.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 13,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0031224,
+        "latency": 2.439466714859009,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n    1330 4.500000\n    4458 3.000000\n    2822 2.666667",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 14,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032848000000000005,
+        "latency": 2.272979497909546,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n   33171   4.500\n    5401   3.625\n    5069   3.750",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 15,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0034496,
+        "latency": 2.766319990158081,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId  rating\n   79242     3.0\n  106491     3.0\n  105355     4.5",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 16,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0036144000000000003,
+        "latency": 3.365248441696167,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 6618\nExamples:\n movieId   rating\n   53953 3.416667\n   44731 4.000000\n   56915 2.500000",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_57/test_0.csv\"\n\n# Load source data with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Source schema: ['userId', 'movieId', 'rating', 'timestamp']\n# Target schema: ['movieId': int, 'rating': float]\n# Multiple ratings per movieId exist, so aggregate by movieId taking the average rating\n\nresult = df0.groupby('movieId', as_index=False).agg({'rating': 'mean'})\n\n# Ensure correct data types\nresult['movieId'] = result['movieId'].astype(int)\nresult['rating'] = result['rating'].astype(float)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.8192307692307694\n2,3.411290322580645\n3,3.4615384615384617\n4,3.0\n5,3.3285714285714287\n6,3.8859649122807016\n7,3.129032258064516\n8,4.5\n9,3.3076923076923075\n10,3.5072463768115942\n"
+      },
+      "critiques": []
+    }
+  ]
+}

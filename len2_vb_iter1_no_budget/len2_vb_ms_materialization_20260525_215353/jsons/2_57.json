@@ -1,0 +1,46 @@
+{
+  "case": "2_57",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8923,
+        "cost": 0.0072532000000000004,
+        "latency": 20.679205417633057,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.785) / 2 = 0.892 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.825, range overlap=0.717.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'size': range overlap=0.433, JS similarity=0.756\n    Generated    \u2014 min: 1.0, max: 121.0, mean: 14.3678\n    Ground Truth \u2014 min: 1.0, max: 278.0, mean: 31.6863\n  Column 'mean': range overlap=1.000, JS similarity=0.893\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2014\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.812",
+        "generated_samples": "Schema: ['title', 'size', 'mean']\nNumber of Tuples: 1392\nExamples:\n                         title  size     mean\n     Female Perversions (1996)     3 3.000000\n    Conan the Barbarian (1981)    21 3.238095\nBastard Out of Carolina (1996)     2 4.000000",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_57/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_57/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Join Source2_57_0 and Source2_57_1 on movie_id\nmerged = pd.merge(df0, df1, on=\"movie_id\", how=\"inner\")\n\n# Group by title, aggregate count of ratings as size and average rating as mean\nresult = merged.groupby(\"title\", as_index=False).agg(\n    size=(\"rating\", \"count\"),\n    mean=(\"rating\", \"mean\")\n)\n\n# Ensure correct dtypes as per target schema\nresult[\"title\"] = result[\"title\"].astype(str)\nresult[\"size\"] = result[\"size\"].astype(int)\nresult[\"mean\"] = result[\"mean\"].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_57/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "title,size,mean\n'Til There Was You (1997),1,2.0\n1-900 (1994),1,1.0\n101 Dalmatians (1996),23,2.9130434782608696\n12 Angry Men (1957),25,4.52\n187 (1997),10,3.0\n2 Days in the Valley (1996),30,3.1333333333333333\n\"20,000 Leagues Under the Sea (1954)\",13,3.3846153846153846\n2001: A Space Odyssey (1968),51,3.941176470588236\n\"39 Steps, The (1935)\",11,4.0\n8 1/2 (1963),12,3.5\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2950897216796875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8923,
+          "cost": 0.0014632,
+          "latency": 3.7314319610595703,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.785) / 2 = 0.892 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.825, range overlap=0.717.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'size': range overlap=0.433, JS similarity=0.756\n    Generated    \u2014 min: 1.0, max: 121.0, mean: 14.3678\n    Ground Truth \u2014 min: 1.0, max: 278.0, mean: 31.6863\n  Column 'mean': range overlap=1.000, JS similarity=0.893\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2014\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.812",
+          "generated_samples": "Schema: ['title', 'size', 'mean']\nNumber of Tuples: 1392\nExamples:\n                   title  size     mean\nHouse of Yes, The (1997)     5 3.000000\n      Raging Bull (1980)    33 3.909091\n  Beautiful Thing (1996)     3 3.333333",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_57/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_57/training_1.csv\", index_col=0)\n\n# Join Source2_57_0 and Source2_57_1 on movie_id\njoined = pd.merge(source0, source1, how='inner', left_on='movie_id', right_on='movie_id')\n\n# Group by title and aggregate count of rating as size and average of rating as mean\nresult = joined.groupby('title', as_index=False).agg(\n    size=('rating', 'count'),\n    mean=('rating', 'mean')\n)\n\n# Write the final output with exact target schema column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_57/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.5904903411865234
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 20787.317752838135,
+        "critique": 3911.344289779663
+      }
+    }
+  ]
+}

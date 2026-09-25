@@ -1,0 +1,46 @@
+{
+  "case": "2_62",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8462,
+        "cost": 0.0024920000000000003,
+        "latency": 7.802333831787109,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.692) / 2 = 0.846 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.641, range overlap=0.972.\nGround truth candidate keys: {city}.\nGenerated table candidate keys: {city}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.972, JS similarity=0.641\n    Generated    \u2014 min: 1.0, max: 73.0, mean: 21.0758\n    Ground Truth \u2014 min: 3.0, max: 73.0, mean: 36.4394\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+        "generated_samples": "Schema: ['city', 'driver_count']\nNumber of Tuples: 1188\nExamples:\n         city  driver_count\nWest Kimmouth             4\nWest Ericstad            25\nWest Kimmouth             4",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_62/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_62/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history: JOIN on [\"city\", \"city\"]\n# Join df0 and df1 on 'city' column\n# Since target schema is ['city': string, 'driver_count': integer]\n# We only need 'city' and 'driver_count' columns from the join result\n\n# Perform inner join on 'city'\njoined_df = pd.merge(df0, df1, on='city', how='inner')\n\n# Select only the columns needed for the target table\ntarget_df = joined_df[['city', 'driver_count']]\n\n# Ensure correct data types as per target schema\ntarget_df['city'] = target_df['city'].astype(str)\ntarget_df['driver_count'] = target_df['driver_count'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_62/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "city,driver_count\nLeahton,17\nLeahton,17\nLeahton,17\nLeahton,17\nJohnton,27\nJohnton,27\nJohnton,27\nJohnton,27\nJohnton,27\nPort David,7\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8804798126220703
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8571,
+          "cost": 0.0013571999999999998,
+          "latency": 3.6711480617523193,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.714) / 2 = 0.857 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.729, range overlap=0.972.\nGround truth candidate keys: {city}.\nGenerated table candidate keys: {city}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.972, JS similarity=0.729\n    Generated    \u2014 min: 1.0, max: 73.0, mean: 24.775\n    Ground Truth \u2014 min: 3.0, max: 73.0, mean: 36.4394\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+          "generated_samples": "Schema: ['city', 'driver_count']\nNumber of Tuples: 120\nExamples:\n        city  driver_count\n   Rogerston            25\n North Jaime             1\nVeronicaberg            20",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_62/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_62/training_1.csv\", index_col=0)\n\n# Join on 'city'\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'city' and aggregate driver_count by max (to ensure uniqueness and match target FD)\nresult = joined.groupby(\"city\", as_index=False).agg({\"driver_count\": \"max\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_62/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3120174407958984
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7867.684364318848,
+        "critique": 3725.3949642181396
+      }
+    }
+  ]
+}

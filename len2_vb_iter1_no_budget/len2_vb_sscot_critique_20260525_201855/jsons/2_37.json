@@ -1,0 +1,46 @@
+{
+  "case": "2_37",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0546,
+        "cost": 0.002476,
+        "latency": 12.686493158340454,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.109) / 2 = 0.055 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.421, range overlap=0.000.\nGround truth candidate keys: {Date}.\nGenerated table candidate keys: {Date, NumMosquitos}.\nKeys present in ground truth but absent in generated: {Date}.\nSpurious keys in generated not present in ground truth: {Date, NumMosquitos}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Date'] \u2192 NumMosquitos.\nDistribution Analysis (numerical columns with issues):\n  Column 'NumMosquitos': range overlap=0.000, JS similarity=0.421\n    Generated    \u2014 min: 1.0, max: 50.0, mean: 11.364\n    Ground Truth \u2014 min: 80.0, max: 13808.0, mean: 2954.6667\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+        "generated_samples": "Schema: ['Date', 'NumMosquitos']\nNumber of Tuples: 5253\nExamples:\n      Date  NumMosquitos\n2009-09-25             1\n2013-07-08             2\n2013-08-01            42",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_37/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_37/training_1.csv\"\n\n# Load Source 0\n# Index column is the first column (numerical index), so use index_col=0\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# --- Transformation Plan ---\n# Target schema: ['Date': string, 'NumMosquitos': integer]\n# Source 0 schema does NOT have NumMosquitos column.\n# Source 1 schema has 'Date' and 'NumMosquitos'.\n# Source 0 has 'Date' but no mosquito count.\n# Source 1 has 'Date' and 'NumMosquitos'.\n#\n# According to hints:\n# - Different schemas, so no UNION.\n# - They share 'Date' column.\n# - Join operation preferred if columns overlap and target columns come from both.\n# - Target columns: Date and NumMosquitos.\n# - NumMosquitos only in Source 1.\n# - Source 0 has no NumMosquitos, so joining on Date will not add NumMosquitos from Source 0.\n# - So the only source of NumMosquitos is Source 1.\n#\n# Therefore, the best approach is:\n# - Use Source 1's Date and NumMosquitos directly.\n# - Source 0 does not contribute to NumMosquitos, so it cannot add to target.\n# - But the prompt says ALL source tables must be used.\n#\n# How to use Source 0?\n# - Source 0 has Date and weather info.\n# - We can join Source 1 with Source 0 on 'Date' to enrich data.\n# - But target only needs Date and NumMosquitos.\n# - So joining will not add columns needed for target.\n#\n# Since target only needs Date and NumMosquitos, and NumMosquitos only exists in Source 1,\n# the simplest and correct approach is to take Source 1's Date and NumMosquitos.\n#\n# To \"use\" Source 0, we can do an inner join on Date, then select Date and NumMosquitos.\n# This will restrict to dates present in both sources.\n#\n# Alternatively, we can do an outer join and fill missing NumMosquitos with 0.\n#\n# But target examples show dates from 2007 to 2009, so both sources overlap in dates.\n#\n# We will do an inner join on Date to ensure all dates have weather info and mosquito counts.\n#\n# Finally, ensure Date is string and NumMosquitos is integer.\n\n# Prepare Source 0: keep only 'Date' column (to join on)\ndf0_dates = df0[['Date']].drop_duplicates()\n\n# Prepare Source 1: keep 'Date' and 'NumMosquitos'\ndf1_sub = df1[['Date', 'NumMosquitos']]\n\n# Join Source 1 with Source 0 on 'Date' (inner join)\ndf_joined = pd.merge(df1_sub, df0_dates, on='Date', how='inner')\n\n# After join, select 'Date' and 'NumMosquitos' for target\ntarget_df = df_joined[['Date', 'NumMosquitos']]\n\n# Convert 'Date' to string (if not already)\ntarget_df['Date'] = target_df['Date'].astype(str)\n\n# Convert 'NumMosquitos' to integer (some values might be float or object)\ntarget_df['NumMosquitos'] = pd.to_numeric(target_df['NumMosquitos'], errors='coerce').fillna(0).astype(int)\n\n# Sort by Date ascending (optional, for neatness)\ntarget_df = target_df.sort_values('Date').reset_index(drop=True)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_37/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Date,NumMosquitos\n2009-08-07,2\n2009-08-07,50\n2009-08-07,5\n2009-08-07,4\n2009-08-07,25\n2009-08-07,13\n2009-08-07,17\n2009-08-07,12\n2009-08-07,2\n2009-08-07,11\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4140605926513672
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.513,
+          "cost": 0.0015964000000000002,
+          "latency": 2.9215335845947266,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.359) / 2 = 0.513 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.742, range overlap=0.680.\nGround truth candidate keys: {Date}.\nGenerated table candidate keys: {NumMosquitos}; {Date}.\nSpurious keys in generated not present in ground truth: {NumMosquitos}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['NumMosquitos'] \u2192 Date.\nDistribution Analysis (numerical columns with issues):\n  Column 'NumMosquitos': range overlap=0.680, JS similarity=0.742\n    Generated    \u2014 min: 258.0, max: 9592.0, mean: 2653.1111\n    Ground Truth \u2014 min: 80.0, max: 13808.0, mean: 2954.6667\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+          "generated_samples": "Schema: ['Date', 'NumMosquitos']\nNumber of Tuples: 45\nExamples:\n      Date  NumMosquitos\n2011-09-16          1642\n2009-08-07          1270\n2011-06-30          3888",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_37/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_37/training_1.csv\", index_col=0)\n\n# Join on Date (common column)\njoined = pd.merge(source0, source1, on=\"Date\", how=\"inner\")\n\n# Aggregate NumMosquitos by summing over Date\nresult = joined.groupby(\"Date\", as_index=False).agg({\"NumMosquitos\": \"sum\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_37/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3833045959472656
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12781.79407119751,
+        "critique": 3030.327558517456
+      }
+    }
+  ]
+}

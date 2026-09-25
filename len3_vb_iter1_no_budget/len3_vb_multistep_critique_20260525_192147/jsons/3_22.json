@@ -1,0 +1,46 @@
+{
+  "case": "3_22",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2467,
+        "cost": 0.007558800000000001,
+        "latency": 22.849982023239136,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.316 + 0.178) / 2 = 0.247 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Department}; {20161, 20162}; {20153, 20161}.\nGenerated table candidate keys: {Department}; {20161}; {20153}; {20162}.\nKeys present in ground truth but absent in generated: {20161, 20162}; {20153, 20161}.\nSpurious keys in generated not present in ground truth: {20161}; {20153}; {20162}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.316 (precision=0.250, recall=0.429).\nSpurious FDs in generated (not in ground truth): ['20161'] \u2192 Department; ['20153'] \u2192 Department; ['20162'] \u2192 20153; ['20162'] \u2192 20161; ['20161'] \u2192 20153 (and 4 more).\nMissing FDs from ground truth: ['20161', '20162'] \u2192 Department; ['20161', '20162'] \u2192 20153; ['20153', '20161'] \u2192 Department; ['20153', '20161'] \u2192 20162.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Department': Jaccard=0.711",
+        "generated_samples": "Schema: ['Department', '20153', '20161', '20162']\nNumber of Tuples: 19\nExamples:\n Department  20153  20161  20162\nMMM Program    NaN    NaN    NaN\n        MOR    NaN    NaN    NaN\n        MKT    NaN    NaN    NaN",
+        "code": "import pandas as pd\nimport numpy as np\n\n# Load source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_22/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_22/training_1.csv\"\n\n# Read CSVs with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN on Source3_22_0.First Room == Source3_22_1.Room\n# Rename Source1.Room to match join key for clarity (not necessary but clearer)\n# Join type: left join to keep all rows from df0 (Source3_22_0)\ndf_joined = pd.merge(df0, df1, how='left', left_on='First Room', right_on='Room')\n\n# Operation 2: UNPIVOT\n# We want to transform the data so that the 'Term' values become columns with aggregated Reg Count.\n# The target columns after unpivot are ['Department', '20153', '20161', '20162']\n# The 'Term' column in df_joined corresponds to these year-term codes.\n# So we pivot on 'Term' with values from 'Reg Count' aggregated by sum.\n\n# Before pivoting, keep only relevant columns:\n# Department, Term, Reg Count\ndf_relevant = df_joined[['Department', 'Term', 'Reg Count']].copy()\n\n# Convert Reg Count to numeric, coerce errors to NaN (to avoid float() errors)\ndf_relevant['Reg Count'] = pd.to_numeric(df_relevant['Reg Count'], errors='coerce')\n\n# Operation 3: group_by Department, aggregations sum(Reg Count) per Term\n# Pivot table with Department as index, Term as columns, sum of Reg Count as values\ndf_pivot = df_relevant.pivot_table(index='Department', columns='Term', values='Reg Count', aggfunc='sum')\n\n# The target schema columns for terms are '20153', '20161', '20162'\n# Keep only these columns, convert to float (already float from pivot)\ntarget_terms = ['20153', '20161', '20162']\ndf_result = df_pivot.reindex(columns=target_terms)\n\n# Reset index to bring Department back as a column\ndf_result = df_result.reset_index()\n\n# Ensure Department is string type\ndf_result['Department'] = df_result['Department'].astype(str)\n\n# The target schema is ['Department': string, '20153': float, '20161': float, '20162': float]\n# The pivot table already produces float columns with NaN where no data exists.\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_22/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Department,20153,20161,20162\nACCT,,,\nBAEP,,,\nBUCO,,,\nDSO,,,\nEMBA Program,,,\nFBE,,,\nFIM Program,,,\nFT MBA Program,,,\nG Programs,,,\nGEMBA Program,,,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.8558502197265625
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.3879,
+          "cost": 0.0020252,
+          "latency": 10.827184677124023,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.375 + 0.401) / 2 = 0.388 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.449, range overlap=0.000.\nGround truth candidate keys: {Department}; {20161, 20162}; {20153, 20161}.\nGenerated table candidate keys: {Department}.\nKeys present in ground truth but absent in generated: {20161, 20162}; {20153, 20161}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.375 (precision=0.333, recall=0.429).\nSpurious FDs in generated (not in ground truth): ['20162'] \u2192 20153; ['20162'] \u2192 20161; ['20161'] \u2192 20153; ['20153'] \u2192 20162; ['20161'] \u2192 20162 (and 1 more).\nMissing FDs from ground truth: ['20161', '20162'] \u2192 Department; ['20161', '20162'] \u2192 20153; ['20153', '20161'] \u2192 Department; ['20153', '20161'] \u2192 20162.\nDistribution Analysis (numerical columns with issues):\n  Column '20153': range overlap=0.000, JS similarity=0.442\n    Generated    \u2014 min: 38.0, max: 38.0, mean: 38.0\n    Ground Truth \u2014 min: 56.0, max: 3472.0, mean: 1670.6\n  Column '20161': range overlap=0.000, JS similarity=0.502\n    Generated    \u2014 min: 38.0, max: 38.0, mean: 38.0\n    Ground Truth \u2014 min: 35.0, max: 2985.0, mean: 1284.1667\n  Column '20162': range overlap=0.000, JS similarity=0.403\n    Generated    \u2014 min: 38.0, max: 38.0, mean: 38.0\n    Ground Truth \u2014 min: 11.0, max: 458.0, mean: 250.2222\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Department': Jaccard=0.930",
+          "generated_samples": "Schema: ['Department', '20153', '20161', '20162']\nNumber of Tuples: 13\nExamples:\n Department  20153  20161  20162\nUG Programs      0      0    NaN\n        MOR      0      0    NaN\n        MKT      0      0    NaN",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_22/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_22/training_1.csv\", index_col=0)\n\n# Join Source3_22_0 and Source3_22_1 on First Room = Room (inner join)\njoined = pd.merge(source0, source1, left_on=\"First Room\", right_on=\"Room\", how=\"inner\")\n\n# Group by Department and aggregate sum of Reg Count\ngrouped = joined.groupby(\"Department\", as_index=False).agg({\"Reg Count\": \"sum\"})\n\n# Pivot the Term column to create columns 20153, 20161, 20162 with sum(Reg Count) as values\n# But the target schema has columns: Department, 20153, 20161, 20162\n# So we need to pivot on Term to get these columns\n\n# First, keep only relevant columns: Department, Term, Reg Count\ndf = joined[[\"Department\", \"Term\", \"Reg Count\"]]\n\n# Group by Department and Term, sum Reg Count\nagg = df.groupby([\"Department\", \"Term\"], as_index=False).agg({\"Reg Count\": \"sum\"})\n\n# Pivot Term to columns\npivot = agg.pivot(index=\"Department\", columns=\"Term\", values=\"Reg Count\").reset_index()\n\n# Rename columns to match target schema\npivot = pivot.rename(columns={20153: \"20153\", 20161: \"20161\", 20162: \"20162\"})\n\n# Ensure all target columns exist, fill missing with 0 or NaN as appropriate\nfor col in [\"20153\", \"20161\", \"20162\"]:\n    if col not in pivot.columns:\n        pivot[col] = 0\n\n# Reorder columns to match target schema\npivot = pivot[[\"Department\", \"20153\", \"20161\", \"20162\"]]\n\n# Write output\npivot.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_22/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0333061218261719
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 22916.751861572266,
+        "critique": 10903.626918792725
+      }
+    }
+  ]
+}

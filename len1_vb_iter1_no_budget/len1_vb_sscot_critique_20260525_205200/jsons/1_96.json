@@ -1,0 +1,46 @@
+{
+  "case": "1_96",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7081,
+        "cost": 0.0034576000000000003,
+        "latency": 14.103264808654785,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.416) / 2 = 0.708 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.778, range overlap=0.054.\nGround truth candidate keys: {Publisher}.\nGenerated table candidate keys: {Publisher}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Publisher': range overlap=0.054, JS similarity=0.778\n    Generated    \u2014 min: 1.0, max: 10.0, mean: 5.2008\n    Ground Truth \u2014 min: 1.0, max: 166.0, mean: 15.1429",
+        "generated_samples": "Schema: ['Publisher']\nNumber of Tuples: 1041\nExamples:\n Publisher\n         1\n        10\n         1",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_96/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_96/training_1.csv\"\n\n# Load Source 0\n# Schema: ['name', 'Gender', 'Eye color', 'Race', 'Hair color', 'Height', 'Publisher', 'Skin color', 'Alignment', 'Weight']\n# We only need the 'Publisher' column for the target.\ndf0 = pd.read_csv(source0_path, index_col=0)\n# Normalize Publisher column by stripping and simplifying names to match target examples (which are integers)\n# From examples, target Publisher values are integers like 1, 2, 10\n# Source0 Publisher values are strings like \"DC Comics\", \"Marvel Comics\"\n# We need to map these strings to integers consistent with target examples.\n# From target examples:\n# Publisher\n# 9           2\n# 12          1\n# 2          10\n# This suggests the Publisher column in target is integer codes, not names.\n# We must map source Publisher names to integers.\n# Since no explicit mapping is given, we infer from examples:\n# Possibly:\n# \"DC Comics\" -> 2\n# \"Marvel Comics\" -> 1\n# \"Other\" or unknown -> 10 (guessing)\n# But target examples show 9, 12, 2 as index and Publisher values 2,1,10 respectively.\n# So Publisher values in target are integers 2,1,10.\n# We will map:\n# \"DC Comics\" -> 2\n# \"Marvel Comics\" -> 1\n# Others -> 10\n\npublisher_map_0 = {\n    \"DC Comics\": 2,\n    \"Marvel Comics\": 1\n}\ndf0['Publisher'] = df0['Publisher'].map(publisher_map_0).fillna(10).astype(int)\n\n# Load Source 1\n# Schema: ['hero_names', 'Agility', ..., 'Omniscient'] (many boolean columns)\n# No 'Publisher' column in Source 1.\n# So Source 1 does not have the 'Publisher' column.\n# According to Hint 1, if schemas differ and target column exists only in one source,\n# we cannot union. We must join on common columns.\n# But Source 1 has no 'Publisher' column.\n# Source 1 has 'hero_names' which is similar to Source 0 'name' column.\n# But target only has 'Publisher' column.\n# So to use Source 1, we must join Source 1 with Source 0 on hero name / name,\n# then get Publisher from Source 0.\n\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Rename Source1 'hero_names' to 'name' to join with Source0 on 'name'\ndf1 = df1.rename(columns={'hero_names': 'name'})\n\n# Join Source1 with Source0 on 'name' to get Publisher for Source1 heroes\n# We do a left join of df1 on df0[['name','Publisher']] to get Publisher for Source1 heroes\ndf1_with_pub = pd.merge(df1[['name']], df0[['name', 'Publisher']], on='name', how='left')\n\n# For heroes in Source1 not found in Source0, Publisher will be NaN\n# Assign them Publisher = 10 (unknown)\ndf1_with_pub['Publisher'] = df1_with_pub['Publisher'].fillna(10).astype(int)\n\n# Now we have Publisher for Source1 heroes\n\n# Combine Publisher columns from both sources\n# According to Hint 1, schemas differ, so no union.\n# According to Hint 3, join is preferred on shared columns.\n# But target only has Publisher column.\n# So final target is just the Publisher column from both sources combined.\n\n# We take Publisher column from df0 and df1_with_pub and concatenate vertically\npublisher_df0 = df0[['Publisher']]\npublisher_df1 = df1_with_pub[['Publisher']]\n\n# Concatenate\ntarget_df = pd.concat([publisher_df0, publisher_df1], ignore_index=True)\n\n# The target examples show only one column 'Publisher' with integer values.\n# No index column needed in output CSV.\n\n# Write the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_96/target_multisource_cot.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Publisher\n2\n1\n2\n1\n1\n10\n1\n1\n1\n10\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.009225845336914
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9815,
+          "cost": 0.0024284,
+          "latency": 7.4760966300964355,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.963) / 2 = 0.982 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.978, range overlap=0.948.\nGround truth candidate keys: {Publisher}.\nGenerated table candidate keys: {Publisher}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Publisher': range overlap=0.948, JS similarity=0.978\n    Generated    \u2014 min: 1.0, max: 175.0, mean: 18.2778\n    Ground Truth \u2014 min: 1.0, max: 166.0, mean: 15.1429",
+          "generated_samples": "Schema: ['Publisher', 'Publisher.1']\nNumber of Tuples: 18\nExamples:\n        Publisher  Publisher.1\n     Team Epic TV            3\n     NBC - Heroes           11\nDark Horse Comics            8",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_96/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_96/training_1.csv\", index_col=0)\n\n# Join on name = hero_names\njoined = pd.merge(source0, source1, left_on=\"name\", right_on=\"hero_names\", how=\"inner\")\n\n# Group by Publisher and count occurrences (count of name)\nresult = joined.groupby(\"Publisher\", as_index=False).agg({\"name\": \"count\"})\n\n# Rename count column to match target schema column name\nresult = result.rename(columns={\"name\": \"Publisher\"})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_96/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2617111206054688
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14203.006744384766,
+        "critique": 7539.5824909210205
+      }
+    }
+  ]
+}

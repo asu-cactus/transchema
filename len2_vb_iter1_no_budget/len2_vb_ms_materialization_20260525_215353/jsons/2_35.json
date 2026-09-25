@@ -1,0 +1,46 @@
+{
+  "case": "2_35",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4156,
+        "cost": 0.009228,
+        "latency": 565.1203968524933,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.333 + 0.498) / 2 = 0.416 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.692, range overlap=0.794.\nGround truth candidate keys: {NumMosquitos}; {Date}.\nGenerated table candidate keys: {Date, NumMosquitos}; {Date, ResultDir}.\nKeys present in ground truth but absent in generated: {NumMosquitos}; {Date}.\nSpurious keys in generated not present in ground truth: {ResultDir, Date}; {Date, NumMosquitos}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.333 (precision=0.500, recall=0.250).\nSpurious FDs in generated (not in ground truth): ['ResultDir'] \u2192 NumMosquitos.\nMissing FDs from ground truth: ['NumMosquitos'] \u2192 Date; ['Date'] \u2192 NumMosquitos; ['Date'] \u2192 ResultDir.\nDistribution Analysis (numerical columns with issues):\n  Column 'ResultDir': range overlap=0.871, JS similarity=0.738\n    Generated    \u2014 min: 1.0, max: 36.0, mean: 17.0694\n    Ground Truth \u2014 min: 1.0, max: 31.5, mean: 17.7549\n  Column 'NumMosquitos': range overlap=0.717, JS similarity=0.645\n    Generated    \u2014 min: 1.0, max: 36.0, mean: 17.0694\n    Ground Truth \u2014 min: 1.6, max: 48.9785, mean: 15.6484\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+        "generated_samples": "Schema: ['Date', 'ResultDir', 'NumMosquitos']\nNumber of Tuples: 72\nExamples:\n      Date  ResultDir  NumMosquitos\n2011-09-02       20.0     11.020000\n2009-09-14       33.0      5.072072\n2011-08-26       20.0      4.622642",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_35/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_35/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Join Source2_35_0 and Source2_35_1 on 'Date'\njoined = pd.merge(df0[['Date', 'ResultDir']], df1[['Date', 'NumMosquitos']], on='Date', how='inner')\n\n# Group by Date and ResultDir, aggregate average NumMosquitos\nagg = joined.groupby(['Date', 'ResultDir'], as_index=False)['NumMosquitos'].mean()\n\n# Ensure column types match target schema:\n# 'Date': string (object)\nagg['Date'] = agg['Date'].astype(str)\n# 'ResultDir': float\nagg['ResultDir'] = agg['ResultDir'].astype(float)\n# 'NumMosquitos': float\nagg['NumMosquitos'] = agg['NumMosquitos'].astype(float)\n\n# Save to target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_35/target_multisource.csv\"\nagg.to_csv(target_path, index=False)",
+        "generated_csv_head": "Date,ResultDir,NumMosquitos\n2009-08-07,15.0,7.839506172839506\n2009-08-13,14.0,5.733333333333333\n2009-08-13,16.0,5.733333333333333\n2009-08-25,21.0,8.226190476190476\n2009-08-27,7.0,3.240740740740741\n2009-08-27,8.0,3.240740740740741\n2009-09-03,5.0,2.345454545454545\n2009-09-03,6.0,2.345454545454545\n2009-09-14,13.0,5.072072072072072\n2009-09-14,33.0,5.072072072072072\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1136531829833984
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6238,
+          "cost": 0.0017396000000000002,
+          "latency": 4.729714632034302,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.498) / 2 = 0.624 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.705, range overlap=0.780.\nGround truth candidate keys: {NumMosquitos}; {Date}.\nGenerated table candidate keys: {Date}.\nKeys present in ground truth but absent in generated: {NumMosquitos}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['ResultDir'] \u2192 NumMosquitos.\nMissing FDs from ground truth: ['NumMosquitos'] \u2192 Date.\nDistribution Analysis (numerical columns with issues):\n  Column 'ResultDir': range overlap=0.843, JS similarity=0.754\n    Generated    \u2014 min: 2.0, max: 36.0, mean: 17.3889\n    Ground Truth \u2014 min: 1.0, max: 31.5, mean: 17.7549\n  Column 'NumMosquitos': range overlap=0.718, JS similarity=0.655\n    Generated    \u2014 min: 2.0, max: 36.0, mean: 17.3889\n    Ground Truth \u2014 min: 1.6, max: 48.9785, mean: 15.6484\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Date': Jaccard=0.008",
+          "generated_samples": "Schema: ['Date', 'ResultDir', 'NumMosquitos']\nNumber of Tuples: 45\nExamples:\n      Date  ResultDir  NumMosquitos\n2011-09-23       36.0      6.678899\n2013-07-12        8.0     26.351648\n2013-06-21       19.0     11.370690",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_35/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_35/training_1.csv\", index_col=0)\n\n# Join on 'Date' column (inner join by default)\njoined = pd.merge(source0, source1, on=\"Date\", how=\"inner\")\n\n# Group by 'Date' (string, leftmost key column in target)\n# Aggregate average of ResultDir (float) and NumMosquitos (float)\nresult = joined.groupby(\"Date\", as_index=False).agg({\n    \"ResultDir\": \"mean\",\n    \"NumMosquitos\": \"mean\"\n})\n\n# Ensure column order and names exactly as target schema\nresult = result[[\"Date\", \"ResultDir\", \"NumMosquitos\"]]\n\n# Write output CSV without index\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_35/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.157999038696289
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 565194.9188709259,
+        "critique": 4808.477401733398
+      }
+    }
+  ]
+}

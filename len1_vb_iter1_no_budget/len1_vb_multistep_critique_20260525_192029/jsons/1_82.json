@@ -1,0 +1,46 @@
+{
+  "case": "1_82",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4401,
+        "cost": 0.002124,
+        "latency": 8.682682275772095,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.880) / 2 = 0.440 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.545, range overlap=0.977.\nGround truth candidate keys: {conservation_status}; {scientific_name}.\nGenerated table candidate keys: {conservation_status, scientific_name}.\nKeys present in ground truth but absent in generated: {scientific_name}; {conservation_status}.\nSpurious keys in generated not present in ground truth: {conservation_status, scientific_name}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['conservation_status'] \u2192 scientific_name; ['scientific_name'] \u2192 conservation_status.\nDistribution Analysis (numerical columns with issues):\n  Column 'scientific_name': range overlap=0.977, JS similarity=0.545\n    Generated    \u2014 min: 1.0, max: 86.0, mean: 41.9778\n    Ground Truth \u2014 min: 1.0, max: 84.0, mean: 25.25",
+        "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 90\nExamples:\nconservation_status  scientific_name\n Species of Concern                4\n Species of Concern               23\n Species of Concern                6",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_82/training_0.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Inspect source0 columns:\n# ['category', 'scientific_name', 'common_names', 'conservation_status']\n# Target schema: ['conservation_status': string, 'scientific_name': integer]\n\n# Transformation plan:\n# - The target table requires only two columns: conservation_status and scientific_name.\n# - conservation_status is string, scientific_name is integer.\n# - Source0 has these columns, but conservation_status contains NaN values in examples.\n# - We keep rows where conservation_status is not null, because target examples show valid conservation_status values.\n# - scientific_name in source is string (scientific names), but target expects integer.\n#   However, target examples show scientific_name as integers (1, 11, 84).\n#   This suggests scientific_name in target is an integer ID, not the scientific name string.\n# - Since source scientific_name is a string (species name), and target scientific_name is integer,\n#   we need to map each unique scientific_name string to a unique integer ID.\n# - conservation_status is kept as is (string).\n# - We will:\n#   1) Filter rows with non-null conservation_status.\n#   2) Create a mapping from unique scientific_name strings to integer IDs starting from 1.\n#   3) Replace scientific_name strings by their integer IDs.\n#   4) Output the resulting dataframe with columns ['conservation_status', 'scientific_name'].\n\n# Step 1: Filter rows with non-null conservation_status\ndf_filtered = df_source0[df_source0['conservation_status'].notna()].copy()\n\n# Step 2: Create mapping for scientific_name strings to integer IDs\nunique_scientific_names = df_filtered['scientific_name'].unique()\nscientific_name_to_id = {name: idx+1 for idx, name in enumerate(unique_scientific_names)}\n\n# Step 3: Map scientific_name strings to integer IDs\ndf_filtered['scientific_name'] = df_filtered['scientific_name'].map(scientific_name_to_id)\n\n# Step 4: Select only the target columns in the correct order\ndf_target = df_filtered[['conservation_status', 'scientific_name']]\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "conservation_status,scientific_name\nSpecies of Concern,1\nSpecies of Concern,2\nSpecies of Concern,3\nSpecies of Concern,4\nIn Recovery,5\nSpecies of Concern,6\nThreatened,7\nSpecies of Concern,8\nSpecies of Concern,9\nSpecies of Concern,10\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3146400451660156
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8198,
+          "cost": 0.0013856,
+          "latency": 5.934753656387329,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.973) / 2 = 0.820 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.892.\nGround truth candidate keys: {conservation_status}; {scientific_name}.\nGenerated table candidate keys: {conservation_status}.\nKeys present in ground truth but absent in generated: {scientific_name}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['scientific_name'] \u2192 conservation_status.\nDistribution Analysis (numerical columns with issues):\n  Column 'scientific_name': range overlap=0.892, JS similarity=1.000\n    Generated    \u2014 min: 3.0, max: 77.0, mean: 22.5\n    Ground Truth \u2014 min: 1.0, max: 84.0, mean: 25.25",
+          "generated_samples": "Schema: ['conservation_status', 'scientific_name']\nNumber of Tuples: 4\nExamples:\nconservation_status  scientific_name\n         Threatened                5\n        In Recovery                3\n         Endangered                5",
+          "code": "import pandas as pd\n\n# Read source data\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_82/training_0.csv\", index_col=0)\n\n# The target schema is ['conservation_status': string, 'scientific_name': integer]\n# According to FD, conservation_status is the key, and scientific_name depends on it.\n# The source has conservation_status and scientific_name columns.\n# The target examples show scientific_name as integer counts per conservation_status.\n\n# Filter out rows with NaN conservation_status because target examples have no NaN keys\nfiltered = source0[source0['conservation_status'].notna()]\n\n# Group by conservation_status and count scientific_name occurrences\nresult = filtered.groupby('conservation_status', as_index=False).agg({'scientific_name': 'count'})\n\n# Rename columns to match target schema exactly\nresult.columns = ['conservation_status', 'scientific_name']\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_82/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.085042953491211
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8685.58120727539,
+        "critique": 5975.403070449829
+      }
+    }
+  ]
+}

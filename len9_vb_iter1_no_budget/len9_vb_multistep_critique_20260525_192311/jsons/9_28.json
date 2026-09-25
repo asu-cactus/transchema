@@ -1,0 +1,46 @@
+{
+  "case": "9_28",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7472,
+        "cost": 0.012612,
+        "latency": 13.635469436645508,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.494) / 2 = 0.747 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.989, range overlap=0.000.\nGround truth candidate keys: {ARPU}.\nGenerated table candidate keys: {ARPU}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'ARPU': range overlap=0.000, JS similarity=0.989\n    Generated    \u2014 min: 391.2304, max: 391.2304, mean: 391.2304\n    Ground Truth \u2014 min: 4.07, max: 112674.74, mean: 586.3921",
+        "generated_samples": "Schema: ['ARPU']\nNumber of Tuples: 1\nExamples:\n      ARPU\n391.230444",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_3.csv\", index_col=0)\n\n# According to operation_history:\n# 1) Join Source9_28_3 with Source9_28_0 on ROW_WID\ndf = pd.merge(source3, source0, on=\"ROW_WID\", how=\"inner\")\n\n# 2) Join the result with Source9_28_1 on ROW_WID\ndf = pd.merge(df, source1, on=\"ROW_WID\", how=\"inner\")\n\n# 3) Join the result with Source9_28_2 on ROW_WID\ndf = pd.merge(df, source2, on=\"ROW_WID\", how=\"inner\")\n\n# 4) Group by [] (no grouping columns) and aggregate avg(Source9_28_3.ARPU)\n# Since group_by is empty, this means compute the average ARPU over all rows\n# The target schema is ['ARPU': float], so output a dataframe with one column ARPU and one row with the average\n\navg_arpu = df[\"ARPU\"].mean()\n\ntarget_df = pd.DataFrame({\"ARPU\": [avg_arpu]})\n\n# Save the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/target_multisource.csv\", index=False)",
+        "generated_csv_head": "ARPU\n391.23044407894736\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9133815765380859
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7472,
+          "cost": 0.0030412,
+          "latency": 11.256848335266113,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.494) / 2 = 0.747 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.989, range overlap=0.000.\nGround truth candidate keys: {ARPU}.\nGenerated table candidate keys: {ARPU}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'ARPU': range overlap=0.000, JS similarity=0.989\n    Generated    \u2014 min: 537.2424, max: 537.2424, mean: 537.2424\n    Ground Truth \u2014 min: 4.07, max: 112674.74, mean: 586.3921",
+          "generated_samples": "Schema: ['ARPU']\nNumber of Tuples: 1\nExamples:\n      ARPU\n537.242354",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0 as instructed\ns0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_0.csv\", index_col=0)\ns1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_1.csv\", index_col=0)\ns2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_2.csv\", index_col=0)\ns3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_3.csv\", index_col=0)\ns4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_4.csv\", index_col=0)\ns5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_5.csv\", index_col=0)\ns6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_6.csv\", index_col=0)\ns7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_7.csv\", index_col=0)\ns8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_8.csv\", index_col=0)\ns9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/training_9.csv\", index_col=0)\n\n# Union the dimension tables with same schema (s3, s5, s6, s7)\ndim_tables = [s3, s5, s6, s7]\nunioned_dim = pd.concat(dim_tables, ignore_index=True)\n\n# Join unioned_dim with s0, s1, s2, s4 on ROW_WID\ndf = unioned_dim.merge(s0, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s1, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s2, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s4, on=\"ROW_WID\", how=\"inner\")\n\n# Join with s8 and s9 on ROW_WID\ndf = df.merge(s8, on=\"ROW_WID\", how=\"inner\")\ndf = df.merge(s9, on=\"ROW_WID\", how=\"inner\")\n\n# The target schema is ['ARPU'] only, so select ARPU column\n# Since no keys or group by columns exist in target, just aggregate average ARPU\nresult = pd.DataFrame({\"ARPU\": [df[\"ARPU\"].mean()]})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_28/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6580352783203125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13702.30221748352,
+        "critique": 11430.46259880066
+      }
+    }
+  ]
+}

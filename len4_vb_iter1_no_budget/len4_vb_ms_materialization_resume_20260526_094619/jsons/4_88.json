@@ -1,0 +1,46 @@
+{
+  "case": "4_88",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8835,
+        "cost": 0.0054168,
+        "latency": 14.25706672668457,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.767) / 2 = 0.883 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.688, range overlap=0.846.\nGround truth candidate keys: {TrackID}.\nGenerated table candidate keys: {TrackID}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'TrackID': range overlap=0.846, JS similarity=0.688\n    Generated    \u2014 min: 12.0, max: 78.0, mean: 45.0\n    Ground Truth \u2014 min: 0.0, max: 78.0, mean: 42.5588",
+        "generated_samples": "Schema: ['TrackID']\nNumber of Tuples: 67\nExamples:\n TrackID\n      47\n      34\n      16",
+        "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_88/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_88/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_88/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_88/training_3.csv\", index_col=0)\n\n# Extract only the 'TrackID' column from each source\nsource0_trackid = source0[['TrackID']]\nsource1_trackid = source1[['TrackID']]\nsource2_trackid = source2[['TrackID']]\nsource3_trackid = source3[['TrackID']]\n\n# Concatenate (UNION) all TrackID columns from the four sources\nunion_df = pd.concat([source0_trackid, source1_trackid, source2_trackid, source3_trackid], ignore_index=True)\n\n# Remove duplicates to match the target key uniqueness\nunion_df = union_df.drop_duplicates().reset_index(drop=True)\n\n# Ensure TrackID column is integer type as per target schema\nunion_df['TrackID'] = union_df['TrackID'].astype(int)\n\n# Write the final target table to the specified CSV path without the index\nunion_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_88/target_multisource.csv\", index=False)",
+        "generated_csv_head": "TrackID\n23\n24\n25\n26\n27\n28\n29\n30\n31\n32\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9043216705322266
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8835,
+          "cost": 0.0019656,
+          "latency": 6.318793773651123,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.767) / 2 = 0.883 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.688, range overlap=0.846.\nGround truth candidate keys: {TrackID}.\nGenerated table candidate keys: {TrackID}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'TrackID': range overlap=0.846, JS similarity=0.688\n    Generated    \u2014 min: 12.0, max: 78.0, mean: 45.0\n    Ground Truth \u2014 min: 0.0, max: 78.0, mean: 42.5588",
+          "generated_samples": "Schema: ['TrackID']\nNumber of Tuples: 67\nExamples:\n TrackID\n      52\n      21\n      31",
+          "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_88/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_88/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_88/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_88/training_3.csv\", index_col=0)\n\n# UNION all source tables\nunion_df = pd.concat([source0, source1, source2, source3], ignore_index=True)\n\n# GROUP BY TrackID to get unique TrackID values (no aggregation needed)\nresult = union_df[['TrackID']].drop_duplicates().sort_values('TrackID').reset_index(drop=True)\n\n# Write output with exact target schema and column name\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_88/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6020069122314453
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14330.414295196533,
+        "critique": 6372.842788696289
+      }
+    }
+  ]
+}

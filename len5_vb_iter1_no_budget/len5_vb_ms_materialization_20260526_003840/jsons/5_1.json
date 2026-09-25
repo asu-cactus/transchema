@@ -1,0 +1,46 @@
+{
+  "case": "5_1",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.004678000000000001,
+        "latency": 12.870249509811401,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "Schema: ['Registered_Students', 'Time', 'Date', 'Room', 'Room_Capacity', 'Module']\nNumber of Tuples: 45\nExamples:\n Registered_Students  Time  Date  Room  Room_Capacity  Module\n                 NaN   NaN   NaN   NaN            NaN     NaN\n                 NaN   NaN   NaN   NaN            NaN     NaN\n                 NaN   NaN   NaN   NaN            NaN     NaN",
+        "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_1/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_1/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_1/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_1/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_1/training_4.csv\"\n]\n\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# UNION all source tables (concatenate rows)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target schema is the same as source schema, so no column renaming or filtering needed\n# Just ensure columns order matches target schema (which is same as source)\ntarget_df = target_df[['Registered_Students', 'Time', 'Date', 'Room', 'Room_Capacity', 'Module']]\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Registered_Students,Time,Date,Room,Room_Capacity,Module\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n,,,,,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4758110046386719
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.0,
+          "cost": 0.0017507999999999998,
+          "latency": 3.50649094581604,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_3.csv\", index_col=0)\ndf4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/training_4.csv\", index_col=0)\n\n# UNION all source tables (all have the same schema)\ndf = pd.concat([df0, df1, df2, df3, df4], ignore_index=True)\n\n# Filter out rows where all columns are NaN\ndf = df.dropna(how='all')\n\n# Write the final output with exact column names as target schema\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_1/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03361701965332031
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12975.39234161377,
+        "critique": 3524.801731109619
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "1_16",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5833,
+        "cost": 0.0014812000000000002,
+        "latency": 3.932054281234741,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.500) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}; {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 754\nExamples:\n                CUSTOMERNAME  ORDERNUMBER\n                Alpha Cognac        10397\n  Collectables For Less Inc.        10147\nMotor Mint Distributors Inc.        10331",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file path\n    source0_path = \"autopipeline-benchmarks/github-pipelines/length1_16/training_0.csv\"\n    # Output file path\n    output_path = \"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_cot.csv\"\n\n    # Load source table with index_col=0 to ignore the numerical index column\n    df_source0 = pd.read_csv(source0_path, index_col=0)\n\n    # According to the target schema: ['CUSTOMERNAME': string, 'ORDERNUMBER': integer]\n    # Extract only these two columns from source0\n    # Ensure ORDERNUMBER is integer type (may need to convert)\n    # CUSTOMERNAME is string, but pandas will handle it as object/string by default\n\n    # Drop rows where CUSTOMERNAME or ORDERNUMBER is missing (NaN)\n    df_filtered = df_source0[['CUSTOMERNAME', 'ORDERNUMBER']].dropna(subset=['CUSTOMERNAME', 'ORDERNUMBER'])\n\n    # Convert ORDERNUMBER to integer (some may be float due to CSV reading)\n    df_filtered['ORDERNUMBER'] = df_filtered['ORDERNUMBER'].astype(int)\n\n    # Reset index to default integer index\n    df_filtered = df_filtered.reset_index(drop=True)\n\n    # Save the transformed dataframe to the output CSV file\n    df_filtered.to_csv(output_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "CUSTOMERNAME,ORDERNUMBER\nToys4GrownUps.com,10367\nThe Sharp Gifts Warehouse,10407\nSignal Gift Stores,10124\nHeintze Collectables,10161\nGift Depot Inc.,10172\nMini Gifts Distributors Ltd.,10182\nOnline Diecast Creations Co.,10192\nMuscle Machine Inc,10204\nCollectable Mini Designs Co.,10226\nMuscle Machine Inc,10267\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9946823120117188
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5833,
+          "cost": 0.0017816,
+          "latency": 5.372850179672241,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.500) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {CUSTOMERNAME}.\nGenerated table candidate keys: {ORDERNUMBER}; {CUSTOMERNAME}.\nSpurious keys in generated not present in ground truth: {ORDERNUMBER}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['ORDERNUMBER'] \u2192 CUSTOMERNAME.\nAll columns show good value overlap and matching distributions.",
+          "generated_samples": "Schema: ['CUSTOMERNAME', 'ORDERNUMBER']\nNumber of Tuples: 51\nExamples:\n         CUSTOMERNAME  ORDERNUMBER\n      Mini Auto Werke        10164\nSalzburg Collectables        10119\n     FunGiftIdeas.com        10166",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/training_0.csv\", index_col=0)\n\n# Select only relevant columns CUSTOMERNAME and ORDERNUMBER\ndf = source1[['CUSTOMERNAME', 'ORDERNUMBER']]\n\n# Remove rows with missing CUSTOMERNAME or ORDERNUMBER\ndf = df.dropna(subset=['CUSTOMERNAME', 'ORDERNUMBER'])\n\n# Convert ORDERNUMBER to integer (if not already)\ndf['ORDERNUMBER'] = df['ORDERNUMBER'].astype(int)\n\n# Group by CUSTOMERNAME and aggregate ORDERNUMBER by min to enforce uniqueness\nresult = df.groupby('CUSTOMERNAME', as_index=False).agg({'ORDERNUMBER': 'min'})\n\n# Write output with exact target schema column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_16/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8780956268310547
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 3937.112331390381,
+        "critique": 5416.067600250244
+      }
+    }
+  ]
+}

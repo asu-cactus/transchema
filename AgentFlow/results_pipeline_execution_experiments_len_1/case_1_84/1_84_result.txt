@@ -1,0 +1,65 @@
+Case: 1_84
+Status: CORRECT
+Timestamp: 2026-02-24T04:22:17.000283
+Duration: 35.08 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_84/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['V_GENE']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_84
+2. Target Schema: ['V_GENE': string]
+3. Target Examples: There are 6583 available target examples:         V_GENE
+5660  IGHV4-59
+60    IGHV3-30
+6382  IGHV3-30
+3460  IGHV1-58
+4958   IGHV2-5
+...        ...
+3276  IGHV4-59
+145    IGHV6-1
+3459  IGHV1-18
+2584  IGHV3-33
+6071  IGHV3-43
+
+[658 rows x 1 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_84_0
+	Source 0 Schema: ['V_CALL']
+	Source 0 Examples: 	 Source 0 contains 6583 tuples, with examples as follows: 
+        V_CALL
+0   IGHV1-8*01
+1  IGHV3-21*01
+2  IGHV3-23*01
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_84/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Step 1: Read the source CSV file with index_col=0
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_84/test_0.csv"
+df_source = pd.read_csv(source_path, index_col=0)
+
+# Step 2: Transform - Extract 'V_GENE' from 'V_CALL' by removing substring starting from '*'
+# For example, "IGHV1-8*01" -> "IGHV1-8"
+df_source['V_GENE'] = df_source['V_CALL'].str.split('*').str[0]
+
+# Step 3: Prepare the target DataFrame with the exact target schema ['V_GENE']
+df_target = df_source[['V_GENE']].copy()
+
+# Step 4: Save the transformed data to the specified CSV file path
+target_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_84/target_multisource_agentic.csv"
+df_target.to_csv(target_path)
+```

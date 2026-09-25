@@ -1,0 +1,46 @@
+{
+  "case": "1_5",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4642,
+        "cost": 0.0044280000000000005,
+        "latency": 15.79108476638794,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.846 + 0.082) / 2 = 0.464 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.165, range overlap=0.110.\nGround truth candidate keys: {ComunaID}; {ComunaNombre}.\nGenerated table candidate keys: {ComunaID}; {ComunaNombre}; {ProvinciaNombre}.\nSpurious keys in generated not present in ground truth: {ProvinciaNombre}.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.846 (precision=0.786, recall=0.917).\nSpurious FDs in generated (not in ground truth): ['ProvinciaNombre'] \u2192 ComunaID; ['ProvinciaNombre'] \u2192 ComunaNombre; ['RegionID'] \u2192 ProvinciaID.\nMissing FDs from ground truth: ['ProvinciaID'] \u2192 ProvinciaNombre.\nDistribution Analysis (numerical columns with issues):\n  Column 'ProvinciaID': range overlap=0.200, JS similarity=0.212\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 31.0, mean: 19.6395\n  Column 'RegionID': range overlap=0.000, JS similarity=0.046\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 9.0, mean: 6.1628\n  Column 'ComunaID': range overlap=0.129, JS similarity=0.235\n    Generated    \u2014 min: 31.0, max: 53.0, mean: 39.0405\n    Ground Truth \u2014 min: 1.0, max: 172.0, mean: 86.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'ProvinciaNombre': Jaccard=0.000\n  Column 'ComunaNombre': Jaccard=0.000",
+        "generated_samples": "Schema: ['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']\nNumber of Tuples: 173\nExamples:\n ProvinciaID ProvinciaNombre  RegionID  ComunaID         ComunaNombre\n          44          Osorno        13       319 San Juan de la Costa\n          36      Concepci\u00f3n        10       219           Concepci\u00f3n\n          51      Magallanes        15       338         Punta Arenas",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_5/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_5/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Join Source1_5_0 and Source1_5_1 on ProvinciaID\ndf_joined = pd.merge(df0, df1, on=\"ProvinciaID\", how=\"inner\")\n\n# Reorder columns to match target schema:\n# ['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']\ndf_target = df_joined[['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']]\n\n# Ensure ProvinciaID, RegionID, ComunaID are integers\ndf_target['ProvinciaID'] = df_target['ProvinciaID'].astype(int)\ndf_target['RegionID'] = df_target['RegionID'].astype(int)\ndf_target['ComunaID'] = df_target['ComunaID'].astype(int)\n\n# ProvinciaNombre and ComunaNombre should be strings without extra quotes\n# Remove any leading/trailing quotes and whitespace\ndf_target['ProvinciaNombre'] = df_target['ProvinciaNombre'].astype(str).str.strip().str.strip(\"'\").str.strip('\"')\ndf_target['ComunaNombre'] = df_target['ComunaNombre'].astype(str).str.strip().str.strip(\"'\").str.strip('\"')\n\n# Save the final target table to the specified path without the index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_5/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "ProvinciaID,ProvinciaNombre,RegionID,ComunaID,ComunaNombre\n31,Curic\u00f3,9,173,Molina\n31,Curic\u00f3,9,174,Rauco\n31,Curic\u00f3,9,175,Romeral\n31,Curic\u00f3,9,176,Sagrada Familia\n31,Curic\u00f3,9,177,Teno\n31,Curic\u00f3,9,178,Vichuqu\u00e9n\n32,Linares,9,179,Colb\u00fan\n32,Linares,9,180,Linares\n32,Linares,9,181,Longav\u00ed\n32,Linares,9,182,Parral\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3871192932128906
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.4681,
+          "cost": 0.0017688,
+          "latency": 7.228172302246094,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.846 + 0.090) / 2 = 0.468 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.165, range overlap=0.110.\nGround truth candidate keys: {ComunaID}; {ComunaNombre}.\nGenerated table candidate keys: {ComunaID}; {ComunaNombre}; {ProvinciaNombre}.\nSpurious keys in generated not present in ground truth: {ProvinciaNombre}.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.846 (precision=0.786, recall=0.917).\nSpurious FDs in generated (not in ground truth): ['ProvinciaNombre'] \u2192 ComunaID; ['ProvinciaNombre'] \u2192 ComunaNombre; ['RegionID'] \u2192 ProvinciaID.\nMissing FDs from ground truth: ['ProvinciaID'] \u2192 ProvinciaNombre.\nDistribution Analysis (numerical columns with issues):\n  Column 'ProvinciaID': range overlap=0.200, JS similarity=0.212\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 31.0, mean: 19.6395\n  Column 'RegionID': range overlap=0.000, JS similarity=0.046\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 9.0, mean: 6.1628\n  Column 'ComunaID': range overlap=0.129, JS similarity=0.235\n    Generated    \u2014 min: 31.0, max: 53.0, mean: 39.0405\n    Ground Truth \u2014 min: 1.0, max: 172.0, mean: 86.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'ProvinciaNombre': Jaccard=0.023\n  Column 'ComunaNombre': Jaccard=0.016",
+          "generated_samples": "Schema: ['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']\nNumber of Tuples: 173\nExamples:\n ProvinciaID ProvinciaNombre  RegionID  ComunaID ComunaNombre\n          38        'Caut\u00edn'        11       255     'Freire'\n          37         '\u00d1uble'        10       239     'Pemuco'\n          38        'Caut\u00edn'        11       253      'Cunco'",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_5/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_5/training_1.csv\", index_col=0)\n\n# Join Source1_5_0 and Source1_5_1 on ProvinciaID\njoined = pd.merge(source0, source1, on=\"ProvinciaID\", how=\"inner\")\n\n# Group by all columns to ensure uniqueness and match target keys\n# Since the target keys are ['ComunaNombre', 'ProvinciaID', 'ProvinciaNombre'] and the target schema is:\n# ['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']\n# Grouping by all columns ensures no duplicates and respects keys.\ngrouped = joined.groupby(\n    [\"ProvinciaID\", \"ProvinciaNombre\", \"RegionID\", \"ComunaID\", \"ComunaNombre\"],\n    as_index=False\n).size()  # size() just to trigger groupby, but we don't need aggregation, so drop it\n\n# The above .size() returns a Series with counts, but we don't want counts, just unique rows.\n# So instead, just drop duplicates to match the target unique keys:\ngrouped = joined.drop_duplicates(subset=[\"ProvinciaID\", \"ProvinciaNombre\", \"RegionID\", \"ComunaID\", \"ComunaNombre\"])\n\n# Reorder columns to match target schema exactly\nfinal = grouped[[\"ProvinciaID\", \"ProvinciaNombre\", \"RegionID\", \"ComunaID\", \"ComunaNombre\"]]\n\n# Write to output CSV\nfinal.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_5/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.7597675323486328
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15887.30001449585,
+        "critique": 7340.641736984253
+      }
+    }
+  ]
+}

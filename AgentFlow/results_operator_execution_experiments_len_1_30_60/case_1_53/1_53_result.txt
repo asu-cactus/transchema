@@ -1,0 +1,42 @@
+Case: 1_53
+Status: CORRECT
+Timestamp: 2026-02-24T13:37:50.420546
+Duration: 44.43 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_30_60/case_1_53/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_53
+2. Target Schema: ['continent': string, 'beer_servings': float, 'spirit_servings': float, 'wine_servings': float, 'total_litres_of_pure_alcohol': float]
+3. Target Examples: There are 5 available target examples: Empty DataFrame
+Columns: [continent, beer_servings, spirit_servings, wine_servings, total_litres_of_pure_alcohol]
+Index: []
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_53_0
+	Source 0 Schema: ['country', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol', 'continent']
+	Source 0 Examples: 	 Source 0 contains 96 tuples, with examples as follows: 
+       country  beer_servings  spirit_servings  wine_servings  \
+0  Afghanistan              0                0              0   
+1      Albania             89              132             54   
+2      Algeria             25                0             14   
+
+   total_litres_of_pure_alcohol continent  
+0                           0.0        AS  
+1                           4.9        EU  
+2                           0.7        AF  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_53/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_53/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

@@ -1,0 +1,46 @@
+{
+  "case": "3_49",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7681,
+        "cost": 0.004028,
+        "latency": 13.355835676193237,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.536) / 2 = 0.768 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.708, range overlap=0.869.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'min_rank': range overlap=1.000, JS similarity=0.566\n    Generated    \u2014 min: 1.0, max: 20.0, mean: 8.2581\n    Ground Truth \u2014 min: 1.0, max: 20.0, mean: 11.654\n  Column 'max_weeks_on_list': range overlap=0.739, JS similarity=0.850\n    Generated    \u2014 min: 0.0, max: 134.0, mean: 3.7444\n    Ground Truth \u2014 min: 0.0, max: 99.0, mean: 2.9639\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.031",
+        "generated_samples": "Schema: ['title', 'min_rank', 'max_weeks_on_list']\nNumber of Tuples: 1170\nExamples:\n            title  min_rank  max_weeks_on_list\n      THE MOTHERS        15                  1\nTHE GOOD DAUGHTER         7                  3\n THE ENGLISH GIRL         1                  7",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_49/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by 'title' and aggregate min of 'rank_on_list' and max of 'weeks_on_list'\nagg_df = df.groupby('title', as_index=False).agg(\n    min_rank=('rank_on_list', 'min'),\n    max_weeks_on_list=('weeks_on_list', 'max')\n)\n\n# Ensure the data types match the target schema\nagg_df['title'] = agg_df['title'].astype(str)\nagg_df['min_rank'] = agg_df['min_rank'].astype(int)\nagg_df['max_weeks_on_list'] = agg_df['max_weeks_on_list'].astype(int)\n\n# Write the result to the target CSV file without the index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_49/target_multisource.csv\"\nagg_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "title,min_rank,max_weeks_on_list\n12TH OF NEVER,1,6\n14TH DEADLY SIN,1,7\n15TH AFFAIR,1,7\n16TH SEDUCTION,1,7\n4 3 2 1,13,1\nA BANQUET OF CONSEQUENCES,4,2\nA BAXTER FAMILY CHRISTMAS,6,3\nA BRUSH OF WINGS,10,1\nA CHAIN OF THUNDER,7,2\nA COLUMN OF FIRE,1,15\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.287698745727539
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7681,
+          "cost": 0.0017176000000000001,
+          "latency": 5.914869546890259,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.536) / 2 = 0.768 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.708, range overlap=0.869.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'min_rank': range overlap=1.000, JS similarity=0.566\n    Generated    \u2014 min: 1.0, max: 20.0, mean: 8.2581\n    Ground Truth \u2014 min: 1.0, max: 20.0, mean: 11.654\n  Column 'max_weeks_on_list': range overlap=0.739, JS similarity=0.850\n    Generated    \u2014 min: 0.0, max: 134.0, mean: 3.7444\n    Ground Truth \u2014 min: 0.0, max: 99.0, mean: 2.9639\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.031",
+          "generated_samples": "Schema: ['title', 'min_rank', 'max_weeks_on_list']\nNumber of Tuples: 1170\nExamples:\n             title  min_rank  max_weeks_on_list\n          WARLIGHT         6                  4\n    HOUSE OF SPIES         1                  6\nTRULY MADLY GUILTY         1                  8",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_49/training_0.csv\", index_col=0)\n\n# Since only one source table exists, no union or join with other tables is possible.\n# The failed pipeline grouped by title and aggregated min(rank_on_list) and max(weeks_on_list),\n# but resulted in more rows than target (1170 vs 1162).\n# The target examples show fewer rows, so likely some duplicates or slight differences in title strings.\n# We should clean the title strings by stripping whitespace and uppercasing to match target format.\n\n# Clean title strings to match target examples format\nsource0['title'] = source0['title'].str.strip().str.upper()\n\n# Group by cleaned title and aggregate min rank_on_list and max weeks_on_list\nresult = source0.groupby('title', as_index=False).agg(\n    min_rank=('rank_on_list', 'min'),\n    max_weeks_on_list=('weeks_on_list', 'max')\n)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_49/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3554096221923828
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13373.096942901611,
+        "critique": 6064.970016479492
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+=== MCTS tree after iteration 2 ===
+ROOT  v=4  q=0.875  Σr=3.499  score=0.879 ★
+├── GROUP_BY : [Source1_4_0.fname]  v=2  q=0.874  Σr=1.747  score=0.874 [script] ★
+│   └── AGGREGATE : [COUNT(Source1_4_0.fname)]  v=1  q=0.874  Σr=0.874  score=0.874 [script] ★
+├── GROUP_BY : ["fname"]  v=1  q=0.879  Σr=0.879  score=0.879
+│   └── AGGREGATE : ["nunique(Slice n°)"]  v=1  q=0.879  Σr=0.879  score=0.879 [script]
+├── GROUP_BY : [fname]  v=1  q=0.874  Σr=0.874  score=0.874 [script]
+├── PIVOT  v=0  q=0.000  Σr=0.000  score=0.000
+├── JOIN : [[Source1_4_0, Source1_4_0]] columns=[[Source1_4_0.fname, Source1  v=1  q=0.000  Σr=0.000  score=0.000
+│   ├── GROUP_BY : [Source1_4_0.fname]  v=0  q=0.000  Σr=0.000  score=0.000
+│   ├── GROUP_BY : [fname]  v=1  q=0.000  Σr=0.000  score=0.000
+│   └── GROUP_BY : [Source1_4_0.fname, Source1_4_0.ok_col_num, Source1_4_0.cop_n  v=0  q=0.000  Σr=0.000  score=0.000
+├── GROUP_BY : [Source1_4_0.fname, Source1_4_0.ok_col_num, Source1_4_0.cop_n  v=0  q=0.000  Σr=0.000  score=0.000
+├── UNPIVOT  v=1  q=0.000  Σr=0.000  score=0.000
+└── UNION : [Source1_4_0]  v=0  q=0.000  Σr=0.000  score=0.000

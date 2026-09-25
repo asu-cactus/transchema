@@ -10,7 +10,7 @@ import pandas as pd
 from llm.llm_models import TokenUsageTracker, LLMClient
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
-from util.utils import get_test_info, execute_python
+from util.utils import get_test_info, execute_python, resolve_main_folder, resolve_case_json
 from test_scope import get_test_cases_ids
 from auto_suggest_llm_util import (
     calculate_score,
@@ -132,7 +132,7 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
 
     # Paths & bookkeeping (benchmark selector: github | monteprep)
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
     file_count = sum(
         1
@@ -141,10 +141,7 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
         if file.startswith("test")
     )
 
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+    json_file_path = resolve_case_json(benchmark, file_count)
     log_dir = log_dir_
 
     allowed_operation_list = [
@@ -153,6 +150,7 @@ def cot(args, length, id_, log_dir_, experiment_name, i_):
         "GROUP_BY/AGGREGATE",
         "PIVOT",
         "UNPIVOT",
+        "COLUMN_TRANSFORM",
         "NO_MORE_OPERATION",
     ]
 

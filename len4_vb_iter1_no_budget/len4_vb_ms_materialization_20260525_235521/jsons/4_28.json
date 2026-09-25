@@ -1,0 +1,46 @@
+{
+  "case": "4_28",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.011296800000000001,
+        "latency": 37.63761830329895,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_28/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_28/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_28/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_28/training_3.csv\", index_col=0)\n\n# Normalize SCHOOL_YEAR to integer by extracting the first year as integer\ndef normalize_school_year(df):\n    # Some SCHOOL_YEAR values are like '2014-2015', extract first 4 digits as int\n    df['SCHOOL_YEAR'] = df['SCHOOL_YEAR'].astype(str).str[:4].astype(int)\n    return df\n\nsource0 = normalize_school_year(source0)\nsource1 = normalize_school_year(source1)\nsource2 = normalize_school_year(source2)\nsource3 = normalize_school_year(source3)\n\n# Normalize INCIDENT_TYPE to uppercase and strip spaces for consistent join keys\ndef normalize_incident_type(df):\n    df['INCIDENT_TYPE'] = df['INCIDENT_TYPE'].astype(str).str.strip().str.upper()\n    return df\n\nsource0 = normalize_incident_type(source0)\nsource1 = normalize_incident_type(source1)\nsource2 = normalize_incident_type(source2)\nsource3 = normalize_incident_type(source3)\n\n# The intermediate_step1 is union of source0, source1, source2\n# They have the same schema and columns, so concat them\nunion_012 = pd.concat([source0, source1, source2], ignore_index=True)\n\n# Normalize source3 columns order to match union_012 for join\n# source3 schema: ['ULCS_NO', 'SCHOOL_ID', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT']\n# reorder columns to ['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_COUNT', 'SCHOOL_ID']\nsource3 = source3[['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_COUNT', 'SCHOOL_ID']]\n\n# Normalize source3 columns similarly\nsource3 = normalize_school_year(source3)\nsource3 = normalize_incident_type(source3)\n\n# Join source3 with union_012 on ['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'SCHOOL_ID']\n# The join type is inner join to keep only matching rows\njoined = pd.merge(\n    source3,\n    union_012,\n    on=['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'SCHOOL_ID'],\n    suffixes=('_src3', '_union012'),\n    how='inner'\n)\n\n# After join, INCIDENT_COUNT columns from both sides exist: INCIDENT_COUNT_src3 and INCIDENT_COUNT_union012\n# The target schema has one INCIDENT_COUNT column.\n# We assume the INCIDENT_COUNT from source3 is the correct one to keep (or we can sum or choose one)\n# Here, we take INCIDENT_COUNT from source3 (left side)\nresult = joined[['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_COUNT_src3', 'SCHOOL_ID']].copy()\nresult.rename(columns={'INCIDENT_COUNT_src3': 'INCIDENT_COUNT'}, inplace=True)\n\n# Ensure data types match target schema\nresult['INCIDENT_TYPE'] = result['INCIDENT_TYPE'].astype(str)\nresult['ULCS_NO'] = result['ULCS_NO'].astype(int)\nresult['SCHOOL_YEAR'] = result['SCHOOL_YEAR'].astype(int)\nresult['INCIDENT_COUNT'] = result['INCIDENT_COUNT'].astype(int)\nresult['SCHOOL_ID'] = result['SCHOOL_ID'].astype(int)\n\n# Save to target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_28/target_multisource.csv\", index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.02288818359375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7573,
+          "cost": 0.0025532000000000003,
+          "latency": 15.31203317642212,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.515) / 2 = 0.757 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.690, range overlap=0.097.\nGround truth candidate keys: {INCIDENT_TYPE}.\nGenerated table candidate keys: {INCIDENT_TYPE}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'ULCS_NO': range overlap=0.097, JS similarity=0.690\n    Generated    \u2014 min: 0.0, max: 5716.0, mean: 538.7436\n    Ground Truth \u2014 min: 3.0, max: 556.0, mean: 278.4872\n  Column 'SCHOOL_YEAR': range overlap=0.097, JS similarity=0.690\n    Generated    \u2014 min: 0.0, max: 5716.0, mean: 538.7436\n    Ground Truth \u2014 min: 3.0, max: 556.0, mean: 278.4872\n  Column 'INCIDENT_COUNT': range overlap=0.097, JS similarity=0.690\n    Generated    \u2014 min: 0.0, max: 5716.0, mean: 538.7436\n    Ground Truth \u2014 min: 3.0, max: 556.0, mean: 278.4872\n  Column 'SCHOOL_ID': range overlap=0.097, JS similarity=0.690\n    Generated    \u2014 min: 0.0, max: 5716.0, mean: 538.7436\n    Ground Truth \u2014 min: 3.0, max: 556.0, mean: 278.4872",
+          "generated_samples": "Schema: ['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_COUNT', 'SCHOOL_ID']\nNumber of Tuples: 39\nExamples:\n         INCIDENT_TYPE  ULCS_NO  SCHOOL_YEAR  INCIDENT_COUNT  SCHOOL_ID\n     FIRE - INCENDIARY     8780         2015             177        878\nFires and False Alarms     8770         2016             124        877\n               Robbery     8690         2016              61        869",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_28/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_28/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_28/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_28/training_3.csv\", index_col=0)\n\n# Standardize column order and names for df3 to match others\ndf3 = df3[['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']]\n\n# Convert SCHOOL_YEAR from string like \"2014-2015\" to integer year (first 4 digits)\ndef convert_school_year(x):\n    if isinstance(x, str) and len(x) >= 4 and x[:4].isdigit():\n        return int(x[:4])\n    try:\n        return int(x)\n    except:\n        return pd.NA\n\nfor df in [df0, df1, df2, df3]:\n    df['SCHOOL_YEAR'] = df['SCHOOL_YEAR'].apply(convert_school_year)\n\n# Concatenate all sources (UNION)\ndf_all = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# Group by INCIDENT_TYPE (key), aggregate:\n# INCIDENT_COUNT: sum\n# ULCS_NO, SCHOOL_YEAR, SCHOOL_ID: max (to pick representative integer values)\ndf_grouped = df_all.groupby('INCIDENT_TYPE', as_index=False).agg({\n    'INCIDENT_COUNT': 'sum',\n    'ULCS_NO': 'max',\n    'SCHOOL_YEAR': 'max',\n    'SCHOOL_ID': 'max'\n})\n\n# Reorder columns to match target schema exactly\ndf_grouped = df_grouped[['INCIDENT_TYPE', 'ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_COUNT', 'SCHOOL_ID']]\n\n# Write output CSV\ndf_grouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_28/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1303424835205078
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 37719.98620033264,
+        "critique": 15412.957906723022
+      }
+    }
+  ]
+}

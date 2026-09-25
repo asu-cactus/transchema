@@ -1,0 +1,46 @@
+{
+  "case": "3_20",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.1746,
+        "cost": 0.0012716000000000001,
+        "latency": 4.176573038101196,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.349) / 2 = 0.175 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.759, range overlap=0.326.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN, Price}.\nKeys present in ground truth but absent in generated: {SN}.\nSpurious keys in generated not present in ground truth: {SN, Price}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['SN'] \u2192 Price.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.326, JS similarity=0.759\n    Generated    \u2014 min: 1.0, max: 4.99, mean: 2.9776\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+        "generated_samples": "Schema: ['SN', 'Price']\nNumber of Tuples: 390\nExamples:\n          SN  Price\n   Rarallo90   3.53\nLirtastsda29   1.94\n  Chadista79   4.35",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length3_20/training_0.csv\"\n]\n\n# List to hold transformed DataFrames from each source\ntransformed_dfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Extract only the columns needed for the target: 'SN' and 'Price'\n    # According to source schema, these columns exist directly\n    df_target = df[['SN', 'Price']].copy()\n    \n    # Ensure correct types: SN as string, Price as float\n    df_target['SN'] = df_target['SN'].astype(str)\n    df_target['Price'] = df_target['Price'].astype(float)\n    \n    transformed_dfs.append(df_target)\n\n# Since only one source table is given, no union needed beyond this\n# If multiple sources existed with same schema, we would concat here\n\n# Concatenate all transformed DataFrames (union)\nresult_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target CSV path\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_20/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "SN,Price\nAsur53,2.42\nAlarap40,3.27\nSida61,1.66\nHiarideu73,2.5\nLassassasda30,3.54\nEnnoncil86,1.74\nSiralsudeu54,1.44\nEusri26,3.27\nArdcil81,3.09\nMarilsasya33,1.56\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6183853149414062
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7508,
+          "cost": 0.0011840000000000002,
+          "latency": 2.443124532699585,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.502) / 2 = 0.751 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.917, range overlap=0.777.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.777, JS similarity=0.917\n    Generated    \u2014 min: 1.0, max: 10.52, mean: 3.4873\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+          "generated_samples": "Schema: ['SN', 'Price']\nNumber of Tuples: 333\nExamples:\n          SN  Price\nSondastsda82   1.70\n    Lirtim36   1.33\nLassilsala30   6.57",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_20/training_0.csv\", index_col=0)\n\n# Since only one source table exists, no join needed.\n# Group by SN (primary key) and sum Price to ensure unique SN rows and correct aggregation.\nresult = source0.groupby(\"SN\", as_index=False).agg({\"Price\": \"sum\"})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_20/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3370513916015625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4179.079294204712,
+        "critique": 2487.497091293335
+      }
+    }
+  ]
+}

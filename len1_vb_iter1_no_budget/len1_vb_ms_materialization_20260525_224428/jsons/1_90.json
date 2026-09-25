@@ -1,0 +1,46 @@
+{
+  "case": "1_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6679,
+        "cost": 0.0045148,
+        "latency": 10.530510663986206,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.336) / 2 = 0.668 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.000.\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'dog_type': range overlap=0.000, JS similarity=0.671\n    Generated    \u2014 min: 153.0, max: 153.0, mean: 153.0\n    Ground Truth \u2014 min: 8.0, max: 4471.0, mean: 942.4",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 1\nExamples:\n dog_type\n      153",
+        "code": "import pandas as pd\n\n# Load the source data\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_90/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Count non-null entries in each dog stage column\ndoggo_count = df['doggo'].notna().sum()\nfloofer_count = df['floofer'].notna().sum()\npupper_count = df['pupper'].notna().sum()\npuppo_count = df['puppo'].notna().sum()\n\n# Sum all counts to get the total dog_type count\ndog_type = doggo_count + floofer_count + pupper_count + puppo_count\n\n# Create the target DataFrame with the required schema and single row\nTarget1_90 = pd.DataFrame({'dog_type': [dog_type]})\n\n# Save the result to the specified path\nTarget1_90.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "dog_type\n153\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.629425048828125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6679,
+          "cost": 0.001884,
+          "latency": 7.211060285568237,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.336) / 2 = 0.668 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.000.\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'dog_type': range overlap=0.000, JS similarity=0.671\n    Generated    \u2014 min: 153.0, max: 153.0, mean: 153.0\n    Ground Truth \u2014 min: 8.0, max: 4471.0, mean: 942.4",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 1\nExamples:\n dog_type\n      153",
+          "code": "import pandas as pd\n\n# Read source table\nsource_path = \"autopipeline-benchmarks/github-pipelines/length1_90/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Convert dog stage columns to boolean indicators (1 if not null, else 0)\ndoggo_count = df['doggo'].notnull().sum()\nfloofer_count = df['floofer'].notnull().sum()\npupper_count = df['pupper'].notnull().sum()\npuppo_count = df['puppo'].notnull().sum()\n\n# Sum all dog stage counts into dog_type\ndog_type = doggo_count + floofer_count + pupper_count + puppo_count\n\n# Create output dataframe with the target schema\noutput_df = pd.DataFrame({'dog_type': [dog_type]})\n\n# Write output\noutput_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6113052368164062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10558.887720108032,
+        "critique": 7242.6087856292725
+      }
+    }
+  ]
+}

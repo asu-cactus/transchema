@@ -1,0 +1,70 @@
+Case: 1_26
+Status: CORRECT
+Timestamp: 2026-02-24T09:52:14.590558
+Duration: 35.59 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_0_50/case_1_26/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['city', 'driver_count', 'type', 'date', 'fare', 'ride_id']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_26
+2. Target Schema: ['city': string, 'driver_count': integer, 'type': string, 'date': string, 'fare': float, 'ride_id': integer]
+3. Target Examples: There are 1187 available target examples:                  city  driver_count   type                 date   fare  \
+617       Huntermouth            37  Urban  2018-03-14 10:37:58  30.49   
+538        South Jack            46  Urban  2018-01-14 17:06:37  40.65   
+4         Richardfort            38  Urban  2018-04-17 02:26:37  23.00   
+786      West Gabriel            57  Urban  2018-03-09 04:39:40  14.41   
+915   Christopherfurt            41  Urban  2018-04-17 22:12:49  32.39   
+...               ...           ...    ...                  ...    ...   
+515    North Madeline            19  Urban  2018-04-07 08:54:49  32.99   
+1088    North Jasmine            33  Urban  2018-02-01 20:17:32   8.09   
+1044      Hurleymouth            36  Urban  2018-02-07 06:07:37  36.70   
+621       Huntermouth            37  Urban  2018-02-05 08:10:57  28.58   
+799    North Markport            22  Urban  2018-02-08 22:01:28  34.69   
+
+            ride_id  
+617   9537564108817  
+538   5440570608100  
+4      720020655850  
+786   8736179372694  
+915    653651735748  
+...             ...  
+515   1819348275778  
+1088   415938107224  
+1044   174817935586  
+621    314351998542  
+799   2742194758388  
+
+[119 rows x 6 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_26_0
+	Source 0 Schema: ['city', 'date', 'fare', 'ride_id']
+	Source 0 Examples: 	 Source 0 contains 1187 tuples, with examples as follows: 
+                 city                 date   fare        ride_id
+0  Lake Jonathanshire  2018-01-14 10:14:22  13.83  5739410935873
+1  South Michelleport  2018-03-04 18:24:09  30.24  2343912425577
+2  Port Samanthamouth  2018-02-24 04:29:00  33.44  2005065760003
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_26/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_26_1
+	Source 1 Schema: ['city', 'driver_count', 'type']
+	Source 1 Examples: 	 Source 1 contains 120 tuples, with examples as follows: 
+           city  driver_count   type
+0   Richardfort            38  Urban
+1  Williamsstad            59  Urban
+2   Port Angela            67  Urban
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_26/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_26/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

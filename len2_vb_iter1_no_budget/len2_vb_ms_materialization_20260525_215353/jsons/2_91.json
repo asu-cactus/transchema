@@ -1,0 +1,46 @@
+{
+  "case": "2_91",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.4789,
+        "cost": 0.0087468,
+        "latency": 21.60098123550415,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.291) / 2 = 0.479 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.825, range overlap=0.214.\nGround truth candidate keys: {committee_name_x}; {amount}.\nGenerated table candidate keys: {committee_name_x}.\nKeys present in ground truth but absent in generated: {amount}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['amount'] \u2192 committee_name_x.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount': range overlap=0.214, JS similarity=0.825\n    Generated    \u2014 min: 600.0, max: 76378903.0, mean: 4559461.4925\n    Ground Truth \u2014 min: 17089.0, max: 16381556.66, mean: 3683843.3067\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'committee_name_x': Jaccard=0.062",
+        "generated_samples": "Schema: ['committee_name_x', 'amount']\nNumber of Tuples: 67\nExamples:\n                                                committee_name_x     amount\nCOMMUNITY COLLEGE FACILITY COALITION ISSUES COMMITTEE, YES ON 51   142550.0\nCOMMUNITY COLLEGE FACILITY COALITION ISSUES COMMITTEE, YES ON 55   192637.0\n                    FUND FOR POLICY REFORM (NONPROFIT 501(C)(4)) 10748000.0",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_91/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_91/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Perform join on 'calaccess_committee_id' (common key)\ndf_joined = pd.merge(df0, df1, on=\"calaccess_committee_id\", how=\"inner\")\n\n# Group by 'committee_name_x' (which corresponds to df0.committee_name after join)\n# and sum the 'amount' from df0\n# Note: After merge, df0.committee_name is renamed to 'committee_name_x'\nresult = df_joined.groupby(\"committee_name_x\", as_index=False)[\"amount\"].sum()\n\n# Ensure the 'amount' column is float type (as per target schema)\nresult[\"amount\"] = result[\"amount\"].astype(float)\n\n# Write the final result to the specified path without the index\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_91/target_multisource.csv\", index=False)",
+        "generated_csv_head": "committee_name_x,amount\n\"CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIATION TRUTH IN AMERICAN GOVERNMENT FUND; NO ON PROPOSITION 62, YES ON PROPOSITION 66 (NON-PROFIT 501 (C) 5)\",222138.0\nCALIFORNIA GROCERS ASSOCIATION ISSUES COMMITTEE (NON-PROFIT 501(C) 6): YES ON PROPOSITION 67,100000.0\n\"CALIFORNIA KIDS CAMPAIGN, YES ON PROPS 55 & 56, SPONSORED AND MAJOR FUNDING BY COMMON SENSE KIDS ACTION, INC.\",590000.0\nCALIFORNIA STATEWIDE LAW ENFORCEMENT ASSOCIATION ISSUES COMMITTEE (NON-PROFIT 501 (C) 5): YES ON PROPOSITION 57,219510.0\n\"CALIFORNIA STATEWIDE LAW ENFORCEMENT ASSOCIATION ISSUES COMMITTEE, YES ON PROPOSITIONS 30 AND 35, NO ON PROPOSITION 32\",189828.0\n\"CALIFORNIANS FOR HOSPITAL ACCOUNTABILITY AND QUALITY CARE - NO ON 52, SPONSORED BY SERVICE EMPLOYEES INTERNATIONAL UNION - UNITED HEALTHCARE WORKERS WEST\",201622.0\n\"CALIFORNIANS FOR JUSTICE AND PUBLIC SAFETY, NO ON PROPOSITION 34\",5951092.0\n\"CALIFORNIANS FOR RESPONSIBLE MARIJUANA REFORM, SPONSORED BY DRUG POLICY ACTION, YES ON PROP. 64\",820685.0\n\"CALIFORNIANS FOR SENSIBLE REFORM, SPONSORED BY GHOST MANAGEMENT GROUP, LLC DBA WEEDMAPS\",850000.0\n\"CALIFORNIANS TO MEND, NOT END, THE DEATH PENALTY. NO ON PROP 62, YES ON PROP 66. SUPPORTED BY PROSECUTORS, LAW ENFORCEMENT, AND FAMILIES OF VICTIMS.\",6040962.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9698867797851562
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.00217,
+          "latency": 8.055936336517334,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_91/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_91/training_1.csv\", index_col=0)\n\n# Join on calaccess_committee_id\njoined = pd.merge(\n    source0,\n    source1,\n    how=\"inner\",\n    left_on=\"calaccess_committee_id\",\n    right_on=\"calaccess_committee_id\",\n    suffixes=('_x', '_y')\n)\n\n# Select and rename columns to match target schema\n# Target schema: ['committee_name_x': string, 'amount': float]\n# Use committee_name from source1 (committee_name column) as committee_name_x to match target examples\n# The failed pipeline used source0.committee_name, but target examples show committee_name_x with names matching source1.committee_name better\n# However, the target FD says committee_name_x is key, so we must use the joined committee_name from source1 (which is more specific to committee)\n# But source1 also has committee_name, source0 has committee_name, both present after join as committee_name_x and committee_name_y\n# The join suffixes put source0 as _x and source1 as _y, so committee_name_x is source0.committee_name, committee_name_y is source1.committee_name\n# The target examples committee_name_x matches source1.committee_name better (e.g. \"CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIATION TRUTH IN AMERICAN GOVERNMENT FUND; NO ON PROPOSITION 62, YES ON PROPOSITION 66 (NON-PROFIT 501 (C) 5)\")\n# So we rename committee_name_y to committee_name_x in output\n\nresult = joined.rename(columns={\"committee_name_y\": \"committee_name_x\"})[[\"committee_name_x\", \"amount\"]]\n\n# Group by committee_name_x and sum amount\nresult = result.groupby(\"committee_name_x\", as_index=False).agg({\"amount\": \"sum\"})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_91/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.029087066650390625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 21709.486484527588,
+        "critique": 8238.869905471802
+      }
+    }
+  ]
+}

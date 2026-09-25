@@ -1,0 +1,159 @@
+{
+  "case": "1_98",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026968,
+        "latency": 10.398576498031616,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n     0_x       0_y\n0.054686 -1.804295\n0.750901 -0.440634\n2.015455  0.616856",
+        "code": "import pandas as pd\n\n# Load source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Read CSV files with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history: JOIN : [[\"Source1_98_0\", \"Source1_98_1\"], [\"right_index\", \"0\"]]\n# Join df0 and df1 on df0.right_index == df1.index (which is the default index of df1)\n# df0 has columns: ['right_index', '0']\n# df1 has columns: ['0']\n# We join on df0.right_index (a column) and df1.index (the index)\n# This is a left join by default, but operation says JOIN with keys [\"right_index\", \"0\"] - \n# The second key \"0\" here refers to df1's index or column? The prompt says join on right_index and 0.\n# The operation_history is: JOIN : [[\"Source1_98_0\", \"Source1_98_1\"], [\"right_index\", \"0\"]]\n# This means join df0 and df1 on df0.right_index == df1.index (which is 0 in df1)\n# So join on df0.right_index == df1.index\n\n# Perform the join\ndf_joined = df0.set_index('right_index').join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# After join, df_joined columns are ['0_x', '0_y']\n# Convert columns to float as per target schema\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index (not required but cleaner)\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024672,
+        "latency": 5.1831254959106445,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n-0.612636 -0.064341\n 0.271611 -2.247252\n-0.974648 -0.025211",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Join df0 and df1 on df0.right_index == df1.index\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Rename columns to match target schema ['0_x', '0_y']\n# After join, columns are ['0_x', '0_y']\n# Convert columns to float type as per target schema\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028980000000000004,
+        "latency": 4.702373027801514,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x      0_y\n 1.591244 2.411482\n-0.157591 0.453422\n 0.709320 2.826167",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033528000000000004,
+        "latency": 5.1436450481414795,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n 0.282947 -1.638908\n 1.661962  2.197303\n-0.982554  3.593815",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0038096,
+        "latency": 4.4908459186553955,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n-0.117910 -0.665540\n 0.799634  4.460012\n 0.640949 -0.188962",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0042648,
+        "latency": 4.260352849960327,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n-0.839397  3.578397\n 0.197831  0.775631\n 0.237233 -0.114448",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0047236,
+        "latency": 8.803102493286133,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n     0_x       0_y\n0.245680 -1.261808\n0.654234 -0.745828\n1.312794  3.433336",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.005176,
+        "latency": 5.867817163467407,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n     0_x      0_y\n0.274875 0.154536\n0.483226 1.073460\n1.163954 3.473669",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0056296,
+        "latency": 4.204500913619995,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n-2.099895  7.278543\n-1.570339 -0.830306\n-0.678677  1.808033",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0060856,
+        "latency": 4.2910425662994385,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n-1.024434  1.915533\n-0.610849 -0.535207\n 1.482896  1.493827",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0065428,
+        "latency": 6.815258026123047,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {0_x}; {0_y}.\nGenerated table candidate keys: {0_x}; {0_y}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n      0_x       0_y\n 0.745652  0.972938\n-0.285330 -0.726100\n-1.429530  1.370527",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/test_1.csv\"\n\n# Target file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource.csv\"\n\n# Load source tables with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # columns: ['right_index', '0']\ndf1 = pd.read_csv(source1_path, index_col=0)  # columns: ['0']\n\n# Set df0.right_index as index to join on df1's index\ndf0_indexed = df0.set_index('right_index')\n\n# Perform inner join on df0.right_index == df1.index\ndf_joined = df0_indexed.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# Convert columns to float type as per target schema ['0_x', '0_y']\ndf_joined['0_x'] = df_joined['0_x'].astype(float)\ndf_joined['0_y'] = df_joined['0_y'].astype(float)\n\n# Reset index to default integer index for clean output\ndf_result = df_joined.reset_index(drop=True)\n\n# Write the result to the target CSV file without the index column\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "0_x,0_y\n-0.3978113835805185,0.148736393862684\n0.1220424338227182,1.55109411814864\n-0.0533155676662677,5.411766090434909\n0.4244605508801097,-2.589168112518434\n0.6409487972193374,-0.1889620633069952\n0.2755420052625594,1.7576444357581005\n-0.2716260191235253,2.097212466023389\n1.10010973135639,1.5621410030440537\n0.0899515799375942,6.657940857079273\n-1.5518657645058709,1.3245728037792066\n"
+      },
+      "critiques": []
+    }
+  ]
+}

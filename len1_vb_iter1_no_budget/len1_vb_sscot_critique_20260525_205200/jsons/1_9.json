@@ -1,0 +1,46 @@
+{
+  "case": "1_9",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2945,
+        "cost": 0.001962,
+        "latency": 6.089816570281982,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.589) / 2 = 0.294 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.850, range overlap=0.328.\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode, AGI_STUB, A00100}; {zipcode, AGI_STUB, N1}.\nKeys present in ground truth but absent in generated: {zipcode}.\nSpurious keys in generated not present in ground truth: {A00100, zipcode, AGI_STUB}; {N1, zipcode, AGI_STUB}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['AGI_STUB', 'N1'] \u2192 A00100; ['N1'] \u2192 A00100; ['A00100'] \u2192 N1.\nMissing FDs from ground truth: ['zipcode'] \u2192 A00100; ['A00100', 'N1'] \u2192 AGI_STUB; ['zipcode'] \u2192 N1; ['zipcode'] \u2192 AGI_STUB; ['A00100'] \u2192 AGI_STUB.\nDistribution Analysis (numerical columns with issues):\n  Column 'zipcode': range overlap=1.000, JS similarity=0.434\n    Generated    \u2014 min: 0.0, max: 99999.0, mean: 44429.9167\n    Ground Truth \u2014 min: 0.0, max: 99999.0, mean: 53252.7429\n  Column 'AGI_STUB': range overlap=0.000, JS similarity=0.992\n    Generated    \u2014 min: 1.0, max: 6.0, mean: 3.5049\n    Ground Truth \u2014 min: 10.0, max: 546.0, mean: 21.0717\n  Column 'N1': range overlap=0.248, JS similarity=0.982\n    Generated    \u2014 min: 0.0, max: 304729704.0, mean: 106688.6475\n    Ground Truth \u2014 min: 90.0, max: 75619290.0, mean: 10878.0326\n  Column 'A00100': range overlap=0.063, JS similarity=0.994\n    Generated    \u2014 min: 0.0, max: 304729704.0, mean: 106688.6475\n    Ground Truth \u2014 min: 1479.0, max: 4857739566.0, mean: 699343.1747",
+        "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 20000\nExamples:\n zipcode  AGI_STUB   N1  A00100\n    8742         5 2470  336095\n   44839         6  220  118188\n   17756         4  590   50693",
+        "code": "import pandas as pd\n\n# Step 1: Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_9/training_0.csv\"\n]\n\n# Step 2: Load all source tables\n# According to the prompt, only one source table is given.\n# If there were multiple source tables with the same schema, we would union them.\n# Here, we just load the single source table.\n\ndf_source0 = pd.read_csv(source_files[0], index_col=0)\n\n# Step 3: Inspect and transform source data to match target schema\n# Target schema: ['zipcode': int, 'AGI_STUB': int, 'N1': int, 'A00100': int]\n# Source0 schema includes these columns exactly: 'zipcode', 'AGI_STUB', 'N1', 'A00100'\n\n# Extract only the needed columns\ndf_target = df_source0[['zipcode', 'AGI_STUB', 'N1', 'A00100']].copy()\n\n# Step 4: Ensure data types match target schema (all integers)\n# Convert columns to integer type (if any missing or float, convert safely)\ndf_target['zipcode'] = df_target['zipcode'].astype(int)\ndf_target['AGI_STUB'] = df_target['AGI_STUB'].astype(int)\ndf_target['N1'] = df_target['N1'].astype(int)\ndf_target['A00100'] = df_target['A00100'].astype(int)\n\n# Step 5: Save the transformed data to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "zipcode,AGI_STUB,N1,A00100\n68927,5,40,5132\n65301,1,6710,85843\n57448,4,30,3713\n58316,3,250,15467\n43511,2,120,4371\n13334,1,220,2521\n25837,2,40,1938\n98422,5,1950,263868\n26181,5,350,44732\n22942,3,530,33037\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3742446899414062
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.2927,
+          "cost": 0.0021144000000000002,
+          "latency": 4.1223273277282715,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.585) / 2 = 0.293 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.850, range overlap=0.320.\nGround truth candidate keys: {zipcode}.\nGenerated table candidate keys: {zipcode, AGI_STUB}.\nKeys present in ground truth but absent in generated: {zipcode}.\nSpurious keys in generated not present in ground truth: {zipcode, AGI_STUB}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['AGI_STUB', 'N1'] \u2192 A00100; ['AGI_STUB', 'zipcode'] \u2192 A00100; ['N1'] \u2192 A00100; ['AGI_STUB', 'zipcode'] \u2192 N1; ['A00100'] \u2192 N1.\nMissing FDs from ground truth: ['zipcode'] \u2192 A00100; ['A00100', 'N1'] \u2192 AGI_STUB; ['zipcode'] \u2192 N1; ['zipcode'] \u2192 AGI_STUB; ['A00100'] \u2192 AGI_STUB.\nDistribution Analysis (numerical columns with issues):\n  Column 'zipcode': range overlap=1.000, JS similarity=0.433\n    Generated    \u2014 min: 0.0, max: 99999.0, mean: 44395.8645\n    Ground Truth \u2014 min: 0.0, max: 99999.0, mean: 53252.7429\n  Column 'AGI_STUB': range overlap=0.000, JS similarity=0.992\n    Generated    \u2014 min: 1.0, max: 6.0, mean: 3.5043\n    Ground Truth \u2014 min: 10.0, max: 546.0, mean: 21.0717\n  Column 'N1': range overlap=0.206, JS similarity=0.986\n    Generated    \u2014 min: 0.0, max: 367535463.0, mean: 107052.6264\n    Ground Truth \u2014 min: 90.0, max: 75619290.0, mean: 10878.0326\n  Column 'A00100': range overlap=0.076, JS similarity=0.991\n    Generated    \u2014 min: 0.0, max: 367535463.0, mean: 107052.6264\n    Ground Truth \u2014 min: 1479.0, max: 4857739566.0, mean: 699343.1747",
+          "generated_samples": "Schema: ['zipcode', 'AGI_STUB', 'N1', 'A00100']\nNumber of Tuples: 19932\nExamples:\n zipcode  AGI_STUB  N1  A00100\n   12853         6   0       0\n   12810         1 150    1772\n    7045         4 460   40089",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the first numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_9/training_0.csv\", index_col=0)\n\n# Perform group by on zipcode and AGI_STUB, aggregate sum on N1 and A00100\nresult = source1.groupby(['zipcode', 'AGI_STUB'], as_index=False).agg({'N1': 'sum', 'A00100': 'sum'})\n\n# Write the result to the target file with exact column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_9/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.8894672393798828
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6096.999883651733,
+        "critique": 4912.681818008423
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "1_20",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4703,
+        "cost": 0.001862,
+        "latency": 5.0924742221832275,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.333 + 0.607) / 2 = 0.470 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.634, range overlap=0.057.\nGround truth candidate keys: {size}; {sex, smoker}; {tip}; {total_bill}.\nGenerated table candidate keys: {sex, total_bill, tip}; {sex, total_bill, size}.\nKeys present in ground truth but absent in generated: {sex, smoker}; {tip}; {size}; {total_bill}.\nSpurious keys in generated not present in ground truth: {sex, total_bill, size}; {tip, sex, total_bill}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.333 (precision=1.000, recall=0.200).\nMissing FDs from ground truth: ['sex', 'smoker'] \u2192 tip; ['size'] \u2192 total_bill; ['size'] \u2192 sex; ['size'] \u2192 smoker; ['total_bill'] \u2192 tip (and 7 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'total_bill': range overlap=0.070, JS similarity=0.567\n    Generated    \u2014 min: 7.25, max: 50.81, mean: 19.915\n    Ground Truth \u2014 min: 18.504, max: 21.5683, mean: 19.6463\n  Column 'tip': range overlap=0.037, JS similarity=0.667\n    Generated    \u2014 min: 1.0, max: 10.0, mean: 2.943\n    Ground Truth \u2014 min: 2.8279, max: 3.1617, mean: 3.0107\n  Column 'size': range overlap=0.063, JS similarity=0.667\n    Generated    \u2014 min: 1.0, max: 10.0, mean: 2.943\n    Ground Truth \u2014 min: 2.0, max: 2.5692, mean: 2.355",
+        "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 122\nExamples:\n   sex smoker  total_bill  tip  size\nFemale     No       25.00 3.75   4.0\n  Male    Yes       10.34 2.00   2.0\n  Male    Yes       15.81 3.16   2.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_20/training_0.csv\"\n]\n\n# Target schema columns and types\ntarget_columns = ['sex', 'smoker', 'total_bill', 'tip', 'size']\ntarget_dtypes = {\n    'sex': str,\n    'smoker': str,\n    'total_bill': float,\n    'tip': float,\n    'size': float\n}\n\n# Step 1: Load all source tables\n# According to the prompt, only one source table is given: Source1_20_0\n# It has columns: ['total_bill', 'tip', 'sex', 'smoker', 'day', 'time', 'size']\n# We only need the columns that appear in the target schema.\n\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Select only the columns needed for the target\n    df_selected = df[target_columns].copy()\n    # Ensure correct dtypes\n    df_selected = df_selected.astype(target_dtypes)\n    dfs.append(df_selected)\n\n# Step 2: Since only one source table exists and it has the same columns as target,\n# no union or join is needed beyond this.\n\n# Step 3: Concatenate all dataframes if multiple sources existed (here only one)\n# but we keep the code general for multiple sources.\nresult_df = pd.concat(dfs, ignore_index=True)\n\n# Step 4: Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource.csv\"\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "sex,smoker,total_bill,tip,size\nMale,No,14.26,2.5,2.0\nMale,No,15.95,2.0,2.0\nFemale,No,12.48,2.52,2.0\nFemale,No,29.8,4.2,6.0\nMale,No,8.52,1.48,2.0\nFemale,No,14.52,2.0,2.0\nFemale,No,11.38,2.0,2.0\nMale,No,22.82,2.18,3.0\nMale,No,19.08,1.5,2.0\nFemale,No,20.27,2.83,2.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5497207641601562
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8786,
+          "cost": 0.0012764,
+          "latency": 4.705534934997559,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.757) / 2 = 0.879 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.764, range overlap=0.427.\nGround truth candidate keys: {size}; {sex, smoker}; {tip}; {total_bill}.\nGenerated table candidate keys: {size}; {sex, smoker}; {tip}; {total_bill}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'total_bill': range overlap=0.573, JS similarity=1.000\n    Generated    \u2014 min: 17.2456, max: 22.5914, mean: 19.4076\n    Ground Truth \u2014 min: 18.504, max: 21.5683, mean: 19.6463\n  Column 'tip': range overlap=0.485, JS similarity=1.000\n    Generated    \u2014 min: 2.7104, max: 3.0469, mean: 2.9195\n    Ground Truth \u2014 min: 2.8279, max: 3.1617, mean: 3.0107\n  Column 'size': range overlap=0.221, JS similarity=0.293\n    Generated    \u2014 min: 2.3478, max: 3.0, mean: 2.6498\n    Ground Truth \u2014 min: 2.0, max: 2.5692, mean: 2.355",
+          "generated_samples": "Schema: ['sex', 'smoker', 'total_bill', 'tip', 'size']\nNumber of Tuples: 4\nExamples:\n   sex smoker  total_bill      tip     size\n  Male    Yes   22.591429 3.046905 2.571429\n  Male     No   20.044375 3.015312 3.000000\nFemale    Yes   17.749130 2.905217 2.347826",
+          "code": "import pandas as pd\n\n# Read source table\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_20/training_0.csv\", index_col=0)\n\n# Union of all source tables (only one source here)\ndf_union = source1\n\n# Group by 'sex' and 'smoker' and aggregate mean of total_bill, tip, size\nresult = df_union.groupby(['sex', 'smoker'], as_index=False).agg({\n    'total_bill': 'mean',\n    'tip': 'mean',\n    'size': 'mean'\n})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_20/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3298988342285156
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5097.159862518311,
+        "critique": 4780.630826950073
+      }
+    }
+  ]
+}

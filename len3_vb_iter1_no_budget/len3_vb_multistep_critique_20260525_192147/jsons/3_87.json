@@ -1,0 +1,46 @@
+{
+  "case": "3_87",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5826,
+        "cost": 0.010243600000000002,
+        "latency": 9.566371440887451,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.499) / 2 = 0.583 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.511, range overlap=0.486.\nGround truth candidate keys: {Rank}.\nGenerated table candidate keys: {Rank}; {0}.\nSpurious keys in generated not present in ground truth: {0}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['0'] \u2192 Rank.\nDistribution Analysis (numerical columns with issues):\n  Column 'Rank': range overlap=0.973, JS similarity=0.927\n    Generated    \u2014 min: 5.0, max: 191.0, mean: 102.0\n    Ground Truth \u2014 min: 6.0, max: 187.0, mean: 97.0141\n  Column '0': range overlap=0.000, JS similarity=0.094\n    Generated    \u2014 min: 5.0, max: 191.0, mean: 102.0\n    Ground Truth \u2014 min: 1.0, max: 1.0, mean: 1.0",
+        "generated_samples": "Schema: ['Rank', '0']\nNumber of Tuples: 151\nExamples:\n Rank  0\n  102  6\n  150  6\n   86  6",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_87/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_87/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length3_87/training_2.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\ndf2 = pd.read_csv(source2_path, index_col=0)\n\n# Step 1: UNPIVOT operation on Source3_87_2 (df2)\n# Unpivot df2 from wide to long format on all columns except 'Rank' and 'Country'\n# But the operation history only says 'UNPIVOT' without specifying columns.\n# Given df2 schema: ['Rank', 'Country', 'Documents', 'Citable documents', 'Citations', 'Self-citations', 'Citations per document', 'H index']\n# We will unpivot all columns except 'Rank' and 'Country' into two columns: 'Metric' and 'Value'\n\ndf2_unpivot = df2.melt(id_vars=['Rank', 'Country'], var_name='Metric', value_name='Value')\n\n# Step 2: JOIN operation between Source3_87_2 (unpivoted) and Source3_87_1 on 'Country'\n# df1 schema: ['Country', 'Energy Supply', 'Energy Supply per Capita', '% Renewable']\n# Join df2_unpivot with df1 on 'Country' (inner join by default)\n\ndf_joined = pd.merge(df2_unpivot, df1, on='Country', how='inner')\n\n# Step 3: GROUP BY Source3_87_2.Rank, aggregation count(Source3_87_2.Country)\n# From the join, we want to group by 'Rank' (from df2_unpivot) and count the number of 'Country' occurrences.\n# Since 'Country' is a string, count will count non-null entries.\n\ngrouped = df_joined.groupby('Rank')['Country'].count().reset_index()\n\n# Rename columns to match target schema: ['Rank': integer, '0': integer]\ngrouped.rename(columns={'Country': '0'}, inplace=True)\n\n# Ensure data types match target schema\ngrouped['Rank'] = grouped['Rank'].astype(int)\ngrouped['0'] = grouped['0'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_87/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "Rank,0\n5,6\n6,6\n7,6\n8,6\n15,6\n17,6\n18,6\n20,6\n21,6\n24,6\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1012554168701172
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9788,
+          "cost": 0.00246,
+          "latency": 6.58386754989624,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.958) / 2 = 0.979 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.929, range overlap=0.987.\nGround truth candidate keys: {Rank}.\nGenerated table candidate keys: {Rank}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Rank': range overlap=0.973, JS similarity=0.858\n    Generated    \u2014 min: 5.0, max: 191.0, mean: 102.9855\n    Ground Truth \u2014 min: 6.0, max: 187.0, mean: 97.0141",
+          "generated_samples": "Schema: ['Rank', '0']\nNumber of Tuples: 69\nExamples:\n Rank  0\n   25  1\n   17  1\n  110  1",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_87/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_87/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_87/training_2.csv\", index_col=0)\n\n# Rename columns for clarity (not assignment, just referencing)\n# Join Source3_87_2 and Source3_87_1 on Country\ndf_join_1 = pd.merge(source2, source1, how='inner', left_on='Country', right_on='Country')\n\n# Join the above result with Source3_87_0 on Country Name = Country\ndf_join_2 = pd.merge(df_join_1, source0, how='inner', left_on='Country', right_on='Country Name')\n\n# Group by Rank and count Country occurrences (Country from source2)\nresult = df_join_2.groupby('Rank', as_index=False).agg({'Country': 'count'})\n\n# Rename columns to match target schema ['Rank', '0']\nresult.columns = ['Rank', '0']\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_87/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0950565338134766
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9629.63318824768,
+        "critique": 6648.534774780273
+      }
+    }
+  ]
+}

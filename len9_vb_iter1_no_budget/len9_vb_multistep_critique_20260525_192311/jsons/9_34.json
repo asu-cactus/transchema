@@ -1,0 +1,46 @@
+{
+  "case": "9_34",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.0177204,
+        "latency": 17.010436534881592,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {KEYWORDS_NUM}.\nGenerated table candidate keys: {KEYWORDS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'KEYWORDS_NUM': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 52761.0, max: 52761.0, mean: 52761.0\n    Ground Truth \u2014 min: 1.0, max: 81.0, mean: 5.5275",
+        "generated_samples": "Schema: ['KEYWORDS_NUM']\nNumber of Tuples: 1\nExamples:\n KEYWORDS_NUM\n        52761",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource_0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_0.csv\", index_col=0)\nsource_1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_1.csv\", index_col=0)\nsource_3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_3.csv\", index_col=0)\nsource_4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_4.csv\", index_col=0)\nsource_9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_9.csv\", index_col=0)\n\n# According to operation_history, we join Source9_34_9 with Source9_34_0, Source9_34_1, Source9_34_3, Source9_34_4 on ROW_WID\n# Start with source_9 as base\ndf = source_9\n\n# Join with source_0 on ROW_WID\ndf = df.merge(source_0, on=\"ROW_WID\", how=\"left\")\n\n# Join with source_1 on ROW_WID\ndf = df.merge(source_1, on=\"ROW_WID\", how=\"left\")\n\n# Join with source_3 on ROW_WID\ndf = df.merge(source_3, on=\"ROW_WID\", how=\"left\")\n\n# Join with source_4 on ROW_WID\ndf = df.merge(source_4, on=\"ROW_WID\", how=\"left\")\n\n# According to operation_history, group_by = [] and aggregation = sum(Source9_34_9.KEYWORDS_NUM)\n# Since group_by is empty, we sum the KEYWORDS_NUM column over the entire dataframe\n# But the target schema only has KEYWORDS_NUM as integer, so we produce a single-row dataframe with sum(KEYWORDS_NUM)\n\nkeywords_num_sum = df[\"KEYWORDS_NUM\"].sum()\n\n# Create the target dataframe with the aggregated sum as a single integer value in KEYWORDS_NUM column\ntarget_df = pd.DataFrame({\"KEYWORDS_NUM\": [int(keywords_num_sum)]})\n\n# Write the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/target_multisource.csv\", index=False)",
+        "generated_csv_head": "KEYWORDS_NUM\n52761\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8409023284912109
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0030372,
+          "latency": 12.038969039916992,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {KEYWORDS_NUM}.\nGenerated table candidate keys: {KEYWORDS_NUM}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'KEYWORDS_NUM': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 8110.0, max: 8110.0, mean: 8110.0\n    Ground Truth \u2014 min: 1.0, max: 81.0, mean: 5.5275",
+          "generated_samples": "Schema: ['KEYWORDS_NUM']\nNumber of Tuples: 1\nExamples:\n KEYWORDS_NUM\n         8110",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/training_9.csv\", index_col=0)\n\n# Union the four sources with the same schema (Source9_34_2,5,6,8)\nunioned = pd.concat([source2, source5, source6, source8], ignore_index=True)\n\n# Join Source9_34_9 with Source9_34_0 on ROW_WID\ndf = pd.merge(source9, source0, on=\"ROW_WID\", how=\"inner\")\n\n# Join with Source9_34_1 on ROW_WID\ndf = pd.merge(df, source1, on=\"ROW_WID\", how=\"inner\")\n\n# Join with Source9_34_3 on ROW_WID\ndf = pd.merge(df, source3, on=\"ROW_WID\", how=\"inner\")\n\n# Join with Source9_34_4 on ROW_WID\ndf = pd.merge(df, source4, on=\"ROW_WID\", how=\"inner\")\n\n# Join with unioned dimension table on ROW_WID\ndf = pd.merge(df, unioned, on=\"ROW_WID\", how=\"inner\")\n\n# The target schema is only ['KEYWORDS_NUM'], so aggregate sum over KEYWORDS_NUM\nresult = pd.DataFrame()\nresult[\"KEYWORDS_NUM\"] = [df[\"KEYWORDS_NUM\"].sum()]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_34/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.5598068237304688
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 17105.2303314209,
+        "critique": 12273.826837539673
+      }
+    }
+  ]
+}
