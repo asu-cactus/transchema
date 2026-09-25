@@ -13,6 +13,13 @@
 # Overrides: MODELS="dmx-deepseek-v4-pro" to run a subset. No SKIP_DONE / resume logic --
 # mcts_search.py's own result files aren't checked for completion here, so a rerun
 # redoes every case (matches how the reference script behaves).
+#     LENGTHS="1 2"                   default = the 20-case pilot. Use
+#                                LENGTHS="1 2 3 4 5 6 7 8 9 10 11 12 13 14 15" for the full
+#                                105-case benchmark (L9-L15 have only 3-4 cases each; ids
+#                                without a folder are skipped).
+#     DROP_SCORE_COMPONENTS="fd_f1"   reward-function ablation switch (Ablation Plan §1),
+#                                forwarded to mcts_search.py's --drop_score_components. See
+#                                run_github_mcts_dmx.sh's header for the full explanation.
 #
 # MODELS RUN ONE AFTER ANOTHER: MCTS writes python_recovered_mcts.py /
 # target_multisource_mcts*.csv into the SAME benchmark case folders regardless of which
@@ -52,6 +59,12 @@ MIN_FREE_GB="${MIN_FREE_GB:-15}"
 # that failed under that early stop, SAME_LEAF_STOPPING=0 disables it so the search
 # runs to the full iteration/timeout budget instead.
 SAME_LEAF_STOPPING="${SAME_LEAF_STOPPING:-5}"
+# Reward-function ablation switch (Ablation Plan §1): forwarded to mcts_search.py's
+# --drop_score_components. Comma-separated score_1 component names to force out of
+# the weighted average, e.g. "fd_f1" (w/o s_fd), "avg_col_score_1" (w/o s_col),
+# "row_count_score,max_missing_score" (w/o s_rows+s_missing), "credibility_weight"
+# (w/o s_cred). Empty (default) = unchanged full reward.
+DROP_SCORE_COMPONENTS="${DROP_SCORE_COMPONENTS:-}"
 # curated_pipeline RAG is built from github-pipelines, not smart_building_v2, so this is a
 # cross-domain corpus here -- see run_smartbuilding_v2_det_score_training_rag.sh's note.
 # On by default anyway, to match every GitHub TreeMorpher run and the CoT/CoO/ReAct baselines
@@ -137,7 +150,7 @@ else
 fi
 
 if [ -n "${DRY_RUN:-}" ]; then
-    echo "MODELS=$MODELS  RUN_TAG=$RUN_TAG  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  rag=${RAG:-none}"
+    echo "MODELS=$MODELS  RUN_TAG=$RUN_TAG  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  rag=${RAG:-none}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}"
     echo "total cases per model: ${#CASES[@]}"
     for L in $LENGTHS; do
         n=0; for u in "${CASES[@]}"; do [ "${u%%:*}" = "$L" ] && n=$((n+1)); done
@@ -160,6 +173,10 @@ run_case() {
     if [ -n "$RAG" ]; then
         rag_args=(--rag "$RAG" --curated_pipeline_db "$RAG_DB" --curated_pipeline_norm_stats "$RAG_STATS")
     fi
+    local drop_args=()
+    if [ -n "$DROP_SCORE_COMPONENTS" ]; then
+        drop_args=(--drop_score_components "$DROP_SCORE_COMPONENTS")
+    fi
 
     log "$tag" "Starting case ${group}_${case_id}"
     python3 Langraph/mcts_search.py \
@@ -178,6 +195,7 @@ run_case() {
         --simulation         pipeline \
         --data_split         training \
         "${rag_args[@]}" \
+        "${drop_args[@]}" \
         --length          "$group" \
         --id_start        "$case_id" \
         --id_end          "$case_id" \
@@ -201,7 +219,7 @@ t0=$(date +%s)
 for MODEL in $MODELS; do
     check_disk || { log "ABORT" "disk check failed before $MODEL -- stopping the whole run"; exit 1; }
     mkdir -p "logs_langraph/smartbuilding_v2_${RUN_TAG}_${MODEL}"
-    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, same_leaf_stopping=${SAME_LEAF_STOPPING} ====="
+    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, same_leaf_stopping=${SAME_LEAF_STOPPING}, drop_score_components=${DROP_SCORE_COMPONENTS:-none} ====="
     m_start=$(date +%s)
     for u in "${CASES[@]}"; do enqueue "$MODEL" "${u%%:*}" "${u##*:}"; done
     wait

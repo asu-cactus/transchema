@@ -36,6 +36,12 @@
 #                                RUN_TAG to RESUME: cases that already have a results_summary.csv
 #                                in that run are skipped.
 #     CASES_OVERRIDE="1_41 4_18" only these cases (L_id tokens)
+#     DROP_SCORE_COMPONENTS="fd_f1"   reward-function ablation switch (Ablation Plan §1), forwarded
+#                                to mcts_search.py's --drop_score_components. Comma-separated score_1
+#                                component names to force out of the weighted average (renormalizing
+#                                the rest), e.g. "fd_f1" (w/o s_fd), "avg_col_score_1" (w/o s_col),
+#                                "row_count_score,max_missing_score" (w/o s_rows+s_missing),
+#                                "credibility_weight" (w/o s_cred). Empty (default) = full reward.
 #     DRY_RUN=1                  print the case list / counts and exit (no LLM calls)
 #
 # Models run one after another: MCTS writes python_recovered_mcts.py / target_multisource_mcts*.csv
@@ -64,6 +70,12 @@ timeout_for() {
 SAME_LEAF_STOPPING="${SAME_LEAF_STOPPING:-5}"
 MIN_FREE_GB="${MIN_FREE_GB:-15}"
 RUN_TAG="${RUN_TAG:-gh_leafstop5_$(date '+%Y%m%d_%H%M%S')}"
+# Reward-function ablation switch (Ablation Plan §1): forwarded to mcts_search.py's
+# --drop_score_components. Comma-separated score_1 component names to force out of
+# the weighted average, e.g. "fd_f1" (w/o s_fd), "avg_col_score_1" (w/o s_col),
+# "row_count_score,max_missing_score" (w/o s_rows+s_missing), "credibility_weight"
+# (w/o s_cred). Empty (default) = unchanged full reward.
+DROP_SCORE_COMPONENTS="${DROP_SCORE_COMPONENTS:-}"
 BENCH_DIR="autopipeline-benchmarks/github-pipelines"
 
 log() { echo "[$(date '+%H:%M:%S')] [$1] $2"; }
@@ -80,7 +92,7 @@ else
 fi
 
 if [ -n "${DRY_RUN:-}" ]; then
-    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  rag=${RAG-curated_pipeline}"
+    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  rag=${RAG-curated_pipeline}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}"
     echo "total cases per model: ${#CASES[@]}"
     for L in $LENGTHS; do
         n=0; for u in "${CASES[@]}"; do [ "${u%%:*}" = "$L" ] && n=$((n+1)); done
@@ -163,6 +175,10 @@ run_case() {
     if [ -n "$RAG" ]; then
         rag_args=(--rag "$RAG" --curated_pipeline_db "$RAG_DB" --curated_pipeline_norm_stats "$RAG_STATS")
     fi
+    local drop_args=()
+    if [ -n "$DROP_SCORE_COMPONENTS" ]; then
+        drop_args=(--drop_score_components "$DROP_SCORE_COMPONENTS")
+    fi
 
     # Resume: result dirs are Langraph/results_langraph/<exp_name>_<timestamp>/ ("_2..." = year prefix,
     # so c1 never matches c10). A case counts as done only if its results_summary.csv has a DATA row:
@@ -192,6 +208,7 @@ run_case() {
         --simulation         pipeline \
         --data_split         training \
         "${rag_args[@]}" \
+        "${drop_args[@]}" \
         --max_depth          "$max_depth" \
         --length             "$group" \
         --id_start           "$case_id" \
@@ -242,7 +259,7 @@ log "ALL" "RUN_TAG=${RUN_TAG}  (re-launch with this RUN_TAG to resume)"
 for MODEL in $MODELS; do
     check_disk || { log "ABORT" "disk check failed before $MODEL -- stopping the whole run"; exit 1; }
     mkdir -p "logs_langraph/github_${RUN_TAG}_${MODEL}"
-    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, same_leaf_stopping=${SAME_LEAF_STOPPING}, rag=${RAG:-none} ====="
+    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, same_leaf_stopping=${SAME_LEAF_STOPPING}, rag=${RAG:-none}, drop_score_components=${DROP_SCORE_COMPONENTS:-none} ====="
     m_start=$(date +%s)
     for u in "${CASES[@]}"; do enqueue "$MODEL" "${u%%:*}" "${u##*:}"; done
     wait
