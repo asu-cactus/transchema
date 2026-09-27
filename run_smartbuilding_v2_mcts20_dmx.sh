@@ -36,7 +36,7 @@ if ! python3 -c "import transformers" 2>/dev/null; then
     exit 1
 fi
 
-if pgrep -u "$(id -u)" -f "Langraph/mcts_search\.py|python3 critique_data\.py" >/dev/null; then
+if [ -z "${SKIP_GUARD:-}" ] && pgrep -u "$(id -u)" -f "Langraph/mcts_search\.py|python3 critique_data\.py" >/dev/null; then
     echo "ERROR: an MCTS or critique_data.py run is already active. Both write into the" >&2
     echo "  same benchmark case folders; wait for it to finish first." >&2
     exit 1
@@ -159,6 +159,17 @@ if [ -n "${DRY_RUN:-}" ]; then
     exit 0
 fi
 
+# One systemd scope per case. systemd-oomd is active on this machine and kills the HEAVIEST cgroup once the
+# user manager's memory pressure stays above 50% for 20 s; with every case inside the tmux pane's single scope
+# that took down the whole batch (all in-flight cases at once, several times). With a scope per case the
+# victim is one case. CASE_SCOPES=0 disables. Falls back to plain execution if user scopes are unavailable.
+SCOPE_CMD=()
+if [ "${CASE_SCOPES:-1}" = "1" ] && systemd-run --user --scope --quiet --slice="${CASE_SLICE:-ablation.slice}" true >/dev/null 2>&1; then
+    # All case scopes join one slice so memory_guard.sh can put a single hard memory ceiling around ALL of
+    # them (host protection). With no limit set on the slice this changes nothing. CASE_SLICE overrides.
+    SCOPE_CMD=(systemd-run --user --scope --quiet --slice="${CASE_SLICE:-ablation.slice}")
+fi
+
 run_case() {
     local model=$1 group=$2 case_id=$3
     # Resolved relative to Langraph/ by mcts_search.py's _HERE, not the repo root --
@@ -178,8 +189,20 @@ run_case() {
         drop_args=(--drop_score_components "$DROP_SCORE_COMPONENTS")
     fi
 
+    # Resume (SKIP_DONE=1): a case counts as done only if its results_summary.csv has a DATA row (a case
+    # killed mid-run leaves a header-only file and is run again). Off by default = the old behavior.
+    if [ -n "${SKIP_DONE:-}" ]; then
+        local f
+        for f in Langraph/${result_dir}/${exp_name}_2*/results_summary.csv; do
+            if [ -f "$f" ] && [ "$(wc -l < "$f")" -gt 1 ]; then
+                log "$tag" "already done -- skipping"
+                return
+            fi
+        done
+    fi
+
     log "$tag" "Starting case ${group}_${case_id}"
-    python3 Langraph/mcts_search.py \
+    "${SCOPE_CMD[@]}" python3 Langraph/mcts_search.py \
         --benchmark          smart_building_v2 \
         --model              "$model" \
         --token_limit        12000 \

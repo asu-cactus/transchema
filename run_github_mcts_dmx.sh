@@ -173,6 +173,17 @@ AutoTokenizer.from_pretrained('deepseek-ai/DeepSeek-V3')
     log "ALL" "tokenizer cache warm -- HF_HUB_OFFLINE=1 set for the rest of this run"
 fi
 
+# One systemd scope per case. systemd-oomd is active on this machine and kills the HEAVIEST cgroup once the
+# user manager's memory pressure stays above 50% for 20 s; with every case inside the tmux pane's single scope
+# that took down the whole batch (all in-flight cases at once, several times). With a scope per case the
+# victim is one case. CASE_SCOPES=0 disables. Falls back to plain execution if user scopes are unavailable.
+SCOPE_CMD=()
+if [ "${CASE_SCOPES:-1}" = "1" ] && systemd-run --user --scope --quiet --slice="${CASE_SLICE:-ablation.slice}" true >/dev/null 2>&1; then
+    # All case scopes join one slice so memory_guard.sh can put a single hard memory ceiling around ALL of
+    # them (host protection). With no limit set on the slice this changes nothing. CASE_SLICE overrides.
+    SCOPE_CMD=(systemd-run --user --scope --quiet --slice="${CASE_SLICE:-ablation.slice}")
+fi
+
 run_case() {
     local model=$1 group=$2 case_id=$3
     local result_dir="results_langraph/github_${RUN_TAG}_${model}"
@@ -205,7 +216,7 @@ run_case() {
     done
 
     log "$tag" "Starting case ${group}_${case_id}"
-    python3 Langraph/mcts_search.py \
+    "${SCOPE_CMD[@]}" python3 Langraph/mcts_search.py \
         --benchmark          github \
         --model              "$model" \
         --token_limit        12000 \

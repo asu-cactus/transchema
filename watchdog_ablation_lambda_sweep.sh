@@ -1,7 +1,7 @@
 #!/bin/bash
 # Standalone local watchdog for the w/o s_fd + w/o s_col reward-ablation batch.
 # Runs independently of any Claude Code session, in its own tmux session. Every 30 min it checks
-# that the BATCH PROCESS (run_ablation_reward_wofd_wocol.sh) is actually running -- not merely that
+# that the BATCH PROCESS (run_ablation_lambda_sweep.sh) is actually running -- not merely that
 # its tmux session exists (an idle session after a failed batch fooled the first version for ~6 h).
 # If the process is gone and the log has no "ALL 4 STAGES COMPLETE", it recreates the tmux session
 # and relaunches; the launchers' resume logic skips already-scored cases.
@@ -12,9 +12,9 @@
 
 cd "$(dirname "$0")" || exit 1
 
-JOB_SESSION="ablation_wofd_wocol"
-BATCH_PATTERN="run_ablation_reward_wofd_wocol\.sh"
-LOG="logs_langraph/ablation_wofd_wocol_batch.log"
+JOB_SESSION="ablation_lambda_sweep"
+BATCH_PATTERN="run_ablation_lambda_sweep\.sh"
+LOG="logs_langraph/ablation_lambda_sweep_batch.log"
 CHECK_INTERVAL=1800
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WATCHDOG] $1"; }
@@ -33,7 +33,7 @@ while true; do
         tmux kill-session -t "$JOB_SESSION" 2>/dev/null
         tmux new-session -d -s "$JOB_SESSION" -c "$(pwd)"
         tmux send-keys -t "$JOB_SESSION" \
-            "source env/bin/activate && bash run_ablation_reward_wofd_wocol.sh 2>&1 | tee -a $LOG" C-m
+            "source env/bin/activate && bash run_ablation_lambda_sweep.sh 2>&1 | tee -a $LOG" C-m
         sleep 20
         if pgrep -u "$(id -u)" -f "$BATCH_PATTERN" >/dev/null; then
             log "Relaunched successfully."

@@ -1433,7 +1433,11 @@ def mcts_select(state: MCTSGraphState) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-_OPERATOR_CONFIG_LAMBDA = 0.5  # tunable: S(o,c) = λ·S_LLM + (1-λ)·S_rule
+# tunable: S(o,c) = λ·S_LLM + (1-λ)·S_rule. Ablation Plan §3 (expansion λ sweep) switch:
+# TREEMORPHER_EXPAND_LAMBDA overrides the default 0.5 when set (e.g. "0.25", "0.75").
+# Read once at import time -- every run_*.sh launcher execs a fresh python3 process per
+# case, so this is set correctly by exporting the env var before launching, no CLI flag needed.
+_OPERATOR_CONFIG_LAMBDA = float(os.environ.get("TREEMORPHER_EXPAND_LAMBDA", 0.5))
 # Number of candidates requested from the LLM per expand call — independent
 # of MCTSNode.MAX_CHILDREN (the tree's per-node child cap). The LLM's
 # response is a ranked list; the distinct operator types in first-appearance

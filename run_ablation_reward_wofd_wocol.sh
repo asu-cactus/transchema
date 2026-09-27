@@ -41,30 +41,49 @@ GH_SKIP_CASES="${GH_SKIP_CASES:-4_0 4_1 4_2 4_3 4_4 4_5 4_6 4_7 4_8 4_9 4_10 4_1
 
 log() { echo "[$(date '+%H:%M:%S')] [BATCH] $1"; }
 
+# Stages start back-to-back: SKIP_GUARD=1 bypasses the launchers' "an MCTS run is already
+# active" check, which otherwise trips on orphaned scoring subprocesses of the previous stage's
+# last case (that stalled the batch for ~6h once). Safe here: consecutive stages either use
+# different benchmark folders or reach the same case folder ~30 min apart.
+
 t0=$(date +%s)
 
+# Each stage runs TWICE. Cases are run in per-case systemd scopes (see the launchers), so an oomd kill
+# takes out one case, not the batch -- but that case then has no result. The second pass re-runs exactly
+# the cases without a result (both launchers skip finished cases: GitHub always, Smart Building via
+# SKIP_DONE=1) and is a quick no-op when nothing died. SKIP_DONE=1 also makes a watchdog relaunch in the
+# middle of a Smart Building stage resume instead of restarting the stage.
+run_gh() {   # $1 = drop components, $2 = run-tag suffix, $3 = label
+    local pass
+    for pass in 1 2; do
+        log "$3 (pass $pass/2)"
+        DROP_SCORE_COMPONENTS="$1" SKIP_GUARD=1 SAME_LEAF_STOPPING=0 RUN_TAG="${RUN_TAG_PREFIX}_$2" \
+            MODELS="$MODEL" MAX_JOBS="$MAX_JOBS" CASE_TIMEOUT="$CASE_TIMEOUT" MIN_FREE_GB="$MIN_FREE_GB" \
+            SKIP_CASES="$GH_SKIP_CASES" DRY_RUN="${DRY_RUN:-}" \
+            bash run_github_mcts_dmx.sh || { log "$3 FAILED -- stopping the batch"; exit 1; }
+    done
+}
+run_sb() {   # $1 = drop components, $2 = run-tag suffix, $3 = label
+    local pass
+    for pass in 1 2; do
+        log "$3 (pass $pass/2)"
+        DROP_SCORE_COMPONENTS="$1" SKIP_GUARD=1 SKIP_DONE=1 SAME_LEAF_STOPPING=0 RUN_TAG="${RUN_TAG_PREFIX}_$2" \
+            MODELS="$MODEL" MAX_JOBS="$MAX_JOBS" CASE_TIMEOUT="$CASE_TIMEOUT" MIN_FREE_GB="$MIN_FREE_GB" \
+            LENGTHS="$SB_LENGTHS" DRY_RUN="${DRY_RUN:-}" \
+            bash run_smartbuilding_v2_mcts20_dmx.sh || { log "$3 FAILED -- stopping the batch"; exit 1; }
+    done
+}
+
 log "===== 1/4: GitHub, w/o s_fd (drop fd_f1) -- skipping L4 cases 0-17 ====="
-DROP_SCORE_COMPONENTS=fd_f1 SAME_LEAF_STOPPING=0 RUN_TAG="${RUN_TAG_PREFIX}_wofd" \
-    MODELS="$MODEL" MAX_JOBS="$MAX_JOBS" CASE_TIMEOUT="$CASE_TIMEOUT" MIN_FREE_GB="$MIN_FREE_GB" \
-    SKIP_CASES="$GH_SKIP_CASES" DRY_RUN="${DRY_RUN:-}" \
-    bash run_github_mcts_dmx.sh || { log "GitHub w/o s_fd FAILED -- stopping the batch"; exit 1; }
+run_gh fd_f1 wofd "GitHub w/o s_fd"
 
 log "===== 2/4: GitHub, w/o s_col (drop avg_col_score_1) -- skipping L4 cases 0-17 ====="
-DROP_SCORE_COMPONENTS=avg_col_score_1 SAME_LEAF_STOPPING=0 RUN_TAG="${RUN_TAG_PREFIX}_wocol" \
-    MODELS="$MODEL" MAX_JOBS="$MAX_JOBS" CASE_TIMEOUT="$CASE_TIMEOUT" MIN_FREE_GB="$MIN_FREE_GB" \
-    SKIP_CASES="$GH_SKIP_CASES" DRY_RUN="${DRY_RUN:-}" \
-    bash run_github_mcts_dmx.sh || { log "GitHub w/o s_col FAILED -- stopping the batch"; exit 1; }
+run_gh avg_col_score_1 wocol "GitHub w/o s_col"
 
 log "===== 3/4: Smart Building (full 105), w/o s_fd (drop fd_f1) ====="
-DROP_SCORE_COMPONENTS=fd_f1 SAME_LEAF_STOPPING=0 RUN_TAG="${RUN_TAG_PREFIX}_wofd" \
-    MODELS="$MODEL" MAX_JOBS="$MAX_JOBS" CASE_TIMEOUT="$CASE_TIMEOUT" MIN_FREE_GB="$MIN_FREE_GB" \
-    LENGTHS="$SB_LENGTHS" DRY_RUN="${DRY_RUN:-}" \
-    bash run_smartbuilding_v2_mcts20_dmx.sh || { log "Smart Building w/o s_fd FAILED -- stopping the batch"; exit 1; }
+run_sb fd_f1 wofd "Smart Building w/o s_fd"
 
 log "===== 4/4: Smart Building (full 105), w/o s_col (drop avg_col_score_1) ====="
-DROP_SCORE_COMPONENTS=avg_col_score_1 SAME_LEAF_STOPPING=0 RUN_TAG="${RUN_TAG_PREFIX}_wocol" \
-    MODELS="$MODEL" MAX_JOBS="$MAX_JOBS" CASE_TIMEOUT="$CASE_TIMEOUT" MIN_FREE_GB="$MIN_FREE_GB" \
-    LENGTHS="$SB_LENGTHS" DRY_RUN="${DRY_RUN:-}" \
-    bash run_smartbuilding_v2_mcts20_dmx.sh || { log "Smart Building w/o s_col FAILED -- stopping the batch"; exit 1; }
+run_sb avg_col_score_1 wocol "Smart Building w/o s_col"
 
 log "ALL 4 STAGES COMPLETE in $(( ($(date +%s)-t0)/60 )) min"
