@@ -226,7 +226,7 @@ run_case() {
         --early_stopping     0 \
         --same_leaf_stopping "$SAME_LEAF_STOPPING" \
         --case_timeout       "$case_timeout" \
-        --mcts_critique_mode simulate \
+        --mcts_critique_mode "${MCTS_CRITIQUE_MODE:-simulate}" \
         --validation         autopipeline \
         --reward             det_score_value \
         --simulation         pipeline \

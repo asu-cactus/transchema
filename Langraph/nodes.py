@@ -3106,7 +3106,15 @@ def should_critique(state: MCTSGraphState) -> str:
         if llm_judge != "none":
             needs_critique = not state.get("judge_verdict", False)
         else:
-            critique_threshold = 0.9 if reward_mode == "score" else 1.0
+            # Ablation Plan §5 (critique-invocation threshold) switch: TREEMORPHER_CRITIQUE_THRESHOLD
+            # overrides the default (0.9 for reward="score", 1.0 -- the strictest possible -- for
+            # everything else, incl. det_score_value, which every production run uses) when set.
+            # Read once per process is fine: every run_*.sh launcher execs a fresh python3 per case.
+            _override = os.environ.get("TREEMORPHER_CRITIQUE_THRESHOLD")
+            if _override is not None:
+                critique_threshold = float(_override)
+            else:
+                critique_threshold = 0.9 if reward_mode == "score" else 1.0
             needs_critique = state["current_score"] < critique_threshold
         if needs_critique:
             return "critique"
