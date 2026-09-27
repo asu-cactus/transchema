@@ -52,14 +52,18 @@ t0=$(date +%s)
 run_lambda_gh() {   # $1 = lambda, $2 = run-tag suffix
     log "GitHub, lambda=$1 (two-phase: leafstop then noleafstop retry of failures)"
     export TREEMORPHER_EXPAND_LAMBDA="$1"
-    RUN_TAG="${RUN_TAG_PREFIX}${2}_gh" MODEL="$MODEL" MAX_JOBS="$GH_MAX_JOBS" DRY_RUN="${DRY_RUN:-}" \
+    # SKIP_GUARD_PHASE1=1: stages run back-to-back, so the previous stage's orphaned scoring
+    # subprocesses can still be alive when this one's phase 1 starts (phase 2 always bypasses the
+    # guard already). Without this the batch died mid-sweep every time -- see the 2026-09-27 postmortem.
+    RUN_TAG="${RUN_TAG_PREFIX}${2}_gh" MODEL="$MODEL" MAX_JOBS="$GH_MAX_JOBS" SKIP_GUARD_PHASE1=1 DRY_RUN="${DRY_RUN:-}" \
         bash run_github_mcts_2phase.sh || { log "GitHub lambda=$1 FAILED -- stopping the batch"; exit 1; }
     unset TREEMORPHER_EXPAND_LAMBDA
 }
 run_lambda_sb() {   # $1 = lambda, $2 = run-tag suffix
     log "Smart Building (full 105), lambda=$1 (two-phase: leafstop then noleafstop retry of failures)"
     export TREEMORPHER_EXPAND_LAMBDA="$1"
-    MODELS="$MODEL" RUN_TAG="${RUN_TAG_PREFIX}${2}_sb" MAX_JOBS="$SB_MAX_JOBS" LENGTHS="$SB_LENGTHS" DRY_RUN="${DRY_RUN:-}" \
+    MODELS="$MODEL" RUN_TAG="${RUN_TAG_PREFIX}${2}_sb" MAX_JOBS="$SB_MAX_JOBS" LENGTHS="$SB_LENGTHS" \
+        SKIP_GUARD_PHASE1=1 DRY_RUN="${DRY_RUN:-}" \
         bash run_smartbuilding_v2_2phase_leafstop.sh || { log "Smart Building lambda=$1 FAILED -- stopping the batch"; exit 1; }
     unset TREEMORPHER_EXPAND_LAMBDA
 }

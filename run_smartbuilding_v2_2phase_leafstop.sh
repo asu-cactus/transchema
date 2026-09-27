@@ -91,7 +91,11 @@ SUMMARY=()
 
 for MODEL in $MODELS; do
     log "===== $MODEL: phase 1 (same_leaf_stopping=5, all 105 cases, MAX_JOBS=$MAX_JOBS) ====="
+    # SKIP_GUARD_PHASE1=1 bypasses the "an MCTS run is already active" check for phase 1 (phase 2 below
+    # always skips it, same reasoning: this script's own leftover child processes, or a PRIOR stage's in
+    # an outer batch like run_ablation_lambda_sweep.sh, can still be alive when phase 1 starts).
     MODELS="$MODEL" RUN_TAG="${RUN_TAG}_leafstop" MAX_JOBS="$MAX_JOBS" SAME_LEAF_STOPPING=5 LENGTHS="$LENGTHS" \
+        SKIP_GUARD="${SKIP_GUARD_PHASE1:-}" \
         bash run_smartbuilding_v2_mcts20_dmx.sh || { log "$MODEL: phase 1 FAILED (preflight or fatal error) -- stopping"; exit 1; }
 
     p1_dir="Langraph/results_langraph/smartbuilding_v2_${RUN_TAG}_leafstop_${MODEL}"
@@ -107,7 +111,8 @@ for MODEL in $MODELS; do
     n_fail=$(echo "$fails" | wc -w)
     log "$MODEL: phase 1 = $p1_score, $n_fail case(s) failed: $fails"
     log "===== $MODEL: phase 2 (same_leaf_stopping=0, retrying $n_fail failed case(s), MAX_JOBS=$MAX_JOBS) ====="
-    MODELS="$MODEL" RUN_TAG="${RUN_TAG}_noleafstop" MAX_JOBS="$MAX_JOBS" SAME_LEAF_STOPPING=0 \
+    # SKIP_GUARD=1 unconditionally: phase 1's own leftover child processes can still be alive here.
+    MODELS="$MODEL" RUN_TAG="${RUN_TAG}_noleafstop" MAX_JOBS="$MAX_JOBS" SAME_LEAF_STOPPING=0 SKIP_GUARD=1 \
         CASES_OVERRIDE="$fails" bash run_smartbuilding_v2_mcts20_dmx.sh || { log "$MODEL: phase 2 FAILED (preflight or fatal error) -- stopping"; exit 1; }
 
     p2_dir="Langraph/results_langraph/smartbuilding_v2_${RUN_TAG}_noleafstop_${MODEL}"
