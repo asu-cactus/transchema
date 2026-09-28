@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+"""
+oracle_validate.py — Oracle metric for the reward-function ablation study (Ablation Plan §1).
+
+For each case in a results_langraph experiment, re-executes every FULL pipeline script the
+MCTS search actually ran successfully during that case (every "[simulate/pipeline] Trial N:
+execute_python='Success'" occurrence in the case's log — the simulate-path candidate scripts,
+not critique's echoed/revised text or partial-pipeline executions). Since every ablation run
+here uses --data_split training, the project's own is_correct is computed on the TEST-swapped
+script (training_N.csv -> test_N.csv; see util.utils.make_test_validation_script), not on the
+training execution -- Oracle mirrors that exactly: swap, re-execute, then validate the fresh
+test-split output against ground truth with the SAME validator the project uses for its
+official accuracy numbers (validation/hard_match.py's compare_tables_matching, i.e.
+--validation autopipeline).
+
+A case counts Oracle-correct if ANY re-executed script matches ground truth. This measures
+whether the underlying MCTS SEARCH ever generated a correct pipeline for a case, independent of
+whether the (possibly reward-component-ablated) scorer was able to SELECT it as the best-scoring
+one -- an upper bound decoupled from the ablation's selection quality.
+
+Scope note: only simulate-path scripts are counted (not critique-revised scripts) -- this is a
+conservative choice, a slight possible UNDERCOUNT (missing a case where only a critique revision,
+never the original simulate script, was correct), never an overcount, and it's what stays cleanly
+and unambiguously parseable from the log format.
+
+Safety: never touches any shared/production output path. Every to_csv() call inside a
+re-executed script that targets a "target_multisource_mcts*" path is monkey-patched to a private
+scratch file instead, regardless of how the script builds that path internally.
+
+Usage:
+    python3 oracle_validate.py --benchmark github --exp_name github_abl_wofd_dmx-gpt-oss-120b
+    python3 oracle_validate.py --benchmark smart_building_v2 --exp_name smartbuilding_v2_abl_wofd_dmx-gpt-oss-120b
+
+Writes <exp_name>_oracle.csv (case_id, oracle_correct, n_scripts_tried, n_scripts_matched) next
+to this script, and prints the summary count. Run from the repo root (or anywhere -- it chdirs
+to its own directory so the benchmark-relative paths inside extracted scripts resolve correctly).
+"""
+import argparse
+import csv
+import glob
+import os
+import re
+import sys
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+os.chdir(_HERE)
+sys.path.insert(0, _HERE)
+
+import pandas as pd
+
+from util.utils import execute_python, drop_leading_index_col_if_present, make_test_validation_script
+from validation.hard_match import compare_tables_matching
+
+_BENCHMARK_FOLDERS = {
+    "github": "autopipeline-benchmarks/github-pipelines",
+    "smart_building_v2": "autopipeline-benchmarks/smartbuilding-pipelines-v2-split",
+}
+
+_SCRATCH_DIR = "/tmp/oracle_validate_scratch"
+os.makedirs(_SCRATCH_DIR, exist_ok=True)
+
+# ── Redirect every "target_multisource_mcts*" write to a private scratch path ──────────
+# Never let a re-executed historical script overwrite the shared production output file
+# (some other experiment could be actively scoring the same case_id right now).
+_current_scratch_path = {"path": None}
+_orig_to_csv = pd.DataFrame.to_csv
+
+
+def _patched_to_csv(self, path_or_buf=None, *args, **kwargs):
+    if isinstance(path_or_buf, (str, os.PathLike)) and "target_multisource_mcts" in str(path_or_buf):
+        path_or_buf = _current_scratch_path["path"]
+    return _orig_to_csv(self, path_or_buf, *args, **kwargs)
+
+
+pd.DataFrame.to_csv = _patched_to_csv
+
+_CODE_BLOCK_RE = re.compile(r"```[Pp]ython\n(.*?)\n```", re.DOTALL)
+_TRIAL_SUCCESS_RE = re.compile(r"\[simulate/pipeline\] Trial \d+: execute_python='Success'")
+_MAX_BACKWARD_GAP = 2000  # chars between a code block's closing fence and its Trial-success line
+
+# Critique-revised scripts have no "Trial N:" confirmation line. Two anchors instead:
+# the real revised script is the fenced block immediately after "$END_CONFIDENCE$" (the
+# echoed "Current Python script:" block earlier in the same response is NOT this), and
+# its execution succeeded iff the components dict logged after it is a real dict, not None
+# (components=None only happens on an execution/scoring error -- see _score_and_validate_output).
+_END_CONFIDENCE_RE = re.compile(r"\$END_CONFIDENCE\$")
+_MAX_FORWARD_GAP_CODE = 300     # chars between $END_CONFIDENCE$ and the code block after it
+_COMPONENTS_OUTCOME_RE = re.compile(r"components=(None|\{)")
+_MAX_FORWARD_GAP_OUTCOME = 5000  # chars between the code block and its components= outcome
+
+
+def extract_successful_simulate_scripts(log_text: str) -> list:
+    """Every fenced ```python block immediately confirmed by a simulate-path
+    'Trial N: execute_python=Success' line (see module docstring for scope)."""
+    scripts = []
+    seen_spans = set()
+    for trial_match in _TRIAL_SUCCESS_RE.finditer(log_text):
+        preceding = log_text[: trial_match.start()]
+        code_matches = list(_CODE_BLOCK_RE.finditer(preceding))
+        if not code_matches:
+            continue
+        last = code_matches[-1]
+        if trial_match.start() - last.end() > _MAX_BACKWARD_GAP:
+            continue
+        if last.span() in seen_spans:
+            continue
+        seen_spans.add(last.span())
+        scripts.append(last.group(1))
+    return scripts
+
+
+def extract_successful_critique_scripts(log_text: str) -> list:
+    """Every fenced ```python block that is the critique's REVISED script (anchored on
+    the preceding $END_CONFIDENCE$, which the echoed 'Current Python script:' block does
+    NOT have), confirmed successful by a following components={...} (not components=None)."""
+    scripts = []
+    seen_spans = set()
+    for conf_match in _END_CONFIDENCE_RE.finditer(log_text):
+        after = log_text[conf_match.end():]
+        code_match = _CODE_BLOCK_RE.search(after)
+        if not code_match or code_match.start() > _MAX_FORWARD_GAP_CODE:
+            continue
+        code_end_abs = conf_match.end() + code_match.end()
+        outcome_match = _COMPONENTS_OUTCOME_RE.search(log_text, code_end_abs, code_end_abs + _MAX_FORWARD_GAP_OUTCOME)
+        if not outcome_match or outcome_match.group(1) != "{":
+            continue
+        span = (conf_match.end() + code_match.start(), code_end_abs)
+        if span in seen_spans:
+            continue
+        seen_spans.add(span)
+        scripts.append(code_match.group(1))
+    return scripts
+
+
+def validate_case(benchmark: str, case_label: str, log_paths: list) -> dict:
+    """case_label e.g. '6_15' (length_caseid)."""
+    length_str, case_id = case_label.split("_", 1)
+    mf = _BENCHMARK_FOLDERS[benchmark]
+    case_folder = f"{mf}/length{length_str}_{case_id}"
+    gt_path = f"{case_folder}/target.csv"
+    if not os.path.exists(gt_path):
+        return {"case_id": case_label, "oracle_correct": "", "n_tried": 0, "n_matched": 0, "note": "no ground truth found"}
+
+    df_gt = pd.read_csv(gt_path, low_memory=False)
+    df_gt = drop_leading_index_col_if_present(df_gt)
+
+    all_scripts = []  # list of (source, script_text)
+    for lp in log_paths:
+        with open(lp, errors="replace") as f:
+            text = f.read()
+        all_scripts.extend(("simulate", s) for s in extract_successful_simulate_scripts(text))
+        all_scripts.extend(("critique", s) for s in extract_successful_critique_scripts(text))
+
+    n_matched = 0
+    oracle_correct = False
+    matched_source = ""
+    for i, (source, script) in enumerate(all_scripts):
+        # data_split=training's official is_correct is computed on the TEST-swapped
+        # script (training_N.csv -> test_N.csv, output -> *_test_val.csv), not on the
+        # training execution itself -- see util.utils.make_test_validation_script's
+        # docstring/history. Oracle must use the identical definition of "correct" the
+        # project already uses everywhere else, so swap+execute the test variant here.
+        test_script = make_test_validation_script(script)
+        scratch_path = os.path.join(_SCRATCH_DIR, f"{case_label}_{i}.csv")
+        _current_scratch_path["path"] = scratch_path
+        if os.path.exists(scratch_path):
+            os.remove(scratch_path)
+        try:
+            result = execute_python(test_script)
+            if result != "Success" or not os.path.exists(scratch_path):
+                continue
+            df_out = pd.read_csv(scratch_path, low_memory=False)
+            _, is_match, _, _ = compare_tables_matching(df_out, df_gt)
+            if is_match:
+                n_matched += 1
+                oracle_correct = True
+                matched_source = source
+                break  # short-circuit: case is Oracle-correct, no need to try the rest
+        except Exception:
+            continue
+        finally:
+            if os.path.exists(scratch_path):
+                os.remove(scratch_path)
+
+    n_simulate = sum(1 for s, _ in all_scripts if s == "simulate")
+    n_critique = len(all_scripts) - n_simulate
+    return {
+        "case_id": case_label, "oracle_correct": oracle_correct, "n_tried": len(all_scripts),
+        "n_matched": n_matched, "note": f"n_simulate={n_simulate} n_critique={n_critique} matched_source={matched_source}",
+    }
+
+
+def _validate_case_worker(task: tuple) -> dict:
+    """Top-level (picklable) wrapper for multiprocessing.Pool workers."""
+    benchmark, case_label, log_paths = task
+    try:
+        return validate_case(benchmark, case_label, log_paths)
+    except Exception as e:
+        return {"case_id": case_label, "oracle_correct": "", "n_tried": 0, "n_matched": 0, "note": f"worker exception: {e}"}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--benchmark", required=True, choices=["github", "smart_building_v2"])
+    ap.add_argument("--exp_name", required=True, help="e.g. github_abl_wofd_dmx-gpt-oss-120b")
+    ap.add_argument("--only_case", default="", help="debug: validate a single case_id (e.g. 6_15) and exit")
+    ap.add_argument("--workers", type=int, default=1, help="parallel worker processes (e.g. 40); each grabs the next case as soon as it's free")
+    args = ap.parse_args()
+
+    log_root = f"logs_langraph/{args.exp_name}"
+    case_dirs = sorted(glob.glob(f"{log_root}/cases_g*_c*"))
+    if not case_dirs:
+        print(f"ERROR: no case log dirs found under {log_root}")
+        sys.exit(1)
+
+    _CASE_DIR_RE = re.compile(r"cases_g(\d+)_c(\d+)$")
+    cases = {}  # case_label -> list of log paths
+    for cd in case_dirs:
+        m = _CASE_DIR_RE.search(cd)
+        if not m:
+            continue
+        case_label = f"{m.group(1)}_{m.group(2)}"
+        logs = sorted(glob.glob(f"{cd}/*_MCTS_*.log"))
+        if logs:
+            cases[case_label] = logs
+
+    if args.only_case:
+        cases = {args.only_case: cases[args.only_case]} if args.only_case in cases else {}
+        if not cases:
+            print(f"ERROR: case {args.only_case} not found under {log_root}")
+            sys.exit(1)
+
+    print(f"{len(cases)} cases with logs under {log_root} -- {args.workers} worker(s)")
+
+    ordered_cases = sorted(cases.items(), key=lambda kv: (int(kv[0].split('_')[0]), int(kv[0].split('_')[1])))
+    tasks = [(args.benchmark, case_label, log_paths) for case_label, log_paths in ordered_cases]
+
+    out_csv = f"{args.exp_name}_oracle.csv"
+    rows = []
+    n_oracle_correct = 0
+    n_done = 0
+
+    # Incremental writer: flush after every result so a long run's progress survives an
+    # interruption (this can be thousands of script re-executions across two benchmarks).
+    with open(out_csv, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["case_id", "oracle_correct", "n_tried", "n_matched", "note"])
+        w.writeheader()
+        f.flush()
+
+        if args.workers <= 1:
+            result_iter = (_validate_case_worker(t) for t in tasks)
+        else:
+            import multiprocessing
+            pool = multiprocessing.Pool(processes=args.workers)
+            result_iter = pool.imap_unordered(_validate_case_worker, tasks)
+
+        for r in result_iter:
+            rows.append(r)
+            n_done += 1
+            if r["oracle_correct"] is True:
+                n_oracle_correct += 1
+            w.writerow(r)
+            f.flush()
+            if n_done % 25 == 0 or n_done == len(tasks):
+                print(f"  [{n_done}/{len(tasks)}] oracle_correct so far: {n_oracle_correct}")
+
+        if args.workers > 1:
+            pool.close()
+            pool.join()
+
+    n_total = len(rows)
+    print(f"\n{args.exp_name}: Oracle {n_oracle_correct}/{n_total} = {100*n_oracle_correct/n_total:.1f}%")
+    print(f"Wrote {out_csv}")
+
+
+if __name__ == "__main__":
+    main()
