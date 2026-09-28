@@ -47,6 +47,7 @@ os.chdir(_HERE)
 sys.path.insert(0, _HERE)
 
 import pandas as pd
+from tqdm.auto import tqdm
 
 from util.utils import execute_python, drop_leading_index_col_if_present, make_test_validation_script
 from validation.hard_match import compare_tables_matching
@@ -254,6 +255,7 @@ def main():
             pool = multiprocessing.Pool(processes=args.workers)
             result_iter = pool.imap_unordered(_validate_case_worker, tasks)
 
+        pbar = tqdm(total=len(tasks), desc=args.exp_name, unit="case")
         for r in result_iter:
             rows.append(r)
             n_done += 1
@@ -261,8 +263,9 @@ def main():
                 n_oracle_correct += 1
             w.writerow(r)
             f.flush()
-            if n_done % 25 == 0 or n_done == len(tasks):
-                print(f"  [{n_done}/{len(tasks)}] oracle_correct so far: {n_oracle_correct}")
+            pbar.set_postfix(oracle_correct=n_oracle_correct)
+            pbar.update(1)
+        pbar.close()
 
         if args.workers > 1:
             pool.close()
