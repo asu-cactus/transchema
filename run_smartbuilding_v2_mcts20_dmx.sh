@@ -150,7 +150,7 @@ else
 fi
 
 if [ -n "${DRY_RUN:-}" ]; then
-    echo "MODELS=$MODELS  RUN_TAG=$RUN_TAG  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  rag=${RAG:-none}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}"
+    echo "MODELS=$MODELS  RUN_TAG=$RUN_TAG  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  rag=${RAG:-none}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}"
     echo "total cases per model: ${#CASES[@]}"
     for L in $LENGTHS; do
         n=0; for u in "${CASES[@]}"; do [ "${u%%:*}" = "$L" ] && n=$((n+1)); done
@@ -182,7 +182,7 @@ run_case() {
     local case_log_dir="${log_base}/cases_g${group}_c${case_id}"
     local rag_args=()
     if [ -n "$RAG" ]; then
-        rag_args=(--rag "$RAG" --curated_pipeline_db "$RAG_DB" --curated_pipeline_norm_stats "$RAG_STATS")
+        rag_args=(--rag "$RAG" --curated_pipeline_db "$RAG_DB" --curated_pipeline_norm_stats "$RAG_STATS" --curated_retrieval_mode "${CURATED_RETRIEVAL_MODE:-prefix_feature}")
     fi
     local drop_args=()
     if [ -n "$DROP_SCORE_COMPONENTS" ]; then

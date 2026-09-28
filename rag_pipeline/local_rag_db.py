@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS local_context (
     target_examples     TEXT,   -- sample rows as plain text (token-capped by caller)
     source_schemas      TEXT,   -- JSON: {"test_0": "col_a INT, col_b STR", ...}
     source_examples     TEXT,   -- JSON: {"test_0": "row1\\nrow2\\n...", ...}
-    feature_vector       TEXT    -- JSON array of floats (z-scored + L2-normalized), or NULL
+    feature_vector       TEXT,   -- JSON array of floats (z-scored + L2-normalized), or NULL
+    embedding_vector      TEXT    -- JSON array of floats (L2-normalized text embedding), or NULL
 )
 """
 
@@ -68,6 +69,11 @@ def create_local_rag_db(db_path: str) -> None:
     conn = sqlite3.connect(db_path)
     conn.execute(_CREATE_TABLE)
     conn.execute(_CREATE_INDEX)
+    # Older DBs built before embedding_vector existed: CREATE TABLE IF NOT EXISTS
+    # above is a no-op for them, so add the column explicitly if missing.
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(local_context)").fetchall()}
+    if "embedding_vector" not in cols:
+        conn.execute("ALTER TABLE local_context ADD COLUMN embedding_vector TEXT")
     conn.commit()
     conn.close()
 
@@ -85,6 +91,7 @@ def insert_case(
     source_schemas: Dict[str, str],
     source_examples: Dict[str, str],
     feature_vector: Optional[List[float]] = None,
+    embedding_vector: Optional[List[float]] = None,
 ) -> None:
     """Insert one retrieved case into the local DB.
 
@@ -104,6 +111,10 @@ def insert_case(
                              by the caller), stored as JSON for later cosine-similarity
                              re-ranking in get_rag_hints(). None for modes that don't
                              use feature-vector matching.
+        embedding_vector:    Optional L2-normalized text-embedding vector (already
+                             normalized by the caller), stored as JSON for later
+                             cosine-similarity re-ranking in get_rag_hints() under the
+                             "embedding_only" / "prefix_embedding" retrieval modes.
     """
     conn = sqlite3.connect(db_path)
     conn.execute(
@@ -111,8 +122,8 @@ def insert_case(
         INSERT INTO local_context
             (case_id, folder_path, schema_sim_score, abstract_pipeline,
              full_pipeline_steps, target_schema, target_examples,
-             source_schemas, source_examples, feature_vector)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             source_schemas, source_examples, feature_vector, embedding_vector)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             case_id,
@@ -125,6 +136,7 @@ def insert_case(
             json.dumps(source_schemas),
             json.dumps(source_examples),
             json.dumps(feature_vector) if feature_vector is not None else None,
+            json.dumps(embedding_vector) if embedding_vector is not None else None,
         ),
     )
     conn.commit()
@@ -417,23 +429,45 @@ def get_rag_hints(
     operation_history: List[str],
     top_k: int = 3,
     query_vector: Optional[List[float]] = None,
+    retrieval_mode: str = "prefix_feature",
+    embedding_query_vector: Optional[List[float]] = None,
+    rng_seed: Optional[int] = None,
 ) -> str:
     """Return a formatted hint block for the mcts_expand prompt.
 
-    Queries the local SQLite DB for cases whose abstract_pipeline shares the
-    same prefix as operation_history.  From each matched case the *next*
-    operation (depth + 1) is extracted and formatted as a few-shot example.
+    Five retrieval strategies (retrieval_mode), all reading the same DB:
+
+      prefix_feature (default, unchanged from prior behavior):
+          Filter to rows whose abstract_pipeline prefix-matches operation_history,
+          then re-rank the filtered set by cosine similarity on feature_vector
+          (structural 8-dim vector) against query_vector, take top_k. If
+          query_vector is None, keep schema_sim_score order instead.
+      prefix_only:
+          Same prefix filter, then a random top_k pick from the filtered set
+          (seeded by rng_seed for reproducibility across identical queries).
+      feature_only:
+          No prefix filter (all rows eligible) — rank by feature_vector cosine
+          similarity against query_vector, take top_k.
+      embedding_only:
+          No prefix filter (all rows eligible) — rank by embedding_vector cosine
+          similarity against embedding_query_vector, take top_k.
+      prefix_embedding:
+          Same prefix filter as prefix_feature, then re-rank by embedding_vector
+          cosine similarity against embedding_query_vector, take top_k.
 
     Args:
         db_path:           Path to the per-case SQLite DB.
         operation_history: The MCTS path so far (configured step strings).
         top_k:             Maximum number of matched examples to include.
-        query_vector:       Optional normalized structural feature vector for the
-                            current task. When given, ALL prefix matches are
-                            collected first and re-ranked by cosine similarity
-                            against each row's stored feature_vector (rows without
-                            one sort last), instead of taking the first top_k in
-                            schema_sim_score order. None preserves prior behavior.
+        query_vector:       Normalized structural feature vector for the current
+                            task. Required (non-None) for prefix_feature re-ranking
+                            and for feature_only.
+        retrieval_mode:     One of "prefix_feature" (default), "prefix_only",
+                            "feature_only", "embedding_only", "prefix_embedding".
+        embedding_query_vector: Normalized text-embedding vector for the current
+                            task. Required for embedding_only and prefix_embedding.
+        rng_seed:           Seed for the random pick in prefix_only mode. None
+                            uses an unseeded (process-random) pick.
 
     Returns:
         A multi-line string ready for direct injection into the mcts_expand
@@ -443,6 +477,7 @@ def get_rag_hints(
         return ""
 
     current_abstract = operation_history_to_abstract(operation_history)
+    use_prefix_filter = retrieval_mode in ("prefix_feature", "prefix_only", "prefix_embedding")
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -451,37 +486,66 @@ def get_rag_hints(
     ).fetchall()
     conn.close()
 
-    # matched is a list of (row, next_idx) where next_idx is the position of
-    # the next step in the RAG pipeline's abstract sequence after the matched prefix.
-    matched: List[tuple] = []
+    # candidates is a list of (row, next_idx) where next_idx is the position of the
+    # next step in the RAG pipeline's abstract sequence after the matched prefix, or
+    # None when the row's pipeline doesn't share operation_history's prefix (only
+    # possible for the non-prefix-filtered modes, where such rows are still eligible
+    # but rendered without [done]/NEXT annotation — see the formatting loop below).
+    candidates: List[tuple] = []
     for row in all_rows:
         abstract = json.loads(row["abstract_pipeline"] or "[]")
         next_idx = _flexible_prefix_match(current_abstract, abstract)
-        if next_idx is not None:
-            matched.append((row, next_idx))
-        if query_vector is None and len(matched) >= top_k:
-            break
+        if use_prefix_filter:
+            if next_idx is not None:
+                candidates.append((row, next_idx))
+                if retrieval_mode == "prefix_feature" and query_vector is None and len(candidates) >= top_k:
+                    break
+        else:
+            candidates.append((row, next_idx))
 
-    if query_vector is not None and matched:
-        def _sim_key(item: tuple) -> float:
-            row = item[0]
-            raw_fv = row["feature_vector"]
+    if retrieval_mode == "prefix_only":
+        import random
+        rng = random.Random(rng_seed) if rng_seed is not None else random.Random()
+        matched = rng.sample(candidates, min(top_k, len(candidates)))
+    elif retrieval_mode in ("prefix_feature", "feature_only") and query_vector is not None:
+        def _feature_sim_key(item: tuple) -> float:
+            raw_fv = item[0]["feature_vector"]
             if not raw_fv:
                 return -1.0  # no stored vector -> sorts last
             return _cosine_similarity(query_vector, json.loads(raw_fv))
 
-        matched.sort(key=_sim_key, reverse=True)
-        matched = matched[:top_k]
+        candidates.sort(key=_feature_sim_key, reverse=True)
+        matched = candidates[:top_k]
+    elif retrieval_mode in ("embedding_only", "prefix_embedding"):
+        def _embedding_sim_key(item: tuple) -> float:
+            raw_ev = item[0]["embedding_vector"]
+            if not raw_ev or embedding_query_vector is None:
+                return -1.0  # no stored/query vector -> sorts last
+            return _cosine_similarity(embedding_query_vector, json.loads(raw_ev))
+
+        candidates.sort(key=_embedding_sim_key, reverse=True)
+        matched = candidates[:top_k]
+    else:
+        # prefix_feature with query_vector=None: schema_sim_score order, already
+        # capped to top_k by the break above.
+        matched = candidates[:top_k]
 
     if not matched:
         return ""
 
+    _prefix_note = (
+        "The following examples come from similar transformation cases whose "
+        "pipeline prefix matches your current operation history."
+        if use_prefix_filter else
+        "The following examples come from transformation cases judged similar to "
+        "yours (not necessarily sharing your operation history's prefix — a step "
+        "marked NEXT below is only shown when the example's prefix happens to align)."
+    )
     lines: List[str] = [
         "══════════════════════════════════════════════════════",
         "SIMILAR CASE EXAMPLES (retrieved from similar transformations)",
         "══════════════════════════════════════════════════════",
-        "The following examples come from similar transformation cases whose",
-        "pipeline prefix matches your current operation history.",
+        _prefix_note,
         "IMPORTANT: These are illustrative examples only — NOT exact pipelines to copy.",
         "The source table schemas, column names, and value patterns will differ from",
         "your current task. Use them to understand what kind of operation typically",
@@ -509,7 +573,13 @@ def get_rag_hints(
 
         lines.append("  Full pipeline:")
         for j, step in enumerate(steps):
-            if j < next_idx:
+            if next_idx is None:
+                # No prefix alignment for this example (feature_only / embedding_only,
+                # or a prefix_embedding/prefix_feature row whose match came from a
+                # different current_abstract than this one — shouldn't happen under
+                # the prefix-filtered modes, but handled defensively).
+                lines.append(f"    {j+1}. {step}")
+            elif j < next_idx:
                 lines.append(f"    {j+1}. {step}  [done]")
             elif j == next_idx:
                 lines.append(f"    {j+1}. {step}  <<<< NEXT")

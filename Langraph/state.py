@@ -157,6 +157,15 @@ class MCTSGraphState(TypedDict):
     # other RAG mode.
     local_rag_query_vector: Optional[List[float]]
 
+    # Retrieval-strategy ablation (Ablation Plan §2), --rag curated_pipeline only:
+    # one of "prefix_feature" (default), "prefix_only", "feature_only",
+    # "embedding_only", "prefix_embedding" — see get_rag_hints() for what each does.
+    rag_retrieval_mode: str
+
+    # Normalized text-embedding (schema) query vector for the current task, used
+    # only by rag_retrieval_mode "embedding_only" / "prefix_embedding". None otherwise.
+    local_rag_embedding_query_vector: Optional[List[float]]
+
     # ── GT scoring cache ──────────────────────────────────────────────────────
     # Path to a JSON file with pre-computed GT-side FDs and self-column-map count.
     # Written once per case in mcts_search.py; consumed by execute_and_score to

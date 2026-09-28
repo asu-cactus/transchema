@@ -677,6 +677,8 @@ def _simulate_get_python(
         state.get("local_rag_db_path", ""),
         _rag_op_history,
         query_vector=state.get("local_rag_query_vector"),
+        retrieval_mode=state.get("rag_retrieval_mode", "prefix_feature"),
+        embedding_query_vector=state.get("local_rag_embedding_query_vector"),
     )
     if rag_hints:
         config.logger.info(
@@ -951,6 +953,8 @@ def _simulate_operator_level(state: "MCTSGraphState") -> tuple:
                 state.get("local_rag_db_path", ""),
                 sim_history,
                 query_vector=state.get("local_rag_query_vector"),
+                retrieval_mode=state.get("rag_retrieval_mode", "prefix_feature"),
+                embedding_query_vector=state.get("local_rag_embedding_query_vector"),
             )
             if rag_hints_step:
                 config.logger.info(
@@ -1267,6 +1271,8 @@ def _simulate_pipeline_level(state: "MCTSGraphState") -> tuple:
         state.get("local_rag_db_path", ""),
         rollout_history,
         query_vector=state.get("local_rag_query_vector"),
+        retrieval_mode=state.get("rag_retrieval_mode", "prefix_feature"),
+        embedding_query_vector=state.get("local_rag_embedding_query_vector"),
     )
     if rag_hints:
         config.logger.info(
@@ -2061,6 +2067,8 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             state.get("local_rag_db_path", ""),
             rollout_history,
             query_vector=state.get("local_rag_query_vector"),
+            retrieval_mode=state.get("rag_retrieval_mode", "prefix_feature"),
+            embedding_query_vector=state.get("local_rag_embedding_query_vector"),
         )
     if rag_hints:
         config.logger.info(

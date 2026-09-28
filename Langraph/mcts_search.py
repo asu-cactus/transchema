@@ -929,6 +929,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                     )
 
         # ── Curated-pipeline RAG: static 656-pipeline library, feature-vector tie-break ──
+        _curated_retrieval_mode = getattr(args, "curated_retrieval_mode", "prefix_feature")
+        _local_rag_embedding_query_vector = None
         if _rag_mode == "curated_pipeline":
             _curated_db_path = getattr(args, "curated_pipeline_db", "")
             _curated_norm_stats_path = getattr(args, "curated_pipeline_norm_stats", "")
@@ -960,10 +962,36 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
                     _local_rag_db = _curated_db_path
                     _local_rag_query_vector = _normed
                     logger.info(
-                        f"[RAG] curated_pipeline: query vector computed for case "
-                        f"{len_idx_target_idx} from {len(_source_dfs)} source table(s) "
-                        f"-> {_curated_db_path}"
+                        f"[RAG] curated_pipeline ({_curated_retrieval_mode}): feature query "
+                        f"vector computed for case {len_idx_target_idx} from "
+                        f"{len(_source_dfs)} source table(s) -> {_curated_db_path}"
                     )
+
+                    # Text-embedding query vector, only for the two modes that need it —
+                    # avoids loading the embedding model for prefix_feature/prefix_only/feature_only.
+                    if _curated_retrieval_mode in ("embedding_only", "prefix_embedding"):
+                        from rag_pipeline.global_rag_db import _EmbeddingLayer, format_schema_text
+
+                        _global_meta_path = os.path.join(
+                            _ROOT, "rag_pipeline/db/global_schema.meta.json"
+                        )
+                        _embed_model_id = "sentence-transformers/all-MiniLM-L6-v2"
+                        if os.path.exists(_global_meta_path):
+                            with open(_global_meta_path) as _mf:
+                                _embed_model_id = json.load(_mf).get("model_id", _embed_model_id)
+                        _embedder = _EmbeddingLayer(model_id=_embed_model_id, device="auto")
+                        _query_text = format_schema_text(
+                            list(_target_df.columns) if _target_df is not None else [],
+                            [list(df.columns) for df in _source_dfs],
+                        )
+                        _local_rag_embedding_query_vector = (
+                            _embedder.encode([_query_text], batch_size=1)[0].tolist()
+                        )
+                        logger.info(
+                            f"[RAG] curated_pipeline ({_curated_retrieval_mode}): embedding "
+                            f"query vector computed for case {len_idx_target_idx} using "
+                            f"{_embed_model_id}"
+                        )
                 except Exception:
                     import traceback as _tb
                     logger.warning(
@@ -1049,6 +1077,8 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
             # RAG support — active for upper_bound and global modes
             "local_rag_db_path": _local_rag_db if _rag_mode in ("upper_bound", "global", "global_feature", "curated_pipeline") else "",
             "local_rag_query_vector": _local_rag_query_vector if _rag_mode == "curated_pipeline" else None,
+            "rag_retrieval_mode": _curated_retrieval_mode if _rag_mode == "curated_pipeline" else "prefix_feature",
+            "local_rag_embedding_query_vector": _local_rag_embedding_query_vector if _rag_mode == "curated_pipeline" else None,
             # GT scoring cache — pre-computed FDs and self-col-map to skip per-iteration recomputation
             "gt_score_cache_path": _gt_score_cache_path,
             # Logging
@@ -1548,6 +1578,22 @@ if __name__ == "__main__":
             "Path to the norm stats JSON (mean/std fit once on the 656-pipeline "
             "corpus) used to normalize the live query's 8-dim feature vector. "
             "Used when --rag curated_pipeline."
+        ),
+    )
+    parser.add_argument(
+        "--curated_retrieval_mode",
+        type=str,
+        default="prefix_feature",
+        choices=["prefix_feature", "prefix_only", "feature_only", "embedding_only", "prefix_embedding"],
+        help=(
+            "Retrieval strategy ablation within --rag curated_pipeline (Ablation Plan §2). "
+            "'prefix_feature' (default, unchanged production behavior): prefix-match then "
+            "cosine-rank the matches by the 8-dim structural feature vector. 'prefix_only': "
+            "prefix-match, then pick randomly among the matches. 'feature_only': no prefix "
+            "filter, rank ALL 656 pipelines by feature-vector cosine similarity. "
+            "'embedding_only': no prefix filter, rank ALL 656 by text-embedding (schema) "
+            "cosine similarity. 'prefix_embedding': prefix-match then cosine-rank by "
+            "text embedding instead of the structural feature vector."
         ),
     )
     args = parser.parse_args()
