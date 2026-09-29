@@ -40,6 +40,7 @@ import csv
 import glob
 import os
 import re
+import resource
 import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -48,6 +49,24 @@ sys.path.insert(0, _HERE)
 
 import pandas as pd
 from tqdm.auto import tqdm
+
+# Per-worker address-space cap (see _worker_init below). A pathological candidate script or
+# oversized table should hit a catchable Python MemoryError inside ONE worker, not consume
+# enough real memory to trip the cgroup-wide OOM killer that takes every worker down together
+# (confirmed live 2026-09-28: two different pathological cases -- an oversized ground truth,
+# then a buggy candidate script's cross-join-sized output -- each independently did exactly
+# that despite row-count guards elsewhere in this file). Those guards stay as a fast-path (skip
+# before ever attempting the expensive comparison), this is the actual safety net.
+_WORKER_MEMORY_LIMIT_GB = 4
+
+
+def _worker_init():
+    """multiprocessing.Pool initializer: caps this worker process's own address space."""
+    limit_bytes = _WORKER_MEMORY_LIMIT_GB * 1024**3
+    try:
+        resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, limit_bytes))
+    except (ValueError, OSError):
+        pass  # best-effort -- some platforms/containers don't allow lowering this
 
 from util.utils import execute_python, drop_leading_index_col_if_present, make_test_validation_script
 from validation.hard_match import compare_tables_matching
@@ -300,10 +319,11 @@ def main():
         f.flush()
 
         if args.workers <= 1:
+            _worker_init()
             result_iter = (_validate_case_worker(t) for t in tasks)
         else:
             import multiprocessing
-            pool = multiprocessing.Pool(processes=args.workers)
+            pool = multiprocessing.Pool(processes=args.workers, initializer=_worker_init)
             result_iter = pool.imap_unordered(_validate_case_worker, tasks)
 
         pbar = tqdm(total=len(ordered_cases), initial=n_skipped, desc=args.exp_name, unit="case")
