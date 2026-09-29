@@ -142,7 +142,7 @@ def extract_successful_critique_scripts(log_text: str) -> list:
 # OOM-killed (2026-09-28), taking the whole batch down with them. Skip those cases' Oracle
 # check rather than let one case's pathological data blow up memory for everything running in
 # the same cgroup; the row-count cutoff is a hard cap, not a probabilistic guess.
-_MAX_GT_ROWS_FOR_ORACLE = 50_000
+_MAX_GT_ROWS_FOR_ORACLE = 20_000
 
 
 def validate_case(benchmark: str, case_label: str, log_paths: list) -> dict:
@@ -187,6 +187,14 @@ def validate_case(benchmark: str, case_label: str, log_paths: list) -> dict:
         try:
             result = execute_python(test_script)
             if result != "Success" or not os.path.exists(scratch_path):
+                continue
+            # A buggy candidate script (e.g. an accidental cross-join) can produce a huge
+            # output even when the real ground truth is tiny -- the _MAX_GT_ROWS_FOR_ORACLE
+            # guard above only catches an oversized ground truth, not this. Cheap line-count
+            # first (no pandas load) so a pathological output never reaches compare_tables_matching.
+            with open(scratch_path, "rb") as _sf:
+                _out_lines = sum(1 for _ in _sf)
+            if _out_lines > _MAX_GT_ROWS_FOR_ORACLE:
                 continue
             df_out = pd.read_csv(scratch_path, low_memory=False)
             _, is_match, _, _ = compare_tables_matching(df_out, df_gt)
