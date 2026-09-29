@@ -75,13 +75,9 @@ class Experiment:
     def _get_agent_args(self, len_idx_target_idx, source_start_idx, method):
         sub_folder_name = f"length{len_idx_target_idx}"
         main_folder_name = os.path.abspath(self.main_folder)
-        # main_folder_name = os.path.abspath("/tmp/github-pipelines")  # Changed to point to /tmp for mac
         target_path = os.path.join(main_folder_name, sub_folder_name, f"target.csv")
         test_0_path = os.path.join(main_folder_name, sub_folder_name, f"test_0.csv")
         result_path = os.path.join(main_folder_name, sub_folder_name, f"Target{len_idx_target_idx}_result_{method}.csv")
-        # if method == 'monolithic':
-        #     result_path = os.path.join(main_folder_name, sub_folder_name,
-        #                                f"Target{len_idx_target_idx}_result_baseline.csv")
 
 
         source_name = f"Source{len_idx_target_idx}_{source_start_idx}"
@@ -127,8 +123,6 @@ class Experiment:
                 iteration_count += 1
                 # check if reached to max number of iterations
                 if iteration_count > self.max_attempts:
-                    # log_experiment_failed(target_data_name, source_data_name_list, iteration_count,
-                    #                       all_similarity_scores, accuracy_list, validation_error_list)
                     end_time = time.time()
                     execution_time = end_time - start_time
                     end_cost_summary = self.token_tracker.cost_summary()
@@ -186,7 +180,6 @@ class Experiment:
                     execution_result = execute_sql(conn, gpt_output) if self.script_language == 'sql' else execute_python(gpt_output)
                     end_time = time.time()
                     execution_time_3 = end_time - end_time_2
-                    # print(f"Execution Result: {execution_result}")
                     if "Error:" in execution_result:
                         self.logger.error(f"iter{iteration_count} Error in the previous response {execution_result}")
                         print(f"\n iter{iteration_count} Error in the previous response: {execution_result}")
@@ -263,38 +256,6 @@ class Experiment:
                 ##Monolithic prompt with data summary
                 if self.control_method == 'summary':
                     source_dfs, target_df = get_df(**agent.agent_attrs)
-                    # # Data profiling for the target table
-                    # target_sa, target_ma, target_d = data_profiling(target_df)
-                    # print("single analysis for target:",target_sa)
-                    # hints_target = data_summary(target_sa, target_ma, target_d)
-                    #
-                    # # Initialize a string to hold all source summaries
-                    # all_source_summaries = ""
-                    # if self.method == 'multi_source':
-                    #     # Loop through each source dataframe, profile it and get the summary
-                    #     for i, source_df in enumerate(source_dfs):
-                    #         source_sa, source_ma = data_profiling(source_df, True)
-                    #         hints_source = data_summary(source_sa, source_ma, 0, True)
-                    #         print("single analysis for source:", source_sa)
-                    #         # Append each source summary to the string
-                    #         all_source_summaries += f"\nHere is data summary for source table {i}:\n{hints_source}" if hints_source else ""
-                    # else:
-                    #     source_sa, source_ma = data_profiling(source_dfs, True)
-                    #     hints_source = data_summary(source_sa, source_ma, 0, True)
-                    #
-                    #     # Append each source summary to the string
-                    #     all_source_summaries += f"\nHere is data summary for source table: \n{hints_source}" if hints_source else ""
-                    #
-                    # # Add the summaries to the agent's prompt
-                    # agent.prompt += all_source_summaries
-                    # agent.prompt += f"\nHere is data summary for target table:\n{hints_target}" if hints_target else ""
-                    # if whether_multi:
-                    #     hints_join = schema_matching(source_dfs,target_df)
-                    #     for hint in hints_join:
-                    #         agent.prompt += "\n"+hint
-                    # # Run the experiment
-                    # agent.prompt = agent.prompt + f"\n\nFix the following Error: {sql_errors[-1]}\n" \
-                    #     if (sql_errors[-1] != '') else agent.prompt
 
                     #summary
                     tables = load_tables(test_dir)
@@ -345,7 +306,6 @@ class Experiment:
                     execution_result = execute_sql(conn, gpt_output) if self.script_language == 'sql' else execute_python(gpt_output)
                     end_time = time.time()
                     execution_time_3 = end_time - end_time_2
-                    # print(f"SQL Result: {execution_result}")
                     if "Error:" in execution_result:
                         self.logger.error(f"iter{iteration_count} Error in the previous response {execution_result}")
                         print(f"\n iter{iteration_count} Error in the previous response: {execution_result}")
@@ -453,7 +413,6 @@ class Experiment:
                     execution_result = execute_sql(conn, gpt_output) if self.script_language == 'sql' else execute_python(gpt_output)
                     end_time = time.time()
                     execution_time_3 = end_time - end_time_2
-                    # print(f"SQL Result: {execution_result}")
                     if not execution_result:
                         print("The SQL result is empty. Skipping to the next iteration.")
                         # Skip the rest of the code in this iteration and continue with the next one
@@ -601,14 +560,12 @@ class Experiment:
 
                     gpt_output = agent.run(method=self.method)
                     gpt_output = preprocess_sql_script(gpt_output)
-                    #print("Preprocessed GPT Response:", gpt_output)
                     end_cost_summary = self.token_tracker.cost_summary()
                     # Calculate the cost of this specific transaction
                     temp_cost = calculate_cost_difference(start_cost_summary, end_cost_summary)
                     end_time_2 = time.time()
                     execution_time_2 = end_time_2 - end_time_1
                     self.logger.info(f"SQL Script Extracted from GPT Response:\n {gpt_output}")
-                    #print("SQL Script Extracted from GPT Response:")
                     print(gpt_output)
                     if whether_multi:
                         schema_score, schema_feedback = 0, ''
@@ -623,7 +580,6 @@ class Experiment:
                         print("The SQL result is empty. Skipping to the next iteration.")
                         # Skip the rest of the code in this iteration and continue with the next one
                         continue  # Assuming this code is within a loop
-                    # print(f"SQL Result: {execution_result}")
                     if "Error:" in execution_result:
                         self.logger.error(f"iter{iteration_count} Error in the previous response {execution_result}")
                         print(f"\n iter{iteration_count} Error in the previous response: {execution_result}")

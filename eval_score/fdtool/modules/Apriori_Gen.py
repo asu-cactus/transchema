@@ -9,13 +9,8 @@ def powerset(s):
     x = len(s)
     # Create list for powerset contents
     Powerset = []
-    # for i in range(1 << x):
-    #     p = [s[j] for j in range(x) if (i & (1 << j))]
-    #     Powerset.append(p)
-    #     print("powerset: ", i,  len(Powerset), p)
     for i in range(1,5):
         Powerset += [list(p) for p in list(itertools.combinations(s, i))]
-        #print(len(Powerset))
 
     return Powerset;
 

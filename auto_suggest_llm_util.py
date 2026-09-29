@@ -16,7 +16,6 @@ from test_scope import get_test_cases_ids
 from hints.hint import get_hints
 from validation.hard_match import is_column_numerical
 
-# import auto_suggest_llm_prompts as prt
 import tiktoken
 from transformers import AutoTokenizer
 
@@ -32,7 +31,6 @@ def _hf_tokenizer(name):
 from quality.quality import analyze_functional_dependencies
 from valentine import valentine_match, algorithms
 
-# import prompts
 from prompts.next_operator_prompt import get_next_operator_prompt
 from prompts.next_operator_prompt_fewshot import get_next_operator_prompt_fewshot
 from prompts.configuration_prompts import (
@@ -45,9 +43,6 @@ from prompts.mcts_expand import get_mcts_expand_prompt, get_mcts_expand_aggregat
 from prompts.mcts_simulate import get_mcts_simulate_prompt
 from prompts.partial_pipeline_execution import get_partial_pipeline_execution_prompt
 
-# from prompts.next_operator_prompt_with_intermediate_materialization import (
-#     get_next_operator_prompt_with_intermediate_materialization,
-# )
 
 
 def get_prompt(
@@ -145,7 +140,6 @@ def get_prompt(
         # Get the intermediate results only if nth_intermediate_step > 1 because at the 1st step won't
         # have intermediate results
         intermediate_dir = f"{directory}/length{len_idx_target_idx}/"
-        # print(intermediate_dir)
         all_intermediate_results = get_all_intermediate(
             intermediate_dir, encoding, source_length, nth_intermediate_step
         )
@@ -162,7 +156,6 @@ def get_prompt(
         data_split=data_split,
     )
 
-    # print("source_information: "+source_information)
 
     # read few shot examples
     few_shot_examples = [""]
@@ -220,13 +213,9 @@ def get_prompt(
             [],
         )
 
-        # print("Hints received")
-        # print(hints)
-        # hints = [""]
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            # print(target_data_schema)
 
         if few_shot == 1:
             static_prompt = get_next_operator_prompt_fewshot(
@@ -269,7 +258,6 @@ def get_prompt(
             encoding,
         )
 
-        # print("Target Examples: "+target_samples)
 
         if few_shot == 1:
             prompt = get_next_operator_prompt_fewshot(
@@ -302,13 +290,8 @@ def get_prompt(
                 rag_hints=rag_hints,
             )[0]
 
-        # print(prompt,static_prompt_length)
-        # print(static_prompt_length)
-        # print(str(len(encoding.encode(str(target_samples)))))
-        # print(str(len(encoding.encode(prompt))))
 
     elif prompt_type == "join":
-        # print("get hints")
         hints = get_hints(
             "join",
             hint_source,
@@ -322,11 +305,9 @@ def get_prompt(
             join_hints_truncate,
         )
 
-        # print(hints)
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            # print(target_data_schema)
 
         static_prompt = get_join_prompt(
             allowed_operation_list,
@@ -384,7 +365,6 @@ def get_prompt(
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            # print(target_data_schema)
 
         static_prompt = get_group_by_aggregate_prompt(
             allowed_operation_list,
@@ -430,7 +410,6 @@ def get_prompt(
 
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            # print(target_data_schema)
 
         static_prompt = get_union_prompt(
             allowed_operation_list,
@@ -514,7 +493,6 @@ def get_prompt(
         raw_target_schema = target_data_schema
         if target_data_schema_with_types:
             target_data_schema = target_data_schema_with_types
-            # print(target_data_schema)
 
         source_information_with_location = get_source_with_location(
             file_count,
@@ -527,8 +505,6 @@ def get_prompt(
             encoding,
             data_split=data_split,
         )
-        # target_file_location = directory + '/length' + len_idx_target_idx + '/target_multisource.csv'
-        # print(error_string)
 
         static_prompt = get_python_script(
             allowed_operation_list,
@@ -783,11 +759,8 @@ def get_prompt(
     else:
         raise ValueError(f"Invalid prompt type {prompt_type}.")
 
-    # print(prompt)
-    # print(len(encoding.encode(prompt)))
     prompt_len = len(encoding.encode(prompt))
     if prompt_len > max_tokens:
-        # print(prompt)
         raise Exception(f"Prompt length {prompt_len} exceeds maximum tokens.")
 
     return prompt
@@ -814,7 +787,6 @@ def get_target_string(df, rem_tokens, encoding):
 
         mid = (l + r) // 2
 
-        # print(l,mid,r)
 
         # examples upto mid
         temp_l = examples_l[: mid + 1]
@@ -822,7 +794,6 @@ def get_target_string(df, rem_tokens, encoding):
         temp = str(temp_l)
         encode_len = len(encoding.encode(temp))
 
-        # print(rem_tokens, encode_len)
 
         if encode_len <= rem_tokens:
             ans = mid
@@ -830,10 +801,7 @@ def get_target_string(df, rem_tokens, encoding):
         elif encode_len > rem_tokens:
             r = mid - 1
 
-    # print('ans :', ans)
     temp_l = examples_l[:ans]
-    # print(str(temp_l))
-    # print(len(encoding.encode(str(temp_l))))
     return [str(temp_l)]
 
 
@@ -847,7 +815,6 @@ def get_target_samples(
     static_prompt_length,
     encoding,
 ):
-    # print(directory,len_idx_target_idx, target_perc,is_perc, target_length, max_tokens, static_prompt_length)
     target_csv_path = directory + "/length" + len_idx_target_idx + "/target.csv"
     target_df = pd.read_csv(target_csv_path, low_memory=False)
     target_df = drop_leading_index_col_if_present(target_df)
@@ -859,7 +826,6 @@ def get_target_samples(
         target_df_sampled = target_df.sample(
             n=min(target_length, target_df.shape[0]), replace=False
         )
-    # print(static_prompt_length, max_tokens - static_prompt_length)
     num_tuples = len(target_df)
     target_samples_string = (
         str("There are ")
@@ -905,12 +871,9 @@ def get_source(
 def get_source_samples(
     directory, len_idx_target_idx, i, sample_length, num_tokens, encoding, data_split="test"
 ):
-    # print(directory,len_idx_target_idx)
     filename = "{main_directory}/length{len_idx_target_idx}/{data_split}_{i}.csv".format(
         main_directory=directory, len_idx_target_idx=len_idx_target_idx, i=i, data_split=data_split
     )
-    # print(filename)
-    # sys.exit()
     source_df = pd.read_csv(filename, low_memory=False)
     source_df = drop_leading_index_col_if_present(source_df)
     num_tuples = len(source_df)
@@ -919,10 +882,6 @@ def get_source_samples(
     )
     source_df_sampled = source_df.head(min(source_df.shape[0], sample_length))
     source_samples_string = str(source_df_sampled)
-    # source_samples_string = get_target_string(
-    #   source_df_sampled, num_tokens, encoding
-    # )  # -1000 buffer for good measures # for now no limit on max_tokens for source
-    # print(source_samples_string)
     source_samples_string = num_tuples_string + source_samples_string
     return source_samples_string
 
@@ -979,9 +938,6 @@ def get_all_intermediate(
         schema = source_df.columns.tolist()
         return IntermediateResult(schema, source_samples_string, str(file_path))
 
-    # assert (
-    #     nth_intermediate_step > 0
-    # ), f"current_step should be greater than 1, otherwise no intermediate results are available, got {nth_intermediate_step}"
     if nth_intermediate_step == 1:
         return []
 
@@ -1185,7 +1141,6 @@ def cost_compare(cost1, cost2, model):
     else:
         cost["detailed_cost"][model] = cost2["detailed_cost"][model]
 
-    # print('calculated Cost : ', cost)
 
     return cost
 
@@ -1196,7 +1151,6 @@ def increment_count(q):
     return
 
 
-# llm_client,model,prompt, q_count, cost_summary, token_tracker, type = "Ask For Operator"
 def query_gpt(
     llm_model, model, prompt, q_count, logger, cost_summary, token_tracker, type
 ):
@@ -1216,7 +1170,6 @@ def query_gpt(
 
     # calculate cost associated with this task
     cost = cost_compare(cost_summary[-2], cost_summary[-1], model)
-    # print('Cost : ', cost)
 
     # log that cost
     logger.info("Cost of the query : {cost}".format(cost=cost))
@@ -1414,19 +1367,7 @@ def get_fd_hints(keys, fds):
     hint += "\n"
     print(hint)
     return hint
-    # if not sorted_filtered_keys:
-    #     return "No clear functional dependencies found"
 
-    # hint = "Functional Dependencies discovered : \n"
-    # for key in sorted_filtered_keys :
-    #     hint += "Functional Dependencies Associated with key " + key + " : "
-    #     for v in key_dependencies[key] :
-    #         hint += key + " -> " + v + " , "
-    #     hint += "\n"
-    # if(hint == "Functional Dependencies discovered : \n") :
-    #     return ""
-    # else :
-    #     return hint
 
 
 def get_fd_hints_for_materialization(keys, fds, step):
@@ -1455,7 +1396,6 @@ def get_key_column_hints(keys, step):
             hints = f"No clear key columns found in the intermediate_step{step} table."
         else:
             hints = f"Key columns discovered from the intermediate_step{step} table : {keys}\n"
-    # print(hints)
     return hints
 
 
@@ -1480,7 +1420,6 @@ def get_column_matching_hints(intermediate_df, target_df, step):
         hint = ""
         for col1, col2 in match_columns:
             hint += f"Column {col1} from intermediate_step{step} table matches with column {col2} from target table.\n"
-        # print(hint)
         return hint
     else:
         return f"\n\nNo matching columns found between intermediate_step{step} table and target tables.\n\n"
@@ -1534,7 +1473,6 @@ def calculate_score(gt_df, tgt_df):
 
     gt_df_columns = set(gt_df.columns)
     matched_columns = set(match[0] for match in matches)
-    # print("\n\n Matchings : ", matches)
 
     column_mapping_score = len(matched_columns) / len(gt_df_columns)
 
@@ -1591,7 +1529,6 @@ def calculate_score_cost(gt_df, tgt_df, cost_):
 
     gt_df_columns = set(gt_df.columns)
     matched_columns = set(match[0] for match in matches)
-    # print("\n\n Matchings : ", matches)
 
     column_mapping_score = len(matched_columns) / len(gt_df_columns)
 

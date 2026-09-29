@@ -261,10 +261,6 @@ def critique(
     len_id = length
     target_id = id_
     max_target_id = id_
-    # anon_flag = flags[2]
-    # fd = flags[0]
-    # metadata_flag = flags[1]
-    # few_shot_flag = flags[3]
 
     fd, metadata_flag, anon_flag, few_shot_flag = flags
 
@@ -455,7 +451,6 @@ def critique(
         )
         df_ground_truth_fd = df_ground_truth_fd.iloc[:, :15]
         key, fd__ = get_filtered_functional_dependency(df_ground_truth_fd)
-        # fd_hints = get_fd_hints(key,fd__)
         fd_hints = "Keys : " + str(key) + "\n"
         fd_hints += "Functional Dependencies : " + str(fd__)
         query = query.replace("$FD_HINT$", fd_hints)
@@ -471,10 +466,6 @@ def critique(
     if few_shot_flag == 1:
         # Resolve rag-examples base path early (needed for feature strategy to load docs from disk)
         rag_examples_base_path = resolve_rag_examples_base(rag_examples_base)
-        # try:
-        #    logger.info(f"Using rag-examples-w-pipeline at: {rag_examples_base_path}")
-        # except Exception:
-        #    pass
 
         output_fields = args.rag_output_fields.split(",")
         if "case_id" not in output_fields:
@@ -762,7 +753,6 @@ def critique(
     print(script)
     response = execute_python(script)
     print(response)
-    # sys.exit()
     logger.info(response)
 
     df_critique = None
@@ -950,33 +940,7 @@ def build_column_distribution_section(
             lines.append(f"    Target   : min={gt_min:.4g},  max={gt_max:.4g},  mean={gt_mean:.4g}")
             lines.append(f"    Generated: min={gen_min:.4g}, max={gen_max:.4g}, mean={gen_mean:.4g}")
 
-            # gt_range  = gt_max  - gt_min
-            # gen_range = gen_max - gen_min
-            # if gt_range > 1e-6:
-            #     ratio = gen_range / gt_range
-            #     if ratio > 5:
-            #         lines.append(
-            #             f"    WARNING: generated range is {ratio:.1f}x larger than target — "
-            #             "likely SUM used instead of AVG or COUNT."
-            #         )
-            #     elif ratio < 0.2:
-            #         lines.append(
-            #             f"    WARNING: generated range is {ratio:.2f}x of target — "
-            #             "possible over-aggregation or wrong GROUP BY."
-            #         )
 
-            # if abs(gt_mean) > 1e-6:
-            #     mean_ratio = gen_mean / gt_mean
-            #     if mean_ratio > 5:
-            #         lines.append(
-            #             f"    WARNING: generated mean is {mean_ratio:.1f}x larger than target — "
-            #             "consider AVG instead of SUM."
-            #         )
-            #     elif mean_ratio < 0.2:
-            #         lines.append(
-            #             f"    WARNING: generated mean is {mean_ratio:.2f}x of target — "
-            #             "values may be under-aggregated."
-            #         )
 
         except (ValueError, TypeError):
             gt_nunique  = int(gt_series.nunique())
@@ -985,11 +949,6 @@ def build_column_distribution_section(
             gen_top = gen_series.value_counts().head(5).index.tolist()
             lines.append(f"    Target   : {gt_nunique} unique values, top: {gt_top}")
             lines.append(f"    Generated: {gen_nunique} unique values, top: {gen_top}")
-            # if gt_nunique != gen_nunique:
-            #     lines.append(
-            #         f"    WARNING: unique value counts differ ({gt_nunique} vs {gen_nunique}) — "
-            #         "check string normalization or grouping."
-            #     )
 
     missing = sorted(set(df_gt.columns) - set(df_gen.columns))
     extra   = sorted(set(df_gen.columns) - set(df_gt.columns))

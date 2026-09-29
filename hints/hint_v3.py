@@ -75,7 +75,6 @@ def get_jaccard_containment(col1, col2, t1, t2, c1, c2):
             pair_level_attributes[k] = {}
         # calculate the jaccard containment
         jc = jd.jaccard_containment(col1, col2)
-        # print("Jaccard Containment : ",c1,c2,jc)
         pair_level_attributes[k]["jc"] = jc
         return jc
 
@@ -901,7 +900,6 @@ def get_join_hints(
         for col1 in columns1:
             for col2 in columns2:
 
-                # print(f"Checking {table_name1}.{col1} and {table_name2}.{col2}")
                 hint = ""
 
                 # Highest severity → lowest
@@ -1044,7 +1042,6 @@ def get_groupby_aggregate_hints(
         total_columns = len(columns)
         for pos, col_name in enumerate(columns):
 
-            # print(col_name, table[col_name].dtype, get_leftness(table[col_name],table_name,col_name,pos,total_columns))
 
             # Initialize hint
             hint = ""

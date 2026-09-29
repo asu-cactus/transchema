@@ -30,7 +30,6 @@ from util.utils import (
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
 
-# import auto_suggest_llm_prompts as prt
 from auto_suggest_llm_util import (
     get_columns,
     query_gpt,
@@ -77,9 +76,6 @@ def get_operation(res):
         operation = match.group(1)
     else:
         raise Exception(f"Operation not found in the response. Response:\n{res}")
-    # assert (
-    #     operation in allowed_operation_list
-    # ), f"Operation not in allowed list: {repr(operation)}"
     return operation
 
 
@@ -95,15 +91,11 @@ def get_operation_and_configuration(res):
     else:
         print(f"Last line:\n{last_line}")
         return None, "none"
-    # assert (
-    #   operation in allowed_operation_list
-    # ), f"Operation not in allowed list: {operation}"
     return operation, configuration
 
 
 def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
 
-    # print("Get Operator-"+str(nth_intermediate_step))
     prompt = get_prompt(
         prompt_type="get_next_operator",
         max_tokens=args.token_limit,
@@ -129,7 +121,6 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         no_thinking=args.no_thinking,
     )
 
-    # print("Prompt is" + prompt)
 
     operation = None
     max_tries = 5
@@ -147,7 +138,6 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             type="Ask For Operator",
         )[0]
 
-        # print("Response is"+res)
 
         if not args.combine_ask_and_configure:
             operation = get_operation(res)
@@ -155,7 +145,6 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             if operation in allowed_operation_list:
                 return operation, None
             else:
-                # print(operation)
                 return operation, None
         else:
             operation, configuration = get_operation_and_configuration(res)
@@ -285,10 +274,6 @@ def materialize_chatgpt(
             type="Get Python Script",
         )[0]
 
-        # print(res)
-        # res = res[0]
-        # print("+++")
-        # print(res)
         pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
         match = pattern.search(res)
         script = match.group(1).strip()
@@ -377,7 +362,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         if file.startswith(data_split)
     )
 
-    # print(file_count)
 
     json_file_path = resolve_case_json(benchmark, file_count)
 
@@ -396,7 +380,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     token_tracker = TokenUsageTracker()
     cost_summary.append(token_tracker.cost_summary())
-    # print(cost_summary)
 
     len_idx_target_idx = task.lstrip("Target")
 
@@ -445,21 +428,17 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["source_space_dir"] = source_space_dir
     config["task"] = task
 
-    # materialization_criteria = MaterializationCriteria()
 
     max_operations = 9
     for nth_intermediate_step in range(1, max_operations + 1):
-        # print("**Step-" + str(nth_intermediate_step))
         try:
             # Get the operation
             operation, configuration = get_operator(
                 llm_client, operation_history, nth_intermediate_step, args, config
             )
 
-            # print("Next Operator:"+operation)
 
             if operation == "NO_MORE_OPERATION":
-                # print("No More Operation")
                 logger.info("No More Operation")
                 break
 

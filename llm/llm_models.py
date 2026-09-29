@@ -359,7 +359,6 @@ class LLMClient:
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
-                    # max_completion_tokens=max_tokens,
                     stop=stop,
                     top_p=1,
                     frequency_penalty=0.0,
@@ -410,8 +409,6 @@ class LLMClient:
 
 
 def gpt3(prompt_, stop=None):
-    # if stop is None:
-    #    stop = ["\n"]
     response = client.chat.completions.create(
         model="gpt-3.5-turbo-16k",
         messages=[{"role": "user", "content": prompt_}],
@@ -426,8 +423,6 @@ def gpt3(prompt_, stop=None):
 
 
 def gpt4(prompt_, stop=None):
-    # if stop is None:
-    #    stop = ["\n"]
     response = client.chat.completions.create(
         model="gpt-4-1106-preview",  # "gpt-4",
         messages=[{"role": "user", "content": prompt_}],

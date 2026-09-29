@@ -67,7 +67,6 @@ def execute_sql(conn, query):
                 logging.info(f"final name of target table {target_table}")
                 cursor.execute(f"SELECT * FROM {target_table};")
                 result = cursor.fetchall()
-                #logging.info(f"good target table result {result}")
             else:
                 result = "Table name not identified from last INSERT INTO query."
                 logging.info(f"bad target table result {result}")
@@ -80,17 +79,6 @@ def execute_sql(conn, query):
         return f"Error: {e.pgerror}"
 
 
-# def create_table(conn, create_statement):
-#     print(create_statement)
-#     cursor = conn.cursor()
-#     try:
-#         cursor.execute("BEGIN;")
-#         cursor.execute(create_statement)
-#         # Assuming you want to commit after every SQL execution for simplicity
-#         conn.commit()
-#     except psycopg2.Error as e:
-#         conn.rollback()  # Rollback the transaction on error
-#         return f"Error: {e.pgerror}"
 
 
 def print_experiment_settings(template_option, target_id, max_target_id, source_id, max_source_id):
@@ -222,11 +210,6 @@ def extract_table_schemas(sql_query,source_data_name_to_find,target_data_name):
 
     return source_schema, target_schema
 
-# def parse_schema_to_columns(data_schema):
-#     if ',' in data_schema:  # For target_data_schema
-#         return [re.split("\s+", x.strip()) for x in data_schema.split(",")]
-#     else:  # For source_data_schema
-#         return [x for x in data_schema.split() if x]
 
 def parse_schema_to_columns(data_schema):
     # This regex will match both quoted and unquoted column names

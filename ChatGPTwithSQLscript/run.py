@@ -95,8 +95,6 @@ def main(
                         accuracy_list.append(0.0)
                         schema_score, schema_feedback = schema_quality(gpt_output, source_data_name_to_find,
                                                                        target_data_name, json_file_path)
-                        # mapping_score, mapping_feedback = mapping_quality(gpt_output, source_data_name_to_find,
-                        #                                                   target_data_name)
                         prompt = initial_prompt + f"\n Error in the previous response: {sql_result}" + schema_feedback
                         print("prompt",prompt)
                         continue
@@ -124,31 +122,6 @@ def main(
                                     + str(schema_feedback)  + str(mapping_feedback_1)+ str(mapping_feedback_2)
                         print(prompt + "\n")
                         continue
-                    # if agg == 'None':
-                    #     print("Final score:",(reverse_score + schema_score + mapping_score) / 3)
-                    #     if (reverse_score + schema_score  + mapping_score) / 3 > threshold_1:
-                    #         log_experiment_success(target_data_name, source_data_name_to_find, iteration_count)
-                    #         all_similarity_scores = []
-                    #         break
-                    #     else:
-                    #         prompt = initial_prompt + f"The returned SQL script can run, but the execution result of the SQL is wrong. Please try again." \
-                    #                  + str(schema_feedback)  + str(mapping_feedback)
-                    #         print(prompt + "\n")
-                    #         continue
-                    # else:
-                    #     differential_score, differential_feedback = differential_quality(gpt_output, conn,
-                    #                                                                   source_data_name_to_find,
-                    #                                                                   target_data_name, agg)
-                    #     print("Final score:", (reverse_score + schema_score + differential_score + mapping_score) / 4)
-                    #     if (reverse_score + schema_score + differential_score + mapping_score) / 4 > threshold_2:
-                    #         log_experiment_success(target_data_name, source_data_name_to_find, iteration_count)
-                    #         all_similarity_scores = []
-                    #         break
-                    #     else:
-                    #         prompt = initial_prompt + f"The returned SQL script can run, but the execution result of the SQL is wrong. Please try again." \
-                    #                  + str(schema_feedback) + str(differential_feedback) + str(mapping_feedback)
-                    #         print(prompt + "\n")
-                    #         continue
 
                     #
                     # if mapping_score < threshold:

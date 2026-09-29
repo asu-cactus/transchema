@@ -15,7 +15,6 @@ def reverse_quality(json_file_path, sql_result,gpt_output, source_data_name_to_f
                     all_similarity_scores):
 
     prompt, gt, td = generate_prompt(json_file_path, 8, sql_result,gpt_output, source_data_name_to_find)
-    #print("prompt:", prompt)
 
     gpt_output = chat_with_gpt(prompt)
     gpt_output_source = extract_source_table(source_data_name_to_find)
@@ -343,7 +342,6 @@ def differential_quality(sql_query, conn, table_name, target_table_name,expected
             print("new_source_table:", new_source)
             sql_query_1 = query_name_change(sql_query, table_name,new_table_name)
             sql_insert = extract_insert_select_query(sql_query_1)
-            #print("sql_insert:", sql_insert)
             execute_sql(conn, sql_insert)
             cur.execute(f"SELECT * FROM {target_table_name};")
             new_target = cur.fetchall()
@@ -372,7 +370,6 @@ def differential_quality(sql_query, conn, table_name, target_table_name,expected
             print("new_source_table:",new_source)
             sql_query_2 =query_name_change(sql_query,table_name,new_table_name)
             sql_insert = extract_insert_select_query(sql_query_2)
-            #print("sql_insert:", sql_insert)
             execute_sql(conn, sql_insert)
             cur.execute(f"SELECT * FROM {target_table_name};")
             new_target = cur.fetchall()

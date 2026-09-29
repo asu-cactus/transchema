@@ -40,7 +40,6 @@ def predict_columns(tables, model, label_encoder):
             col = table[col_name]
             features = generate_features_for_column(col, col_name, pos, total_columns, label_encoder)
             features_df = pd.DataFrame([features])
-            # print(features_df)
             score = model.predict_proba(features_df)[0][1]
             predictions.append((table_name, col_name, score))
 

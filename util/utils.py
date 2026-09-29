@@ -136,7 +136,6 @@ def create_connection():
         host="localhost",  # e.g., "localhost"
         port="5432",  # e.g., "5432"
     )
-    #print("Postgres connection established.")
     return conn
 
 
@@ -208,17 +207,6 @@ def make_test_validation_script(script: str) -> str:
     return swapped
 
 
-# def create_table(conn, create_statement):
-#     #print(create_statement)
-#     cursor = conn.cursor()
-#     try:
-#         cursor.execute("BEGIN;")
-#         cursor.execute(create_statement)
-#         # Assuming you want to commit after every SQL execution for simplicity
-#         conn.commit()
-#     except psycopg2.Error as e:
-#         conn.rollback()  # Rollback the transaction on error
-#         return f"Error: {e.pgerror}"
 
 
 def log_experiment_settings(
@@ -254,7 +242,6 @@ def log_experiment_failed(
     accuracy_list,
     validation_error_list,
 ):
-    #print("[FAILED] Maximum iterations reached without correct result.")
     log_directory = os.path.join(".", "log")
     os.makedirs(log_directory, exist_ok=True)
 
@@ -268,12 +255,10 @@ def log_experiment_failed(
                 file.write(f"mis-match: {validation_error_list[count]}\n")
             else:
                 file.write(", ".join(map(str, iteration_scores)) + "\n")
-        #print(accuracy_list)
         file.write(f"\t\t\t\tCase accuracy: {max(accuracy_list):.2f}\n")
 
 
 def log_experiment_success(target_data_name, source_data_name_to_find, iteration_count):
-    #print("[Success] Successful SQL execution with correct result.")
     log_directory = os.path.join(".", "log")
     os.makedirs(
         log_directory, exist_ok=True
@@ -308,7 +293,6 @@ def log_experiment(
     file_path = f"log/{method}.log"
     with open(file_path, "a+") as file:
         if success:
-            #print(cost)
             file.write(
                 f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n"
             )
@@ -371,7 +355,6 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag,
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
 
-    #print(sub_folder_name)
 
     main_folder_name = os.path.abspath(main_folder_path)
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)

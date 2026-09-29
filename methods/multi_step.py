@@ -19,7 +19,6 @@ from judges import build_nl_score_interpretation
 
 from log_util.log_util import create_logger
 
-# import parameters as p
 import re
 import pandas as pd
 import os
@@ -409,7 +408,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                 _stale.unlink()
             except OSError:
                 pass
-    # print(file_count)
 
     json_file_path = resolve_case_json(benchmark, file_count)
 
@@ -426,7 +424,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
     # Create configuration for LLM calls
     directory = source_space_dir if args.intermediate_materialization else main_folder
 
-    # language = 'sql' #or 'python'
 
     ################## Run for each task ##################
 
@@ -584,7 +581,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
             operation = get_operation(ask_response)
             print(operation)
 
-            # operation = 'JOIN'
 
             if operation == "JOIN":
                 # get join prompt
@@ -716,7 +712,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                     granularity, operation + " : " + str(group_by_column),
                     ask_prompt, ask_response, config_prompt, config_response,
                 ))
-                # operation_history.append(operation + ' : [ group_by : {group_by_column[0]}, aggregate : {group_by_column[1]}, aggregation_function : {group_by_column[2]} ]'.format(group_by_column = group_by_column))
                 pass
             elif operation == "UNION":
                 prompt = get_prompt(
@@ -828,7 +823,6 @@ def multi_step(args, length, id_, log_dir_, experiment_name, i_, past_context_st
                         logger.warning(f"Intermediate score computation failed at step {step}: {e}\n{traceback.format_exc()}")
             print(f"finished step {step}")
 
-        # print(operation_history)
 
         if break_flag == 0:
             # Final retrieval against the completed plan, for the code-generation prompt.

@@ -29,7 +29,6 @@ def f(U, alphaString, FD_Store):
     for k in KeyList:
         result.append([Column_Dict[char] for char in k ])
     return result
-    #return KeyList;
 
 
 

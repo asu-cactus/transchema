@@ -207,32 +207,23 @@ class Agent:
 
     def execute_action(self, action, transformer=None, reason_history=None):
         finish = False
-        # print(f"Executing action: {action}")
         if action.strip().startswith("TypePredict"):
-            # print("TypePredict")
             observation = transformer.type_predict()
             self.performed_actions.add("TypePredict")
         elif action.strip().startswith("Mapping"):
-            # print("DirectMapping")
             observation = transformer.column_mapping()
             self.performed_actions.add("Mapping")
         elif action.strip().startswith("Aggregation"):
-            # print("Aggregation")
             observation = transformer.aggregation()
             self.performed_actions.add("Aggregation")
         elif action.strip().startswith("Clarify"):
-            # print("Clarify")
             question = action.strip()[len("Clarify[") : -1]
             observation = transformer.clarify(question)
             self.performed_actions.add("Clarify")
         elif action.strip().startswith("Conditional"):
-            # print("Conditional")
             observation = transformer.conditional()
             self.performed_actions.add("Conditional")
         elif action.strip().startswith("Finish"):
-            # print("Finish")
-            # response = action[len("Finish["):-1]#action.strip()
-            # print('finish response', response)
             observation = transformer.finish(self.state)
             finish = True
             self.performed_actions.add("Finish")
@@ -243,7 +234,6 @@ class Agent:
 
     def run_baseline(self, verbose=True):
         res = self.llm_client.gpt(self.prompt)
-        # print('Response - SQL', res)
         if self.script_language == "python":
             return res[0].split("```Python")[1].split("```")[0].strip()
         elif self.script_language == "sql":
@@ -408,27 +398,21 @@ class ReactState:
         newState.is_terminal = True if action == "Finish" else False
         # TODO: add action support
         finish = False
-        # print(f"Executing action: {action}")
         if action.strip().startswith("TypePredict"):
-            # print("TypePredict")
             observation = self.transformer.type_predict()
             self.performed_actions.add("TypePredict")
         elif action.strip().startswith("DirectMapping"):
-            # print("DirectMapping")
             observation = self.transformer.column_mapping()
             self.performed_actions.add("DirectMapping")
         elif action.strip().startswith("Aggregation"):
-            # print("Aggregation")
             observation = self.transformer.aggregation()
             self.performed_actions.add("Aggregation")
         elif action.strip().startswith("Clarify"):
-            # print("Clarify")
             prompt_q_mcts = f"""
             You are a Postgres SQL developer. Given the following prompt:\n{self.state_in_mcts}\nWhat would you ask for clarification? Provide only one concise question. Wrap the question between [START] and [END]
             """
             question_response = gpt3(prompt_q_mcts)
             question = self.transformer.result_extractor(question_response)
-            # question = action.strip()[len("Clarify"):-1]
             observation = self.transformer.clarify(question)
             self.performed_actions.add("Clarify")
             newState.state_in_mcts = (
@@ -437,11 +421,9 @@ class ReactState:
             )
             return newState
         elif action.strip().startswith("Conditional"):
-            # print("Conditional")
             observation = self.transformer.conditional()
             self.performed_actions.add("Conditional")
         elif action.strip().startswith("Finish"):
-            # print("Finish")
             response = action.strip()  # [len("Finish["):-1]
             observation = self.transformer.finish(response)
             finish = True

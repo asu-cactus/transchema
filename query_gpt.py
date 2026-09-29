@@ -27,9 +27,6 @@ def query_from_file(prompt_path: str, model_name: str = "gpt-4.1-mini") -> str:
 
 
 if __name__ == "__main__":
-    # if len(sys.argv) != 2:
-    #     print("Usage: python query_gpt.py /path/to/prompt.txt")
-    #     sys.exit(1)
 
     prompt_file = "few_shot_prompt.txt"  # sys.argv[1]
     reply = query_from_file(prompt_file)

@@ -141,8 +141,6 @@ class MCTSSolver:
             
             self.backpropagate(end_node)
             
-            # for n in simulated_expanded_nodes:
-            #     n.children = []
                 
             if self.should_terminate():
                 break

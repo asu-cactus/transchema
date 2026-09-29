@@ -100,7 +100,6 @@ class MCTS:
     def _construct_val_eval_promt(self, current_prompt: str, child_prompt: str, unique_trajectories: list = [],
                                   reflections: list = []) -> str:
         question = current_prompt.split('\n')[0]
-        # unique_trajectories = []
         val_eval_prompt = ""
         """
         Contruct the prompt for the value network. It should force the model to rollout with 0 lookahead.
@@ -216,7 +215,6 @@ class MCTS:
 
         all_nodes = []
         self.failed_trajectories = []
-        #terminal_nodes = []
         self.reflection_map = []
 
         for i in range(iterations):
@@ -231,7 +229,6 @@ class MCTS:
             value = self._evalutate_node(node)
             reward, rollout_node, gpt_output, sql_result = self.rollout(max(node.children, key=lambda child: child.value), max_depth=4)
 
-            #terminal_nodes.append(terminal_node)
 
             if reward >= threshold:
                 self.logger.info("SUCCESSFUL TRAJECTORY FOUND DURING SIMULATION")
@@ -341,7 +338,6 @@ class MCTS:
             print("generating reflections")
             self.reflection_map = self.task.generate_self_reflection(unique_trajectories, current_prompt)
         if sample_method == 'tot':
-            # prompt = self._construct_action_sampling_prompt(current_prompt, thought_sequence_intro, self.reflection_map)
             prompt = current_prompt + thought_sequence_intro
         else:
             raise ValueError(f'prompt_sample {sample_method} not recognized')
@@ -414,7 +410,6 @@ class MCTS:
             # force to conclude the sql generation
             response = self.gpt(node.current_prompt, n=1, stop=None)[0]
             gpt_output = self.transformer.finish(response)
-            #gpt_output = response.split("Finish[")[1].split("]")[0].strip() #this is not stable
             print("SQL Script Extracted from GPT Response:")
             print(gpt_output)
 

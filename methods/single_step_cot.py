@@ -81,7 +81,6 @@ def single_step_cot(args, length, id_, log_dir_, experiment_name, i_, past_conte
     # Create configuration for LLM calls
     directory = main_folder
 
-    # language = 'sql' #or 'python'
 
     ################## Run for each task ##################
 

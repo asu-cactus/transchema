@@ -274,9 +274,6 @@ def get_python_script_with_intermediate_materialization(
     intermediate_scores: dict = {},
     directory="",
 ):
-    # assert len(all_intermediate_results) + 1 == len(
-    #   operation_history
-    # ), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
     past_operations = operation_history[:-1] if len(operation_history) > 1 else []
     next_operation = operation_history[-1]
     past_context_section = f"\nPast Attempts:\n{past_context}\n" if past_context else ""

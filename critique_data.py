@@ -11,7 +11,6 @@ import time
 import pandas as pd
 import multiprocessing
 
-# from methods.precursor import precursor
 from methods.multi_step import multi_step
 from methods.single_step_cot import single_step_cot
 from methods.critique import critique
@@ -181,24 +180,15 @@ def ms(args, length, id, log_dir, experiment_name, past_context_str="", token_tr
         with open(multistep_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow((f"{length}_{id}",) + tup)
-        # Autologtuple((f"{length}_{id}",) + tup,
-        #              sheet_dir["sheet_2"],
-        #              worksheet_name=sheets["sm"],
-        #              creds_file=creds_path
-        #             )
 
         if tup[1] == True:
             true_tup_.append(tup)
-            # print(f"{tup} in true tup")
         else:
-            # print(f"{tup} in false tup")
             false_tup_.append(tup)
 
         if tup[0] == True:
             true_tup.append(tup)
-            # print(f"{tup} in true tup")
         else:
-            # print(f"{tup} in false tup")
             false_tup.append(tup)
 
     if len(true_tup_) >= args.majority_voting:
@@ -655,13 +645,6 @@ def get_parser():
         "--aggregate-hints-truncate",
         type=float,
         nargs="+",
-        # aht = [
-        # dvr_ub, dvr_lb,
-        # leftness_ub, leftness_lb,
-        # emptiness_ub, emptiness_lb,
-        # peak_frequency_ub, peak_frequency_lb,
-        # value_range_ub, value_range_lb
-        # ]
         default=[0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2, 0.8, 0.2],
         help="Aggregate hints truncate thresholds",
     )
@@ -978,17 +961,7 @@ def get_parser():
         ),
     )
 
-    # parser.add_argument(
-    #     "--combine_ask_and_configure",
-    #     action="store_true",
-    #     help="Allow combining ask and configure into one step",
-    # )
 
-    # parser.add_argument(
-    #     "--no_thinking",
-    #     action="store_true",
-    #     help="Disable thinking process when asked for next operator",
-    # )
 
     return parser
 

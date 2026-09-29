@@ -11,7 +11,6 @@ import random
 from pandas.util import hash_pandas_object
 from functools import reduce
 
-# from similarity.levenshtein import Levenshtein
 import random
 
 
@@ -57,10 +56,6 @@ def isna(x):
 def clean_nan(v):
     if isna(v):
         return 0
-    # if v > float('inf')/2.0:
-    #    return float('inf')/2.0
-    # if v < float('-inf') / 2.0:
-    #    return float('-inf') / 2.0
     return v
 
 
@@ -119,10 +114,6 @@ def compare_series(s1, s2):
             f2.append(v)
         else:
             nf2.append(v)
-    # f1 = [v for v in n1 if type(v) in [float,int]] #u1[u1.apply(lambda x: type(x) in [float,int])]
-    # nf1 = [id(v) for v in n1 if type(v) not in [float,int]] #u1[u1.apply(lambda x: type(x) not in [float,int])]
-    # f2 = [v for v in n2 if type(v) in [float,int]]
-    # nf2 = [id(v) for v in n2 if type(v) not in [float,int]]
     if len(f1) != len(f2):
         return False
     else:
@@ -156,8 +147,6 @@ def compare_tables(df_generate, df_target):
     one_map = {}
     mul_map = {}
     results = []
-    # df_generate = de_duplicate_columns(df_generate)
-    # df_target = de_duplicate_columns(df_target)
     for col_target in df_target.columns:
         col_map[col_target] = []
         col_target_data = df_target[col_target]
@@ -171,9 +160,6 @@ def compare_tables(df_generate, df_target):
         # can't find correspond columns, return False
         if len(col_map[col_target]) == 0:
             print("didn't find corresponding columns for {}".format(col_target))
-            # df_generate.to_csv("gen.csv")
-            # df_target.to_csv("tar.csv")
-            # exit()
             return False, []
         map_num = map_num * len(col_map[col_target])
         # split them to two maps, one contain columns which only has one mapped column, mul contains columsn which has multiple mapped columns
@@ -240,7 +226,6 @@ def get_hash_of_table(df):
                 hash_pandas_object(df.iloc[i]),
             )
         )
-    # print(r)
     return r
 
 
@@ -259,7 +244,6 @@ class TableSummary(object):
         )
 
     def __str__(self):
-        # return 'Table {} '.format('\n'.join([str(col) for col in self.cols]))
         return "Table {} ".format(",".join([str(col) for col in self.schema]))
 
     def get_na_score(self):
@@ -284,7 +268,6 @@ class TablePairSummary(object):
         return (int(a0), int(a1))
 
     def __str__(self):
-        # return 'Table Pair: Table 1 = {};\nTable2 = {}\npairs={}'.format(self.table1, self.table2, ''.join(['  {}\n'.format(colp) for colp in self.col_pairs]))
         return "Table Pair: Table 1 = {};\nTable2 = {}\n".format(
             self.table1, self.table2
         )
@@ -379,9 +362,6 @@ def get_features_for_compatibility(table, model, sample=False):
             if max(col1.nuniques, col2.nuniques) > 0
             else 0
         )
-        # c1 = col1.astype(str).apply(lambda x: len(x)).mean()
-        # c2 = col2.astype(str).apply(lambda x: len(x)).mean()
-        # f9 = abs(c1-c2)
         f9 = (
             float(abs(col1.strv_len_mean - col2.strv_len_mean))
             / float(max(col1.strv_len_mean, col2.strv_len_mean))
@@ -458,8 +438,6 @@ def get_features_for_compatibility(table, model, sample=False):
                 abs(col1_type_onehot[idx] - col2_type_onehot[idx])
             )
         r += col_type_diff_onehot
-        # r += col1_type_onehot
-        # r += col2_type_onehot
         features.append(r)
 
         # print(features)
@@ -470,7 +448,6 @@ def get_features_for_compatibility(table, model, sample=False):
 
 
 def sample(table, length):
-    # print(len(table))
     t1 = table
     if len(table) > length:
         t1 = table.sample(length)
@@ -502,8 +479,6 @@ def get_column_pair_pattern_value(col1, col2, col1_data, col2_data):
                 avg_ratio = float(abs(col1.strv_len_mean - col2.strv_len_mean)) / float(
                     max(col1.strv_len_mean, col2.strv_len_mean)
                 )
-            # print("avg_ratio {}".format(avg_ratio))
-            # print(col1.col_name, col2.col_name, "length ratio:", avg_ratio)
             if avg_ratio < 0.5:
                 if col1.shapes is None:
                     col1.shapes = drop_nan_col1.apply(
@@ -520,7 +495,6 @@ def get_column_pair_pattern_value(col1, col2, col1_data, col2_data):
                     pattern1 = random.sample(list(pattern1), 100)
                 if len(pattern2) > 100:
                     pattern2 = random.sample(list(pattern2), 100)
-                # print("after de-duplicate {} {} {} {}".format(len(pattern1), len(pattern2), pattern1.iloc[0], pattern2.iloc[0]))
                 distance_map1 = {}
                 distance_map2 = {}
                 for i in range(len(pattern1)):
@@ -560,7 +534,6 @@ def get_column_pair_pattern_value(col1, col2, col1_data, col2_data):
                     result = 1 - sum(result) / len(result)
                 else:
                     result = 0
-    # print("result is : {}".format(result))
     return result
 
 
@@ -589,7 +562,6 @@ def find_groupby_key(df):
 def check_group_by(df):
     cols = []
     for c in df.columns:
-        # print("TYPE", str(df[c].dtype))
         if str(df[c].dtype).startswith("int") or str(df[c].dtype).startswith("float"):
             break
         else:
@@ -598,7 +570,6 @@ def check_group_by(df):
         cols = []
     if len(cols) > 0 and len(df[cols]) != len(df[cols].drop_duplicates()):
         cols = []
-    # print("COLS :", cols)
     return cols
 
 
@@ -678,12 +649,6 @@ class ColumnSummary(object):
         return dtype
 
     def dtype_to_int(self, dtype):
-        # if dtype == 'float':
-        #    return 1
-        # elif dtype == 'float-int':
-        #    return 2
-        # elif dtype == 'int':
-        #    return 3
         if dtype == "int" or dtype == "float-int":
             return 1
         elif dtype == "float":
@@ -720,7 +685,6 @@ class ColumnSummary(object):
         self.hasna = self.countna > 0
         self.is_monotonic = col.is_monotonic
         self.dtype = self.get_col_type(str(col.dtype), sample)
-        # self.most_frequent_vcount = col.value_counts().max()
         str_length = col.astype(str).str.len()
         self.strv_len_mean = str_length.mean()
         self.strv_len_std = str_length.std()
@@ -728,7 +692,6 @@ class ColumnSummary(object):
         if len(self.unique_hash) > 0:
             self.most_frequent_vcount = self.unique_hash.most_common()[0][1]
         else:
-            # print('ZERO unique_hash ', col)
             self.most_frequent_vcount = 0
 
         col_unique = list(self.unique_hash.keys())
@@ -763,7 +726,6 @@ class ColumnSummary(object):
         f7 = 0
         f8 = 0
         vrange = 0
-        # f9 = [False for i in range(len(shape_vec))]
         if self.dtype in ["int", "float", "float-int", "datetime"]:
             if self.dtype == "datetime":
                 vrange = (self.value_range[1] - self.value_range[0]).days
@@ -802,13 +764,7 @@ class ColumnSummary(object):
         col_name_used_as_groupby = col_name_groupby_counter[self.col_name]
         col_name_used_as_val = col_name_value_counter[self.col_name]
 
-        # if(self.is_grouped == True):
-        #    col_name_used_as_groupby -= 1
-        # if(self.is_value == True):
-        #    col_name_used_as_val -= 1
 
-        # assert col_name_used_as_groupby >= 0, "col_cnt cannot be less than 0"
-        # assert col_name_used_as_val >= 0, "col_cnt cannot be less than 0"
 
         gb_vs_val = (
             (float(col_name_used_as_groupby) / float(col_name_used_as_val))
@@ -889,9 +845,6 @@ class ColumnPairSummary(object):
                 self.col_l.col_name, self.col_r.col_name
             )
 
-            # print("{} {} {} {} {}\n".format(col_l.col_name, col_r.col_name, self.jaccard_value, len(col_l_data), len(col_r_data)))
-            # if self.jaccard_value < 0.3:
-            #     self.pattern_value = get_column_pair_pattern_value(col_l, col_r, col_l_unique, col_r_unique)
 
     def set_pattern_value(self):
         self.pattern_value = get_column_pair_pattern_value(
@@ -910,7 +863,6 @@ class ColumnPairSummary(object):
                 min_2 = self.col_r.value_range[0]
                 max_2 = self.col_r.value_range[1]
                 union = max(max_1, max_2) - min(min_1, min_2)
-                # print("union: ", union)
                 if union != 0:
                     range_1 = max_1 - min_1
                     range_2 = max_2 - min_2
@@ -926,7 +878,6 @@ class ColumnPairSummary(object):
                 f7 = 0
 
         self.range_overlap = f7
-        # print(self.col_l.value_range, self.col_r.value_range, self.range_overlap)
 
     def __str__(self):
         return "ColPair [{}] and [{}]; lratio = {}, rratio = {}, overlap = {}".format(
@@ -941,7 +892,6 @@ class ColumnPairSummary(object):
         # f1: overlap ratios (this is multi-set containment ratio)
         f1_left = float(self.left_ratio) / float(self.col_l.sz)
         f1_right = float(self.right_ratio) / float(self.col_r.sz)
-        # f1 = get_geometric_mean(f1_left, f1_right)
         f1 = max(f1_left, f1_right)
 
         # f2: data type

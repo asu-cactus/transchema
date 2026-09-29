@@ -45,7 +45,6 @@ def predict_join_columns(tables, model):
                 pos2 = columns2.get_loc(col2)
                 features = generate_features(table1[col1], table2[col2], table1, table2, pos1, pos2, total_columns1, total_columns2, 1)  # Here we assume single column candidate
                 features_df = pd.DataFrame([features])
-                # print(features_df)
                 score = model.predict_proba(features_df)[0][1]
                 candidates.append(((table_name1, col1), (table_name2, col2), score))
 

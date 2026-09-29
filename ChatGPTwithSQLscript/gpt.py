@@ -385,7 +385,6 @@ def generate_prompt(json_file_path, template_option,output_table,output_sql,sour
     else:
         raise ValueError(f"Invalid template option {template_option}.")
     print(prompt)
-    #print(f"Ground Truth SQL Query: {ground_truth}")
 
     return prompt, ground_truth, target_data_name
 

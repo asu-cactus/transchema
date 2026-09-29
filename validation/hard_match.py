@@ -63,9 +63,6 @@ def compare_numerical_columns(pred_column, gold_column):
     total = len(pred_column)
     print("total:", total)
     print("non-matching tuples:")
-    # for p, g in zip(pred_column, gold_column):
-    #   if p - g >= 0.01:
-    #      print(str(p)+"<->"+str(g)+";")
     return matches / total if total > 0 else 1 / (1 - (total - matches))
 
 

@@ -338,8 +338,6 @@ def main(json_folder, data_folder, output_base, length_types, start_num, end_num
         detail_path = os.path.join(output_dir, 'detail.json')
         accuracy_path = os.path.join(output_dir, 'accuracy.json')
         
-        # with open(detail_path, 'w') as f:
-        #     json.dump(result_data["results"], f, indent=4)
             
         with open(accuracy_path, 'w') as f:
             json.dump(result_data["accuracy"], f, indent=4)

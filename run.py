@@ -64,7 +64,6 @@ def parse_args():
 def main(args):
     experiment = Experiment(**args)
     experiment.setup()
-    # experiment.get_llm_friendly_representation()
     logging.info(f"STARTING experiment: \n{experiment}")
     experiment.run()
     # Always log the cost, even if an error occurred
