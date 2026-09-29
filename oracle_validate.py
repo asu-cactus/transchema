@@ -231,21 +231,39 @@ def main():
             print(f"ERROR: case {args.only_case} not found under {log_root}")
             sys.exit(1)
 
-    print(f"{len(cases)} cases with logs under {log_root} -- {args.workers} worker(s)")
-
     ordered_cases = sorted(cases.items(), key=lambda kv: (int(kv[0].split('_')[0]), int(kv[0].split('_')[1])))
-    tasks = [(args.benchmark, case_label, log_paths) for case_label, log_paths in ordered_cases]
 
     out_csv = f"{args.exp_name}_oracle.csv"
-    rows = []
-    n_oracle_correct = 0
-    n_done = 0
+    fieldnames = ["case_id", "oracle_correct", "n_tried", "n_matched", "note"]
 
-    # Incremental writer: flush after every result so a long run's progress survives an
-    # interruption (this can be thousands of script re-executions across two benchmarks).
-    with open(out_csv, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["case_id", "oracle_correct", "n_tried", "n_matched", "note"])
-        w.writeheader()
+    # Resume: a prior run's (or the watchdog's relaunch of a) out_csv already has rows for
+    # some cases -- skip those unless --only_case forces a specific one to redo. Since
+    # oracle_validate.py re-executes real scripts (a case with a wide/expensive table can take
+    # a while), redoing already-done cases on every relaunch wastes real time, not just a
+    # cheap resume check.
+    done_rows = {}
+    if not args.only_case and os.path.exists(out_csv):
+        with open(out_csv, newline="") as f:
+            for row in csv.DictReader(f):
+                if row.get("case_id"):
+                    done_rows[row["case_id"]] = row
+
+    remaining = [(cl, lp) for cl, lp in ordered_cases if cl not in done_rows]
+    n_skipped = len(ordered_cases) - len(remaining)
+    print(f"{len(cases)} cases with logs under {log_root} -- {args.workers} worker(s)"
+          + (f" -- resuming: {n_skipped} already done, {len(remaining)} remaining" if n_skipped else ""))
+
+    tasks = [(args.benchmark, case_label, log_paths) for case_label, log_paths in remaining]
+
+    rows = list(done_rows.values())
+    n_oracle_correct = sum(1 for r in rows if r.get("oracle_correct") == "True")
+
+    # Append if resuming (done_rows came from this exact file), otherwise start fresh.
+    write_mode = "a" if done_rows else "w"
+    with open(out_csv, write_mode, newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_mode == "w":
+            w.writeheader()
         f.flush()
 
         if args.workers <= 1:
@@ -255,10 +273,9 @@ def main():
             pool = multiprocessing.Pool(processes=args.workers)
             result_iter = pool.imap_unordered(_validate_case_worker, tasks)
 
-        pbar = tqdm(total=len(tasks), desc=args.exp_name, unit="case")
+        pbar = tqdm(total=len(ordered_cases), initial=n_skipped, desc=args.exp_name, unit="case")
         for r in result_iter:
             rows.append(r)
-            n_done += 1
             if r["oracle_correct"] is True:
                 n_oracle_correct += 1
             w.writerow(r)
