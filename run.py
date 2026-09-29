@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 from experiment import Experiment
 from func_timeout import func_set_timeout
 import func_timeout

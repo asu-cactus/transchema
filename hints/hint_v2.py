@@ -5,7 +5,6 @@ from sklearn.preprocessing import LabelEncoder
 from valentine import valentine_match
 from valentine.algorithms import Cupid
 from model.aggregation.pwr import load_trained_model, predict_columns
-import os
 from model.join.pwr import predict_join_columns
 from quality.quality import (
     analyze_functional_dependencies_1,

@@ -6,7 +6,6 @@ from model.join import data as jd
 from model.aggregation import data as ad
 import pandas as pd
 import os
-import json
 import re
 import numpy as np
 from itertools import combinations

@@ -6,7 +6,6 @@ import json
 from pandas.testing import assert_frame_equal
 import numpy as np
 from typing import Dict, Tuple, List
-import random
 from datetime import datetime
 
 # transchema repo root (four levels up from BAT/src/utils/evaluator.py) — needed
