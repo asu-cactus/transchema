@@ -133,6 +133,18 @@ def extract_successful_critique_scripts(log_text: str) -> list:
     return scripts
 
 
+# compare_tables()/compare_series() (validation/autopipeline_match.py) do a pure-Python
+# per-element loop inside a for-col_target/for-col_generate nested loop -- O(rows * cols^2).
+# Production only validates once per case (the selected best script); Oracle validates every
+# successfully-run candidate script per case, multiplying that cost. On this project's own
+# benchmarks, target.csv row counts are heavy-tailed (p95 ~50k, max 13.2M rows) -- a handful of
+# cases at that tail pushed sustained aggregate memory past the ablation.slice ceiling and got
+# OOM-killed (2026-09-28), taking the whole batch down with them. Skip those cases' Oracle
+# check rather than let one case's pathological data blow up memory for everything running in
+# the same cgroup; the row-count cutoff is a hard cap, not a probabilistic guess.
+_MAX_GT_ROWS_FOR_ORACLE = 50_000
+
+
 def validate_case(benchmark: str, case_label: str, log_paths: list) -> dict:
     """case_label e.g. '6_15' (length_caseid)."""
     length_str, case_id = case_label.split("_", 1)
@@ -144,6 +156,12 @@ def validate_case(benchmark: str, case_label: str, log_paths: list) -> dict:
 
     df_gt = pd.read_csv(gt_path, low_memory=False)
     df_gt = drop_leading_index_col_if_present(df_gt)
+
+    if len(df_gt) > _MAX_GT_ROWS_FOR_ORACLE:
+        return {
+            "case_id": case_label, "oracle_correct": "", "n_tried": 0, "n_matched": 0,
+            "note": f"skipped: ground truth has {len(df_gt)} rows (> {_MAX_GT_ROWS_FOR_ORACLE}) -- compare_tables() is O(rows*cols^2) and OOM'd the batch on this size",
+        }
 
     all_scripts = []  # list of (source, script_text)
     for lp in log_paths:
@@ -233,7 +251,14 @@ def main():
 
     ordered_cases = sorted(cases.items(), key=lambda kv: (int(kv[0].split('_')[0]), int(kv[0].split('_')[1])))
 
-    out_csv = f"{args.exp_name}_oracle.csv"
+    # --only_case is a debug tool -- it must NEVER touch the real <exp>_oracle.csv (which may
+    # hold real, expensive-to-recompute progress from the actual run). Write-mode logic below
+    # truncates out_csv when there's nothing to resume from, and --only_case's cases dict is a
+    # single case that was never meant to represent (or replace) the whole experiment.
+    out_csv = (
+        f"{args.exp_name}_oracle_debug_{args.only_case}.csv" if args.only_case
+        else f"{args.exp_name}_oracle.csv"
+    )
     fieldnames = ["case_id", "oracle_correct", "n_tried", "n_matched", "note"]
 
     # Resume: a prior run's (or the watchdog's relaunch of a) out_csv already has rows for
