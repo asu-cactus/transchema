@@ -31,7 +31,7 @@ change later -- not when only consuming the existing 656-pipeline corpus.)
 
 ## 2. Sample command to run with it
 
-A single case (length 2, case 5), same flags this session's experiments used:
+A single case (length 2, case 5), same flags the experiments used:
 
 ```bash
 source env/bin/activate
