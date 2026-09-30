@@ -57,7 +57,7 @@ This repository contains Python scripts designed to automate the generation of S
     ```bash
     python run.py
     ```
-3. Pick a dataset from out benchmark: {‘Smart Building’, ‘COVID-19 & Machine Log’,Commercial dataset-1’, ‘Commercial dataset-2’} and change the ‘excel_file_path’ and ‘json_file_path’ in ‘excel2json.py’ accordingly. Here is the link for the benchmark dataset <[link](https://github.com/asu-cactus/Data_Transformation_Benchmark)>
+3. Pick a dataset from out benchmark: {‘Smart Building’, ‘COVID-19 & Machine Log’,Commercial dataset-1’, ‘Commercial dataset-2’} and change the ‘excel_file_path’ and ‘json_file_path’ in ‘excel2json.py’ accordingly. Here is the link for the benchmark dataset <[link](Data_Transformation_Benchmark)>
     ````
     # Path to the Excel file
     excel_file_path = '<dataset_you_picked>.xlsx'

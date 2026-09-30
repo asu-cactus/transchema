@@ -37,7 +37,7 @@ This repository contains Python scripts designed to automate the generation of S
     ```
     export OPENAI_API_KEY={your_openai_api_key}
     ```
-2. Pick a dataset from out benchmark: {‘Smart Building’, ‘COVID-19 & Machine Log’,Commercial dataset-1’, ‘Commercial dataset-2’} and change the ‘excel_file_path’ and ‘json_file_path’ in ‘excel2json.py’ accordingly. Here is the link for the benchmark dataset <[link](https://github.com/asu-cactus/Data_Transformation_Benchmark)>
+2. Pick a dataset from out benchmark: {‘Smart Building’, ‘COVID-19 & Machine Log’,Commercial dataset-1’, ‘Commercial dataset-2’} and change the ‘excel_file_path’ and ‘json_file_path’ in ‘excel2json.py’ accordingly. Here is the link for the benchmark dataset <[link](ChatGPTwithSQLscript/Data_Transformation_Benchmark)>
     ````
     # Path to the Excel file
     excel_file_path = '<dataset_you_picked>.xlsx'
