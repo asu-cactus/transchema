@@ -58,7 +58,10 @@ from auto_suggest_llm_util import (
     get_columns_join,
     get_prompt,
     query_gpt,
+    get_filtered_functional_dependency,
+    extract_dependencies,
 )
+from valentine import valentine_match, algorithms as valentine_algorithms
 from eval_score.score import relative_csv_score
 from eval_score_value_based import value_based_relative_csv_score, value_based_relative_csv_score_timed
 from llm.llm_models import CostBudgetExceeded
@@ -88,6 +91,13 @@ _MAX_SIMULATE_STEPS = 15
 # and the ground truth (GT cache unavailable) can take up to 120s. Sized to
 # cover that plus subprocess spawn/communication overhead.
 _SCORE_TIMEOUT = 2 * (2 * 30) + 20
+
+# Reward-function ablation (comparing against BAT / Auto-Pipeline / LLM-as-judge reward
+# formulations): ap_reward sums 3 independent [0,1] components (FD overlap, key overlap,
+# column-mapping ratio -- auto_suggest_llm_util.calculate_score's exact definitions), so its
+# scale is [0,3], not [0,1] like every other reward mode. Shared by _score_and_validate_output's
+# correctness check and should_critique()'s threshold so the two never drift apart.
+_AP_REWARD_MAX = 3.0
 
 
 def _score_worker(target_file_location: str, ground_truth_location: str, result_queue,
@@ -292,6 +302,81 @@ def _value_score_with_timeout(target_file_location: str, ground_truth_location: 
         return 0.0, None
 
 
+def _ap_reward_worker(target_file_location: str, ground_truth_location: str, result_queue):
+    """Subprocess worker for the Auto-Pipeline-style reward: FD overlap + key overlap +
+    column-mapping ratio, each in [0,1], summed (range [0,3]). Exact port of
+    auto_suggest_llm_util.calculate_score's definitions (gt_df=target, tgt_df=generated
+    there -- confirmed from every real call site, e.g. calculate_score(df_ground_truth,
+    df_our_response)), minus its own 2000-row/15-col truncation (this project's own FD
+    mining already two-phase-retries on a truncated slice internally on timeout, and
+    truncating up front would silently change which FDs/keys exist for large-but-fine
+    tables -- see get_filtered_functional_dependency's docstring).
+
+    valentine_match (Cupid) has no internal timeout of its own, unlike FD mining
+    (auto_suggest_llm_util.FD_ANALYSIS_TIMEOUT=30s/attempt, two-phase). The outer
+    join(timeout=_SCORE_TIMEOUT) below covers it regardless -- a hard process kill,
+    not dependent on what's actually running inside when time's up.
+    """
+    try:
+        df_output = pd.read_csv(target_file_location, low_memory=False)
+        df_gt = pd.read_csv(ground_truth_location, low_memory=False)
+        df_gt = drop_leading_index_col_if_present(df_gt)
+
+        key_gt, fd_gt = get_filtered_functional_dependency(df_gt)
+        key_tgt, fd_tgt = get_filtered_functional_dependency(df_output)
+
+        dependencies_gt = extract_dependencies(fd_gt)
+        dependencies_tgt = extract_dependencies(fd_tgt)
+        overlapping_dependencies = dependencies_gt & dependencies_tgt
+        overlapping_keys = set(key_gt) & set(key_tgt)
+
+        score_fd = len(overlapping_dependencies) / len(dependencies_gt) if dependencies_gt else 1.0
+        score_key = len(overlapping_keys) / len(key_gt) if key_gt else 1.0
+
+        matches = valentine_match(df_gt, df_output, valentine_algorithms.Cupid())
+        gt_columns = set(df_gt.columns)
+        matched_columns = set(match[0] for match in matches)
+        column_mapping_score = len(matched_columns) / len(gt_columns) if gt_columns else 0.0
+
+        score = score_fd + score_key + column_mapping_score
+        components = {
+            "score_fd": score_fd, "score_key": score_key, "column_mapping_score": column_mapping_score,
+        }
+        result_queue.put({"score": score, "components": components})
+    except Exception:
+        result_queue.put({"score": 0.0, "components": None})
+
+
+def _ap_reward_with_timeout(target_file_location: str, ground_truth_location: str):
+    """Run the Auto-Pipeline-style reward in a child process with a hard timeout.
+
+    Reuses _SCORE_TIMEOUT (140s): sized for det_score_value's own FD mining (two sides,
+    two-phase, 30s/attempt -> up to 120s) and this reward does the same FD+key mining on
+    both sides too, plus Valentine matching on top -- same budget, same hard-kill safety
+    net covering whichever part is slow.
+    """
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(
+        target=_ap_reward_worker,
+        args=(target_file_location, ground_truth_location, q),
+        # get_filtered_functional_dependency's FD mining spawns its own child process
+        # (auto_suggest_llm_util._run_fd_analysis_timed) -- same daemon=False requirement
+        # as _value_score_with_timeout above, for the same reason.
+        daemon=False,
+    )
+    p.start()
+    p.join(timeout=_SCORE_TIMEOUT)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        return 0.0, None
+    try:
+        result = q.get_nowait()
+        return result["score"], result["components"]
+    except Exception:
+        return 0.0, None
+
+
 def _score_and_validate_output(
     target_file_location: str,
     ground_truth_location: str,
@@ -369,9 +454,42 @@ def _score_and_validate_output(
         )
         return score, score >= _DET_SCORE_THRESHOLD, components
 
-    else:  # "score"
+    elif reward_mode == "bat_reward":
+        # BAT's own reward (BAT/src/mcts/reward.py, method="columns_match", the only mode
+        # BAT's real runs actually use): output-column-name / target-column-name overlap
+        # ratio. No target *values* are ever read -- matches BAT's "target-instance-free"
+        # framing. Cheap (column-name set ops on already-loaded frames) -- no subprocess
+        # needed, same as "validation"/"partial" above.
+        tgt_cols = set(df_gt.columns)
+        gen_cols = set(df_output.columns)
+        score = len(gen_cols & tgt_cols) / len(tgt_cols) if tgt_cols else 0.0
+        return score, score >= _DET_SCORE_THRESHOLD, None
+
+    elif reward_mode == "ap_reward":
+        # Auto-Pipeline-style reward: see _ap_reward_worker's docstring for the exact
+        # formula (ported from auto_suggest_llm_util.calculate_score). Range [0, _AP_REWARD_MAX].
+        score, components = _ap_reward_with_timeout(target_file_location, ground_truth_location)
+        return score, score >= _AP_REWARD_MAX - 1e-6, components
+
+    elif reward_mode == "llm_confidence":
+        # LLM-as-a-judge reward: self-reported confidence used AS the reward directly,
+        # instead of folded into score_1 as one weighted component among six. `confidence`
+        # is already parsed+blended and threaded into this function on every simulate call,
+        # not just critique -- blend = avg_self_reported_confidence * (1 - 0.5**occurrences)
+        # (see avg_conf/occurrences a few hundred lines up), i.e. a novel/first-seen
+        # pipeline shape gets self-reported confidence discounted ~50%, rising toward the
+        # raw value as the same pipeline shape gets selected repeatedly. Confidence is only
+        # None on a genuinely unparseable LLM response (no $PLAN$ found), scored 0.0 here,
+        # same as every other reward mode's behavior for an unparseable response.
+        score = confidence if confidence is not None else 0.0
+        return score, score >= _SCORE_THRESHOLD, None
+
+    elif reward_mode == "score":
         score = _score_with_timeout(target_file_location, ground_truth_location, gt_cache_path)
         return score, score >= _SCORE_THRESHOLD, None
+
+    else:
+        raise ValueError(f"Unknown reward_mode: {reward_mode!r}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3117,12 +3235,21 @@ def should_critique(state: MCTSGraphState) -> str:
             # Ablation Plan §5 (critique-invocation threshold) switch: TREEMORPHER_CRITIQUE_THRESHOLD
             # overrides the default (0.9 for reward="score", 1.0 -- the strictest possible -- for
             # everything else, incl. det_score_value, which every production run uses) when set.
-            # Read once per process is fine: every run_*.sh launcher execs a fresh python3 per case.
+            # ap_reward sums 3 independent [0,1] components (range [0,_AP_REWARD_MAX]=[0,3]) --
+            # comparing it against a threshold sized for a [0,1] reward would mean critique almost
+            # never fires (even a mediocre 1.2 already clears a 1.0 threshold), so it gets its own
+            # max-scaled "strictest possible" threshold instead, same strictness intent as everything
+            # else's 1.0 default. Read once per process is fine: every run_*.sh launcher execs a
+            # fresh python3 per case.
             _override = os.environ.get("TREEMORPHER_CRITIQUE_THRESHOLD")
             if _override is not None:
                 critique_threshold = float(_override)
+            elif reward_mode == "score":
+                critique_threshold = 0.9
+            elif reward_mode == "ap_reward":
+                critique_threshold = _AP_REWARD_MAX
             else:
-                critique_threshold = 0.9 if reward_mode == "score" else 1.0
+                critique_threshold = 1.0
             needs_critique = state["current_score"] < critique_threshold
         if needs_critique:
             return "critique"

@@ -1357,13 +1357,18 @@ if __name__ == "__main__":
         "--reward",
         type=str,
         default="score",
-        choices=["score", "det_score_value", "validation", "partial"],
+        choices=["score", "det_score_value", "validation", "partial", "bat_reward", "ap_reward", "llm_confidence"],
         help=(
             "MCTS reward signal used for backpropagation: "
             "'score' = continuous relative_csv_score (FD + column map + distribution), "
             "'det_score_value' = value_based_relative_csv_score (Jaccard-aligned columns + value-based distribution), "
             "'validation' = binary 1.0 if hard-match validation passes else 0.0, "
-            "'partial' = fuzzy column-match ratio (matched target cols / total target cols)"
+            "'partial' = fuzzy column-match ratio (matched target cols / total target cols), "
+            "'bat_reward' = BAT's own reward (output/target column-name overlap ratio, no target values read), "
+            "'ap_reward' = Auto-Pipeline-style reward (FD overlap + key overlap + column-mapping ratio via "
+            "Valentine, each in [0,1], summed -- range [0,3], not [0,1]), "
+            "'llm_confidence' = LLM-as-a-judge reward: critique's self-reported confidence used directly as "
+            "the reward instead of folded into score_1 as one weighted component"
         ),
     )
     parser.add_argument(
