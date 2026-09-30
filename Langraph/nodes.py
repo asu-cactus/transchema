@@ -2220,6 +2220,7 @@ def next_operator_step(state: MCTSGraphState) -> dict:
             data_split=getattr(config, "data_split", "test"),
             rag_hints=rag_hints,
             explored_steps=explored_steps,
+            static_hints=getattr(config, "static_hints", True),
             agg_evidence=(
                 _compute_aggregation_evidence(rollout_history, state, config)
                 if is_groupby_expansion else ""

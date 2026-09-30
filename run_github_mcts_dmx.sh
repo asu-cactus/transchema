@@ -105,7 +105,8 @@ if [ -z "${CASES_OVERRIDE:-}" ] && [ -n "${SKIP_CASES:-}" ]; then
 fi
 
 if [ -n "${DRY_RUN:-}" ]; then
-    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  reward=${REWARD:-det_score_value}  rag=${RAG-curated_pipeline}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}"
+    static_hints_label="on"; [ -n "$NO_STATIC_HINTS" ] && static_hints_label="off"
+    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  reward=${REWARD:-det_score_value}  rag=${RAG-curated_pipeline}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}  static_hints=$static_hints_label"
     echo "total cases per model: ${#CASES[@]}"
     for L in $LENGTHS; do
         n=0; for u in "${CASES[@]}"; do [ "${u%%:*}" = "$L" ] && n=$((n+1)); done
@@ -203,6 +204,10 @@ run_case() {
     if [ -n "$DROP_SCORE_COMPONENTS" ]; then
         drop_args=(--drop_score_components "$DROP_SCORE_COMPONENTS")
     fi
+    local static_hints_args=()
+    if [ -n "$NO_STATIC_HINTS" ]; then
+        static_hints_args=(--no_static_hints)
+    fi
 
     # Resume: result dirs are Langraph/results_langraph/<exp_name>_<timestamp>/ ("_2..." = year prefix,
     # so c1 never matches c10). A case counts as done only if its results_summary.csv has a DATA row:
@@ -233,6 +238,7 @@ run_case() {
         --data_split         training \
         "${rag_args[@]}" \
         "${drop_args[@]}" \
+        "${static_hints_args[@]}" \
         --max_depth          "$max_depth" \
         --length             "$group" \
         --id_start           "$case_id" \
@@ -283,7 +289,8 @@ log "ALL" "RUN_TAG=${RUN_TAG}  (re-launch with this RUN_TAG to resume)"
 for MODEL in $MODELS; do
     check_disk || { log "ABORT" "disk check failed before $MODEL -- stopping the whole run"; exit 1; }
     mkdir -p "logs_langraph/github_${RUN_TAG}_${MODEL}"
-    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, reward=${REWARD:-det_score_value}, rag=${RAG:-none}, drop_score_components=${DROP_SCORE_COMPONENTS:-none} ====="
+    static_hints_label="on"; [ -n "$NO_STATIC_HINTS" ] && static_hints_label="off"
+    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, reward=${REWARD:-det_score_value}, rag=${RAG:-none}, drop_score_components=${DROP_SCORE_COMPONENTS:-none}, static_hints=$static_hints_label ====="
     m_start=$(date +%s)
     for u in "${CASES[@]}"; do enqueue "$MODEL" "${u%%:*}" "${u##*:}"; done
     wait
