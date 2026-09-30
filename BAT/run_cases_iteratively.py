@@ -12,7 +12,7 @@ from datetime import datetime
 
 # Absolute path to the BAT/ directory itself, so this script works regardless
 # of which machine/user account the repo is checked out under (e.g. this
-# local machine vs. Sol, where the home directory structure differs).
+# local machine vs. a shared cluster, where the home directory structure differs).
 BAT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Configuration

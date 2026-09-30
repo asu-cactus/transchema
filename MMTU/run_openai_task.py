@@ -1,5 +1,5 @@
 """Standalone entrypoint to run a single MMTU task against the OpenAI API,
-or a local Ollama-hosted model (e.g. Qwen3:32B on Sol).
+or a local Ollama-hosted model (e.g. Qwen3:32B).
 
 Bypasses two issues in inference.py:
   - the `openai` provider constructs OpenAI(api_base=..., api_version=...),
@@ -28,7 +28,7 @@ Usage:
         --model dmx-gpt-oss-120b \
         --mmtu_jsonl mmtu_smartbuilding_v2.jsonl
 
-    # On Sol, with Ollama serving Qwen3:32B:
+    # With Ollama serving Qwen3:32B:
     python3 run_openai_task.py \
         --task Transform-by-output-target-schema \
         --model qwen3:32b \

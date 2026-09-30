@@ -10,7 +10,7 @@ from contextvars import ContextVar
 
 current_case = ContextVar('current_case', default=None)
 
-# OpenAI SDK defaults to ~600s; local Ollama runs (e.g. qwen3:32b on Sol) often
+# OpenAI SDK defaults to ~600s; local Ollama runs (e.g. qwen3:32b) often
 # need longer. Override with TRANSCHEMA_OLLAMA_HTTP_TIMEOUT (seconds).
 _OLLAMA_READ_TIMEOUT = float(os.environ.get("TRANSCHEMA_OLLAMA_HTTP_TIMEOUT", "3600"))
 
