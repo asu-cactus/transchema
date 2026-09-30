@@ -208,6 +208,10 @@ run_case() {
     if [ -n "$NO_STATIC_HINTS" ]; then
         static_hints_args=(--no_static_hints)
     fi
+    local score_weights_args=()
+    if [ -n "$SCORE_WEIGHTS" ]; then
+        score_weights_args=(--score_weights "$SCORE_WEIGHTS")
+    fi
 
     # Resume: result dirs are Langraph/results_langraph/<exp_name>_<timestamp>/ ("_2..." = year prefix,
     # so c1 never matches c10). A case counts as done only if its results_summary.csv has a DATA row:
@@ -239,6 +243,7 @@ run_case() {
         "${rag_args[@]}" \
         "${drop_args[@]}" \
         "${static_hints_args[@]}" \
+        "${score_weights_args[@]}" \
         --max_depth          "$max_depth" \
         --length             "$group" \
         --id_start           "$case_id" \

@@ -590,6 +590,21 @@ DEFAULT_COLUMN_TYPE_WEIGHTS = {
     "cat":   {"prop": 1 / 3, "nunique": 1 / 3, "missing": 1 / 3},
 }
 
+# Weight-tuning ablation ("equal"/no-tuning condition): every term that actually
+# contributes to a type's column score weighted identically, instead of
+# DEFAULT_COLUMN_TYPE_WEIGHTS's original hand-picked ratios (js double-weighted for
+# float/int). "id"'s `missing` stays at 0.0 -- it was deliberately excluded from the
+# score (computed but unused, per DEFAULT_COLUMN_TYPE_WEIGHTS's comment), not just
+# under-weighted, so equalizing weights doesn't reactivate it; with only one term
+# actually contributing, "nunique": 1.0 is already trivially equal. "cat" is already
+# equal thirds in DEFAULT_COLUMN_TYPE_WEIGHTS, unchanged here.
+EQUAL_COLUMN_TYPE_WEIGHTS = {
+    "float": {"js": 0.5, "range": 0.5},
+    "int":   {"js": 0.25, "range": 0.25, "nunique": 0.25, "missing": 0.25},
+    "id":    {"nunique": 1.0, "missing": 0.0},
+    "cat":   {"prop": 1 / 3, "nunique": 1 / 3, "missing": 1 / 3},
+}
+
 # Per-length overrides for the top-level score_1 weights ("top", all 6
 # SCORE_1_COMPONENTS keys) and the per-column-type weights above, plus a
 # per-length credibility smoothing constant "k" (see

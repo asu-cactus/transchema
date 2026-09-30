@@ -193,6 +193,10 @@ run_case() {
     if [ -n "$NO_STATIC_HINTS" ]; then
         static_hints_args=(--no_static_hints)
     fi
+    local score_weights_args=()
+    if [ -n "$SCORE_WEIGHTS" ]; then
+        score_weights_args=(--score_weights "$SCORE_WEIGHTS")
+    fi
 
     # Resume (SKIP_DONE=1): a case counts as done only if its results_summary.csv has a DATA row (a case
     # killed mid-run leaves a header-only file and is run again). Off by default = the old behavior.
@@ -225,6 +229,7 @@ run_case() {
         "${rag_args[@]}" \
         "${drop_args[@]}" \
         "${static_hints_args[@]}" \
+        "${score_weights_args[@]}" \
         --length          "$group" \
         --id_start        "$case_id" \
         --id_end          "$case_id" \

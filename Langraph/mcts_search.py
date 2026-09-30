@@ -72,7 +72,9 @@ from state import MCTSGraphState
 from graph import build_mcts_graph
 from viz import write_action_trace, write_tree_viz
 from rag_pipeline.local_rag_db import build_upper_bound_db, populate_from_global_results
-from eval_score_value_based import get_length_score_weights, SCORE_1_COMPONENTS
+from eval_score_value_based import (
+    get_length_score_weights, SCORE_1_COMPONENTS, DEFAULT_SCORE_1_WEIGHTS, EQUAL_COLUMN_TYPE_WEIGHTS,
+)
 
 
 def _resolve_main_folder(benchmark: str) -> str:
@@ -605,9 +607,24 @@ def mcts_search(args, length, id_, log_dir_, experiment_name, i_):
     # from LENGTH_SCORE_WEIGHTS by this case's --length. column_type_weights and
     # credibility_k have no CLI override -- always auto-selected (falling back
     # to ALL_DATA_SCORE_WEIGHTS if length is unlisted -- see get_length_score_weights).
-    _cli_score_weights = _parse_score_weights(getattr(args, "score_weights", None))
-    _length_top_weights, column_type_weights, credibility_k = get_length_score_weights(length)
-    score_weights = _cli_score_weights or _length_top_weights
+    #
+    # Weight-tuning ablation: --score_weights equal bypasses all of the above for
+    # BOTH the top-level score_1 blend (DEFAULT_SCORE_1_WEIGHTS, 1/6 each across all
+    # 6 components) AND the nested per-column-type term weights
+    # (EQUAL_COLUMN_TYPE_WEIGHTS -- e.g. float's js/range go from a 2:1 split to 1:1).
+    # credibility_k is left at its per-length/ALL_DATA value either way -- it shapes
+    # how credibility_weight's raw VALUE is computed from occurrence counts, not how
+    # much credibility_weight CONTRIBUTES to the blend (that's the top-level weight,
+    # which IS equalized above), so it isn't a "weight" this ablation is about.
+    _raw_score_weights = getattr(args, "score_weights", None)
+    if _raw_score_weights == "equal":
+        score_weights = DEFAULT_SCORE_1_WEIGHTS
+        column_type_weights = EQUAL_COLUMN_TYPE_WEIGHTS
+        _, _, credibility_k = get_length_score_weights(length)
+    else:
+        _cli_score_weights = _parse_score_weights(_raw_score_weights)
+        _length_top_weights, column_type_weights, credibility_k = get_length_score_weights(length)
+        score_weights = _cli_score_weights or _length_top_weights
     # Reward-function ablation switch (Ablation Plan §1): drop named score_1
     # components from the weighted average, on top of whichever score_weights
     # are in effect above. See _parse_drop_score_components.
@@ -1376,12 +1393,20 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help=(
-            "Only used with --reward det_score_value. Comma-separated weights "
-            "for the score_1 components in order "
+            "Only used with --reward det_score_value. Special value 'equal' = "
+            "weight-tuning ablation: DEFAULT_SCORE_1_WEIGHTS (1/6 each across all 6 "
+            "score_1 components, incl. credibility_weight) AND EQUAL_COLUMN_TYPE_WEIGHTS "
+            "(the nested per-column-type term weights, e.g. float's js/range go from "
+            "DEFAULT_COLUMN_TYPE_WEIGHTS's 2:1 split to 1:1) -- a full 'no weight tuning "
+            "anywhere in the top-level or nested blend' condition. Otherwise: "
+            "comma-separated weights for the score_1 components in order "
             "fd_f1,avg_col_score_1,row_count_score,max_missing_score"
             "[,confidence] -- confidence is optional (5th value); when included "
             "it weights the critique's self-reported $CONFIDENCE$ signal (a "
-            "0.0-1.0 float) into score_1 on mcts_critique calls. "
+            "0.0-1.0 float) into score_1 on mcts_critique calls. Note this explicit-list "
+            "form has no credibility_weight slot (unlike 'equal') -- credibility_weight "
+            "falls back to DEFAULT_SCORE_1_WEIGHTS's 1/6 regardless of the other listed "
+            "values, so it won't match them unless they're also 1/6. "
             "(e.g. '0.1241,0.2487,0.3562,0.2710' or '0.2,0.2,0.2,0.2,0.2'). "
             "Default: None -> auto-select from LENGTH_SCORE_WEIGHTS "
             "(eval_score_value_based.py) by this run's --length if that length "
