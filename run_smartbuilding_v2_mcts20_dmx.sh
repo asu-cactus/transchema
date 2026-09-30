@@ -151,7 +151,7 @@ fi
 
 if [ -n "${DRY_RUN:-}" ]; then
     static_hints_label="on"; [ -n "$NO_STATIC_HINTS" ] && static_hints_label="off"
-    echo "MODELS=$MODELS  RUN_TAG=$RUN_TAG  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  reward=${REWARD:-det_score_value}  rag=${RAG:-none}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}  static_hints=$static_hints_label"
+    echo "MODELS=$MODELS  RUN_TAG=$RUN_TAG  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  reward=${REWARD:-det_score_value}  rag=${RAG:-none}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}  static_hints=$static_hints_label  score_weights=${SCORE_WEIGHTS:-length_default}"
     echo "total cases per model: ${#CASES[@]}"
     for L in $LENGTHS; do
         n=0; for u in "${CASES[@]}"; do [ "${u%%:*}" = "$L" ] && n=$((n+1)); done
@@ -254,7 +254,7 @@ for MODEL in $MODELS; do
     check_disk || { log "ABORT" "disk check failed before $MODEL -- stopping the whole run"; exit 1; }
     mkdir -p "logs_langraph/smartbuilding_v2_${RUN_TAG}_${MODEL}"
     static_hints_label="on"; [ -n "$NO_STATIC_HINTS" ] && static_hints_label="off"
-    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, same_leaf_stopping=${SAME_LEAF_STOPPING}, reward=${REWARD:-det_score_value}, drop_score_components=${DROP_SCORE_COMPONENTS:-none}, static_hints=$static_hints_label ====="
+    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, same_leaf_stopping=${SAME_LEAF_STOPPING}, reward=${REWARD:-det_score_value}, drop_score_components=${DROP_SCORE_COMPONENTS:-none}, static_hints=$static_hints_label, score_weights=${SCORE_WEIGHTS:-length_default} ====="
     m_start=$(date +%s)
     for u in "${CASES[@]}"; do enqueue "$MODEL" "${u%%:*}" "${u##*:}"; done
     wait
