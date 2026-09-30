@@ -105,7 +105,7 @@ if [ -z "${CASES_OVERRIDE:-}" ] && [ -n "${SKIP_CASES:-}" ]; then
 fi
 
 if [ -n "${DRY_RUN:-}" ]; then
-    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  rag=${RAG-curated_pipeline}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}"
+    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  reward=${REWARD:-det_score_value}  rag=${RAG-curated_pipeline}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}"
     echo "total cases per model: ${#CASES[@]}"
     for L in $LENGTHS; do
         n=0; for u in "${CASES[@]}"; do [ "${u%%:*}" = "$L" ] && n=$((n+1)); done
