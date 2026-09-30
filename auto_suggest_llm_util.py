@@ -1559,7 +1559,7 @@ if __name__ == "__main__":
     max_target_id = 100
     target_per = 25
     is_perc = False
-    hint_source = "v1"  # v1 or v2(Xuanmao's hints)
+    hint_source = "v1"  # v1 or v2
 
     target_length = int(max(3, 10 * 0.31342417815924284))
     source_length = int(max(3, 10 * 0.9682615757193975))
