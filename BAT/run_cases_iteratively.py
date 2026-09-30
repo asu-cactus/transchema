@@ -17,7 +17,7 @@ BAT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Configuration
 # Default configuration
-BASE_PATH = "/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/monteprep-pipelines"
+BASE_PATH = os.path.join(os.path.dirname(BAT_DIR), "autopipeline-benchmarks", "monteprep-pipelines")
 RESULT_DIR = "result/monteprep-pipelines/gpt-4.1-mini/execution"
 PREDICT_DIR = "predict/monteprep-pipelines/gpt-4.1-mini/execution"
 DATA_TYPE = "auto_pipeline"
