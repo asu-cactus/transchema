@@ -283,7 +283,7 @@ log "ALL" "RUN_TAG=${RUN_TAG}  (re-launch with this RUN_TAG to resume)"
 for MODEL in $MODELS; do
     check_disk || { log "ABORT" "disk check failed before $MODEL -- stopping the whole run"; exit 1; }
     mkdir -p "logs_langraph/github_${RUN_TAG}_${MODEL}"
-    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, same_leaf_stopping=${SAME_LEAF_STOPPING}, rag=${RAG:-none}, drop_score_components=${DROP_SCORE_COMPONENTS:-none} ====="
+    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, reward=${REWARD:-det_score_value}, rag=${RAG:-none}, drop_score_components=${DROP_SCORE_COMPONENTS:-none} ====="
     m_start=$(date +%s)
     for u in "${CASES[@]}"; do enqueue "$MODEL" "${u%%:*}" "${u##*:}"; done
     wait
