@@ -19,12 +19,12 @@ This will:
 To run just one length (e.g. all of length 1, cases 0-99) on github-pipelines with autopipeline
 validation, without editing the script's defaults:
 ```bash
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+source <repo-root>/env/bin/activate
 python3 run_cases_iteratively.py \
     --length_type 1 \
     --start_num 0 \
     --end_num 100 \
-    --base_path /home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/github-pipelines \
+    --base_path <repo-root>/autopipeline-benchmarks/github-pipelines \
     --result_dir result/github-pipelines/gpt-4.1-mini/execution \
     --predict_dir predict/github-pipelines/gpt-4.1-mini/execution \
     --validation autopipeline
@@ -81,7 +81,7 @@ Pass `--validation` to control how each case's generated table is scored against
 `--validation autopipeline` pulls in `validation/autopipeline_match.py`, which needs `Levenshtein` — not
 in BAT's own `requirements.txt`. Activate the repo-root virtualenv first:
 ```bash
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+source <repo-root>/env/bin/activate
 python3 run_cases_iteratively.py \
     --length_type 1 \
     --start_num 0 \

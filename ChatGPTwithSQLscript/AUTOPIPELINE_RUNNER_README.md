@@ -11,7 +11,7 @@ and `BAT/` and has its own runner (`BAT/ITERATIVE_RUNNER_README.md`).
 ## Prerequisites
 
 ```bash
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+source <repo-root>/env/bin/activate
 export OPENAI_API_KEY=...          # if not already set
 ```
 
@@ -27,7 +27,7 @@ export PGUSER="$USER"
 ## Quick Start — run one whole length
 
 ```bash
-cd /home/asurite.ad.asu.edu/jrtandel/transchema/ChatGPTwithSQLscript
+cd <repo-root>/ChatGPTwithSQLscript
 python3 auto_pipeline_join.py \
     --len 1 \
     --start_target_id 0 \
