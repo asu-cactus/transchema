@@ -25,7 +25,7 @@ def create_connection():
     kwargs = dict(
         dbname=os.getenv("PGDATABASE", "postgres"),
         user=os.getenv("PGUSER", "postgres"),
-        password=os.getenv("PGPASSWORD", "021111"),
+        password=os.getenv("PGPASSWORD", "postgres"),
         host=os.getenv("PGHOST", "localhost"),
         port=os.getenv("PGPORT", "5432"),
     )
