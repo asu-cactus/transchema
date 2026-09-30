@@ -92,13 +92,6 @@ _MAX_SIMULATE_STEPS = 15
 # cover that plus subprocess spawn/communication overhead.
 _SCORE_TIMEOUT = 2 * (2 * 30) + 20
 
-# Reward-function ablation (comparing against BAT / Auto-Pipeline / LLM-as-judge reward
-# formulations): ap_reward sums 3 independent [0,1] components (FD overlap, key overlap,
-# column-mapping ratio -- auto_suggest_llm_util.calculate_score's exact definitions), so its
-# scale is [0,3], not [0,1] like every other reward mode. Shared by _score_and_validate_output's
-# correctness check and should_critique()'s threshold so the two never drift apart.
-_AP_REWARD_MAX = 3.0
-
 
 def _score_worker(target_file_location: str, ground_truth_location: str, result_queue,
                   gt_cache_path: str = ""):
@@ -338,7 +331,10 @@ def _ap_reward_worker(target_file_location: str, ground_truth_location: str, res
         matched_columns = set(match[0] for match in matches)
         column_mapping_score = len(matched_columns) / len(gt_columns) if gt_columns else 0.0
 
-        score = score_fd + score_key + column_mapping_score
+        # Normalized to [0,1] (mean, not sum) so ap_reward is on the same scale as every
+        # other reward mode -- auto_suggest_llm_util.calculate_score itself sums (range
+        # [0,3]), but that's not what this ablation wants.
+        score = (score_fd + score_key + column_mapping_score) / 3.0
         components = {
             "score_fd": score_fd, "score_key": score_key, "column_mapping_score": column_mapping_score,
         }
@@ -467,9 +463,11 @@ def _score_and_validate_output(
 
     elif reward_mode == "ap_reward":
         # Auto-Pipeline-style reward: see _ap_reward_worker's docstring for the exact
-        # formula (ported from auto_suggest_llm_util.calculate_score). Range [0, _AP_REWARD_MAX].
+        # formula (ported from auto_suggest_llm_util.calculate_score, normalized to [0,1]
+        # -- the mean of the 3 components, not their sum). Same threshold as every other
+        # [0,1]-scaled mode: accept at (near-)1.0.
         score, components = _ap_reward_with_timeout(target_file_location, ground_truth_location)
-        return score, score >= _AP_REWARD_MAX - 1e-6, components
+        return score, score >= _DET_SCORE_THRESHOLD, components
 
     elif reward_mode == "llm_confidence":
         # LLM-as-a-judge reward: self-reported confidence used AS the reward directly,
@@ -3234,20 +3232,14 @@ def should_critique(state: MCTSGraphState) -> str:
         else:
             # Ablation Plan §5 (critique-invocation threshold) switch: TREEMORPHER_CRITIQUE_THRESHOLD
             # overrides the default (0.9 for reward="score", 1.0 -- the strictest possible -- for
-            # everything else, incl. det_score_value, which every production run uses) when set.
-            # ap_reward sums 3 independent [0,1] components (range [0,_AP_REWARD_MAX]=[0,3]) --
-            # comparing it against a threshold sized for a [0,1] reward would mean critique almost
-            # never fires (even a mediocre 1.2 already clears a 1.0 threshold), so it gets its own
-            # max-scaled "strictest possible" threshold instead, same strictness intent as everything
-            # else's 1.0 default. Read once per process is fine: every run_*.sh launcher execs a
-            # fresh python3 per case.
+            # everything else, incl. det_score_value and ap_reward (normalized to [0,1], same scale
+            # as every other mode), which every production run uses) when set. Read once per process
+            # is fine: every run_*.sh launcher execs a fresh python3 per case.
             _override = os.environ.get("TREEMORPHER_CRITIQUE_THRESHOLD")
             if _override is not None:
                 critique_threshold = float(_override)
             elif reward_mode == "score":
                 critique_threshold = 0.9
-            elif reward_mode == "ap_reward":
-                critique_threshold = _AP_REWARD_MAX
             else:
                 critique_threshold = 1.0
             needs_critique = state["current_score"] < critique_threshold

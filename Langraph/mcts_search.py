@@ -1366,7 +1366,7 @@ if __name__ == "__main__":
             "'partial' = fuzzy column-match ratio (matched target cols / total target cols), "
             "'bat_reward' = BAT's own reward (output/target column-name overlap ratio, no target values read), "
             "'ap_reward' = Auto-Pipeline-style reward (FD overlap + key overlap + column-mapping ratio via "
-            "Valentine, each in [0,1], summed -- range [0,3], not [0,1]), "
+            "Valentine, each in [0,1], averaged -- range [0,1]), "
             "'llm_confidence' = LLM-as-a-judge reward: critique's self-reported confidence used directly as "
             "the reward instead of folded into score_1 as one weighted component"
         ),
