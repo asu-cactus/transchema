@@ -14,11 +14,12 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+REPO_ROOT="$(cd .. && pwd)"
+[ -f "$REPO_ROOT/env/bin/activate" ] && source "$REPO_ROOT/env/bin/activate"
 export PGHOST=""
 export PGUSER="$USER"
 
-MANIFEST=/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/smartbuilding-pipelines-v2-split/split_manifest.csv
+MANIFEST="${BENCH_DIR:-$REPO_ROOT/autopipeline-benchmarks/smartbuilding-pipelines-v2-split}/split_manifest.csv"
 N_WORKERS=20
 MODEL="${1:-gpt-4.1-mini}"
 RUN_TAG="smartbuilding_v2_full_105_${MODEL//[.:]/-}_$(date +%Y%m%d_%H%M%S)"

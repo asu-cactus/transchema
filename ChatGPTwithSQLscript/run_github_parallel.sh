@@ -17,8 +17,9 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
+REPO_ROOT="$(cd .. && pwd)"
 DRY_RUN="${DRY_RUN:-}"
-BENCH=/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/github-pipelines
+BENCH="${BENCH_DIR:-$REPO_ROOT/autopipeline-benchmarks/github-pipelines}"
 N_WORKERS="${N_WORKERS:-15}"
 LENGTHS="${LENGTHS:-1 2 3 4 5 6 9}"
 MODEL="${1:-dmx-gpt-oss-120b}"
@@ -43,7 +44,7 @@ if [ -n "$DRY_RUN" ]; then
     exit 0
 fi
 
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+[ -f "$REPO_ROOT/env/bin/activate" ] && source "$REPO_ROOT/env/bin/activate"
 export PGHOST=""
 export PGUSER="$USER"
 
