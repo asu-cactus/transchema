@@ -37,11 +37,11 @@ Below is the table recording the respective number of groups and total number of
 
 ## How to use our benchmark
 
-We developed [scripts](https://github.com/asu-cactus/ChatGPTwithSQLscript) to use the benchmark. The steps are:
+We developed [scripts](..) to use the benchmark. The steps are:
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/asu-cactus/ChatGPTwithSQLscript.git
+    git clone <anonymized-repository-url>
     ```
 2. Navigate to the project directory:
     ```bash

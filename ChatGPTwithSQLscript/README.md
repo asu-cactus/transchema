@@ -34,7 +34,7 @@ This repository contains Python scripts designed to automate the generation of S
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/asu-cactus/ChatGPTwithSQLscript.git
+    git clone <anonymized-repository-url>
     ```
 2. Navigate to the project directory:
     ```bash

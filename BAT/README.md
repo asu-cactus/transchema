@@ -67,7 +67,7 @@ BAT/src/llm/config.py
 If you need to run the complete experiment, you can download the data from the following link of Google Drive and unzip it to the data folder. For ease of running, we also provide a simple example in the data folder.
 
 - Dataset link: [Google Drive](https://drive.google.com/file/d/1mkFwOzdKuDVA4Y9fdX08KgRpZVVkJZXk/view?usp=sharing)  
-- Original dataset link: [Auto-Pipeline Dataset](https://gitlab.com/jwjwyoung/autopipeline-benchmarks) | [Smart Building Dataset](https://github.com/asu-cactus/Data_Transformation_Benchmark)
+- Original dataset link: [Auto-Pipeline Dataset](https://gitlab.com/jwjwyoung/autopipeline-benchmarks) | Smart Building Dataset (link withheld for review)
 
 **Before running any scripts, please set the `PYTHONPATH` to the project root directory:**
 
