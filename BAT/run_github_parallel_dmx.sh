@@ -26,6 +26,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
+REPO_ROOT="$(cd .. && pwd)"
 MODEL="${1:-dmx-gpt-oss-120b}"
 N_WORKERS="${N_WORKERS:-20}"
 LENGTHS="${LENGTHS:-1 2 3 4 5 6 9}"
@@ -35,7 +36,7 @@ LENGTHS="${LENGTHS:-1 2 3 4 5 6 9}"
 # forever. `timeout` SIGTERMs (then SIGKILLs) the case; `|| true` below keeps a killed/failed
 # case from taking down the rest of that worker's queue under `set -e`.
 CASE_TIMEOUT="${CASE_TIMEOUT:-600}"
-BASE_PATH=/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/github-pipelines
+BASE_PATH="${BENCH_DIR:-$REPO_ROOT/autopipeline-benchmarks/github-pipelines}"
 RUN_TAG="$(date +%Y%m%d_%H%M%S)"
 RESULT_DIR="result/github-pipelines/${MODEL}/execution_${RUN_TAG}"
 PREDICT_DIR="predict/github-pipelines/${MODEL}/execution_${RUN_TAG}"
@@ -73,7 +74,7 @@ if [ -n "${DRY_RUN:-}" ]; then
     exit 0
 fi
 
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+[ -f "$REPO_ROOT/env/bin/activate" ] && source "$REPO_ROOT/env/bin/activate"
 export BAT_MCTS_LOG_DIR="${RUN_LOGS}/mcts"
 export BAT_LLM_LOG_DIR="${RUN_LOGS}/llm"
 

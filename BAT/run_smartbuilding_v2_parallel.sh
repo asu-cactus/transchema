@@ -21,10 +21,11 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+REPO_ROOT="$(cd .. && pwd)"
+[ -f "$REPO_ROOT/env/bin/activate" ] && source "$REPO_ROOT/env/bin/activate"
 
-MANIFEST=/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/smartbuilding-pipelines-v2-split/split_manifest.csv
-BASE_PATH=/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/smartbuilding-pipelines-v2-split
+BASE_PATH="${BENCH_DIR:-$REPO_ROOT/autopipeline-benchmarks/smartbuilding-pipelines-v2-split}"
+MANIFEST="$BASE_PATH/split_manifest.csv"
 MODEL="${1:-gpt-4.1-mini}"
 VALIDATION="autopipeline"
 N_WORKERS=20
