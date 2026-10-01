@@ -29,6 +29,15 @@
 #     tmux send-keys -t oracle_watchdog "bash watchdog_oracle_validate.sh" C-m
 # Stop it with: tmux kill-session -t oracle_watchdog   (does not stop the batch service)
 # Check the batch directly: systemctl --user status oracle_validate_batch.service
+#
+# Bug fixed 2026-10-01 (found while running the rewfam variant of this watchdog): the chain's
+# final `echo ALL_ORACLE_RUNS_COMPLETE` used to go nowhere -- only the preceding
+# `python3 ... | tee -a <file>` commands were piped anywhere, so the bare trailing echo after
+# the last && just went to the service's own stdout (journal), never into any file this script
+# greps. The completion check could never find it, so a FULLY FINISHED run looked identical to
+# "still running" and the watchdog kept relaunching forever -- harmlessly (each relaunch just
+# resumes-and-skips everything in seconds and exits 0 again) but endlessly. Now redirected into
+# the last stage's own log file.
 
 cd "$(dirname "$0")" || exit 1
 
@@ -42,7 +51,7 @@ python3 oracle_validate.py --benchmark github --exp_name github_abl_wofd_dmx-gpt
 python3 oracle_validate.py --benchmark github --exp_name github_abl_wocol_dmx-gpt-oss-120b --workers $ORACLE_WORKERS 2>&1 | tee -a logs_langraph/oracle_github_wocol.log && \\
 python3 oracle_validate.py --benchmark smart_building_v2 --exp_name smartbuilding_v2_abl_wofd_dmx-gpt-oss-120b --workers $ORACLE_WORKERS 2>&1 | tee -a logs_langraph/oracle_sb_wofd.log && \\
 python3 oracle_validate.py --benchmark smart_building_v2 --exp_name smartbuilding_v2_abl_wocol_dmx-gpt-oss-120b --workers $ORACLE_WORKERS 2>&1 | tee -a logs_langraph/oracle_sb_wocol.log && \\
-echo ALL_ORACLE_RUNS_COMPLETE"
+echo ALL_ORACLE_RUNS_COMPLETE >> logs_langraph/oracle_sb_wocol.log"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WATCHDOG] $1"; }
 log "Watchdog started. Checking every ${CHECK_INTERVAL}s. Workers=${ORACLE_WORKERS}."
