@@ -22,6 +22,7 @@ def parse_arguments():
     parser.add_argument("--data_type", type=str, default=None, help="Override data type (auto_pipeline or buildings). Defaults to basename of base_path.")
     parser.add_argument("--cases", nargs='+', type=int, default=None, help="Explicit list of case numbers to process instead of the contiguous --start_num/--end_num range (e.g. for retrying specific failed cases).")
     parser.add_argument("--model_name", type=str, default=None, help="Override the model from src/config/default.yaml (e.g. o4-mini). Must be a key in src/llm/config.py's MODELS dict.")
+    parser.add_argument("--target_examples", type=int, default=0, help="Number of example rows from the target table to append (after the columns) wherever the target table appears in prompts. 0 (default) = columns only.")
     return parser.parse_args()
 
 def initialize_logging(log_path):
@@ -128,7 +129,8 @@ def main():
                         bath_path=data_path,
                         data_type=data_type,
                         length_type=length,
-                        length_value=num
+                        length_value=num,
+                        target_examples=args.target_examples
                     )
                     token_usage = llm_client.token_usage
                     attempt_success = True

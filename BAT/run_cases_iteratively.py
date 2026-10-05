@@ -31,6 +31,7 @@ MCTS_LOG_DIR = os.environ.get("BAT_MCTS_LOG_DIR", LOG_DIR)
 CLEANUP_RESULTS = True  # Clean up intermediate result JSON files after evaluation
 VALIDATION = "hard_match"  # "hard_match" (evaluator's own similarity) or "autopipeline" (validation.hard_match.compare_tables_matching, matches mcts_search.py --validation autopipeline)
 MODEL_NAME = "gpt-4.1-mini"  # must be a key in BAT/src/llm/config.py's MODELS dict (e.g. "o4-mini")
+TARGET_EXAMPLES = 0  # target example rows to add to the MCTS prompts (main.py --target_examples)
 CASES = None  # explicit list of case numbers; overrides START_NUM/END_NUM when set
 
 def setup_logging():
@@ -167,7 +168,8 @@ def process_case(case_num, logger):
         "--start_num", str(case_num),
         "--end_num", str(case_num + 1),
         "--log_path", os.path.join(MCTS_LOG_DIR, f"mcts_{case_id}.txt"),
-        "--model_name", MODEL_NAME
+        "--model_name", MODEL_NAME,
+        "--target_examples", str(TARGET_EXAMPLES)
     ]
 
     if not run_command(main_cmd, f"MCTS for {case_id}", logger):
@@ -229,8 +231,8 @@ def process_case(case_num, logger):
 def main(length_type=LENGTH_TYPE, start_num=START_NUM, end_num=END_NUM,
          base_path=BASE_PATH, result_dir=RESULT_DIR, predict_dir=PREDICT_DIR,
          validation=VALIDATION, cleanup_results=CLEANUP_RESULTS,
-         model_name=MODEL_NAME, cases=CASES):
-    global LENGTH_TYPE, START_NUM, END_NUM, BASE_PATH, RESULT_DIR, PREDICT_DIR, VALIDATION, CLEANUP_RESULTS, MODEL_NAME, CASES
+         model_name=MODEL_NAME, cases=CASES, target_examples=TARGET_EXAMPLES):
+    global LENGTH_TYPE, START_NUM, END_NUM, BASE_PATH, RESULT_DIR, PREDICT_DIR, VALIDATION, CLEANUP_RESULTS, MODEL_NAME, CASES, TARGET_EXAMPLES
     LENGTH_TYPE = length_type
     START_NUM = start_num
     END_NUM = end_num
@@ -241,6 +243,7 @@ def main(length_type=LENGTH_TYPE, start_num=START_NUM, end_num=END_NUM,
     CLEANUP_RESULTS = cleanup_results
     MODEL_NAME = model_name
     CASES = cases
+    TARGET_EXAMPLES = target_examples
 
     logger, log_file = setup_logging()
     logger.info(f"Starting iterative case processing")
@@ -328,6 +331,8 @@ if __name__ == "__main__":
                          help="Model to use for MCTS generation and cost lookup; must be a key in BAT/src/llm/config.py's MODELS dict (e.g. o4-mini).")
     parser.add_argument("--cases", nargs='+', type=int, default=None,
                          help="Explicit list of case numbers to process (e.g. specific failed cases to retry), overriding --start_num/--end_num.")
+    parser.add_argument("--target_examples", type=int, default=0,
+                         help="Number of target-table example rows to add to the MCTS prompts (0 = columns only).")
     args = parser.parse_args()
 
     main(
@@ -340,5 +345,6 @@ if __name__ == "__main__":
         validation=args.validation,
         cleanup_results=not args.no_cleanup,
         model_name=args.model_name,
-        cases=args.cases
+        cases=args.cases,
+        target_examples=args.target_examples
     )

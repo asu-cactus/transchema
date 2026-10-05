@@ -102,7 +102,7 @@ class MCTSSolver:
         node_scores.sort(key=lambda x: x[0], reverse=True)
         return [path for _, path in node_scores]
     
-    def solve(self, bath_path, data_type, length_type, length_value=None):
+    def solve(self, bath_path, data_type, length_type, length_value=None, target_examples=0):
         if isinstance(length_value, List) or isinstance(length_type, List):
             self.logger.error("length_value should be a single integer, not a list.")
         length = length_type
@@ -114,7 +114,7 @@ class MCTSSolver:
         if data_type == 'buildings':
             meta_path = folder_path / "meta.json"
         
-        data_processor = DataProcessor(folder_path, data_type, meta_path)
+        data_processor = DataProcessor(folder_path, data_type, meta_path, target_examples)
         table_schema_dict = data_processor.process_tables()
         table_schema_dict_str = f"Source Tables:\n{table_schema_dict['source_tables']}\n Source Data Description:\n{table_schema_dict['source_data_description']}\n\nTarget Table:\n{table_schema_dict['target_table']}\nTarget Data Description:\n{table_schema_dict['target_data_description']}"
         root_node = MCTSNode(MCTSNodeType.ROOT,

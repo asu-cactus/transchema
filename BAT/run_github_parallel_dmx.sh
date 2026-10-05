@@ -3,8 +3,8 @@
 # ids are 0-based with gaps, so the case list is read from the folders on disk), for a DMX model.
 # Same launcher as run_smartbuilding_v2_parallel.sh (which supersedes the older run_github_pipelines_parallel.sh:
 # that one hard-codes gpt-4.1-mini, runs only 3 lengths at a time, and shares one predict dir):
-#   * N_WORKERS background workers (default 20); each takes an equal round-robin share of the cases
-#     and runs them one after another through run_cases_iteratively.py (one (length, case) per call),
+#   * a shared queue: N_WORKERS (default 20) cases run at once and each freed worker takes the next case
+#     (xargs -P), one (length, case) per run_cases_iteratively.py call,
 #   * every case gets its OWN predict dir (PREDICT_DIR/g<L>_c<id>): the evaluator writes a generically named
 #     case_by_case_summary.csv that is then renamed, so a shared predict dir made concurrent workers grab each
 #     other's file and lose ~18% of the scores,
@@ -17,6 +17,8 @@
 #   ssh -N -L 8000:127.0.0.1:8000 <user>@<dmx-vm-host>
 #
 # Overrides:  N_WORKERS=20  LENGTHS="1 2 3 4 5 6 9"  DRY_RUN=1 (print the case counts and exit)
+#             BASE_PATH=<dir>  github-pipelines benchmark folder;  VENV=<dir>  python venv to activate
+#             TARGET_EXAMPLES=0  number of target-table example rows added to the prompts (0 = columns only)
 #             CASE_TIMEOUT=600  hard per-case wall-clock cap in seconds (see below)
 #             SKIP_CASES="4_0 4_1 ... 4_18"  (space-separated "L_id" tokens) drop these cases from the run
 #             CASES_OVERRIDE="4_0 9_17 ..."  (space-separated "L_id" tokens) run ONLY these cases
@@ -35,7 +37,7 @@ LENGTHS="${LENGTHS:-1 2 3 4 5 6 9}"
 # forever. `timeout` SIGTERMs (then SIGKILLs) the case; `|| true` below keeps a killed/failed
 # case from taking down the rest of that worker's queue under `set -e`.
 CASE_TIMEOUT="${CASE_TIMEOUT:-600}"
-BASE_PATH=/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/github-pipelines
+BASE_PATH="${BASE_PATH:-/home/asurite.ad.asu.edu/jrtandel/transchema/autopipeline-benchmarks/github-pipelines}"
 RUN_TAG="$(date +%Y%m%d_%H%M%S)"
 RESULT_DIR="result/github-pipelines/${MODEL}/execution_${RUN_TAG}"
 PREDICT_DIR="predict/github-pipelines/${MODEL}/execution_${RUN_TAG}"
@@ -73,7 +75,7 @@ if [ -n "${DRY_RUN:-}" ]; then
     exit 0
 fi
 
-source /home/asurite.ad.asu.edu/jrtandel/transchema/env/bin/activate
+source "${VENV:-/home/asurite.ad.asu.edu/jrtandel/transchema/env}/bin/activate"
 export BAT_MCTS_LOG_DIR="${RUN_LOGS}/mcts"
 export BAT_LLM_LOG_DIR="${RUN_LOGS}/llm"
 
@@ -89,42 +91,34 @@ fi
 echo "Result dir:  $RESULT_DIR"
 echo "Predict dir: $PREDICT_DIR"
 echo "Run logs:    $RUN_LOGS"
-mkdir -p "$RUN_LOGS/workers"
-pids=()
-for ((i = 0; i < N_WORKERS; i++)); do
-    chunk=()
-    for ((j = i; j < ${#PAIRS[@]}; j += N_WORKERS)); do
-        chunk+=("${PAIRS[$j]}")
-    done
-    if [ "${#chunk[@]}" -eq 0 ]; then
-        continue
-    fi
-    echo "worker $i: ${#chunk[@]} case(s)"
-    (
-        for pair in "${chunk[@]}"; do
-            group="${pair%%:*}"
-            position="${pair##*:}"
-            timeout "${CASE_TIMEOUT}s" python3 run_cases_iteratively.py \
-                --length_type "$group" \
-                --cases "$position" \
-                --base_path "$BASE_PATH" \
-                --result_dir "$RESULT_DIR" \
-                --predict_dir "$PREDICT_DIR/g${group}_c${position}" \
-                --validation autopipeline \
-                --model_name "$MODEL" \
-                || echo "[$(date '+%H:%M:%S')] case ${group}_${position}: TIMED OUT or FAILED (see above) -- continuing to the next case"
-        done
-    ) > "${RUN_LOGS}/workers/worker_${i}.log" 2>&1 &
-    pids+=($!)
-done
+mkdir -p "$RUN_LOGS/cases"
+# Shared work queue: xargs -P keeps N_WORKERS cases running at all times and hands the next case in
+# the list to whichever worker frees up first (no per-worker chunks, so a slow case never idles the
+# others). Each case logs to its own file.
+run_one_case() {
+    pair="$1"
+    group="${pair%%:*}"
+    position="${pair##*:}"
+    timeout "${CASE_TIMEOUT}s" python3 run_cases_iteratively.py \
+        --length_type "$group" \
+        --cases "$position" \
+        --base_path "$BASE_PATH" \
+        --result_dir "$RESULT_DIR" \
+        --predict_dir "$PREDICT_DIR/g${group}_c${position}" \
+        --validation autopipeline \
+        --model_name "$MODEL" \
+        --target_examples "${TARGET_EXAMPLES:-0}" \
+        > "${RUN_LOGS}/cases/g${group}_c${position}.log" 2>&1 \
+        || echo "[$(date '+%H:%M:%S')] case ${group}_${position}: TIMED OUT or FAILED (see ${RUN_LOGS}/cases/g${group}_c${position}.log)"
+}
+export -f run_one_case
+export BASE_PATH RESULT_DIR PREDICT_DIR MODEL RUN_LOGS CASE_TIMEOUT TARGET_EXAMPLES
 
-echo "Launched ${#pids[@]} workers, waiting..."
+echo "Running ${#PAIRS[@]} cases through a shared queue, $N_WORKERS at a time..."
 fail=0
-for pid in "${pids[@]}"; do
-    wait "$pid" || fail=1
-done
+printf '%s\n' "${PAIRS[@]}" | xargs -P "$N_WORKERS" -I{} bash -c 'run_one_case "$@"' _ {} || fail=1
 
-echo "All workers finished (fail=$fail)."
+echo "All cases finished (fail=$fail)."
 echo "RESULT_DIR=$RESULT_DIR"
 echo "PREDICT_DIR=$PREDICT_DIR"
 

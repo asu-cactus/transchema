@@ -6,13 +6,14 @@ from pandas.testing import assert_frame_equal
 from src.utils.csv_io import drop_leading_index_col_if_present
 
 class DataProcessor:
-    def __init__(self, folder_path, data_type, meta_path = None):
+    def __init__(self, folder_path, data_type, meta_path = None, target_examples = 0):
         """
         """
         self.table_dict = {}
         self.schema_match = None
         self.meta_data = None
         self.data_type = data_type
+        self.target_examples = target_examples
         self._read_csv_files(folder_path)
         if meta_path:
             self._read_meta_file(meta_path)
@@ -30,11 +31,11 @@ class DataProcessor:
                 # runs on this same folder (target_multisource.csv,
                 # target_multisource_mcts.csv, etc.) — only the real "target" key
                 # is allowed through, and only as a schema-only 5-row preview.
-                if key != "target" and key.startswith("target"):
+                if key != "target" and key.lower().startswith("target"):
                     continue
                 file_path = os.path.join(folder_path, file_name)
                 if key == "target":
-                    self.table_dict[key] = drop_leading_index_col_if_present(pd.read_csv(file_path, nrows=5))
+                    self.table_dict[key] = drop_leading_index_col_if_present(pd.read_csv(file_path, nrows=max(5, self.target_examples)))
                 else:
                     self.table_dict[key] = drop_leading_index_col_if_present(pd.read_csv(file_path))
         if self.data_type == "buildings":
@@ -59,11 +60,20 @@ class DataProcessor:
         with open(meta_path, 'r', encoding='utf-8') as file:
             self.meta_data = json.load(file)
             
+    def _target_rows_str(self, df):
+        """Format the first `target_examples` target rows like the source rows; empty if disabled."""
+        if self.target_examples <= 0:
+            return ""
+        rows = [f"{i}. | {' | '.join(map(str, row.values))} |"
+                for i, (_, row) in enumerate(df.head(self.target_examples).iterrows(), 1)]
+        return "**Rows:**\n" + "\n".join(rows)
+
     def process_tables(self):
         """
         """
         source_tables = []
         target_table = None
+        target_rows_str = ""
 
         for key, df in self.table_dict.items():
             caption = f"**Table Caption:** {key}"
@@ -79,12 +89,17 @@ class DataProcessor:
             
             if key == 'target':
                 target_table = f"{caption}\n{columns}"
+                target_rows_str = self._target_rows_str(df)
+                if target_rows_str:
+                    target_table += f"\n{target_rows_str}"
             else:
                 source_tables.append(table_str)
         target_data_description = ""
         source_data_description = ""    
         if self.meta_data:
             target_table = f"**Table Caption:** {self.meta_data.get('Target Data Name','')}\n**Columns:**\n{self.meta_data.get('Target Data Schema', '')}"
+            if target_rows_str:
+                target_table += f"\n{target_rows_str}"
             target_data_description = self.meta_data.get('Target Data Description', '')
             source_data_description = self.meta_data.get('Source Data Description', '')
         return {
