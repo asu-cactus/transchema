@@ -374,6 +374,10 @@ class LLMClient:
                     kwargs["stop"] = stop
                 if _REASONING_EFFORT:
                     kwargs["reasoning_effort"] = _REASONING_EFFORT
+                # Verified live: azure gpt-6.1-sol rejects temperature=0.0 (400, only the default 1
+                # is allowed), so the field is omitted for it. gpt-5.1 still gets the low temperature.
+                if strip_relay_prefix(self.model).startswith("gpt-6"):
+                    kwargs.pop("temperature", None)
                 return self.client.chat.completions.create(**kwargs)
 
             if self.model == "o4-mini" or self.model == "o3" or self.model.startswith("gpt-5"):

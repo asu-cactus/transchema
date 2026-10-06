@@ -2693,3 +2693,9 @@ visualize_cost_vs_accuracy_all_methods_fixed.py
 # (scp) between machines that need --rag curated_pipeline instead.
 rag_pipeline/db/curated_pipeline_656.db
 rag_pipeline/db/curated_pipeline_features.norm_stats.json
+
+# Azure OpenAI relay: the committed copy has the three auth constants (API_VERSION,
+# TOKEN_SCOPE, AZURE_ENDPOINT) left blank, but the copy that actually runs on the Azure
+# machine has real values filled in. Never let that filled-in copy get committed -- copy the
+# file by hand (scp) to the Azure machine instead.
+azure_relay.py

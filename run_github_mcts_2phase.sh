@@ -14,6 +14,8 @@
 #
 # Overrides:
 #     MODEL=o4-mini                one model (a dmx-* model needs the tunnel; anything else needs its API key)
+#     MODEL=azure-gpt-5.1          Azure relay on localhost:8001 (azure_relay.py + tunnel); no OpenAI key needed
+#     CASES_OVERRIDE="1_0 1_1 ... 1_10"   run only these L_id cases (both phases; phase 2 still only retries the unsolved ones)
 #     LENGTHS="1 2 3 4 5 6 9"      MAX_JOBS=20      RUN_TAG=<tag>      DRY_RUN=1 (print the plan, no LLM calls)
 #     ONLY_LIST_FAILED=1           print the cases phase 1 (RUN_TAG) did not solve, then exit
 #     SKIP_GUARD_PHASE1=1          also skip the "another MCTS run is active" check for phase 1 (phase 2 always skips it: the
@@ -32,6 +34,7 @@ MODEL="${MODEL:-o4-mini}"
 RUN_TAG="${RUN_TAG:-gh2p_$(date '+%Y%m%d_%H%M%S')}"
 LENGTHS="${LENGTHS:-1 2 3 4 5 6 9}"
 MAX_JOBS="${MAX_JOBS:-20}"
+CASES_OVERRIDE="${CASES_OVERRIDE:-}"
 P1="${RUN_TAG}_leafstop"
 P2="${RUN_TAG}_noleafstop"
 
@@ -39,13 +42,18 @@ log() { echo "[$(date '+%H:%M:%S')] [2PHASE-GH] $1"; }
 
 # "L_id" of every case phase 1 did not solve: all case folders for LENGTHS minus the ones with a correct result.
 failed_cases() {
-    python3 - "$P1" "$MODEL" "$LENGTHS" <<'PY'
+    CASES_OVERRIDE="$CASES_OVERRIDE" python3 - "$P1" "$MODEL" "$LENGTHS" <<'PY'
 import csv, glob, os, sys
 tag, model, lengths = sys.argv[1], sys.argv[2], sys.argv[3].split()
 expected = []
-for L in lengths:
-    for d in glob.glob(f"autopipeline-benchmarks/github-pipelines/length{L}_*"):
-        expected.append((int(L), int(os.path.basename(d).split("_")[1])))
+if os.environ.get("CASES_OVERRIDE", "").strip():
+    for tok in os.environ["CASES_OVERRIDE"].split():
+        L, c = tok.split("_")
+        expected.append((int(L), int(c)))
+else:
+    for L in lengths:
+        for d in glob.glob(f"autopipeline-benchmarks/github-pipelines/length{L}_*"):
+            expected.append((int(L), int(os.path.basename(d).split("_")[1])))
 solved = set()
 for f in glob.glob(f"Langraph/results_langraph/github_{tag}_{model}/*/results_summary.csv"):
     for r in csv.DictReader(open(f)):
@@ -57,9 +65,19 @@ PY
 
 if [ -n "${ONLY_LIST_FAILED:-}" ]; then failed_cases; exit 0; fi
 
-if [[ "$MODEL" != dmx-* ]] && [ -z "${OPENAI_API_KEY:-}" ] && [ -z "${DRY_RUN:-}" ]; then
-    echo "ERROR: MODEL=$MODEL is not a dmx-* model and \$OPENAI_API_KEY is not set." >&2
+if [[ "$MODEL" != dmx-* && "$MODEL" != azure-* ]] && [ -z "${OPENAI_API_KEY:-}" ] && [ -z "${DRY_RUN:-}" ]; then
+    echo "ERROR: MODEL=$MODEL is not a dmx-* or azure-* model and \$OPENAI_API_KEY is not set." >&2
     exit 1
+fi
+
+# azure-* goes through azure_relay.py (tmux on the Azure machine) reached over the SSH tunnel on 8001.
+if [[ "$MODEL" == azure-* ]] && [ -z "${DRY_RUN:-}" ]; then
+    code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' http://localhost:8001/v1/models)
+    if [ "$code" != "200" ]; then
+        echo "ERROR: $MODEL needs the Azure relay tunnel -- localhost:8001 returned '$code'." >&2
+        echo "  check the azure_tunnel and azure_relay tmux sessions (see the Azure setup steps)." >&2
+        exit 1
+    fi
 fi
 
 if [ -n "${DRY_RUN:-}" ]; then
@@ -72,13 +90,16 @@ fi
 
 log "===== $MODEL: phase 1 (same_leaf_stopping=5, all cases, MAX_JOBS=$MAX_JOBS) -- RUN_TAG=$RUN_TAG ====="
 MODELS="$MODEL" RUN_TAG="$P1" LENGTHS="$LENGTHS" MAX_JOBS="$MAX_JOBS" SAME_LEAF_STOPPING=5 SKIP_GUARD="${SKIP_GUARD_PHASE1:-}" \
-    bash run_github_mcts_dmx.sh || { log "phase 1 launcher exited with an error (preflight or fatal) -- stopping"; exit 1; }
+    CASES_OVERRIDE="$CASES_OVERRIDE" bash run_github_mcts_dmx.sh || { log "phase 1 launcher exited with an error (preflight or fatal) -- stopping"; exit 1; }
 
 fails=$(failed_cases)
 n_fail=$(echo "$fails" | wc -w)
-n_all=$(python3 - "$LENGTHS" <<'PY'
-import glob, sys
-print(sum(len(glob.glob(f"autopipeline-benchmarks/github-pipelines/length{L}_*")) for L in sys.argv[1].split()))
+n_all=$(CASES_OVERRIDE="$CASES_OVERRIDE" python3 - "$LENGTHS" <<'PY'
+import glob, os, sys
+if os.environ.get("CASES_OVERRIDE", "").strip():
+    print(len(os.environ["CASES_OVERRIDE"].split()))
+else:
+    print(sum(len(glob.glob(f"autopipeline-benchmarks/github-pipelines/length{L}_*")) for L in sys.argv[1].split()))
 PY
 )
 log "phase 1 done: $((n_all - n_fail))/$n_all solved, $n_fail did not solve (or produced no result)"

@@ -136,6 +136,10 @@ def get_prompt(
         # tiktoken.encoding_for_model() has no entry for gpt-oss and raises KeyError.
         from llm.llm_models import gpt_oss_encoding
         encoding = gpt_oss_encoding()
+    elif ml.startswith("gpt-5") or ml.startswith("azure-"):
+        # tiktoken has no entry for gpt-5.x (KeyError) or for the "azure-" relay names; both use the
+        # o200k family. Only used for local prompt budgeting.
+        encoding = tiktoken.get_encoding("o200k_base")
     else:
         encoding = tiktoken.encoding_for_model(model)
 
