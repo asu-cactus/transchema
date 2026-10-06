@@ -66,14 +66,38 @@ _REASONING_EFFORT = os.environ.get("TRANSCHEMA_REASONING_EFFORT", "").strip().lo
 _DMX_BASE_URL = os.environ.get("DMX_OPENAI_BASE_URL", "http://localhost:8000/v1")
 DMX_PREFIX = "dmx-"
 
+# Azure OpenAI deployments (gpt-5.1, gpt-6.1-sol) served by a relay on the Azure machine,
+# reached through its own SSH tunnel on local port 8001. Select with an "azure-" prefix, e.g.
+# --model azure-gpt-5.1; the prefix is stripped before sending. The relay (azure_relay.py)
+# speaks the same OpenAI-compatible protocol as the DMX proxy, so requests reuse the DMX path.
+AZURE_PREFIX = "azure-"
+_AZURE_BASE_URL = os.environ.get("AZURE_RELAY_BASE_URL", "http://localhost:8001/v1")
+
 
 def is_dmx_model(model):
     return (model or "").lower().startswith(DMX_PREFIX)
 
 
+def is_azure_model(model):
+    return (model or "").lower().startswith(AZURE_PREFIX)
+
+
+def is_relay_model(model):
+    """Models whose requests go through an OpenAI-compatible relay (DMX or Azure) and so use
+    the same request shape: max_completion_tokens with reasoning headroom."""
+    return is_dmx_model(model) or is_azure_model(model)
+
+
+def strip_relay_prefix(model):
+    for prefix in (DMX_PREFIX, AZURE_PREFIX):
+        if model.lower().startswith(prefix):
+            return model[len(prefix):]
+    return model
+
+
 def is_asu_model(model):
     ml = (model or "").lower()
-    return not is_dmx_model(model) and any(marker in ml for marker in ASU_MODEL_MARKERS)
+    return not is_relay_model(model) and any(marker in ml for marker in ASU_MODEL_MARKERS)
 
 
 def gpt_oss_encoding():
@@ -98,6 +122,14 @@ def _dmx_openai_client():
     return OpenAI(
         base_url=_DMX_BASE_URL,
         api_key="unused",  # the proxy on the VM adds the real Azure token
+        timeout=httpx.Timeout(connect=60.0, read=_OLLAMA_READ_TIMEOUT, write=120.0, pool=60.0),
+    )
+
+
+def _azure_openai_client():
+    return OpenAI(
+        base_url=_AZURE_BASE_URL,
+        api_key="unused",  # the relay on the Azure machine adds the real Azure credential
         timeout=httpx.Timeout(connect=60.0, read=_OLLAMA_READ_TIMEOUT, write=120.0, pool=60.0),
     )
 
@@ -213,6 +245,11 @@ class LLMClient:
             self.client = _dmx_openai_client()
             self._is_reasoning_model = True
             self.encoding = dmx_encoding(model)
+        elif is_azure_model(model):
+            self.client = _azure_openai_client()
+            self._is_reasoning_model = True
+            # gpt-5.x shares o200k_base with the gpt-5 branch above (local budgeting only).
+            self.encoding = tiktoken.get_encoding("o200k_base")
         elif is_asu_model(model):
             self.client = _asu_openai_client()
             self._is_reasoning_model = True
@@ -236,7 +273,7 @@ class LLMClient:
         _base = str(getattr(self.client, "base_url", "") or "")
         self._uses_ollama = "11434" in _base or "ollama" in _base.lower()
         self._uses_asu = is_asu_model(model)
-        self._uses_dmx = is_dmx_model(model)
+        self._uses_dmx = is_relay_model(model)
 
     def __repr__(self):
         return f"LLMClient(model={self.model}, tracker={self.tracker})"
@@ -328,7 +365,7 @@ class LLMClient:
             if self._uses_dmx:
                 # Azure's v1 API takes max_completion_tokens; the budget includes reasoning.
                 kwargs = dict(
-                    model=self.model[len(DMX_PREFIX):],
+                    model=strip_relay_prefix(self.model),
                     messages=messages,
                     temperature=temperature,
                     max_completion_tokens=max_tokens + _REASONING_HEADROOM,
@@ -343,7 +380,7 @@ class LLMClient:
                 # gpt-5.1: verified live that max_tokens is rejected ("Unsupported parameter:
                 # 'max_tokens' ... Use 'max_completion_tokens' instead"); temperature/top_p/
                 # penalties ARE accepted here (unlike o3/o4-mini), so they're passed through.
-                return self.client.chat.completions.create(
+                kwargs = dict(
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
@@ -353,6 +390,15 @@ class LLMClient:
                     frequency_penalty=0.0,
                     presence_penalty=0.0,
                 )
+                # gpt-5.1's API default is no reasoning (o4-mini's is medium), so honor
+                # TRANSCHEMA_REASONING_EFFORT here too; unset keeps the old behavior.
+                # Verified live: with reasoning on, temperature=0 is rejected (400, only the
+                # default 1 is allowed), so temperature is dropped in that case.
+                if self.model.startswith("gpt-5") and _REASONING_EFFORT:
+                    kwargs["reasoning_effort"] = _REASONING_EFFORT
+                    if _REASONING_EFFORT != "none":
+                        kwargs.pop("temperature", None)
+                return self.client.chat.completions.create(**kwargs)
             else:
                 kwargs = dict(
                     model=self.model,
