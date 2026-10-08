@@ -1,0 +1,46 @@
+{
+  "case": "4_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8851,
+        "cost": 0.0036432,
+        "latency": 7.576733112335205,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.842 + 0.928) / 2 = 0.885 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Nominee}; {Nominee, Movie}.\nKeys present in ground truth but absent in generated: {Category, Year, Nominee}.\nSpurious keys in generated not present in ground truth: {Year, Nominee}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.842 (precision=0.800, recall=0.889).\nSpurious FDs in generated (not in ground truth): ['Nominee', 'Year'] \u2192 Category; ['Nominee', 'Year'] \u2192 Movie.\nMissing FDs from ground truth: ['Category', 'Nominee', 'Year'] \u2192 Movie.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.875\n  Column 'Movie': Jaccard=0.766",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 1412\nExamples:\n       Year                   Category       Nominee                                            Movie Winner\n1962 (35th)   Actor -- Supporting Role   Omar Sharif Lawrence of Arabia {'Sherif Ali ibn el Kharish'}     NO\n1985 (58th) Actress -- Supporting Role Oprah Winfrey                       The Color Purple {'Sofia'}     NO\n1953 (26th)                  Directing         Shane                                   George Stevens     NO",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_65/training_4.csv\"\n]\n\n# Read all source CSV files into DataFrames with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(path, index_col=0) for path in source_files]\n\n# According to the operation history, perform UNION of all source tables\n# All source tables have the same schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\n# Concatenate all DataFrames vertically (union)\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure the columns are in the target schema order and types\ntarget_columns = ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nunion_df = union_df[target_columns]\n\n# Convert all columns to string type as per target schema specification\nfor col in target_columns:\n    union_df[col] = union_df[col].astype(str)\n\n# Write the resulting DataFrame to the target CSV file path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource.csv\"\nunion_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Year,Category,Nominee,Movie,Winner\n2010 (83rd),Actress -- Supporting Role,Amy Adams,The Fighter {'Charlene Fleming'},NO\n2010 (83rd),Actress -- Supporting Role,Helena Bonham Carter,The King's Speech {'Queen Elizabeth'},NO\n2010 (83rd),Actress -- Supporting Role,Hailee Steinfeld,True Grit {'Mattie Ross'},NO\n2010 (83rd),Actress -- Supporting Role,Jacki Weaver,Animal Kingdom {'Janine 'Smurf' Cody'},NO\n2009 (82nd),Actress -- Supporting Role,Pen\u00e9lope Cruz,Nine {'Carla'},NO\n2009 (82nd),Actress -- Supporting Role,Vera Farmiga,Up in the Air {'Alex Goran'},NO\n2009 (82nd),Actress -- Supporting Role,Maggie Gyllenhaal,Crazy Heart {'Jean Craddock'},NO\n2009 (82nd),Actress -- Supporting Role,Anna Kendrick,Up in the Air {'Natalie Keener'},NO\n2008 (81st),Actress -- Supporting Role,Amy Adams,Doubt {'Sister James'},NO\n2008 (81st),Actress -- Supporting Role,Viola Davis,Doubt {'Mrs. Miller'},NO\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.371622085571289
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8851,
+          "cost": 0.0018928,
+          "latency": 4.8297905921936035,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.842 + 0.928) / 2 = 0.885 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Category, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Nominee}; {Nominee, Movie}.\nKeys present in ground truth but absent in generated: {Category, Year, Nominee}.\nSpurious keys in generated not present in ground truth: {Year, Nominee}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.842 (precision=0.800, recall=0.889).\nSpurious FDs in generated (not in ground truth): ['Nominee', 'Year'] \u2192 Category; ['Nominee', 'Year'] \u2192 Movie.\nMissing FDs from ground truth: ['Category', 'Nominee', 'Year'] \u2192 Movie.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.875\n  Column 'Movie': Jaccard=0.766",
+          "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 1412\nExamples:\n       Year                 Category              Nominee                                        Movie Winner\n1972 (45th) Actor -- Supporting Role        Robert Duvall                  The Godfather {'Tom Hagen'}     NO\n1944 (17th)  Actress -- Leading Role    Claudette Colbert          Since You Went Away {'Anne Hilton'}     NO\n1962 (35th)    Actor -- Leading Role Marcello Mastroianni Divorce--Italian Style {'Ferdinando Cefalu'}     NO",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_3.csv\", index_col=0)\ndf4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/training_4.csv\", index_col=0)\n\n# UNION all source tables (all have the same schema)\ndf_union = pd.concat([df0, df1, df2, df3, df4], ignore_index=True)\n\n# Remove exact duplicate rows to match target tuple count and uniqueness\ndf_final = df_union.drop_duplicates(subset=['Year', 'Category', 'Nominee', 'Movie', 'Winner'])\n\n# Write the final output with exact target schema and column names\ndf_final.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_65/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3232231140136719
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7665.677309036255,
+        "critique": 5107.961177825928
+      }
+    }
+  ]
+}

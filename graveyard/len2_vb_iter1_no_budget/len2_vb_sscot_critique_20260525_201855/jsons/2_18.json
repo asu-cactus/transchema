@@ -1,0 +1,46 @@
+{
+  "case": "2_18",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.3747,
+        "cost": 0.0016624,
+        "latency": 14.829376220703125,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.333 + 0.416) / 2 = 0.375 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.373, range overlap=0.296.\nGround truth candidate keys: {fare}; {city}.\nGenerated table candidate keys: {city, ride_id}; {city, fare}.\nKeys present in ground truth but absent in generated: {fare}; {city}.\nSpurious keys in generated not present in ground truth: {ride_id, city}; {fare, city}.\nFunctional dependency F1: 0.333 (precision=0.500, recall=0.250).\nSpurious FDs in generated (not in ground truth): ['ride_id'] \u2192 fare.\nMissing FDs from ground truth: ['fare'] \u2192 city; ['city'] \u2192 ride_id; ['city'] \u2192 fare.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.224, JS similarity=0.342\n    Generated    \u2014 min: 4.36, max: 58.55, mean: 29.0436\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\n  Column 'ride_id': range overlap=0.369, JS similarity=0.405\n    Generated    \u2014 min: 4.36, max: 58.55, mean: 29.0436\n    Ground Truth \u2014 min: 9.0, max: 29.0, mean: 17.9848\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+        "generated_samples": "Schema: ['city', 'fare', 'ride_id']\nNumber of Tuples: 1188\nExamples:\n         city  fare       ride_id\nPort Johnbury  7.63 8089282605778\n      Leahton 36.79 6214133326256\n  Barajasview 12.35 6122257582314",
+        "code": "import pandas as pd\n\n# File paths for source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_18/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_18/training_1.csv\"\n\n# Load Source 0: Schema ['city', 'date', 'fare', 'ride_id']\n# We ignore the index column (index_col=0)\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: Schema ['city', 'driver_count', 'type']\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['city': string, 'fare': float, 'ride_id': integer]\n# Source 0 already contains all target columns except 'date' which is not needed.\n# Source 1 does not contain 'fare' or 'ride_id', so it cannot contribute directly to target columns.\n# However, since all target columns must be accounted for and all source tables must be used,\n# we join Source 0 and Source 1 on 'city' (common column).\n# After join, we select only the target columns from Source 0.\n# This means Source 1 acts as a filter or dimension table to restrict cities to those present in Source 1.\n# This join is an inner join on 'city' to keep only cities present in both sources.\n# Finally, we ensure data types match target schema:\n# - city: string (already string)\n# - fare: float (convert if needed)\n# - ride_id: integer (convert if needed)\n\n# Perform inner join on 'city'\ndf_joined = pd.merge(df0, df1[['city']], on='city', how='inner')\n\n# Select only target columns\ndf_target = df_joined[['city', 'fare', 'ride_id']].copy()\n\n# Convert data types to match target schema\ndf_target['city'] = df_target['city'].astype(str)\ndf_target['fare'] = df_target['fare'].astype(float)\ndf_target['ride_id'] = df_target['ride_id'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_18/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "city,fare,ride_id\nLeahton,31.01,2116500207936\nLeahton,14.87,3839886060948\nLeahton,43.44,4290916547911\nLeahton,36.79,6214133326256\nJohnton,16.63,7248459450448\nJohnton,17.89,1266248389669\nJohnton,30.27,1604984494757\nJohnton,19.68,8534361219730\nJohnton,23.36,3671342249951\nPort David,32.92,857956984195\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1577606201171875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6081,
+          "cost": 0.0015428,
+          "latency": 7.218070030212402,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.466) / 2 = 0.608 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.410, range overlap=0.410.\nGround truth candidate keys: {fare}; {city}.\nGenerated table candidate keys: {city}.\nKeys present in ground truth but absent in generated: {fare}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['ride_id'] \u2192 fare.\nMissing FDs from ground truth: ['fare'] \u2192 city.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.448, JS similarity=0.525\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 18.8241, max: 30.95, mean: 24.391\n  Column 'ride_id': range overlap=0.373, JS similarity=0.295\n    Generated    \u2014 min: 16.2067, max: 43.2783, mean: 28.1268\n    Ground Truth \u2014 min: 9.0, max: 29.0, mean: 17.9848\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.578",
+          "generated_samples": "Schema: ['city', 'fare', 'ride_id']\nNumber of Tuples: 120\nExamples:\n        city      fare       ride_id\n Bethanyland 32.956111 5842550168634\n     Johnton 21.566000 4465079160911\nReynoldsfurt 20.751667 6999482964471",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_18/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_18/training_1.csv\", index_col=0)\n\n# Join on 'city' column (inner join to keep only matching cities)\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'city' (primary key) and aggregate 'fare' and 'ride_id' by mean\n# Note: ride_id is integer in target, but source has large integers, so mean is used to reduce duplicates\ngrouped = joined.groupby(\"city\", as_index=False).agg({\n    \"fare\": \"mean\",\n    \"ride_id\": \"mean\"\n})\n\n# Convert ride_id to integer as in target schema\ngrouped[\"ride_id\"] = grouped[\"ride_id\"].round().astype(int)\n\n# Reorder columns to match target schema exactly\nresult = grouped[[\"city\", \"fare\", \"ride_id\"]]\n\n# Write output to target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_18/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.684427261352539
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14894.843339920044,
+        "critique": 7287.544250488281
+      }
+    }
+  ]
+}

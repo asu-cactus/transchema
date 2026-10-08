@@ -1,0 +1,57 @@
+Case: 1_8
+Status: CORRECT
+Timestamp: 2026-02-24T13:48:05.474312
+Duration: 42.01 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_0_30/case_1_8/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['index_track', 'track_id', 'dummy']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_8
+2. Target Schema: ['index_track': integer, 'track_id': integer, 'dummy': integer]
+3. Target Examples: There are 16014 available target examples:        index_track  track_id  dummy
+13429        41930    897835      1
+10140        31412     84556      1
+13257        41380   1158641      1
+5812         17989    573131      1
+15114        46971   1434640      1
+...            ...       ...    ...
+7727         23998     65158      1
+9589         29733   2177506      1
+7570         23468     63531      1
+6254         19326   1363526      1
+3694         11463   3439454      1
+
+[1601 rows x 3 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_8_0
+	Source 0 Schema: ['track_id', 'dummy']
+	Source 0 Examples: 	 Source 0 contains 32195 tuples, with examples as follows: 
+   track_id  dummy
+0   1316175      1
+1   3885714      1
+2   3091270      1
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_8_1
+	Source 1 Schema: ['index_track', 'track_id']
+	Source 1 Examples: 	 Source 1 contains 49999 tuples, with examples as follows: 
+   index_track  track_id
+0            0   1048594
+1            1   2359314
+2            2   1835030
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

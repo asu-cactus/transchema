@@ -1,0 +1,46 @@
+{
+  "case": "2_92",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.5781,
+        "cost": 0.0035348000000000003,
+        "latency": 8.821686506271362,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.156) / 2 = 0.578 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {type}; {ride_id}.\nGenerated table candidate keys: {type}; {ride_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['type', 'ride_id']\nNumber of Tuples: 3\nExamples:\n    type  ride_id\nSuburban      625\n   Urban      438\n   Rural      125",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_92/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_92/training_1.csv\"\n\nSource2_92_0 = pd.read_csv(source0_path, index_col=0)\nSource2_92_1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source2_92_0 and Source2_92_1 on \"city\"\njoined_df = pd.merge(Source2_92_0, Source2_92_1, on=\"city\", how=\"inner\")\n\n# Operation 2: group_by Source2_92_1.type, aggregations = count(Source2_92_0.ride_id)\n# Group by 'type' column from Source2_92_1 and count the number of ride_id from Source2_92_0\nresult = joined_df.groupby('type', as_index=False).agg(ride_id=('ride_id', 'count'))\n\n# Ensure the target schema: ['type': string, 'ride_id': integer]\nresult['type'] = result['type'].astype(str)\nresult['ride_id'] = result['ride_id'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_92/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,ride_id\nRural,125\nSuburban,625\nUrban,438\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4064311981201172
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5781,
+          "cost": 0.0013868,
+          "latency": 5.3149330615997314,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.156) / 2 = 0.578 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {type}; {ride_id}.\nGenerated table candidate keys: {type}; {ride_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['type', 'ride_id']\nNumber of Tuples: 3\nExamples:\n    type  ride_id\nSuburban      625\n   Rural      125\n   Urban      438",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_92/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_92/training_1.csv\", index_col=0)\n\n# Join on city column (inner join by default)\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'type' and count 'ride_id'\nresult = joined.groupby(\"type\", as_index=False).agg({\"ride_id\": \"count\"})\n\n# Rename columns to match target schema exactly\nresult.columns = [\"type\", \"ride_id\"]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_92/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1212825775146484
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 8894.752264022827,
+        "critique": 5360.100507736206
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "1_59",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8457,
+        "cost": 0.001618,
+        "latency": 4.771565198898315,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.691) / 2 = 0.846 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.466, range overlap=0.299.\nGround truth candidate keys: {SALES}; {PRODUCTLINE}.\nGenerated table candidate keys: {SALES}; {PRODUCTLINE}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'SALES': range overlap=0.299, JS similarity=0.466\n    Generated    \u2014 min: 77097.47, max: 511283.92, mean: 317107.9286\n    Ground Truth \u2014 min: 39491.1, max: 1489382.8, mean: 451739.6657",
+        "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n PRODUCTLINE     SALES\nClassic Cars 511283.92\n       Ships 349111.03\nVintage Cars 296053.70",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_59/training_0.csv\"\n]\n\n# Target schema: ['PRODUCTLINE': string, 'SALES': float]\n# Target examples show aggregation by PRODUCTLINE summing SALES.\n\n# Step 1: Load all source tables\n# According to the prompt, only one source table is given.\n# We load it with index_col=0 to ignore the numerical index column.\n\ndf_list = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    df_list.append(df)\n\n# Step 2: Since only one source table is given, no union or join needed.\n# Step 3: Extract relevant columns: PRODUCTLINE and SALES\n# Step 4: Aggregate SALES by PRODUCTLINE (sum), because target examples show total sales per product line.\n\ndf_source = df_list[0]\n\n# Clean data: drop rows where PRODUCTLINE or SALES is missing\ndf_source_clean = df_source.dropna(subset=['PRODUCTLINE', 'SALES'])\n\n# Convert SALES to float (in case of any type issues)\ndf_source_clean['SALES'] = df_source_clean['SALES'].astype(float)\n\n# Aggregate SALES by PRODUCTLINE\ndf_target = df_source_clean.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Ensure column order and types match target schema\ndf_target = df_target[['PRODUCTLINE', 'SALES']]\ndf_target['PRODUCTLINE'] = df_target['PRODUCTLINE'].astype(str)\ndf_target['SALES'] = df_target['SALES'].astype(float)\n\n# Step 5: Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "PRODUCTLINE,SALES\nClassic Cars,511283.92\nMotorcycles,296395.93\nPlanes,427267.9\nShips,349111.03\nTrains,77097.47\nTrucks and Buses,262545.55\nVintage Cars,296053.7\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9362697601318359
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8457,
+          "cost": 0.001782,
+          "latency": 5.595103740692139,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.691) / 2 = 0.846 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.466, range overlap=0.299.\nGround truth candidate keys: {SALES}; {PRODUCTLINE}.\nGenerated table candidate keys: {SALES}; {PRODUCTLINE}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'SALES': range overlap=0.299, JS similarity=0.466\n    Generated    \u2014 min: 77097.47, max: 511283.92, mean: 317107.9286\n    Ground Truth \u2014 min: 39491.1, max: 1489382.8, mean: 451739.6657",
+          "generated_samples": "Schema: ['PRODUCTLINE', 'SALES']\nNumber of Tuples: 7\nExamples:\n PRODUCTLINE     SALES\n      Planes 427267.90\nVintage Cars 296053.70\nClassic Cars 511283.92",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_59/training_0.csv\", index_col=0)\n\n# Since only one source table is given, no union or join with other tables is possible.\n# The target schema is ['PRODUCTLINE', 'SALES'] with PRODUCTLINE as key.\n# We need to group by PRODUCTLINE and sum SALES.\n\n# Clean data: drop rows where PRODUCTLINE or SALES is NaN\ndf = source0.dropna(subset=['PRODUCTLINE', 'SALES'])\n\n# Convert SALES to numeric (float), errors='coerce' to handle any bad data\ndf['SALES'] = pd.to_numeric(df['SALES'], errors='coerce')\n\n# Drop rows where SALES is NaN after conversion\ndf = df.dropna(subset=['SALES'])\n\n# Group by PRODUCTLINE and sum SALES\nresult = df.groupby('PRODUCTLINE', as_index=False)['SALES'].sum()\n\n# Write the result to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_59/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9324550628662109
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4774.6171951293945,
+        "critique": 5631.848573684692
+      }
+    }
+  ]
+}

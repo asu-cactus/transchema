@@ -1,0 +1,46 @@
+{
+  "case": "4_22",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6262,
+        "cost": 0.006211599999999999,
+        "latency": 16.548523664474487,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.586) / 2 = 0.626 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.418, range overlap=0.477.\nGround truth candidate keys: {is_goal, is_goal_count1}; {is_goal, shot_sum}; {type_of_combined_shot, is_goal}.\nGenerated table candidate keys: {is_goal_count1}; {is_goal}; {type_of_combined_shot}; {shot_sum}.\nKeys present in ground truth but absent in generated: {is_goal_count1, is_goal}; {shot_sum, is_goal}; {is_goal, type_of_combined_shot}.\nSpurious keys in generated not present in ground truth: {is_goal_count1}; {shot_sum}; {is_goal}; {type_of_combined_shot}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['is_goal'] \u2192 type_of_combined_shot; ['is_goal'] \u2192 is_goal_count1; ['is_goal'] \u2192 shot_sum; ['is_goal_count1'] \u2192 is_goal; ['type_of_combined_shot'] \u2192 is_goal (and 1 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'is_goal': range overlap=0.000, JS similarity=0.600\n    Generated    \u2014 min: 15.0, max: 2649.0, mean: 759.7143\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.4518\n  Column 'shot_sum': range overlap=0.687, JS similarity=0.433\n    Generated    \u2014 min: 15.0, max: 2649.0, mean: 759.7143\n    Ground Truth \u2014 min: 10.0, max: 1828.0, mean: 1507.5222\n  Column 'is_goal_count1': range overlap=0.744, JS similarity=0.222\n    Generated    \u2014 min: 37.0, max: 6146.0, mean: 1744.0\n    Ground Truth \u2014 min: 21.0, max: 4591.0, mean: 3685.5047",
+        "generated_samples": "Schema: ['type_of_combined_shot', 'is_goal', 'shot_sum', 'is_goal_count1']\nNumber of Tuples: 7\nExamples:\ntype_of_combined_shot  is_goal  shot_sum  is_goal_count1\n             shot - 5     15.0   1136215              37\n             shot - 1    197.0   6562753             210\n             shot - 2     23.0   1046867              42",
+        "code": "import pandas as pd\n\n# Load the source data\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_22/training_0.csv\"\ndf_source = pd.read_csv(source_path)\n\n# We need to produce the target table with schema:\n# ['type_of_combined_shot': string, 'is_goal': float, 'shot_sum': integer, 'is_goal_count1': integer]\n\n# According to the operation history, the aggregation is:\n# group by type_of_combined_shot\n# aggregations: sum(is_goal), sum(shot_id_number), count(is_goal)\n\n# But the source does not have a column named 'shot_sum' directly.\n# The intermediate_step1.csv already has the aggregated results:\n# Columns: ['type_of_combined_shot', 'is_goal', 'shot_sum', 'is_goal_count1']\n# where:\n#   is_goal = sum(Source4_22_0.is_goal)\n#   shot_sum = sum(Source4_22_0.shot_id_number)\n#   is_goal_count1 = count(Source4_22_0.is_goal)\n\n# So we can directly load the intermediate_step1.csv and output it as the target.\n\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_22/intermediate_step1.csv\"\ndf_intermediate = pd.read_csv(intermediate_path)\n\n# Ensure the column types match the target schema:\n# 'type_of_combined_shot': string\ndf_intermediate['type_of_combined_shot'] = df_intermediate['type_of_combined_shot'].astype(str)\n\n# 'is_goal': float\ndf_intermediate['is_goal'] = df_intermediate['is_goal'].astype(float)\n\n# 'shot_sum': integer\ndf_intermediate['shot_sum'] = df_intermediate['shot_sum'].astype(int)\n\n# 'is_goal_count1': integer\ndf_intermediate['is_goal_count1'] = df_intermediate['is_goal_count1'].astype(int)\n\n# Save the final target table\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_22/target_multisource.csv\"\ndf_intermediate.to_csv(output_path, index=False)",
+        "generated_csv_head": "type_of_combined_shot,is_goal,shot_sum,is_goal_count1\nshot - 0,27.0,1003425,40\nshot - 1,197.0,6562753,210\nshot - 2,23.0,1046867,42\nshot - 3,1836.0,136290706,4747\nshot - 4,571.0,30178678,986\nshot - 5,15.0,1136215,37\n,2649.0,177161383,6146\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2500286102294922
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6262,
+          "cost": 0.0020444,
+          "latency": 5.887700319290161,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.586) / 2 = 0.626 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.418, range overlap=0.477.\nGround truth candidate keys: {is_goal, is_goal_count1}; {is_goal, shot_sum}; {type_of_combined_shot, is_goal}.\nGenerated table candidate keys: {is_goal_count1}; {is_goal}; {type_of_combined_shot}; {shot_sum}.\nKeys present in ground truth but absent in generated: {is_goal_count1, is_goal}; {shot_sum, is_goal}; {is_goal, type_of_combined_shot}.\nSpurious keys in generated not present in ground truth: {is_goal_count1}; {shot_sum}; {is_goal}; {type_of_combined_shot}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['is_goal'] \u2192 type_of_combined_shot; ['is_goal'] \u2192 is_goal_count1; ['is_goal'] \u2192 shot_sum; ['is_goal_count1'] \u2192 is_goal; ['type_of_combined_shot'] \u2192 is_goal (and 1 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'is_goal': range overlap=0.000, JS similarity=0.600\n    Generated    \u2014 min: 15.0, max: 2649.0, mean: 759.7143\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.4518\n  Column 'shot_sum': range overlap=0.687, JS similarity=0.433\n    Generated    \u2014 min: 15.0, max: 2649.0, mean: 759.7143\n    Ground Truth \u2014 min: 10.0, max: 1828.0, mean: 1507.5222\n  Column 'is_goal_count1': range overlap=0.744, JS similarity=0.222\n    Generated    \u2014 min: 37.0, max: 6146.0, mean: 1744.0\n    Ground Truth \u2014 min: 21.0, max: 4591.0, mean: 3685.5047",
+          "generated_samples": "Schema: ['type_of_combined_shot', 'is_goal', 'shot_sum', 'is_goal_count1']\nNumber of Tuples: 7\nExamples:\ntype_of_combined_shot  is_goal  shot_sum  is_goal_count1\n             shot - 1    197.0   6562753             210\n                  NaN   2649.0 177161383            6146\n             shot - 4    571.0  30178678             986",
+          "code": "import pandas as pd\n\n# Read source CSV with index_col=0 to ignore the first numerical index column\ndf = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_22/training_0.csv\", index_col=0)\n\n# Group by 'type_of_combined_shot' and aggregate as required\nresult = df.groupby(\"type_of_combined_shot\", dropna=False).agg(\n    is_goal=pd.NamedAgg(column=\"is_goal\", aggfunc=\"sum\"),\n    shot_sum=pd.NamedAgg(column=\"shot_id_number\", aggfunc=\"sum\"),\n    is_goal_count1=pd.NamedAgg(column=\"is_goal\", aggfunc=\"count\")\n).reset_index()\n\n# Ensure columns have correct types matching target schema\nresult[\"is_goal\"] = result[\"is_goal\"].astype(float)\nresult[\"shot_sum\"] = result[\"shot_sum\"].astype(int)\nresult[\"is_goal_count1\"] = result[\"is_goal_count1\"].astype(int)\n\n# Write to target CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_22/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2607574462890625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 16587.86654472351,
+        "critique": 6132.3418617248535
+      }
+    }
+  ]
+}

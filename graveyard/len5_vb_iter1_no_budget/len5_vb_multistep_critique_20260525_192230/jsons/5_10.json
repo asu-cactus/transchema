@@ -1,0 +1,46 @@
+{
+  "case": "5_10",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7573,
+        "cost": 0.0038564000000000003,
+        "latency": 11.54136061668396,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.515) / 2 = 0.757 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.949.\nGround truth candidate keys: {school_name}; {reading_score}.\nGenerated table candidate keys: {school_name}; {reading_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'reading_score': range overlap=0.949, JS similarity=1.000\n    Generated    \u2014 min: 80.7447, max: 84.0447, mean: 82.4059\n    Ground Truth \u2014 min: 80.8582, max: 83.9895, mean: 82.4551\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+        "generated_samples": "Schema: ['school_name', 'reading_score']\nNumber of Tuples: 8\nExamples:\n       school_name  reading_score\n  Pena High School      84.044699\nThomas High School      83.848930\n  Ford High School      80.746258",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_10/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_10/training_1.csv\"\n\nSource5_10_0 = pd.read_csv(source0_path, index_col=0)\nSource5_10_1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source5_10_0 and Source5_10_1 on \"school_name\"\njoined_df = pd.merge(Source5_10_0, Source5_10_1, how=\"inner\", on=\"school_name\")\n\n# Operation 2: group_by Source5_10_0.school_name and aggregate avg(Source5_10_0.reading_score)\n# Note: After join, the reading_score column is from Source5_10_0, so it remains \"reading_score\"\n# Group by \"school_name\" and calculate average reading_score\nresult_df = (\n    joined_df.groupby(\"school_name\", as_index=False)\n    .agg({\"reading_score\": \"mean\"})\n)\n\n# Rename columns to match target schema explicitly (though names already match)\nresult_df = result_df.rename(columns={\"school_name\": \"school_name\", \"reading_score\": \"reading_score\"})\n\n# Ensure data types match target schema: school_name as string, reading_score as float\nresult_df[\"school_name\"] = result_df[\"school_name\"].astype(str)\nresult_df[\"reading_score\"] = result_df[\"reading_score\"].astype(float)\n\n# Write the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length5_10/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "school_name,reading_score\nBailey High School,81.12630288166768\nFord High School,80.74625775830594\nHolden High School,83.81498829039812\nJohnson High School,80.96639361478681\nPena High School,84.04469854469855\nRodriguez High School,80.74468617154288\nThomas High School,83.84892966360856\nWright High School,83.955\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4171600341796875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7573,
+          "cost": 0.00143,
+          "latency": 4.657577276229858,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.515) / 2 = 0.757 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.949.\nGround truth candidate keys: {school_name}; {reading_score}.\nGenerated table candidate keys: {school_name}; {reading_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'reading_score': range overlap=0.949, JS similarity=1.000\n    Generated    \u2014 min: 80.7447, max: 84.0447, mean: 82.4059\n    Ground Truth \u2014 min: 80.8582, max: 83.9895, mean: 82.4551\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+          "generated_samples": "Schema: ['school_name', 'reading_score']\nNumber of Tuples: 8\nExamples:\n          school_name  reading_score\n     Pena High School      84.044699\n   Wright High School      83.955000\nRodriguez High School      80.744686",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_10/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_10/training_1.csv\", index_col=0)\n\n# Join Source5_10_0 and Source5_10_1 on 'school_name'\njoined = pd.merge(source0, source1, on=\"school_name\", how=\"inner\")\n\n# Group by 'school_name' and aggregate average of 'reading_score'\nresult = joined.groupby(\"school_name\", as_index=False).agg({\"reading_score\": \"mean\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_10/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9653568267822266
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11602.880716323853,
+        "critique": 4728.52635383606
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "9_37",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9872,
+        "cost": 0.005942,
+        "latency": 12.588629245758057,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.975) / 2 = 0.987 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.949, range overlap=1.000.\nGround truth candidate keys: {0}.\nGenerated table candidate keys: {0}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=1.000, JS similarity=0.949\n    Generated    \u2014 min: 0.0, max: 5000.0, mean: 464.0556\n    Ground Truth \u2014 min: 0.0, max: 5000.0, mean: 444.319",
+        "generated_samples": "Schema: ['0']\nNumber of Tuples: 180\nExamples:\n 0\n 0\n 0\n75",
+        "code": "import pandas as pd\n\n# Step 1: Load all source tables involved in the UNION operation\nunion_sources = [\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_37/training_9.csv\"\n]\n\n# Read and concatenate all UNION source tables\nunion_dfs = []\nfor path in union_sources:\n    df = pd.read_csv(path, index_col=0)\n    # Ensure column '0' is integer type as per target schema\n    df['0'] = df['0'].astype(int)\n    union_dfs.append(df)\n\nunion_df = pd.concat(union_dfs, ignore_index=True)\n\n# Step 2: Load the two source tables involved in the JOIN operation\n# Source9_37_7 and Source9_37_10\ndf_7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_37/training_7.csv\", index_col=0)\ndf_10 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_37/training_10.csv\", index_col=0)\n\n# Convert column '0' to int for consistency\ndf_7['0'] = df_7['0'].astype(int)\ndf_10['0'] = df_10['0'].astype(int)\n\n# The JOIN operation is specified as JOIN : [[\"Source9_37_7\", \"Source9_37_10\"], [\"0\", \"0\"]]\n# Join on column '0' (inner join)\njoin_df = pd.merge(df_7, df_10, on='0', how='inner', suffixes=('_7', '_10'))\n\n# After join, the schema will have columns: '0', '0_7', '0_10' but both original columns are named '0'\n# Actually both columns are named '0' originally, so after merge we have only one '0' column plus any other columns.\n# But both source tables have only column '0', so the join will produce columns: '0' only (no suffixes needed)\n# But since both have only column '0', the join will produce just one column '0' (the join key).\n# So join_df will have only column '0' (the join key).\n# But since both tables have only column '0', the join is effectively intersection on '0'.\n\n# Step 3: UNION the result of the JOIN with the previous UNION result\n# Both union_df and join_df have column '0' only, so we can concat them\n\nfinal_df = pd.concat([union_df, join_df], ignore_index=True)\n\n# Step 4: Ensure the final dataframe matches the target schema and type\n# Target schema: ['0': integer]\nfinal_df['0'] = final_df['0'].astype(int)\n\n# Step 5: Write the final dataframe to the target path\nfinal_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_37/target_multisource.csv\", index=False)",
+        "generated_csv_head": "0\n0\n0\n69\n0\n40\n0\n41\n0\n0\n5000\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9055137634277344
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 12652.885437011719,
+        "critique": 0.0
+      }
+    }
+  ]
+}

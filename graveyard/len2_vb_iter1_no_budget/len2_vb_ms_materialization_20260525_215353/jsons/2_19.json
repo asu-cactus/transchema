@@ -1,0 +1,46 @@
+{
+  "case": "2_19",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5751,
+        "cost": 0.0036179999999999997,
+        "latency": 19.525328397750854,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.483) / 2 = 0.575 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.478, range overlap=0.489.\nGround truth candidate keys: {Dates}; {Action}.\nGenerated table candidate keys: {Dates}.\nKeys present in ground truth but absent in generated: {Action}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['Action'] \u2192 Dates.\nDistribution Analysis (numerical columns with issues):\n  Column 'Dates': range overlap=0.767, JS similarity=0.675\n    Generated    \u2014 min: 0.0, max: 30.0, mean: 15.0\n    Ground Truth \u2014 min: 0.0, max: 23.0, mean: 11.5\n  Column 'Action': range overlap=0.212, JS similarity=0.281\n    Generated    \u2014 min: 444.0, max: 1252.0, mean: 645.1613\n    Ground Truth \u2014 min: 476.0, max: 4107.0, mean: 2086.0833",
+        "generated_samples": "Schema: ['Dates', 'Action']\nNumber of Tuples: 31\nExamples:\n Dates  Action\n    15     809\n    11     666\n     6     490",
+        "code": "import pandas as pd\n\n# Read the intermediate result after the group_by and count aggregation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_19/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# The 'Dates' column currently contains integers 1..31 representing days.\n# The target examples show 'Dates' as integers but starting from 0 and max 23.\n# The intermediate has min=1, max=31, mean=16.0\n# The target has min=0, max=23, mean=11.5\n# So we need to adjust the 'Dates' column by subtracting 1 to align with target range.\n\ndf['Dates'] = df['Dates'] - 1\n\n# Ensure 'Dates' is integer type\ndf['Dates'] = df['Dates'].astype(int)\n\n# Ensure 'Action' is integer type (it should be count, so already int)\ndf['Action'] = df['Action'].astype(int)\n\n# Save the final target table to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_19/target_multisource.csv\"\ndf.to_csv(output_path, index=False)",
+        "generated_csv_head": "Dates,Action\n0,718\n1,656\n2,701\n3,745\n4,647\n5,597\n6,490\n7,521\n8,581\n9,588\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1310577392578125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5668,
+          "cost": 0.0017176000000000001,
+          "latency": 7.256981372833252,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.467) / 2 = 0.567 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.473, range overlap=0.461.\nGround truth candidate keys: {Dates}; {Action}.\nGenerated table candidate keys: {Dates}.\nKeys present in ground truth but absent in generated: {Action}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=1.000, recall=0.500).\nMissing FDs from ground truth: ['Action'] \u2192 Dates.\nDistribution Analysis (numerical columns with issues):\n  Column 'Dates': range overlap=0.710, JS similarity=0.665\n    Generated    \u2014 min: 1.0, max: 31.0, mean: 16.0\n    Ground Truth \u2014 min: 0.0, max: 23.0, mean: 11.5\n  Column 'Action': range overlap=0.212, JS similarity=0.281\n    Generated    \u2014 min: 444.0, max: 1252.0, mean: 645.1613\n    Ground Truth \u2014 min: 476.0, max: 4107.0, mean: 2086.0833",
+          "generated_samples": "Schema: ['Dates', 'Action']\nNumber of Tuples: 31\nExamples:\n Dates  Action\n     7     490\n     5     647\n     8     521",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_19/training_0.csv\", index_col=0)\n\n# Since only one source table is given, no union or join with other tables is possible.\n# The failed pipeline grouped by Dates and counted Action, but resulted in 31 rows instead of 24.\n# The target schema is Dates (integer), Action (integer), with Dates as primary key.\n# The source Dates column is datetime string, so convert it to integer day (e.g., day of month) to match target Dates.\n# The target examples show Dates values like 0,4,9 which look like day of month or some integer representation.\n# We will convert Dates to day of month integer, then group by that.\n\n# Convert Dates to datetime\nsource0['Dates'] = pd.to_datetime(source0['Dates'], errors='coerce')\n\n# Extract day of month as integer to match target Dates\nsource0['Dates'] = source0['Dates'].dt.day.fillna(-1).astype(int)\n\n# Filter out invalid dates (if any)\nsource0 = source0[source0['Dates'] >= 0]\n\n# Group by Dates and count Action occurrences\nresult = source0.groupby('Dates', as_index=False).agg({'Action': 'count'})\n\n# Rename columns to match target schema exactly\nresult.columns = ['Dates', 'Action']\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_19/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7593631744384766
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 19542.35315322876,
+        "critique": 7470.293998718262
+      }
+    }
+  ]
+}

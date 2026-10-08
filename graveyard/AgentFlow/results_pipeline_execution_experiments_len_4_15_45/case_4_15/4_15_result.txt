@@ -1,0 +1,62 @@
+Case: 4_15
+Status: INCORRECT
+Timestamp: 2026-02-25T11:36:58.606381
+Duration: 148.17 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_15_45/case_4_15/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_15
+2. Target Schema: ['COD_INTERV': string, 'estado_cli': string, 'COD_OFICI': integer, 'COD_NIVELOFIC': integer]
+3. Target Examples: There are 9 available target examples:   COD_INTERV estado_cli  COD_OFICI  COD_NIVELOFIC
+8        USU          A          1              1
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_15_0
+	Source 0 Schema: ['COD_PERSONA', 'XTI_ESTADO', 'QNU_ORDTIT', 'COD_INTERV', 'COD_IDCONTRA']
+	Source 0 Examples: 	 Source 0 contains 240615 tuples, with examples as follows: 
+   COD_PERSONA XTI_ESTADO  QNU_ORDTIT COD_INTERV COD_IDCONTRA
+0          364          A           1        TIT      7667157
+1          364          A           1        TIT     44521392
+2          364          A           1        TIT     44521393
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_15/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_15_1
+	Source 1 Schema: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
+	Source 1 Examples: 	 Source 1 contains 20240 tuples, with examples as follows: 
+  COD_IDCONTRA  COD_PERSONA  FAP_CONTR  IMP_CAPDIS  IMP_CAPINI  IMP_CAPPEN
+0     24873185         8644  31JUL1999    35361.97    35361.97    15891.81
+1    366059069         9066  21DEC2016   341936.70   341936.70   339935.22
+2    250661304         9507  30JAN2015    15000.00    15000.00     2125.34
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_15/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_15_2
+	Source 2 Schema: ['COD_OFICI', 'COD_NIVELOFIC', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ', 'cod_areanego', 'des_areanego']
+	Source 2 Examples: 	 Source 2 contains 9605 tuples, with examples as follows: 
+   COD_OFICI  COD_NIVELOFIC                          des_ofici  cod_cbc  \
+0          1             70    BANCO BILBAO VIZCAYA ARGENTARIA      NaN   
+1       2004             40  AGREGADO FICT. CARTERA DE TITULOS      NaN   
+2       2221             40                        FRANCIA (R)      NaN   
+
+  des_cbc  cod_zona des_zona  COD_TERRIT des_territ  cod_areanego des_areanego  
+0     NaN       NaN      NaN           0        NaN           NaN          NaN  
+1     NaN       NaN      NaN           0        NaN           NaN          NaN  
+2     NaN       NaN      NaN           0        NaN           NaN          NaN  
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_15/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_15_3
+	Source 3 Schema: ['COD_PERSONA', 'COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli']
+	Source 3 Examples: 	 Source 3 contains 100000 tuples, with examples as follows: 
+   COD_PERSONA  COD_AREANEGO  COD_EDAD  COD_OFICIPAL  COD_SEGLOBAL estado_cli
+0          364            13        52          9275          24.0          A
+1          672            13        40          6130          24.0          R
+2          728          6057        68          8248          23.0          I
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_15/test_3.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_15/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

@@ -13,13 +13,15 @@ while Stopping Criteria
 import re
 from pathlib import Path
 import shutil
-import pdb
 import os
 import time
 
 from test_scope import get_test_cases_ids
 from llm.llm_models import TokenUsageTracker, LLMClient
 from util.utils import (
+    drop_leading_index_col_if_present,
+    resolve_main_folder,
+    resolve_case_json,
     get_test_info,
     execute_python,
 )
@@ -27,7 +29,6 @@ from util.utils import (
 from validation.hard_match import compare_lists_matching, compare_tables_matching
 from validation.soft_match import compare_lists_matching_soft
 
-# import auto_suggest_llm_prompts as prt
 from auto_suggest_llm_util import (
     get_columns,
     query_gpt,
@@ -48,6 +49,7 @@ allowed_operation_list = [
     "GROUP_BY/AGGREGATE",
     "PIVOT",
     "UNPIVOT",
+    "COLUMN_TRANSFORM",
     "NO_MORE_OPERATION",
 ]
 
@@ -73,9 +75,6 @@ def get_operation(res):
         operation = match.group(1)
     else:
         raise Exception(f"Operation not found in the response. Response:\n{res}")
-    # assert (
-    #     operation in allowed_operation_list
-    # ), f"Operation not in allowed list: {repr(operation)}"
     return operation
 
 
@@ -91,15 +90,11 @@ def get_operation_and_configuration(res):
     else:
         print(f"Last line:\n{last_line}")
         return None, "none"
-    # assert (
-    #   operation in allowed_operation_list
-    # ), f"Operation not in allowed list: {operation}"
     return operation, configuration
 
 
 def get_operator(llm_client, operation_history, nth_intermediate_step, args, config):
 
-    # print("Get Operator-"+str(nth_intermediate_step))
     prompt = get_prompt(
         prompt_type="get_next_operator",
         max_tokens=args.token_limit,
@@ -125,7 +120,6 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
         no_thinking=args.no_thinking,
     )
 
-    # print("Prompt is" + prompt)
 
     operation = None
     max_tries = 5
@@ -143,7 +137,6 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             type="Ask For Operator",
         )[0]
 
-        # print("Response is"+res)
 
         if not args.combine_ask_and_configure:
             operation = get_operation(res)
@@ -151,7 +144,6 @@ def get_operator(llm_client, operation_history, nth_intermediate_step, args, con
             if operation in allowed_operation_list:
                 return operation, None
             else:
-                # print(operation)
                 return operation, None
         else:
             operation, configuration = get_operation_and_configuration(res)
@@ -281,10 +273,6 @@ def materialize_chatgpt(
             type="Get Python Script",
         )[0]
 
-        # print(res)
-        # res = res[0]
-        # print("+++")
-        # print(res)
         pattern = re.compile(r"```Python(.*?)```", re.DOTALL | re.IGNORECASE)
         match = pattern.search(res)
         script = match.group(1).strip()
@@ -319,7 +307,7 @@ def verify_result(target_file_location, ground_truth_location, config):
     df_our_response = pd.read_csv(target_file_location, low_memory=False)
     df_ground_truth = pd.read_csv(ground_truth_location, low_memory=False)
     # if (is_column_numerical(df_ground_truth.columns[0])):
-    df_ground_truth.drop(columns=df_ground_truth.columns[0], axis=1, inplace=True)
+    drop_leading_index_col_if_present(df_ground_truth)
     try:
         (
             hard_avg_similarity,
@@ -362,22 +350,19 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     # Benchmark selector: github | monteprep
     benchmark = getattr(args, "benchmark", "github")
-    main_folder = "autopipeline-benchmarks/monteprep-pipelines" if benchmark == "monteprep" else "autopipeline-benchmarks/github-pipelines"
+    data_split = getattr(args, "data_split", "test")
+    main_folder = resolve_main_folder(benchmark)
     path_to_files = f"{main_folder}/length{length}_{id_}/"
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with data_split prefix in this subfolder
     file_count = sum(
         1
         for _, _, files in os.walk(path_to_files)
         for file in files
-        if file.startswith("test")
+        if file.startswith(data_split)
     )
 
-    # print(file_count)
 
-    if benchmark == "monteprep":
-        json_file_path = "data/chatgpt_monteprep_ms.json" if file_count > 1 else "data/chatgpt_monteprep_ss.json"
-    else:
-        json_file_path = "data/chatgpt_github_ms.json" if file_count > 1 else "data/chatgpt_github_ss.json"
+    json_file_path = resolve_case_json(benchmark, file_count)
 
     source_space_dir = create_source_space(main_folder, len_id, target_id)
 
@@ -394,7 +379,6 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
 
     token_tracker = TokenUsageTracker()
     cost_summary.append(token_tracker.cost_summary())
-    # print(cost_summary)
 
     len_idx_target_idx = task.lstrip("Target")
 
@@ -413,6 +397,7 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
         len_idx_target_idx,
         main_folder,
         anon_flag=0,
+        data_split=data_split,
     )
 
     llm_client = LLMClient(model=args.model, tracker=token_tracker, logger=logger)
@@ -442,21 +427,17 @@ def intermediate_materialization(args, length, id_, log_dir_, experiment_name, i
     config["source_space_dir"] = source_space_dir
     config["task"] = task
 
-    # materialization_criteria = MaterializationCriteria()
 
     max_operations = 9
     for nth_intermediate_step in range(1, max_operations + 1):
-        # print("**Step-" + str(nth_intermediate_step))
         try:
             # Get the operation
             operation, configuration = get_operator(
                 llm_client, operation_history, nth_intermediate_step, args, config
             )
 
-            # print("Next Operator:"+operation)
 
             if operation == "NO_MORE_OPERATION":
-                # print("No More Operation")
                 logger.info("No More Operation")
                 break
 

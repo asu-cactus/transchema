@@ -1,0 +1,46 @@
+{
+  "case": "1_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6679,
+        "cost": 0.0034136,
+        "latency": 11.059911966323853,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.336) / 2 = 0.668 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.000.\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'dog_type': range overlap=0.000, JS similarity=0.671\n    Generated    \u2014 min: 153.0, max: 153.0, mean: 153.0\n    Ground Truth \u2014 min: 8.0, max: 4471.0, mean: 942.4",
+        "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 1\nExamples:\n dog_type\n      153",
+        "code": "import pandas as pd\n\n# Load the source table\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_90/training_0.csv\"\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# According to operation_history:\n# group_by = []\n# aggregations = [sum(Source1_90_0.doggo), sum(Source1_90_0.floofer), sum(Source1_90_0.pupper), sum(Source1_90_0.puppo)]\n# The columns doggo, floofer, pupper, puppo are categorical columns with values like 'doggo' or NaN.\n# We need to sum them as integers, so first convert presence of each dog type to 1, else 0, then sum.\n\n# Convert dog type columns to integer presence indicators\ndoggo_sum = df_source0['doggo'].notna().astype(int).sum()\nfloofer_sum = df_source0['floofer'].notna().astype(int).sum()\npupper_sum = df_source0['pupper'].notna().astype(int).sum()\npuppo_sum = df_source0['puppo'].notna().astype(int).sum()\n\n# The target schema is ['dog_type': integer]\n# The target examples show 3 rows with dog_type values: 2, 0, 1, with counts 96, 4471, 107 respectively.\n# But the operation_history only sums the dog type columns, no grouping.\n# Since group_by = [], the output is a single row with aggregated sums.\n# However, the target examples show multiple rows with dog_type values.\n# Given the operation_history and instructions, we strictly follow the operation_history:\n# So the output is a single row with the sum of each dog type column.\n# But the target schema has only one column 'dog_type' (integer).\n# The only way to reconcile is to output a single column with the sum of all dog types combined.\n# But the operation_history sums each dog type separately.\n# Since the target schema has only one column, we sum all dog type counts into one integer.\n\n# Sum all dog type counts into one integer\ndog_type_total = doggo_sum + floofer_sum + pupper_sum + puppo_sum\n\n# Create the target dataframe with the single column 'dog_type'\ndf_target = pd.DataFrame({'dog_type': [dog_type_total]})\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "dog_type\n153\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8833408355712891
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6679,
+          "cost": 0.0018679999999999999,
+          "latency": 8.780511379241943,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.336) / 2 = 0.668 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.671, range overlap=0.000.\nGround truth candidate keys: {dog_type}.\nGenerated table candidate keys: {dog_type}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'dog_type': range overlap=0.000, JS similarity=0.671\n    Generated    \u2014 min: 153.0, max: 153.0, mean: 153.0\n    Ground Truth \u2014 min: 8.0, max: 4471.0, mean: 942.4",
+          "generated_samples": "Schema: ['dog_type']\nNumber of Tuples: 1\nExamples:\n dog_type\n      153",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_90/training_0.csv\", index_col=0)\n\n# The source has columns doggo, floofer, pupper, puppo with string values or NaN.\n# We need to convert these columns to integer counts (1 if present, 0 if NaN or empty)\nfor col in ['doggo', 'floofer', 'pupper', 'puppo']:\n    source0[col] = source0[col].apply(lambda x: 1 if isinstance(x, str) and x.strip() != '' else 0)\n\n# Sum all dog stage columns to get total dog_type count\ndog_type = source0[['doggo', 'floofer', 'pupper', 'puppo']].sum().sum()\n\n# Create the final dataframe with the target schema\nresult = pd.DataFrame({'dog_type': [dog_type]})\n\n# Write the output CSV with no index as target examples show no index column\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_90/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7066726684570312
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11062.482595443726,
+        "critique": 8815.206527709961
+      }
+    }
+  ]
+}

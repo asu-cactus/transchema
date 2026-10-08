@@ -1,0 +1,240 @@
+{
+  "case": "1_0",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4135,
+        "cost": 0.001368,
+        "latency": 6.336775779724121,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (0.000 + 0.504 + 0.736) / 3 = 0.413 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {State, AverageTemperature}.\nKeys present in ground truth but absent in generated: {State}; {AverageTemperature}.\nSpurious keys in generated not present in ground truth: {AverageTemperature, State}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['State'] \u2192 AverageTemperature; ['AverageTemperature'] \u2192 State.\nDistribution Analysis (numerical columns with issues):\n  Column 'AverageTemperature': range overlap=0.504, JS similarity=0.736\n    Generated    \u2014 min: -44.155, max: 36.339, mean: 8.9757\n    Ground Truth \u2014 min: -13.196, max: 27.3959, mean: 9.466",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 100000\nExamples:\n    State  AverageTemperature\n     Acre              26.104\n    Kursk              -8.709\nChongqing              15.326",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n]\n\n# List to hold transformed DataFrames from each source\ndfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Select only the columns needed for the target schema: 'State' and 'AverageTemperature'\n    # According to source schema, these columns exist directly\n    df_selected = df[['State', 'AverageTemperature']].copy()\n    \n    # Ensure correct data types as per target schema\n    df_selected['State'] = df_selected['State'].astype(str)\n    df_selected['AverageTemperature'] = pd.to_numeric(df_selected['AverageTemperature'], errors='coerce')\n    \n    dfs.append(df_selected)\n\n# Since only one source table is given, no union or join needed beyond this\n# If multiple sources existed with same schema, we would concat here\n\n# Concatenate all source DataFrames (only one here, but code is generic)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# The target examples show 241 rows, but source has 100000 rows.\n# The prompt does not specify filtering or aggregation, so we keep all rows.\n# If needed, filtering by country or other criteria could be applied, but no such instruction given.\n\n# Write the result to the target CSV path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "State,AverageTemperature\nRostov,4.19\nSergipe,26.761\nManipur,25.56\nSmolensk,13.412\nTambov,-4.7490000000000006\nNorth Ossetia,9.501\nNovosibirsk,-4.972\nPrince Edward Island,10.246\nOklahoma,26.595\nZhejiang,11.838\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0029752000000000003,
+          "latency": 8.573940515518188,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+          "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n   State  AverageTemperature\nVirginia           12.564771\n Gujarat           26.422950\n  Alaska           -5.970997",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 to ignore the numerical index column\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# GroupBy 'State' (leftmost, string, unique in target)\n# Aggregate AverageTemperature by mean to match target schema and semantics\ngrouped = df0.groupby('State', as_index=False).agg({'AverageTemperature': 'mean'})\n\n# Write the result to the target CSV path\ngrouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_critique_history.csv\", index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0012820000000000002,
+        "latency": 3.4730684757232666,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n      State  AverageTemperature\nChelyabinsk            1.390466\n      Altay            0.337356\n California           14.916655",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.001454,
+        "latency": 7.09011697769165,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n   State  AverageTemperature\n  Moskva            3.961965\nSmolensk            4.201663\n    Acre           25.769594",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.001624,
+        "latency": 4.399610757827759,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n     State  AverageTemperature\n   Shaanxi           11.143910\n    Rostov            8.356533\nYaroslavl'            2.407183",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0017980000000000001,
+        "latency": 5.109492540359497,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n            State  AverageTemperature\n            Sakha          -12.244837\n       California           14.916655\nWestern Australia           22.714331",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019688,
+        "latency": 4.179330825805664,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n            State  AverageTemperature\n           Kaluga            4.633248\nRio Grande Do Sul           18.770124\n           Kurgan            2.323965",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0021428000000000003,
+        "latency": 4.351911783218384,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n       State  AverageTemperature\n  Astrakhan'            7.967766\nArkhangel'Sk           -1.688301\n        Amur           -5.016897",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023148000000000005,
+        "latency": 3.976853847503662,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n  State  AverageTemperature\nWyoming            4.998968\nGuizhou           15.286551\n Nevada            9.743229",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0024852,
+        "latency": 3.6621222496032715,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n    State  AverageTemperature\n  Guizhou           15.286551\nMinnesota            4.982499\n  Khakass           -3.377197",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026584,
+        "latency": 4.452043771743774,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n        State  AverageTemperature\n      Sichuan            8.424961\nKhanty Mansiy           -3.493000\n    Tennessee           13.921453",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028304000000000003,
+        "latency": 3.5705020427703857,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n                 State  AverageTemperature\n               Alberta           -0.922997\nDadra And Nagar Haveli           25.200531\n                Yevrey            0.735860",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 12,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003006,
+        "latency": 5.2379961013793945,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n        State  AverageTemperature\nNew Hampshire            6.435301\n    Krasnodar            9.967050\n  Mato Grosso           25.471903",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 13,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.003176,
+        "latency": 3.217524290084839,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n            State  AverageTemperature\n    New Brunswick            4.087949\n      Uttaranchal           14.294106\nRio Grande Do Sul           18.770124",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 14,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033496000000000003,
+        "latency": 5.492302894592285,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n        State  AverageTemperature\n      Tianjin           11.657971\n   Nizhegorod            4.109233\nUttar Pradesh           24.752605",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 15,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035224,
+        "latency": 3.2791430950164795,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n        State  AverageTemperature\n        Gansu            5.195841\n      Alagoas           24.715401\nNew Brunswick            4.087949",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 16,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0036936,
+        "latency": 7.1137473583221436,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {AverageTemperature}; {State}.\nGenerated table candidate keys: {AverageTemperature}; {State}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n    State  AverageTemperature\n   Ingush            7.550399\nMinnesota            4.982499\n  Khakass           -3.377197",
+        "code": "import pandas as pd\n\n# Source file path\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_0/test_0.csv\"\n\n# Load source data, ignoring the first numerical index column\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# The target schema is ['State', 'AverageTemperature']\n# Source schema: ['dt', 'AverageTemperature', 'AverageTemperatureUncertainty', 'State', 'Country']\n# We only need 'State' and 'AverageTemperature' columns.\n\n# Group by 'State' and aggregate AverageTemperature by mean to match target semantics\nresult = df0.groupby('State', as_index=False)['AverageTemperature'].mean()\n\n# Write the transformed data to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_cot.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nAcre,25.76959388646288\nAdygey,10.203819706498953\nAga Buryat,-3.983296918767507\nAlabama,17.331663636363636\nAlagoas,24.71540121580547\nAlaska,-5.9709969969969965\nAlberta,-0.922997084548105\nAltay,0.3373556851311952\nAmazonas,26.08771906354515\nAmur,-5.016896984924624\n"
+      },
+      "critiques": []
+    }
+  ]
+}

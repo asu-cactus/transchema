@@ -1,0 +1,46 @@
+{
+  "case": "3_13",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8328,
+        "cost": 0.0014260000000000002,
+        "latency": 7.5170018672943115,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.666) / 2 = 0.833 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.952, range overlap=0.888.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Total Purchase Value': range overlap=0.777, JS similarity=0.917\n    Generated    \u2014 min: 1.0, max: 10.52, mean: 3.4873\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+        "generated_samples": "Schema: ['SN', 'Total Purchase Value', 'Purchase Count']\nNumber of Tuples: 333\nExamples:\n           SN  Total Purchase Value  Purchase Count\nSondistanya61                  3.45               1\n     Errian63                  3.49               1\n  Nitherian58                  2.28               1",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_0_path = \"autopipeline-benchmarks/github-pipelines/length3_13/training_0.csv\"\n\n# Load source data\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf_source_0 = pd.read_csv(source_0_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['SN': string, 'Total Purchase Value': float, 'Purchase Count': integer]\n# Source 0 schema: ['Purchase ID', 'SN', 'Age', 'Gender', 'Item ID', 'Item Name', 'Price']\n# We need to aggregate by SN:\n# - Total Purchase Value = sum of Price per SN\n# - Purchase Count = count of purchases per SN\n# SN is the grouping key (string)\n# Price is float, count is integer\n\n# Aggregate source_0 data to match target schema\ndf_target = df_source_0.groupby('SN', as_index=False).agg({\n    'Price': 'sum',          # sum of Price per SN\n    'Purchase ID': 'count'   # count of purchases per SN\n})\n\n# Rename columns to match target schema\ndf_target.rename(columns={\n    'Price': 'Total Purchase Value',\n    'Purchase ID': 'Purchase Count'\n}, inplace=True)\n\n# Ensure correct dtypes\ndf_target['SN'] = df_target['SN'].astype(str)\ndf_target['Total Purchase Value'] = df_target['Total Purchase Value'].astype(float)\ndf_target['Purchase Count'] = df_target['Purchase Count'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_13/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "SN,Total Purchase Value,Purchase Count\nAdairialis76,2.28,1\nAelaria33,1.79,1\nAelastirin39,4.14,1\nAelidru27,1.09,1\nAelin32,2.04,1\nAelly27,2.61,1\nAellyria80,3.08,1\nAelollo59,3.14,1\nAeral68,4.0,1\nAeralstical35,2.96,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.674652099609375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8328,
+          "cost": 0.001572,
+          "latency": 4.9013991355896,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.666) / 2 = 0.833 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.952, range overlap=0.888.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Total Purchase Value': range overlap=0.777, JS similarity=0.917\n    Generated    \u2014 min: 1.0, max: 10.52, mean: 3.4873\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.156",
+          "generated_samples": "Schema: ['SN', 'Total Purchase Value', 'Purchase Count']\nNumber of Tuples: 333\nExamples:\n       SN  Total Purchase Value  Purchase Count\n   Airi27                  3.45               1\n    Ali84                  1.70               1\nIlosian36                  4.58               1",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_13/training_0.csv\", index_col=0)\n\n# Since only one source table exists, no join with other tables is possible or needed.\n# The target schema requires aggregation by SN:\n# - Total Purchase Value = sum of Price per SN\n# - Purchase Count = count of Purchase ID per SN\n\nresult = source0.groupby('SN', as_index=False).agg({\n    'Price': 'sum',\n    'Purchase ID': 'count'\n})\n\n# Rename columns to match target schema exactly\nresult.columns = ['SN', 'Total Purchase Value', 'Purchase Count']\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_13/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.861572265625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7520.328044891357,
+        "critique": 4969.641208648682
+      }
+    }
+  ]
+}

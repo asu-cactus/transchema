@@ -41,7 +41,6 @@ def distinct_to_range_ratio(col):
 
 # Function to calculate peak frequency
 def peak_frequency(col):
-    # return col.value_counts().max() / len(col)
     return col.value_counts().max(), col.value_counts().max() / len(col)
 
 

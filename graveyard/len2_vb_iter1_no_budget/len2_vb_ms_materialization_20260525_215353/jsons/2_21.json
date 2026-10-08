@@ -1,0 +1,46 @@
+{
+  "case": "2_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8809,
+        "cost": 0.011555600000000001,
+        "latency": 65.77191233634949,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.762) / 2 = 0.881 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.817, range overlap=0.745.\nGround truth candidate keys: {state, date}.\nGenerated table candidate keys: {state, date}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'draw_sales': range overlap=0.491, JS similarity=0.988\n    Generated    \u2014 min: 0.0, max: 87836074.0, mean: 762678.8991\n    Ground Truth \u2014 min: 0.0, max: 179007492.0, mean: 758481.4415\n  Column 'year': range overlap=1.000, JS similarity=0.646\n    Generated    \u2014 min: 2010.0, max: 2019.0, mean: 2013.135\n    Ground Truth \u2014 min: 2010.0, max: 2019.0, mean: 2015.016\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'date': Jaccard=0.484",
+        "generated_samples": "Schema: ['state', 'date', 'draw_sales', 'year']\nNumber of Tuples: 39157\nExamples:\nstate       date  draw_sales  year\n   SD 2014-04-29       25776  2014\n   DE 2014-08-27      141784  2014\n   DE 2018-12-07      111598  2018",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_21/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_21/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# UNION the two sources (schemas are the same)\ndf_union = pd.concat([df0, df1], ignore_index=True)\n\n# Convert draw_sales to numeric, coerce errors to NaN, then fill NaN with 0\ndf_union['draw_sales'] = pd.to_numeric(df_union['draw_sales'], errors='coerce').fillna(0)\n\n# Extract year from date column (date format is YYYY-MM-DD)\ndf_union['year'] = pd.to_datetime(df_union['date'], errors='coerce').dt.year\n\n# Group by state and date, sum draw_sales\ndf_grouped = df_union.groupby(['state', 'date'], as_index=False).agg({'draw_sales': 'sum'})\n\n# After grouping, year is ambiguous because multiple rows with same state+date could have different years,\n# but date is unique per row, so year can be extracted from date again.\ndf_grouped['year'] = pd.to_datetime(df_grouped['date'], errors='coerce').dt.year\n\n# Ensure types match target schema:\n# 'state': string\ndf_grouped['state'] = df_grouped['state'].astype(str)\n# 'date': string (keep as YYYY-MM-DD)\ndf_grouped['date'] = df_grouped['date'].astype(str)\n# 'draw_sales': integer (convert safely)\ndf_grouped['draw_sales'] = df_grouped['draw_sales'].round(0).astype(int)\n# 'year': integer\ndf_grouped['year'] = df_grouped['year'].astype(int)\n\n# Reorder columns to match target schema exactly\ntarget_df = df_grouped[['state', 'date', 'draw_sales', 'year']]\n\n# Write to target path without index\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_21/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "state,date,draw_sales,year\nAR,2010-02-03,454627,2010\nAR,2010-02-06,501993,2010\nAR,2010-02-10,319324,2010\nAR,2010-02-13,347837,2010\nAR,2010-02-17,309583,2010\nAR,2010-02-20,334819,2010\nAR,2010-02-24,319353,2010\nAR,2010-02-27,356749,2010\nAR,2010-03-03,390929,2010\nAR,2010-03-06,420410,2010\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.622915267944336
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8809,
+          "cost": 0.0017448,
+          "latency": 7.2804741859436035,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.762) / 2 = 0.881 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.817, range overlap=0.745.\nGround truth candidate keys: {state, date}.\nGenerated table candidate keys: {state, date}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'draw_sales': range overlap=0.491, JS similarity=0.988\n    Generated    \u2014 min: 0.0, max: 87836074.0, mean: 762678.8991\n    Ground Truth \u2014 min: 0.0, max: 179007492.0, mean: 758481.4415\n  Column 'year': range overlap=1.000, JS similarity=0.646\n    Generated    \u2014 min: 2010.0, max: 2019.0, mean: 2013.135\n    Ground Truth \u2014 min: 2010.0, max: 2019.0, mean: 2015.016\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'date': Jaccard=0.484",
+          "generated_samples": "Schema: ['state', 'date', 'draw_sales', 'year']\nNumber of Tuples: 39157\nExamples:\nstate       date  draw_sales  year\n   VI 2013-09-18       64278  2013\n   WV 2013-01-19      352884  2013\n   ME 2017-03-17       38648  2017",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/training_1.csv\", index_col=0)\n\n# UNION the two sources\ndf = pd.concat([source0, source1], ignore_index=True)\n\n# GROUP BY state and date, aggregate sum of draw_sales\ndf = df.groupby(['state', 'date'], as_index=False).agg({'draw_sales': 'sum'})\n\n# Extract year from date string (format YYYY-MM-DD)\ndf['year'] = df['date'].str.slice(0, 4).astype(int)\n\n# Ensure draw_sales is integer type as in target schema\ndf['draw_sales'] = df['draw_sales'].astype(int)\n\n# Reorder columns to match target schema exactly\ndf = df[['state', 'date', 'draw_sales', 'year']]\n\n# Write output to target file\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.5974044799804688
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 65869.15850639343,
+        "critique": 10059.83591079712
+      }
+    }
+  ]
+}

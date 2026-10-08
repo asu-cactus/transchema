@@ -1,0 +1,69 @@
+Case: 1_76
+Status: INCORRECT
+Timestamp: 2026-02-24T11:15:18.366636
+Duration: 105.72 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_65_101/case_1_76/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_76
+2. Target Schema: ['Student ID': integer, 'student_name': string, 'gender': string, 'grade': string, 'school_name': string, 'reading_score': integer, 'math_score': integer, 'School ID': integer, 'type': string, 'size': integer, 'budget': integer]
+3. Target Examples: There are 19585 available target examples:        Student ID        student_name gender grade            school_name  \
+14687       14687     George Shepherd      M  10th     Wilson High School   
+13372       13372        Joseph Adams      M   9th    Griffin High School   
+15180       15180  Christopher Miller      M   9th     Wilson High School   
+17396       17396       Kimberly Gray      F  12th    Cabrera High School   
+2020         2020    Tiffany Peterson      F   9th      Huang High School   
+...           ...                 ...    ...   ...                    ...   
+5806         5806       Connie Campos      F  10th   Figueroa High School   
+9944         9944   Jennifer Williams      F  10th  Hernandez High School   
+18197       18197     Courtney Powers      F  11th     Bailey High School   
+940           940       Danny Pearson      M   9th      Huang High School   
+904           904       Amanda Norman      F   9th      Huang High School   
+
+       reading_score  math_score  School ID      type  size   budget  
+14687             77          68          5   Charter  2283  1319574  
+13372             91          71          4   Charter  1468   917500  
+15180             85          93          5   Charter  2283  1319574  
+17396             87          71          6   Charter  1858  1081356  
+2020              76          57          0  District  2917  1910635  
+...              ...         ...        ...       ...   ...      ...  
+5806              64          90          1  District  2949  1884411  
+9944              89          78          3  District  4635  3022020  
+18197             86          78          7  District  4976  3124928  
+940               80          69          0  District  2917  1910635  
+904               83          67          0  District  2917  1910635  
+
+[1958 rows x 11 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_76_0
+	Source 0 Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']
+	Source 0 Examples: 	 Source 0 contains 19585 tuples, with examples as follows: 
+   Student ID     student_name gender grade        school_name  reading_score  \
+0           0     Paul Bradley      M   9th  Huang High School             66   
+1           1     Victor Smith      M  12th  Huang High School             94   
+2           2  Kevin Rodriguez      M  12th  Huang High School             90   
+
+   math_score  
+0          79  
+1          61  
+2          60  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_76/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_76_1
+	Source 1 Schema: ['School ID', 'school_name', 'type', 'size', 'budget']
+	Source 1 Examples: 	 Source 1 contains 15 tuples, with examples as follows: 
+   School ID           school_name      type  size   budget
+0          0     Huang High School  District  2917  1910635
+1          1  Figueroa High School  District  2949  1884411
+2          2   Shelton High School   Charter  1761  1056600
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_76/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_76/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

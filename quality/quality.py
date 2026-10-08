@@ -360,12 +360,8 @@ def fd_quality(sql_query, column_mappings, new_key, **kwargs):
         )  # Keys that are in keys_2 but not in keys_1
         if not new_keys_expected:
             fd_feedback = f"New key {new_key} expected to be generated in the target table was not detected. Please recheck and ensure its correct generation."
-            # print(fd_feedback)
         else:
             fd_feedback = ""
-            # print("New keys detected:", new_keys_expected)
-        # print("fd_score:", fd_score)
-        # print("fd_comparison:", fd_comparison)
         return fd_score, fd_feedback
     else:
         return 1, ""
@@ -487,7 +483,6 @@ def analyze_functional_dependencies_deprecated(df):
 
     # Get functional dependencies
     Closure, F, Cardinality = GetFDs.f(C[0], df, Closure, U, Cardinality)
-    # print("\n\nClosure, F, Cardinality : ", Closure, F, Cardinality)
 
     # Filter functional dependencies
     filtered_F = []
@@ -774,7 +769,6 @@ def data_profiling(df, whether_source=False):
             column_summary["longest_value"] = df[column].astype(str).map(len).max()
             column_summary["avg_length"] = df[column].astype(str).map(len).mean()
         single_analysis[column] = column_summary
-    # print("single_analysis:",single_analysis)
 
     multi_analysis = {"value_relationships": {}, "length_relationships": {}}
 
@@ -795,20 +789,12 @@ def data_profiling(df, whether_source=False):
     #             elif min_a == min_b and max_a == max_b:
     #                 multi_analysis['value_relationships'][col_a]['equal_to'].append(col_b)
 
-    # print("\nLength Relationships (Non-Numerical Data):")
-    # for col, relationships in multi_analysis['length_relationships'].items():
-    #     print(
-    #         f"{col}: Longer Than: {relationships['longer_than']}, Shorter Than: {relationships['shorter_than']}, Equal Length To: {relationships['equal_length_to']}")
     if whether_source:
         return single_analysis, multi_analysis
 
     functional_dependencies, keys = analyze_functional_dependencies(df)
 
     dependencies = {"dependencies": functional_dependencies, "keys": keys}
-    # dependencies = {
-    #     'dependencies':[] ,
-    #     'keys': []
-    # }
     return single_analysis, multi_analysis, dependencies
 
 
@@ -835,10 +821,6 @@ def data_summary(single_analysis, multi_analysis, dependencies, whether_source=F
             ):
                 columns_low.append(column)
 
-        # # Check for columns with high NULL percentage and add to hints
-        # if 'null_percentage' in stats and stats['null_percentage'] > high_null_threshold:
-        #     null_hints.append(
-        #         f"\"{column}\" has a high NULL percentage ({stats['null_percentage']}%). Please remove the rows with NULL values in the target table.")
 
     # Check for high number of duplicate values in the target table
     # uniqueness_hint = None
@@ -870,11 +852,7 @@ def data_summary(single_analysis, multi_analysis, dependencies, whether_source=F
     else:
         schema_change_hints = ""
 
-    # if null_hints:
-    #     schema_change_hints += "\n" + "\n".join(null_hints)
 
-    # if value_pattern_hints:
-    #     schema_change_hints += "\n" + "\n".join(value_pattern_hints)
 
     # Constructing value pattern based on multi_analysis
     value_relations_summary = []
@@ -1014,20 +992,6 @@ def data_morpher(
 def schema_matching(source_dfs, target_df):
     matches_results = {}
     schema_includes_all_target = True  # Assume true initially
-    # matcher = Cupid()
-    #
-    # # Iterate over all pairs of source data frames
-    # for i, df1 in enumerate(source_dfs[:-1]):
-    #     for j, df2 in enumerate(source_dfs[i + 1:], start=i + 1):
-    #         # Perform matching
-    #         matches = valentine_match(df1, df2, matcher)
-    #         # Store the match results, here using the index, but you can use any identifier
-    #         matches_results[(i, j)] = matches
-    #
-    #         # Check if each source table includes all schemas in the target table
-    #         if not all(col in df1.columns for col in target_df.columns) or not all(col in df2.columns for col in target_df.columns):
-    #             schema_includes_all_target = False
-    #
     hints = []
     #
     # # Check if union hint is applicable

@@ -1,0 +1,46 @@
+{
+  "case": "5_59",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.839,
+        "cost": 0.0040444,
+        "latency": 16.589259147644043,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.678) / 2 = 0.839 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.810, range overlap=0.546.\nGround truth candidate keys: {Purchase Count, Total Purchase Value}; {Item Price, Total Purchase Value}.\nGenerated table candidate keys: {Purchase Count, Total Purchase Value}; {Item Price, Total Purchase Value}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Purchase Count': range overlap=0.545, JS similarity=0.786\n    Generated    \u2014 min: 1.0, max: 12.0, mean: 3.0\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Item Price': range overlap=0.545, JS similarity=0.786\n    Generated    \u2014 min: 1.0, max: 12.0, mean: 3.0\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Total Purchase Value': range overlap=0.548, JS similarity=0.858\n    Generated    \u2014 min: 1.0, max: 52.8, mean: 8.9328\n    Ground Truth \u2014 min: 1.0, max: 29.4, mean: 7.5752",
+        "generated_samples": "Schema: ['Purchase Count', 'Item Price', 'Total Purchase Value']\nNumber of Tuples: 130\nExamples:\n Purchase Count  Item Price  Total Purchase Value\n              2           4                  8.86\n              1           2                  2.37\n              2           4                  9.52",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_59/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Perform the group by operation on Price with aggregations:\n# count of Purchase ID, average of Price, sum of Price\ngrouped = df.groupby('Price').agg(\n    Purchase_Count=('Purchase ID', 'count'),\n    Item_Price=('Price', 'mean'),\n    Total_Purchase_Value=('Price', 'sum')\n).reset_index(drop=True)\n\n# Rename columns to match target schema exactly\ngrouped.rename(columns={\n    'Purchase_Count': 'Purchase Count',\n    'Item_Price': 'Item Price',\n    'Total_Purchase_Value': 'Total Purchase Value'\n}, inplace=True)\n\n# Ensure correct dtypes: Purchase Count and Item Price as int, Total Purchase Value as float\ngrouped['Purchase Count'] = grouped['Purchase Count'].astype(int)\ngrouped['Item Price'] = grouped['Item Price'].astype(int)\ngrouped['Total Purchase Value'] = grouped['Total Purchase Value'].astype(float)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length5_59/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "Purchase Count,Item Price,Total Purchase Value\n1,1,1.0\n3,1,3.03\n9,1,9.18\n2,1,2.06\n1,1,1.06\n2,1,2.18\n4,1,4.4\n2,1,2.24\n4,1,4.56\n1,1,1.28\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8924007415771484
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.839,
+          "cost": 0.0021424,
+          "latency": 9.741567373275757,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.678) / 2 = 0.839 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.810, range overlap=0.546.\nGround truth candidate keys: {Purchase Count, Total Purchase Value}; {Item Price, Total Purchase Value}.\nGenerated table candidate keys: {Purchase Count, Total Purchase Value}; {Item Price, Total Purchase Value}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Purchase Count': range overlap=0.545, JS similarity=0.786\n    Generated    \u2014 min: 1.0, max: 12.0, mean: 3.0\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Item Price': range overlap=0.545, JS similarity=0.786\n    Generated    \u2014 min: 1.0, max: 12.0, mean: 3.0\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Total Purchase Value': range overlap=0.548, JS similarity=0.858\n    Generated    \u2014 min: 1.0, max: 52.8, mean: 8.9328\n    Ground Truth \u2014 min: 1.0, max: 29.4, mean: 7.5752",
+          "generated_samples": "Schema: ['Purchase Count', 'Item Price', 'Total Purchase Value']\nNumber of Tuples: 130\nExamples:\n Purchase Count  Item Price  Total Purchase Value\n              1           1                  3.40\n              3           3                  8.82\n              3           3                 10.47",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_59/training_0.csv\", index_col=0)\n\n# Group by Price (integer), aggregate Purchase Count as count of Purchase ID,\n# Item Price as count of Price (to match integer count), and Total Purchase Value as sum of Price (float)\nresult = source0.groupby('Price').agg({\n    'Purchase ID': 'count',\n    'Price': ['count', 'sum']\n})\n\n# Flatten MultiIndex columns\nresult.columns = ['Purchase Count', 'Item Price', 'Total Purchase Value']\n\n# Reset index to bring Price back as a column (Price is grouped by, but target schema does not have Price column)\n# The target schema is ['Purchase Count', 'Item Price', 'Total Purchase Value']\n# So Price is not included in output columns, only aggregates.\n\n# But the target examples show Purchase Count, Item Price, Total Purchase Value only.\n# The FD says Purchase Count is key, and Purchase Count determines Item Price.\n# So we must output only these three columns.\n\n# The group_by is on Price, but Price is not in target schema.\n# So we must rename columns accordingly.\n\n# The count(Price) is used as Item Price (integer), count(Purchase ID) as Purchase Count (integer),\n# sum(Price) as Total Purchase Value (float).\n\n# Since group_by is on Price, the index is Price, but Price is not in target schema, so drop it.\n\nresult = result.reset_index(drop=True)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_59/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8561611175537109
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 16596.88115119934,
+        "critique": 9800.711154937744
+      }
+    }
+  ]
+}

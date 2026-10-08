@@ -1,0 +1,46 @@
+{
+  "case": "1_23",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4662,
+        "cost": 0.0012604,
+        "latency": 4.168034315109253,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.932) / 2 = 0.466 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.921, range overlap=0.944.\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id, amount}.\nKeys present in ground truth but absent in generated: {customer_id}.\nSpurious keys in generated not present in ground truth: {amount, customer_id}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['customer_id'] \u2192 amount.\nDistribution Analysis (numerical columns with issues):\n  Column 'customer_id': range overlap=0.999, JS similarity=0.866\n    Generated    \u2014 min: 10.0, max: 264200.0, mean: 108464.4485\n    Ground Truth \u2014 min: 80.0, max: 263890.0, mean: 129665.7304\n  Column 'amount': range overlap=0.889, JS similarity=0.977\n    Generated    \u2014 min: 5.0, max: 4000.0, mean: 63.0879\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103",
+        "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 20000\nExamples:\n customer_id  amount\n       10770    75.0\n      110230    40.0\n       65280    50.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Inspect source0 columns: ['customer_id', 'amount', 'date']\n# Target schema: ['customer_id': int, 'amount': float]\n# Transformation plan:\n# - Source0 has extra column 'date' which is not in target, so we drop it.\n# - Both 'customer_id' and 'amount' exist in source0 and target.\n# - Data types: ensure 'customer_id' is int, 'amount' is float.\n# - Since only one source table, no union or join needed.\n# - Output the transformed dataframe to the target path.\n\n# Select only the target columns\ndf_target = df_source0[['customer_id', 'amount']].copy()\n\n# Ensure correct data types\ndf_target['customer_id'] = df_target['customer_id'].astype(int)\ndf_target['amount'] = df_target['amount'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "customer_id,amount\n215710,1000.0\n64310,20.0\n94430,100.0\n71060,25.0\n121530,35.0\n153310,50.0\n75450,20.0\n74490,10.0\n71340,30.0\n12480,100.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5294551849365234
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8942,
+          "cost": 0.0014328000000000001,
+          "latency": 5.693730592727661,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.788) / 2 = 0.894 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.972, range overlap=0.605.\nGround truth candidate keys: {customer_id}.\nGenerated table candidate keys: {customer_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'amount': range overlap=0.212, JS similarity=0.968\n    Generated    \u2014 min: 5.0, max: 21250.0, mean: 115.1554\n    Ground Truth \u2014 min: 5.0, max: 4500.0, mean: 58.4103",
+          "generated_samples": "Schema: ['customer_id', 'amount']\nNumber of Tuples: 10957\nExamples:\n customer_id  amount\n      214560     100\n       95800      10\n      115110      30",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/training_0.csv\", index_col=0)\n\n# UNION operation (only one table, so just use it)\nunion_df = source0\n\n# GROUP BY customer_id and sum amount\nresult = union_df.groupby(\"customer_id\", as_index=False).agg({\"amount\": \"sum\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_23/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1591911315917969
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4172.696828842163,
+        "critique": 5832.7813148498535
+      }
+    }
+  ]
+}

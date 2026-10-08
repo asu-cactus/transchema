@@ -188,15 +188,15 @@ class RAGDB:
 
 
 # ---------------------------------------------------------------------------
-# Feature-based retrieval (23-dim vectors, no embedder)
+# Feature-based retrieval (22-dim vectors, no embedder)
 # ---------------------------------------------------------------------------
 
-FEATURE_DIM = 23  # must match feature_extractor.FEATURE_DIM
+FEATURE_DIM = 22  # must match feature_extractor.FEATURE_DIM
 
 
 class FeatureRAGDB:
     """
-    Milvus collection for 23-dim feature vectors. Use for retrieval when
+    Milvus collection for 22-dim feature vectors. Use for retrieval when
     rag_retrieval_strategy == "feature". Same DB file as RAGDB, different collection.
     """
 
@@ -222,7 +222,7 @@ class FeatureRAGDB:
             pass
 
     def insert_vectors(self, case_ids: List[str], vectors: List[List[float]]) -> bool:
-        """Insert (case_id, vector) rows. vectors must be list of 23-dim lists."""
+        """Insert (case_id, vector) rows. vectors must be list of 22-dim lists."""
         if len(case_ids) != len(vectors):
             raise ValueError("case_ids and vectors must have same length")
         rows = [

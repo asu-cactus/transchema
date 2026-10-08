@@ -1,0 +1,46 @@
+{
+  "case": "1_5",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.4681,
+        "cost": 0.0016212000000000002,
+        "latency": 6.254880666732788,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.846 + 0.090) / 2 = 0.468 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.165, range overlap=0.110.\nGround truth candidate keys: {ComunaNombre}; {ComunaID}.\nGenerated table candidate keys: {ProvinciaNombre}; {ComunaNombre}; {ComunaID}.\nSpurious keys in generated not present in ground truth: {ProvinciaNombre}.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.846 (precision=0.786, recall=0.917).\nSpurious FDs in generated (not in ground truth): ['RegionID'] \u2192 ProvinciaID; ['ProvinciaNombre'] \u2192 ComunaNombre; ['ProvinciaNombre'] \u2192 ComunaID.\nMissing FDs from ground truth: ['ProvinciaID'] \u2192 ProvinciaNombre.\nDistribution Analysis (numerical columns with issues):\n  Column 'ProvinciaID': range overlap=0.200, JS similarity=0.212\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 31.0, mean: 19.6395\n  Column 'RegionID': range overlap=0.000, JS similarity=0.046\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 9.0, mean: 6.1628\n  Column 'ComunaID': range overlap=0.129, JS similarity=0.235\n    Generated    \u2014 min: 31.0, max: 53.0, mean: 39.0405\n    Ground Truth \u2014 min: 1.0, max: 172.0, mean: 86.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'ProvinciaNombre': Jaccard=0.023\n  Column 'ComunaNombre': Jaccard=0.016",
+        "generated_samples": "Schema: ['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']\nNumber of Tuples: 173\nExamples:\n ProvinciaID ProvinciaNombre  RegionID  ComunaID ComunaNombre\n          34        'Arauco'        10       199   'Contulmo'\n          41         'Ranco'        12       294  'R\u00edo Bueno'\n          36    'Concepci\u00f3n'        10       221    'Florida'",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_5/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_5/training_1.csv\"\n\n# Load Source 0: Schema ['ComunaID', 'ComunaNombre', 'ProvinciaID']\n# Note: index_col=0 to ignore the numerical index column as per Hint 24\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1: Schema ['ProvinciaID', 'ProvinciaNombre', 'RegionID']\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']\n# Source0 has ComunaID, ComunaNombre, ProvinciaID\n# Source1 has ProvinciaID, ProvinciaNombre, RegionID\n# Join Source0 and Source1 on ProvinciaID to get all target columns.\n\n# Perform inner join on ProvinciaID\ndf_merged = pd.merge(df_source0, df_source1, on='ProvinciaID', how='inner')\n\n# Reorder columns to match target schema\ndf_target = df_merged[['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']]\n\n# Ensure data types match target schema:\n# ProvinciaID: integer\ndf_target['ProvinciaID'] = df_target['ProvinciaID'].astype(int)\n# ProvinciaNombre: string\ndf_target['ProvinciaNombre'] = df_target['ProvinciaNombre'].astype(str)\n# RegionID: integer\ndf_target['RegionID'] = df_target['RegionID'].astype(int)\n# ComunaID: integer\ndf_target['ComunaID'] = df_target['ComunaID'].astype(int)\n# ComunaNombre: string\ndf_target['ComunaNombre'] = df_target['ComunaNombre'].astype(str)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_5/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "ProvinciaID,ProvinciaNombre,RegionID,ComunaID,ComunaNombre\n31,'Curic\u00f3',9,173,'Molina'\n31,'Curic\u00f3',9,174,'Rauco'\n31,'Curic\u00f3',9,175,'Romeral'\n31,'Curic\u00f3',9,176,'Sagrada Familia'\n31,'Curic\u00f3',9,177,'Teno'\n31,'Curic\u00f3',9,178,'Vichuqu\u00e9n'\n32,'Linares',9,179,'Colb\u00fan'\n32,'Linares',9,180,'Linares'\n32,'Linares',9,181,'Longav\u00ed'\n32,'Linares',9,182,'Parral'\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9063949584960938
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.4681,
+          "cost": 0.001902,
+          "latency": 7.0292441844940186,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.846 + 0.090) / 2 = 0.468 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.165, range overlap=0.110.\nGround truth candidate keys: {ComunaNombre}; {ComunaID}.\nGenerated table candidate keys: {ProvinciaNombre}; {ComunaNombre}; {ComunaID}.\nSpurious keys in generated not present in ground truth: {ProvinciaNombre}.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.846 (precision=0.786, recall=0.917).\nSpurious FDs in generated (not in ground truth): ['RegionID'] \u2192 ProvinciaID; ['ProvinciaNombre'] \u2192 ComunaNombre; ['ProvinciaNombre'] \u2192 ComunaID.\nMissing FDs from ground truth: ['ProvinciaID'] \u2192 ProvinciaNombre.\nDistribution Analysis (numerical columns with issues):\n  Column 'ProvinciaID': range overlap=0.200, JS similarity=0.212\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 31.0, mean: 19.6395\n  Column 'RegionID': range overlap=0.000, JS similarity=0.046\n    Generated    \u2014 min: 9.0, max: 15.0, mean: 11.2543\n    Ground Truth \u2014 min: 1.0, max: 9.0, mean: 6.1628\n  Column 'ComunaID': range overlap=0.129, JS similarity=0.235\n    Generated    \u2014 min: 31.0, max: 53.0, mean: 39.0405\n    Ground Truth \u2014 min: 1.0, max: 172.0, mean: 86.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'ProvinciaNombre': Jaccard=0.023\n  Column 'ComunaNombre': Jaccard=0.016",
+          "generated_samples": "Schema: ['ComunaID', 'ComunaNombre', 'ProvinciaID', 'ProvinciaNombre', 'RegionID']\nNumber of Tuples: 173\nExamples:\n ComunaID   ComunaNombre  ProvinciaID ProvinciaNombre  RegionID\n      249     'Treguaco'           37         '\u00d1uble'        10\n      189    'Empedrado'           33         'Talca'         9\n      187 'Constituci\u00f3n'           33         'Talca'         9",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_5/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_5/training_1.csv\", index_col=0)\n\n# Join on ProvinciaID\njoined = pd.merge(source0, source1, on=\"ProvinciaID\", how=\"inner\")\n\n# Group by all key columns to ensure uniqueness and remove duplicates\nresult = joined.groupby(\n    [\"ProvinciaID\", \"ProvinciaNombre\", \"RegionID\", \"ComunaID\", \"ComunaNombre\"],\n    as_index=False\n).size()  # size() returns count, but we don't need it, so drop it\n\n# The groupby.size() returns a Series with counts, we only want the grouped keys as DataFrame\n# So instead, do groupby with as_index=False and then drop duplicates by keys:\nresult = joined.drop_duplicates(subset=[\"ProvinciaID\", \"ProvinciaNombre\", \"RegionID\", \"ComunaID\", \"ComunaNombre\"])\n\n# Write to output CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_5/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0559558868408203
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6316.200494766235,
+        "critique": 7106.143236160278
+      }
+    }
+  ]
+}

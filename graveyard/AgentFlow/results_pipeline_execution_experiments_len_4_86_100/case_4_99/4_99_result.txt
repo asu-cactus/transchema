@@ -1,0 +1,181 @@
+Case: 4_99
+Status: INCORRECT
+Timestamp: 2026-02-25T12:21:09.087849
+Duration: 142.97 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_86_100/case_4_99/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.8553626149131769
+  matched_columns: ['1-2-3', '0-1-1', '3-1-3', 'Braund, Mr. Owen Harris-Cumings, Mrs. John Bradley (Florence Briggs Thayer)-Heikkinen, Miss. Laina', 'male-female-female', '1-1-0', '0-0-0', 'A/5 21171-PC 17599-STON/O2. 3101282']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_99
+2. Target Schema: ['PassengerId': integer, 'Survived': integer, 'Pclass': integer, 'Name': string, 'Sex': string, 'Age': float, 'SibSp': integer, 'Parch': integer, 'Ticket': string, 'Fare': float, 'Cabin': string, 'Embarked': string, 'Fare_x': float, 'Fare_y': float]
+3. Target Examples: There are 445 available target examples:      PassengerId  Survived  Pclass  \
+379          298         0       1   
+189          295         0       3   
+121          186         0       1   
+108          169         0       1   
+271          442         0       3   
+305           69         1       3   
+151          229         0       2   
+199          315         0       2   
+266          431         1       1   
+302           59         1       2   
+236          383         0       3   
+226          364         0       3   
+425          397         0       3   
+39            73         0       2   
+54            93         0       1   
+29            58         0       3   
+415          375         0       3   
+109          170         0       3   
+228          366         0       3   
+100          158         0       3   
+442          438         1       2   
+96           153         0       3   
+225          362         0       2   
+204          327         0       3   
+407          358         0       2   
+9             21         0       2   
+163          250         0       2   
+12            27         0       3   
+37            70         0       3   
+92           147         1       3   
+408          359         1       3   
+207          334         0       3   
+152          232         0       3   
+129          201         0       3   
+73           119         0       1   
+107          166         1       3   
+300           54         1       2   
+181          283         0       3   
+172          267         0       3   
+196          306         1       1   
+320          124         1       2   
+161          246         0       1   
+114          176         0       3   
+239          387         0       3   
+
+                                                  Name     Sex    Age  SibSp  \
+379                       Allison, Miss. Helen Loraine  female   2.00      1   
+189                                   Mineff, Mr. Ivan    male  24.00      0   
+121                              Rood, Mr. Hugh Roscoe    male    NaN      0   
+108                                Baumann, Mr. John D    male    NaN      0   
+271                                    Hampe, Mr. Leon    male  20.00      0   
+305                    Andersson, Miss. Erna Alexandra  female  17.00      4   
+151                          Fahlstrom, Mr. Arne Jonas    male  18.00      0   
+199                                 Hart, Mr. Benjamin    male  43.00      1   
+266          Bjornstrom-Steffansson, Mr. Mauritz Hakan    male  28.00      0   
+302                       West, Miss. Constance Mirium  female   5.00      1   
+236                                 Tikkanen, Mr. Juho    male  32.00      0   
+226                                    Asim, Mr. Adola    male  35.00      0   
+425                                Olsson, Miss. Elina  female  31.00      0   
+39                                Hood, Mr. Ambrose Jr    male  21.00      0   
+54                         Chaffee, Mr. Herbert Fuller    male  46.00      1   
+29                                 Novel, Mr. Mansouer    male  28.50      0   
+415                         Palsson, Miss. Stina Viola  female   3.00      3   
+109                                      Ling, Mr. Lee    male  28.00      0   
+228                     Adahl, Mr. Mauritz Nils Martin    male  30.00      0   
+100                                    Corn, Mr. Harry    male  30.00      0   
+442              Richards, Mrs. Sidney (Emily Hocking)  female  24.00      2   
+96                                    Meo, Mr. Alfonzo    male  55.50      0   
+225                          del Carlo, Mr. Sebastiano    male  29.00      1   
+204                          Nysveen, Mr. Johan Hansen    male  61.00      0   
+407                          Funk, Miss. Annie Clemmer  female  38.00      0   
+9                                 Fynney, Mr. Joseph J    male  35.00      0   
+163                      Carter, Rev. Ernest Courtenay    male  54.00      1   
+12                             Emir, Mr. Farred Chehab    male    NaN      0   
+37                                   Kink, Mr. Vincenz    male  26.00      2   
+92        Andersson, Mr. August Edvard ("Wennerstrom")    male  27.00      0   
+408                               McGovern, Miss. Mary  female    NaN      0   
+207                    Vander Planke, Mr. Leo Edmondus    male  16.00      2   
+152                           Larsson, Mr. Bengt Edvin    male  29.00      0   
+129                     Vande Walle, Mr. Nestor Cyriel    male  28.00      0   
+73                            Baxter, Mr. Quigg Edmond    male  24.00      0   
+107    Goldsmith, Master. Frank John William "Frankie"    male   9.00      0   
+300  Faunthorpe, Mrs. Lizzie (Elizabeth Anne Wilkin...  female  29.00      1   
+181                          de Pelsmaeker, Mr. Alfons    male  16.00      0   
+172                          Panula, Mr. Ernesti Arvid    male  16.00      4   
+196                     Allison, Master. Hudson Trevor    male   0.92      1   
+320                                Webber, Miss. Susan  female  32.50      0   
+161                        Minahan, Dr. William Edward    male  44.00      2   
+114                             Klasen, Mr. Klas Albin    male  18.00      1   
+239                    Goodwin, Master. Sidney Leonard    male   1.00      5   
+
+     Parch              Ticket      Fare    Cabin Embarked     Fare_x  Fare_y  
+379      2              113781  151.5500  C22 C26        S  44.033212    19.5  
+189      0              349233    7.8958      NaN        S  25.100682    10.5  
+121      0              113767   50.0000      A32        S  25.100682    10.5  
+108      0            PC 17318   25.9250      NaN        S  25.100682    10.5  
+271      0              345769    9.5000      NaN        S  25.100682    10.5  
+305      2             3101281    7.9250      NaN        S  44.033212    19.5  
+151      0              236171   13.0000      NaN        S  25.100682    10.5  
+199      1        F.C.C. 13529   26.2500      NaN        S  25.100682    10.5  
+266      0              110564   26.5500      C52        S  25.100682    10.5  
+302      2          C.A. 34651   27.7500      NaN        S  44.033212    19.5  
+236      0   STON/O 2. 3101293    7.9250      NaN        S  25.100682    10.5  
+226      0  SOTON/O.Q. 3101310    7.0500      NaN        S  25.100682    10.5  
+425      0              350407    7.8542      NaN        S  44.033212    19.5  
+39       0        S.O.C. 14879   73.5000      NaN        S  25.100682    10.5  
+54       0         W.E.P. 5734   61.1750      E31        S  25.100682    10.5  
+29       0                2697    7.2292      NaN        C  25.100682    10.5  
+415      1              349909   21.0750      NaN        S  44.033212    19.5  
+109      0                1601   56.4958      NaN        S  25.100682    10.5  
+228      0              C 7076    7.2500      NaN        S  25.100682    10.5  
+100      0     SOTON/OQ 392090    8.0500      NaN        S  25.100682    10.5  
+442      3               29106   18.7500      NaN        S  44.033212    19.5  
+96       0          A.5. 11206    8.0500      NaN        S  25.100682    10.5  
+225      0       SC/PARIS 2167   27.7208      NaN        C  25.100682    10.5  
+204      0              345364    6.2375      NaN        S  25.100682    10.5  
+407      0              237671   13.0000      NaN        S  44.033212    19.5  
+9        0              239865   26.0000      NaN        S  25.100682    10.5  
+163      0              244252   26.0000      NaN        S  25.100682    10.5  
+12       0                2631    7.2250      NaN        C  25.100682    10.5  
+37       0              315151    8.6625      NaN        S  25.100682    10.5  
+92       0              350043    7.7958      NaN        S  25.100682    10.5  
+408      0              330931    7.8792      NaN        Q  44.033212    19.5  
+207      0              345764   18.0000      NaN        S  25.100682    10.5  
+152      0              347067    7.7750      NaN        S  25.100682    10.5  
+129      0              345770    9.5000      NaN        S  25.100682    10.5  
+73       1            PC 17558  247.5208  B58 B60        C  25.100682    10.5  
+107      2              363291   20.5250      NaN        S  25.100682    10.5  
+300      0                2926   26.0000      NaN        S  44.033212    19.5  
+181      0              345778    9.5000      NaN        S  25.100682    10.5  
+172      1             3101295   39.6875      NaN        S  25.100682    10.5  
+196      2              113781  151.5500  C22 C26        S  25.100682    10.5  
+320      0               27267   13.0000     E101        S  44.033212    19.5  
+161      0               19928   90.0000      C78        Q  25.100682    10.5  
+114      1              350404    7.8542      NaN        S  25.100682    10.5  
+239      2             CA 2144   46.9000      NaN        S  25.100682    10.5  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_99_0
+	Source 0 Schema: ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket', 'Fare', 'Cabin', 'Embarked']
+	Source 0 Examples: 	 Source 0 contains 445 tuples, with examples as follows: 
+   PassengerId  Survived  Pclass  \
+0            1         0       3   
+1            2         1       1   
+2            3         1       3   
+
+                                                Name     Sex   Age  SibSp  \
+0                            Braund, Mr. Owen Harris    male  22.0      1   
+1  Cumings, Mrs. John Bradley (Florence Briggs Th...  female  38.0      1   
+2                             Heikkinen, Miss. Laina  female  26.0      0   
+
+   Parch            Ticket     Fare Cabin Embarked  
+0      0         A/5 21171   7.2500   NaN        S  
+1      0          PC 17599  71.2833   C85        C  
+2      0  STON/O2. 3101282   7.9250   NaN        S  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_99/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_99/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

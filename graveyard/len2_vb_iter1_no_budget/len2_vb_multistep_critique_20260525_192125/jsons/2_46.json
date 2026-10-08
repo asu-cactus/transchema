@@ -1,0 +1,29 @@
+{
+  "case": "2_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9772,
+        "cost": 0.0037864,
+        "latency": 15.462839603424072,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.954) / 2 = 0.977 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.976, range overlap=1.000.\nGround truth candidate keys: {mkt_name, cm_name, mp_month, mp_year, mp_price}.\nGenerated table candidate keys: {mkt_name, cm_name, mp_month, mp_year, mp_price}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'um_id': range overlap=1.000, JS similarity=0.940\n    Generated    \u2014 min: 5.0, max: 56.0, mean: 19.5668\n    Ground Truth \u2014 min: 5.0, max: 56.0, mean: 18.1572\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'adm1_name': Jaccard=0.789\n  Column 'mkt_name': Jaccard=0.781",
+        "generated_samples": "Schema: ['adm0_name', 'adm1_name', 'mkt_name', 'cm_name', 'cur_name', 'pt_name', 'um_id', 'um_name', 'mp_month', 'mp_year', 'mp_price']\nNumber of Tuples: 10936\nExamples:\n  adm0_name adm1_name mkt_name                                       cm_name cur_name pt_name  um_id um_name  mp_month  mp_year  mp_price\n       Iraq   Kerbala  Karbala                                         Sugar      IQD  Retail      5      KG         1     2016    1312.0\nAfghanistan    Faryab  Maymana Wage (non-qualified labour, non-agricultural)      AFN  Retail     51     Day         2     2017     250.0\nAfghanistan     Balkh    Mazar  Livestock (sheep, one-year-old alive female)      AFN  Retail     33    Unit         9     2000 1712500.0",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_46/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length2_46/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length2_46/training_2.csv\"\n]\n\n# Columns as per target schema and source schemas (all identical)\ncolumns = ['adm0_name', 'adm1_name', 'mkt_name', 'cm_name', 'cur_name', 'pt_name',\n           'um_id', 'um_name', 'mp_month', 'mp_year', 'mp_price']\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Ensure columns are exactly as target schema and in correct order\n    df = df[columns]\n    dfs.append(df)\n\n# Operation History: UNION of the three source tables\n# Concatenate all dataframes vertically (union)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure data types match target schema:\n# adm0_name, adm1_name, mkt_name, cm_name, cur_name, pt_name, um_name: string (object)\n# um_id, mp_month, mp_year: integer\n# mp_price: float\n\n# Convert string columns to string type explicitly\nstr_cols = ['adm0_name', 'adm1_name', 'mkt_name', 'cm_name', 'cur_name', 'pt_name', 'um_name']\nfor col in str_cols:\n    target_df[col] = target_df[col].astype(str)\n\n# Convert integer columns\nint_cols = ['um_id', 'mp_month', 'mp_year']\nfor col in int_cols:\n    # Some integer columns might be read as float if there are missing values, convert safely\n    target_df[col] = pd.to_numeric(target_df[col], errors='coerce').fillna(0).astype(int)\n\n# Convert mp_price to float\ntarget_df['mp_price'] = pd.to_numeric(target_df['mp_price'], errors='coerce').astype(float)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_46/target_multisource.csv\", index=False)",
+        "generated_csv_head": "adm0_name,adm1_name,mkt_name,cm_name,cur_name,pt_name,um_id,um_name,mp_month,mp_year,mp_price\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,1,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,2,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,3,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,4,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,5,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,6,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,7,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,8,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,9,2014,50.0\nAfghanistan,Badakhshan,Fayzabad,Bread,AFN,Retail,5,KG,10,2014,50.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.875804901123047
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 15537.989139556885,
+        "critique": 0.0
+      }
+    }
+  ]
+}

@@ -10,6 +10,57 @@ import csv
 import re
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Benchmark resolution -- single source of truth.
+#
+# The benchmark -> on-disk-root ternary used to be copy-pasted at 7 call sites across
+# critique_data.py and methods/{single_step_cot,multi_step,critique}.py. mcts_search.py
+# hit the failure mode that invites: when smart_building_v2 was added there, two copies
+# were missed, so a recovered script silently validated against github-pipelines'
+# unrelated target.csv. Resolving here means a new benchmark is one edit, not seven.
+
+
+BENCHMARK_ROOTS = {
+    "github": "autopipeline-benchmarks/github-pipelines",
+    "monteprep": "autopipeline-benchmarks/monteprep-pipelines",
+    "smart_building_v2": "autopipeline-benchmarks/smartbuilding-pipelines-v2-split",
+}
+
+BENCHMARK_CHOICES = tuple(BENCHMARK_ROOTS)
+
+
+def resolve_main_folder(benchmark: str | None) -> str:
+    """Map a --benchmark value to its pipelines root. Unknown/None -> github."""
+    return BENCHMARK_ROOTS.get(benchmark or "github", BENCHMARK_ROOTS["github"])
+
+
+def resolve_case_json(benchmark: str | None, file_count: int) -> str:
+    """Map (benchmark, source-file count) to the case-metadata JSON.
+
+    smart_building_v2 is single-source only, so it has no _ms variant -- passing a
+    file_count > 1 there still resolves to the ss file rather than a missing path.
+    """
+    bm = benchmark or "github"
+    if bm == "smart_building_v2":
+        return "data/chatgpt_smartbuilding_v2_ss.json"
+    stem = "monteprep" if bm == "monteprep" else "github"
+    return f"data/chatgpt_{stem}_{'ms' if file_count > 1 else 'ss'}.json"
+
+
+def drop_leading_index_col_if_present(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop the first column only if it's a throwaway pandas index column
+    (unnamed, or literally "Unnamed: 0"), in place, and return df.
+
+    github/monteprep target.csv files carry a leading index column like this;
+    smartbuilding target.csv files do not (their first column is real data,
+    e.g. "CST"/"date") and must be left untouched.
+    """
+    first_col = str(df.columns[0])
+    if first_col == "" or first_col.startswith("Unnamed:"):
+        df.drop(columns=df.columns[0], axis=1, inplace=True)
+    return df
+
+
 def convert_if_number(s):
     if s is None:
         return None
@@ -85,7 +136,6 @@ def create_connection():
         host="localhost",  # e.g., "localhost"
         port="5432",  # e.g., "5432"
     )
-    #print("Postgres connection established.")
     return conn
 
 
@@ -129,24 +179,34 @@ def execute_sql(conn, query):
 
 def execute_python(gpt_response):
     try:
-        exec(gpt_response)
+        exec(gpt_response, {"__name__": "__main__"})
         return "Success"
     except Exception as e:
         print("Exception: "+str(e))
         return f"Error: {e}"
 
 
-# def create_table(conn, create_statement):
-#     #print(create_statement)
-#     cursor = conn.cursor()
-#     try:
-#         cursor.execute("BEGIN;")
-#         cursor.execute(create_statement)
-#         # Assuming you want to commit after every SQL execution for simplicity
-#         conn.commit()
-#     except psycopg2.Error as e:
-#         conn.rollback()  # Rollback the transaction on error
-#         return f"Error: {e.pgerror}"
+def make_test_validation_script(script: str) -> str:
+    """Swap training_X.csv → test_X.csv and redirect output to a _test_val variant.
+
+    The output redirect preserves the training-data CSV so scoring (reward) still
+    reads the training output while is_correct is computed on test output.
+    Covers all target_multisource* variants: plain, _cot, _critique_history, etc.
+    """
+    swapped = re.sub(r'training_(\d+)\.csv', r'test_\1.csv', script)
+    # Some generated scripts read training data via glob.glob(".../training_*.csv")
+    # rather than a literal training_N.csv path -- the digit-only regex above misses
+    # that entirely, so the "test validation" run silently kept reading TRAINING data
+    # and got compared against the TEST target, producing a false is_correct=False for
+    # an otherwise-correct script. Confirmed via a direct MCTS log audit (2026-09-17,
+    # cases 1_2/1_3 of smartbuilding_v2_mcts20_dmx_hintsalign_t600_dmx-gpt-oss-120b):
+    # the selected best script in both cases used this glob pattern, ran correctly
+    # against real test data once patched, yet was recorded incorrect before this fix.
+    swapped = re.sub(r'training_\*\.csv', 'test_*.csv', swapped)
+    swapped = re.sub(r'(target_multisource[^.]*?)\.csv', r'\1_test_val.csv', swapped)
+    return swapped
+
+
 
 
 def log_experiment_settings(
@@ -182,7 +242,6 @@ def log_experiment_failed(
     accuracy_list,
     validation_error_list,
 ):
-    #print("[FAILED] Maximum iterations reached without correct result.")
     log_directory = os.path.join(".", "log")
     os.makedirs(log_directory, exist_ok=True)
 
@@ -196,12 +255,10 @@ def log_experiment_failed(
                 file.write(f"mis-match: {validation_error_list[count]}\n")
             else:
                 file.write(", ".join(map(str, iteration_scores)) + "\n")
-        #print(accuracy_list)
         file.write(f"\t\t\t\tCase accuracy: {max(accuracy_list):.2f}\n")
 
 
 def log_experiment_success(target_data_name, source_data_name_to_find, iteration_count):
-    #print("[Success] Successful SQL execution with correct result.")
     log_directory = os.path.join(".", "log")
     os.makedirs(
         log_directory, exist_ok=True
@@ -236,7 +293,6 @@ def log_experiment(
     file_path = f"log/{method}.log"
     with open(file_path, "a+") as file:
         if success:
-            #print(cost)
             file.write(
                 f"{target_data_name} <- {source_data_name_to_find} Successful with Total time:{execution_time}(Generating Prompt time:{execution_time_1},GPT Reaction time:{execution_time_2}，SQL Execution time:{execution_time_3}) and cost:{cost}\n"
             )
@@ -288,7 +344,7 @@ def anonymize_target_data_schema(target_data_schema):
     strigifiedschema = ",".join(anonymized_schema)
     return strigifiedschema
 
-def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag):
+def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag, data_split="test"):
 
     # Read the JSON file once
     with open(json_file_path, "r") as file:
@@ -299,17 +355,15 @@ def get_test_info(json_file_path, len_id_target_id, main_folder_path, anon_flag)
     # Constructing the path to the specific subfolder
     sub_folder_name = f"length{len_id_target_id}"
 
-    #print(sub_folder_name)
 
     main_folder_name = os.path.abspath(main_folder_path)
     sub_folder_path = os.path.join(main_folder_name, sub_folder_name)
 
-    # Counting files starting with 'test' in this subfolder
+    # Counting files starting with data_split prefix in this subfolder (root only, no subdirs)
     file_count = sum(
         1
-        for _, _, files in os.walk(sub_folder_path)
-        for file in files
-        if file.startswith("test")
+        for file in os.listdir(sub_folder_path)
+        if file.startswith(data_split) and os.path.isfile(os.path.join(sub_folder_path, file))
     )
 
 

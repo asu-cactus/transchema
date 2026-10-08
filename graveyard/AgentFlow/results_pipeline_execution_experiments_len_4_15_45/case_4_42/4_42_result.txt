@@ -1,0 +1,150 @@
+Case: 4_42
+Status: INCORRECT
+Timestamp: 2026-02-25T12:54:51.785750
+Duration: 72.52 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_15_45/case_4_42/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_42
+2. Target Schema: ['location': string, 'title': integer, 'company': integer, 'summary': integer, 'salary': integer, 'href': integer, 'rate': integer, 'reviews': integer, 'org_salary_period': integer]
+3. Target Examples: There are 158 available target examples:                     location  title  company  summary  salary  href  rate  \
+88                McLean, VA      1        1        1       1     1     1   
+16   Beverly Hills, CA 90211      1        1        1       1     1     1   
+132     Seal Beach, CA 90740      2        2        2       2     2     2   
+21         Boulder, CO 80301      1        1        1       1     1     1   
+69       Las Vegas, NV 89146      1        1        1       1     1     1   
+106            Palo Alto, CA      1        1        1       1     1     1   
+36          Coral Gables, FL     10       10       10      10    10    10   
+2                Anaheim, CA      1        1        1       1     1     1   
+57     Greenwood Village, CO      1        1        1       1     1     1   
+62              Issaquah, WA      1        1        1       1     1     1   
+9            Bala-Cynwyd, PA      1        1        1       1     1     1   
+86       Manhattan Beach, CA      1        1        1       1     1     1   
+77           Los Angeles, CA     24       24       24      24    24    24   
+156           Wilmington, DE      1        1        1       1     1     1   
+138            St. Louis, MO      1        1        1       1     1     1   
+97              New York, NY     96       96       96      96    96    96   
+
+     reviews  org_salary_period  
+88         1                  1  
+16         1                  1  
+132        2                  2  
+21         1                  1  
+69         1                  1  
+106        1                  1  
+36        10                 10  
+2          1                  1  
+57         1                  1  
+62         1                  1  
+9          1                  1  
+86         1                  1  
+77        24                 24  
+156        1                  1  
+138        1                  1  
+97        96                 96  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_42_0
+	Source 0 Schema: ['title', 'company', 'location', 'summary', 'salary', 'href', 'rate', 'reviews', 'org_salary_period']
+	Source 0 Examples: 	 Source 0 contains 378 tuples, with examples as follows: 
+                                   title         company        location  \
+0                         Data Scientist  Biz League inc  Broomfield, CO   
+1                         Data Scientist       SSN Group     Houston, TX   
+2  Full Time-Data Scientist-(Durant, OK)   Jackson Lewis      Durant, OK   
+
+                                             summary  salary  \
+0  Data scientists use data and analytical abilit...  109980   
+1  Demonstrated experience and accomplishments in...  136300   
+2  To join a growing team of data scientists who ...   24440   
+
+                                                href  rate reviews  \
+0  https://www.indeed.com/company/Biz-League-inc/...  52.2   6,388   
+1  https://www.indeed.com/company/SSN-GROUP/jobs/...  27.0     2.0   
+2  https://www.indeed.com/company/Jackson-Lewis/j...  41.4    16.0   
+
+  org_salary_period  
+0              hour  
+1              hour  
+2              hour  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_42/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_42_1
+	Source 1 Schema: ['title', 'company', 'location', 'summary', 'salary', 'href', 'rate', 'reviews', 'org_salary_period']
+	Source 1 Examples: 	 Source 1 contains 27 tuples, with examples as follows: 
+                                           title                   company  \
+0                            DATA ENTRY OPERATOR  University of Washington   
+1  BIOLOGICAL ADMINISTRATOR III - SES - 64026333      The State of Florida   
+2      MEDICAL LABORATORY SCIENTIST I - 64067592      The State of Florida   
+
+      location                                            summary  salary  \
+0  Seattle, WA  The mission of University of Washington Medici...   36954   
+1          NaN  Work with the Chief of Laboratory Services and...   67584   
+2          NaN  Candidates claiming Veterans’ Preference must ...   31122   
+
+                                                href  rate reviews  \
+0  https://www.indeed.com/rc/clk?jk=575e2692cb836...  52.2   890.0   
+1  https://www.indeed.com/rc/clk?jk=081db22603b4e...  43.2   1,067   
+2  https://www.indeed.com/rc/clk?jk=b6dcd8b27a9af...  43.2   1,067   
+
+  org_salary_period  
+0             month  
+1             month  
+2             month  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_42/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_42_2
+	Source 2 Schema: ['title', 'company', 'location', 'summary', 'salary', 'href', 'rate', 'reviews', 'org_salary_period']
+	Source 2 Examples: 	 Source 2 contains 492 tuples, with examples as follows: 
+                                          title                 company  \
+0                                Data Scientist               Crossover   
+1  Intern - Fellow (Data Scientist) Summer 2019                    BNSF   
+2                                Data Scientist  Encore Fire Protection   
+
+        location                                            summary    salary  \
+0         Remote  Take ownership of the whole end-to-end machine...  100000.0   
+1            NaN  A Data Scientist Intern-Fellow’s work in the B...   49920.0   
+2  Pawtucket, RI  For those that are truly in the data analytics...   67500.0   
+
+                                                href  rate reviews  \
+0  https://www.indeed.com/rc/clk?jk=7c9797985b606...  31.8    19.0   
+1  https://www.indeed.com/rc/clk?jk=a768e60b8871d...  43.2   799.0   
+2  https://www.indeed.com/rc/clk?jk=97695daa8a80e...  54.0     4.0   
+
+  org_salary_period  
+0              year  
+1              year  
+2              year  
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_42/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_42_3
+	Source 3 Schema: ['title', 'company', 'location', 'summary', 'salary', 'href', 'rate', 'reviews', 'org_salary_period']
+	Source 3 Examples: 	 Source 3 contains 23 tuples, with examples as follows: 
+                                    title                  company  \
+0                     Lead Data Scientist  Lenmar Consulting, Inc.   
+1  Data Scientist (Pystack, Pyspark, AWS)    Workbridge Associates   
+2          Data Scientist (Deep Learning)    Workbridge Associates   
+
+       location                                            summary    salary  \
+0  New York, NY  Primary focus is to analyze available structur...  207387.5   
+1   Chicago, IL  Using Artificial Intelligence, Machine Learnin...   24675.0   
+2   Chicago, IL  They are using Machine Learning, Deep Learning...   23500.0   
+
+                                                href  rate  reviews  \
+0  https://www.indeed.com/company/Lenmar-Consulti...  44.4       63   
+1  https://www.indeed.com/rc/clk?jk=90eb19a4522a1...  41.4       40   
+2  https://www.indeed.com/rc/clk?jk=e3d8d7fd1e8e1...  41.4       40   
+
+  org_salary_period  
+0               day  
+1               day  
+2               day  
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_42/test_3.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_42/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

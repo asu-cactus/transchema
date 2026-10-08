@@ -1,0 +1,46 @@
+{
+  "case": "5_87",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7135,
+        "cost": 0.004882,
+        "latency": 17.460623741149902,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.427) / 2 = 0.714 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.847, range overlap=0.007.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.007, JS similarity=0.847\n    Generated    \u2014 min: -14140.7, max: 12748.86, mean: 177.5898\n    Ground Truth \u2014 min: 103.8396, max: 298.6181, mean: 186.9328",
+        "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 4200\nExamples:\n Profit\n 209.54\n-115.66\n  97.40",
+        "code": "import pandas as pd\n\n# Load the intermediate result after the JOIN operation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_87/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# The intermediate table has columns ['Unnamed: 0', 'Profit']\n# We only need the 'Profit' column for the target.\n# The target schema is ['Profit': float]\n\n# Select only the 'Profit' column\nTarget5_87 = df[['Profit']].copy()\n\n# Ensure the dtype is float (should already be, but enforce)\nTarget5_87['Profit'] = Target5_87['Profit'].astype(float)\n\n# Save the result to the specified path\nTarget5_87.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Profit\n-213.25\n-695.26\n-14.33\n-166.85\n782.91\n-481.04\n440.72\n57.1\n53.13\n-1766.01\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9560585021972656
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.002142,
+          "latency": 10.25544261932373,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 1266661.17, max: 1266661.17, mean: 1266661.17\n    Ground Truth \u2014 min: 103.8396, max: 298.6181, mean: 186.9328",
+          "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 1\nExamples:\n    Profit\n1266661.17",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_87/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_87/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_87/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_87/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_87/training_4.csv\", index_col=0)\n\n# Join Source5_87_4 and Source5_87_2 on Ord_id\ndf_4_2 = pd.merge(source4, source2, on=\"Ord_id\", how=\"inner\")\n\n# Join Source5_87_0 and Source5_87_4 on Order_ID\ndf_0_4_2 = pd.merge(source0, df_4_2, on=\"Order_ID\", how=\"inner\")\n\n# Join Source5_87_2 and Source5_87_1 on Prod_id\ndf_0_4_2_1 = pd.merge(df_0_4_2, source1, on=\"Prod_id\", how=\"inner\")\n\n# Join Source5_87_2 and Source5_87_3 on Cust_id\nfinal_df = pd.merge(df_0_4_2_1, source3, on=\"Cust_id\", how=\"inner\")\n\n# Aggregate sum of Profit (no group by since target schema has only Profit column)\nresult = final_df[[\"Profit\"]].sum().to_frame().T\n\n# Write output with exact target schema column name\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_87/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6661415100097656
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 17545.207500457764,
+        "critique": 10341.637134552002
+      }
+    }
+  ]
+}

@@ -42,13 +42,12 @@ from datetime import datetime
 
 def setup_logging(args, log_dir, experiment_name):
     # Check if the log directory exists, create it if it does not
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
 
     # create an experiment_date_time directory inside the log_directory
     experiment_date_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     experiment_date_time = os.path.join(log_dir, experiment_name + "_" + experiment_date_time)
-    os.makedirs(experiment_date_time)
+    os.makedirs(experiment_date_time, exist_ok=True)
 
     # create a log file to log all the arguments
     log_file = os.path.join(experiment_date_time, "args.log")
@@ -83,5 +82,9 @@ def setup_logging(args, log_dir, experiment_name):
     with open(average_critique_path, 'w') as f:
         f.write("Length,Critique Type,Hard Match,Cost,Latency,Soft Match,Soft Acc,Cost_,Latency_,max\n")
 
+    # create a jsons directory inside the experiment_date_time directory
+    jsons_dir = os.path.join(experiment_date_time, "jsons")
+    os.makedirs(jsons_dir, exist_ok=True)
+
     # return path of experiment_date_time directory and subdirectories
-    return experiment_date_time, log_dir, results_dir
+    return experiment_date_time, log_dir, results_dir, jsons_dir

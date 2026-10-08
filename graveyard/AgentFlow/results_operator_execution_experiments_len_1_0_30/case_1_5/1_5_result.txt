@@ -1,0 +1,61 @@
+Case: 1_5
+Status: CORRECT
+Timestamp: 2026-02-24T13:45:15.305153
+Duration: 63.95 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_0_30/case_1_5/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['ProvinciaID', 'ProvinciaNombre', 'RegionID', 'ComunaID', 'ComunaNombre']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_5
+2. Target Schema: ['ProvinciaID': integer, 'ProvinciaNombre': string, 'RegionID': integer, 'ComunaID': integer, 'ComunaNombre': string]
+3. Target Examples: There are 172 available target examples:      ProvinciaID  ProvinciaNombre  RegionID  ComunaID        ComunaNombre
+75            20     'Valparaiso'         6        76        'Puchuncaví'
+100           25       'Santiago'         7       101  'Estación Central'
+146           27      'Cachapoal'         8       147          'Rancagua'
+105           25       'Santiago'         7       106        'La Florida'
+160           29      'Colchagua'         8       161          'Palmilla'
+144           27      'Cachapoal'         8       145        'Pichidegua'
+102           25       'Santiago'         7       103     'Independencia'
+88            23          'Maipo'         7        89   'Calera de Tango'
+35            12          'Elqui'         5        36        'La Higuera'
+123           25       'Santiago'         7       124        'San Miguel'
+110           25       'Santiago'         7       111         'Lo Espejo'
+121           25       'Santiago'         7       122          'Recoleta'
+113           25       'Santiago'         7       114             'Maipú'
+155           28  'Cardenal Caro'         8       156         'Pichilemu'
+139           27      'Cachapoal'         8       140           'Machalí'
+40            13         'Limarí'         5        41      'Monte Patria'
+124           25       'Santiago'         7       125       'San Joaquín'
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_5_0
+	Source 0 Schema: ['ComunaID', 'ComunaNombre', 'ProvinciaID']
+	Source 0 Examples: 	 Source 0 contains 172 tuples, with examples as follows: 
+   ComunaID     ComunaNombre  ProvinciaID
+0         1          'Arica'            1
+1         2      'Camarones'            1
+2         3  'General Lagos'            2
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_5_1
+	Source 1 Schema: ['ProvinciaID', 'ProvinciaNombre', 'RegionID']
+	Source 1 Examples: 	 Source 1 contains 53 tuples, with examples as follows: 
+   ProvinciaID ProvinciaNombre  RegionID
+0            1         'Arica'         1
+1            2    'Parinacota'         1
+2            3       'Iquique'         2
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_5/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

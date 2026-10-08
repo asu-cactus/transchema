@@ -1,0 +1,46 @@
+{
+  "case": "4_31",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.706,
+        "cost": 0.0022784,
+        "latency": 9.799806118011475,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.917 + 0.495) / 2 = 0.706 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.917 (precision=1.000, recall=0.846).\nMissing FDs from ground truth: ['m1403'] \u2192 m1404; ['m1403'] \u2192 m1402.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.352\n  Column 'm1401': Jaccard=0.578\n  Column 'm1402': Jaccard=0.523\n  Column 'm1403': Jaccard=0.508\n  Column 'm1404': Jaccard=0.516",
+        "generated_samples": "Schema: ['County', 'm1401', 'm1402', 'm1403', 'm1404']\nNumber of Tuples: 51\nExamples:\n    County      m1401      m1402      m1403      m1404\nSan Miguel   $164,384    $94,099    $75,215    $64,107\n  Arapahoe $1,188,232 $1,210,155 $1,490,219 $1,517,828\n     Grand         NR         NR         NR         NR",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_31/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_31/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length4_31/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length4_31/training_3.csv\"\nsource4_path = \"autopipeline-benchmarks/github-pipelines/length4_31/training_4.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # ['County', 'm1403']\ndf1 = pd.read_csv(source1_path, index_col=0)  # ['County']\ndf2 = pd.read_csv(source2_path, index_col=0)  # ['County', 'm1401']\ndf3 = pd.read_csv(source3_path, index_col=0)  # ['County', 'm1402']\ndf4 = pd.read_csv(source4_path, index_col=0)  # ['County', 'm1404']\n\n# Step 1: Identify all unique counties from all sources to ensure full coverage\n# Union of all counties from all sources\ncounties_0 = set(df0['County'].unique())\ncounties_1 = set(df1['County'].unique())\ncounties_2 = set(df2['County'].unique())\ncounties_3 = set(df3['County'].unique())\ncounties_4 = set(df4['County'].unique())\n\nall_counties = counties_0.union(counties_1).union(counties_2).union(counties_3).union(counties_4)\n\n# Create a DataFrame with all counties as base (dimension table)\ndf_counties = pd.DataFrame({'County': sorted(all_counties)})\n\n# Step 2: Merge all source tables on 'County' to get all m1401, m1402, m1403, m1404 columns\n# Left join df_counties with each source table to preserve all counties\n\ndf_merged = df_counties.merge(df2, on='County', how='left')  # m1401\ndf_merged = df_merged.merge(df3, on='County', how='left')    # m1402\ndf_merged = df_merged.merge(df0, on='County', how='left')    # m1403\ndf_merged = df_merged.merge(df4, on='County', how='left')    # m1404\n\n# Step 3: Fill missing values in m1401, m1402, m1403, m1404 with 'NR' (as seen in target examples)\nfor col in ['m1401', 'm1402', 'm1403', 'm1404']:\n    if col in df_merged.columns:\n        df_merged[col] = df_merged[col].fillna('NR')\n    else:\n        # If any column is missing (should not happen), create it with 'NR'\n        df_merged[col] = 'NR'\n\n# Step 4: The target schema is ['County', 'm1401', 'm1402', 'm1403', 'm1404']\n# Ensure columns are in the correct order\ndf_target = df_merged[['County', 'm1401', 'm1402', 'm1403', 'm1404']]\n\n# Step 5: Export the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_31/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "County,m1401,m1402,m1403,m1404\nAdams,\"$683,098\",\"$454,940\",\"$477,275\",\"$452,636\"\nAlamosa,NR,NR,NR,NR\nArapahoe,\"$1,188,232\",\"$1,210,155\",\"$1,490,219\",\"$1,517,828\"\nArchuleta,NR,NR,NR,NR\nBoulder,\"$3,417,873\",\"$3,345,413\",\"$3,505,875\",\"$3,136,133\"\nChaffee,\"$83,714\",NR,NR,NR\nClear Creek,\"$143,736\",\"$111,164\",\"$106,955\",\"$92,791\"\nCostilla,NR,NR,NR,NR\nDenver,\"$15,351,083\",\"$14,680,476\",\"$16,102,218\",\"$15,064,678\"\nEagle,\"$203,060\",\"$185,360\",\"$201,147\",\"$178,397\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.7209053039550781
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.4655,
+          "cost": 0.0020056,
+          "latency": 6.75028657913208,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.897 + 0.034) / 2 = 0.466 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.897 (precision=0.812, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['m1404'] \u2192 m1401; ['m1403'] \u2192 m1401; ['m1402'] \u2192 m1401.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.000\n  Column 'm1401': Jaccard=0.047\n  Column 'm1402': Jaccard=0.031\n  Column 'm1403': Jaccard=0.047\n  Column 'm1404': Jaccard=0.047",
+          "generated_samples": "Schema: ['County', 'm1401', 'm1402', 'm1403', 'm1404']\nNumber of Tuples: 16\nExamples:\nCounty    m1401    m1402    m1403    m1404\nPueblo $419,894 $418,489 $375,711 $401,959\nTeller       NR       NR       NR       NR\n  Weld $657,150 $671,024 $580,961 $519,545",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_31/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_31/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_31/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_31/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_31/training_4.csv\", index_col=0)\n\n# Join source2 with source3 on County\ndf = pd.merge(source2, source3, on=\"County\", how=\"inner\")\n\n# Join the result with source0 on County\ndf = pd.merge(df, source0, on=\"County\", how=\"inner\")\n\n# Join the result with source4 on County\ndf = pd.merge(df, source4, on=\"County\", how=\"inner\")\n\n# Join the result with source1 on County to filter only counties present in source1\ndf = pd.merge(df, source1, on=\"County\", how=\"inner\")\n\n# Group by County to ensure uniqueness and remove duplicates if any\ndf = df.groupby(\"County\", as_index=False).first()\n\n# Write the final output\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_31/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.170562744140625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9898.271560668945,
+        "critique": 6847.002983093262
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "4_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4662,
+        "cost": 0.0056224000000000005,
+        "latency": 14.107229471206665,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.400 + 0.532) / 2 = 0.466 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.458, range overlap=0.686.\nGround truth candidate keys: {is_goal, is_goal_count1}; {is_goal, season_sum}; {game_season, is_goal}.\nGenerated table candidate keys: {game_season, is_goal_count1}; {game_season, season_sum}.\nKeys present in ground truth but absent in generated: {is_goal_count1, is_goal}; {is_goal, season_sum}; {game_season, is_goal}.\nSpurious keys in generated not present in ground truth: {game_season, season_sum}; {is_goal_count1, game_season}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.400 (precision=0.500, recall=0.333).\nSpurious FDs in generated (not in ground truth): ['is_goal_count1'] \u2192 is_goal; ['season_sum'] \u2192 is_goal.\nMissing FDs from ground truth: ['game_season'] \u2192 is_goal_count1; ['is_goal_count1'] \u2192 game_season; ['season_sum'] \u2192 game_season; ['game_season'] \u2192 season_sum.\nDistribution Analysis (numerical columns with issues):\n  Column 'season_sum': range overlap=0.367, JS similarity=0.306\n    Generated    \u2014 min: 0.0, max: 1284.0, mean: 203.4667\n    Ground Truth \u2014 min: 157.0, max: 628.0, mean: 490.0007\n  Column 'is_goal_count1': range overlap=0.693, JS similarity=0.105\n    Generated    \u2014 min: 0.0, max: 1284.0, mean: 203.4667\n    Ground Truth \u2014 min: 318.0, max: 1395.0, mean: 1078.7173\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'game_season': Jaccard=0.414",
+        "generated_samples": "Schema: ['game_season', 'is_goal', 'season_sum', 'is_goal_count1']\nNumber of Tuples: 60\nExamples:\ngame_season  is_goal  season_sum  is_goal_count1\n    2012-13      0.0    11558700             572\n    2010-11      NaN     5633387               0\n    2005-06      NaN      584685               0",
+        "code": "import pandas as pd\n\n# Load the intermediate aggregated data from the first operation\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_21/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# Ensure correct dtypes and column order as per target schema\n# Target schema: ['game_season': string, 'is_goal': float, 'season_sum': integer, 'is_goal_count1': integer]\n\n# Convert game_season to string\ndf['game_season'] = df['game_season'].astype(str)\n\n# Convert is_goal to float (already float but ensure no issues)\ndf['is_goal'] = df['is_goal'].astype(float)\n\n# Convert season_sum to integer (sum of shot_id_number, which was aggregated)\ndf['season_sum'] = df['season_sum'].fillna(0).astype(int)\n\n# Convert is_goal_count1 to integer (count of is_goal)\ndf['is_goal_count1'] = df['is_goal_count1'].fillna(0).astype(int)\n\n# Reorder columns to match target schema exactly\ndf = df[['game_season', 'is_goal', 'season_sum', 'is_goal_count1']]\n\n# Save the final target table to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_21/target_multisource.csv\"\ndf.to_csv(output_path, index=False)",
+        "generated_csv_head": "game_season,is_goal,season_sum,is_goal_count1\n1996-97,0.0,4020782,168\n1996-97,1.0,2941871,123\n1996-97,,2150075,0\n1997-98,0.0,8757514,361\n1997-98,1.0,6440369,266\n1997-98,,4317465,0\n1998-99,0.0,8029545,314\n1998-99,1.0,6998267,276\n1998-99,,4117883,0\n1999-00,0.0,14521502,542\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4276504516601562
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5039,
+          "cost": 0.0022060000000000005,
+          "latency": 8.553041696548462,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.615 + 0.392) / 2 = 0.504 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.324, range overlap=0.447.\nGround truth candidate keys: {is_goal, is_goal_count1}; {is_goal, season_sum}; {game_season, is_goal}.\nGenerated table candidate keys: {is_goal_count1}; {game_season}.\nKeys present in ground truth but absent in generated: {is_goal_count1, is_goal}; {is_goal, season_sum}; {game_season, is_goal}.\nSpurious keys in generated not present in ground truth: {is_goal_count1}; {game_season}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.615 (precision=0.571, recall=0.667).\nSpurious FDs in generated (not in ground truth): ['season_sum'] \u2192 is_goal; ['game_season'] \u2192 is_goal; ['is_goal_count1'] \u2192 is_goal.\nMissing FDs from ground truth: ['season_sum'] \u2192 is_goal_count1; ['season_sum'] \u2192 game_season.\nDistribution Analysis (numerical columns with issues):\n  Column 'is_goal': range overlap=0.000, JS similarity=0.410\n    Generated    \u2014 min: 1.0, max: 1.0, mean: 1.0\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.4551\n  Column 'season_sum': range overlap=0.571, JS similarity=0.251\n    Generated    \u2014 min: 17.0, max: 506.0, mean: 225.1579\n    Ground Truth \u2014 min: 157.0, max: 628.0, mean: 490.0007\n  Column 'is_goal_count1': range overlap=0.769, JS similarity=0.309\n    Generated    \u2014 min: 61.0, max: 1462.0, mean: 653.0\n    Ground Truth \u2014 min: 318.0, max: 1395.0, mean: 1078.7173\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'game_season': Jaccard=0.414",
+          "generated_samples": "Schema: ['game_season', 'is_goal', 'season_sum', 'is_goal_count1']\nNumber of Tuples: 19\nExamples:\ngame_season  is_goal  season_sum  is_goal_count1\n    2007-08      1.0         132             358\n    2005-06      1.0          45             122\n    1997-98      1.0         266             804",
+          "code": "import pandas as pd\n\n# Read source data\nsource0 = pd.read_csv(\n    \"autopipeline-benchmarks/github-pipelines/length4_21/training_0.csv\", index_col=0\n)\n\n# The target schema is ['game_season': string, 'is_goal': float, 'season_sum': integer, 'is_goal_count1': integer]\n# From the failed pipeline and hints:\n# - The key is game_season\n# - is_goal is float, but in target examples it is 0.0 or 1.0 (float)\n# - season_sum is integer, likely sum of is_goal counts or shots\n# - is_goal_count1 is integer, likely count of is_goal occurrences\n\n# Fixing the pipeline:\n# 1) Use only Source4_21_0 (only one source)\n# 2) Group by game_season only (primary key, string)\n# 3) Aggregate sum of is_goal (float) as season_sum (integer)\n# 4) Aggregate count of is_goal as is_goal_count1 (integer)\n# 5) For is_goal column in target, it is float but with values 0.0 or 1.0, \n#    in target examples it is always 1.0 or 0.0, but since it is not a key, \n#    we can set it as 1.0 (or the max of is_goal per season) to match target examples.\n\n# Prepare is_goal column for aggregation: fill NaN with 0 (no goal)\nsource0['is_goal'] = source0['is_goal'].fillna(0)\n\n# Aggregate\nagg_df = source0.groupby('game_season').agg(\n    season_sum=('is_goal', 'sum'),\n    is_goal_count1=('is_goal', 'count'),\n    max_is_goal=('is_goal', 'max')\n).reset_index()\n\n# Rename columns to match target schema\nagg_df.rename(columns={'max_is_goal': 'is_goal'}, inplace=True)\n\n# Convert season_sum and is_goal_count1 to int\nagg_df['season_sum'] = agg_df['season_sum'].astype(int)\nagg_df['is_goal_count1'] = agg_df['is_goal_count1'].astype(int)\n\n# Reorder columns to match target schema\nagg_df = agg_df[['game_season', 'is_goal', 'season_sum', 'is_goal_count1']]\n\n# Write output\nagg_df.to_csv(\n    \"autopipeline-benchmarks/github-pipelines/length4_21/target_multisource_critique_history.csv\",\n    index=False\n)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.241922378540039
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14149.806499481201,
+        "critique": 8845.67666053772
+      }
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+Case: 1_51
+Status: CORRECT
+Timestamp: 2026-02-24T02:15:47.823009
+Duration: 299.97 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_51/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score', 'School ID', 'type', 'size', 'budget']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_51
+2. Target Schema: ['Student ID': integer, 'student_name': string, 'gender': string, 'grade': string, 'school_name': string, 'reading_score': integer, 'math_score': integer, 'School ID': integer, 'type': string, 'size': integer, 'budget': integer]
+3. Target Examples: There are 19585 available target examples:        Student ID        student_name gender grade            school_name  \
+6169         6169      Spencer Porter      M   9th    Shelton High School   
+10289       10289         Ralph Carey      M  10th  Hernandez High School   
+12993       12993         Judy Warren      F   9th    Griffin High School   
+15748       15748      Matthew Moreno      M   9th     Wilson High School   
+12343       12343       Wayne Edwards      M   9th    Griffin High School   
+...           ...                 ...    ...   ...                    ...   
+7088         7088        Gregory Koch      M  10th    Shelton High School   
+2512         2512        Cheryl Adams      F  12th      Huang High School   
+1195         1195      Philip Hendrix      M  11th      Huang High School   
+1395         1395     Joseph Atkinson      M  11th      Huang High School   
+15274       15274  Timothy Chavez Jr.      M   9th     Wilson High School   
+
+       reading_score  math_score  School ID      type  size   budget  
+6169              89          84          2   Charter  1761  1056600  
+10289             73          55          3  District  4635  3022020  
+12993             91          68          4   Charter  1468   917500  
+15748             79          89          5   Charter  2283  1319574  
+12343             89          75          4   Charter  1468   917500  
+...              ...         ...        ...       ...   ...      ...  
+7088              79          69          2   Charter  1761  1056600  
+2512              96          71          0  District  2917  1910635  
+1195              64          92          0  District  2917  1910635  
+1395              79          60          0  District  2917  1910635  
+15274             84          96          5   Charter  2283  1319574  
+
+[1958 rows x 11 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_51_0
+	Source 0 Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']
+	Source 0 Examples: 	 Source 0 contains 19585 tuples, with examples as follows: 
+   Student ID     student_name gender grade        school_name  reading_score  \
+0           0     Paul Bradley      M   9th  Huang High School             66   
+1           1     Victor Smith      M  12th  Huang High School             94   
+2           2  Kevin Rodriguez      M  12th  Huang High School             90   
+
+   math_score  
+0          79  
+1          61  
+2          60  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_51/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_51_1
+	Source 1 Schema: ['School ID', 'school_name', 'type', 'size', 'budget']
+	Source 1 Examples: 	 Source 1 contains 15 tuples, with examples as follows: 
+   School ID           school_name      type  size   budget
+0          0     Huang High School  District  2917  1910635
+1          1  Figueroa High School  District  2949  1884411
+2          2   Shelton High School   Charter  1761  1056600
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_51/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_51/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Load source data
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_51/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_51/test_1.csv"
+
+# Read Source1_51_0 with index_col=0
+df_students = pd.read_csv(source0_path, index_col=0)
+
+# Read Source1_51_1 with index_col=0
+df_schools = pd.read_csv(source1_path, index_col=0)
+
+# Join on 'School ID' using inner join to preserve all students with matching school info
+# Note: Source1_51_0 does not have 'School ID' column, so first we need to map 'School ID' from df_schools by joining on 'school_name'
+
+# Map 'School ID' from df_schools to df_students by joining on 'school_name'
+df_students = df_students.merge(
+    df_schools[['School ID', 'school_name']],
+    how='left',
+    left_on='school_name',
+    right_on='school_name'
+)
+
+# Now join df_students with df_schools on 'School ID' to get the rest of school attributes
+df_merged = df_students.merge(
+    df_schools.drop(columns=['school_name']),
+    how='inner',
+    on='School ID',
+    suffixes=('_student', '_school')
+)
+
+# After join, select and cast columns to match target schema and order:
+# Target Schema: ['Student ID': int, 'student_name': str, 'gender': str, 'grade': str, 'school_name': str,
+#                 'reading_score': int, 'math_score': int, 'School ID': int, 'type': str, 'size': int, 'budget': int]
+
+# Columns in df_merged:
+# From students: 'Student ID', 'student_name', 'gender', 'grade', 'school_name' (from students), 'reading_score', 'math_score', 'School ID'
+# From schools: 'type', 'size', 'budget'
+
+# Ensure correct dtypes and column order
+df_final = pd.DataFrame({
+    'Student ID': df_merged['Student ID'].astype(int),
+    'student_name': df_merged['student_name'].astype(str),
+    'gender': df_merged['gender'].astype(str),
+    'grade': df_merged['grade'].astype(str),
+    'school_name': df_merged['school_name'].astype(str),
+    'reading_score': df_merged['reading_score'].astype(int),
+    'math_score': df_merged['math_score'].astype(int),
+    'School ID': df_merged['School ID'].astype(int),
+    'type': df_merged['type'].astype(str),
+    'size': df_merged['size'].astype(int),
+    'budget': df_merged['budget'].astype(int)
+})
+
+# Save to CSV
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_51/target_multisource_agentic.csv"
+df_final.to_csv(output_path, index=False)
+```

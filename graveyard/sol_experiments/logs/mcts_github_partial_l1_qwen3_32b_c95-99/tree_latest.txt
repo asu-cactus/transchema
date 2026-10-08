@@ -1,0 +1,10 @@
+=== MCTS tree after iteration 1 ===
+ROOT  v=3  q=0.665  Σr=1.995  score=0.736 ★
+├── UNION : [Source1_99_0, Source1_99_0, Source1_99_0, Source1_99_0, Source1  v=1  q=0.736  Σr=0.736  score=0.736 [script] ★
+├── GROUP_BY : [user_id]  v=1  q=0.629  Σr=0.629  score=0.629 [script]
+├── UNPIVOT  v=1  q=0.629  Σr=0.629  score=0.629 [script]
+├── UNION : [Source1_99_0, Source1_99_X]  // Assuming additional source(s) w  v=0  q=0.000  Σr=0.000  score=0.000
+├── JOIN : [[Source1_99_0, Source1_99_1]]  // Hypothetical join with another  v=0  q=0.000  Σr=0.000  score=0.000
+├── GROUP_BY : [Source1_99_0.user_id, Source1_99_0.timestamp]  // For dedupl  v=0  q=0.000  Σr=0.000  score=0.000
+├── GROUP_BY : [Source1_99_0.source, Source1_99_0.device, Source1_99_0.opera  v=0  q=0.000  Σr=0.000  score=0.000
+└── PIVOT  v=0  q=0.000  Σr=0.000  score=0.000

@@ -1,0 +1,46 @@
+{
+  "case": "2_1",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.4078,
+        "cost": 0.0017268000000000001,
+        "latency": 9.388538360595703,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.816) / 2 = 0.408 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.881, range overlap=0.750.\nGround truth candidate keys: {userId, movieId}; {movieId, timestamp}.\nGenerated table candidate keys: {userId, timestamp}; {movieId, timestamp}.\nKeys present in ground truth but absent in generated: {userId, movieId}.\nSpurious keys in generated not present in ground truth: {timestamp, userId}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['timestamp', 'userId'] \u2192 rating; ['userId'] \u2192 movieId; ['movieId'] \u2192 userId.\nMissing FDs from ground truth: ['movieId', 'userId'] \u2192 timestamp; ['movieId', 'timestamp'] \u2192 userId; ['movieId', 'timestamp'] \u2192 rating; ['movieId', 'userId'] \u2192 rating.\nDistribution Analysis (numerical columns with issues):\n  Column 'userId': range overlap=0.002, JS similarity=0.708\n    Generated    \u2014 min: 1.0, max: 161918.0, mean: 12946.5531\n    Ground Truth \u2014 min: 1.0, max: 367.0, mean: 177.0073\n  Column 'timestamp': range overlap=1.000, JS similarity=0.868\n    Generated    \u2014 min: 828212412.0, max: 1476469445.0, mean: 1124461988.338\n    Ground Truth \u2014 min: 828213150.0, max: 1476640644.0, mean: 1135655184.5384",
+        "generated_samples": "Schema: ['userId', 'movieId', 'rating', 'timestamp']\nNumber of Tuples: 20000\nExamples:\n userId  movieId  rating  timestamp\n    391      300     4.0  891533884\n    521     1597     4.0 1370072111\n    380    68073     2.5 1304471413",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_1/training_0.csv\"\n]\n\n# List to hold dataframes\ndfs = []\n\n# Load each source file\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure columns are exactly as target schema and types\n    # Target schema: ['userId': int, 'movieId': int, 'rating': float, 'timestamp': int]\n    df = df[['userId', 'movieId', 'rating', 'timestamp']]\n    df['userId'] = df['userId'].astype(int)\n    df['movieId'] = df['movieId'].astype(int)\n    df['rating'] = df['rating'].astype(float)\n    df['timestamp'] = df['timestamp'].astype(int)\n    dfs.append(df)\n\n# Since only one source table is given and it matches target schema,\n# the transformation is just loading and saving.\n\n# Concatenate all source tables if there were multiple (union)\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/target_multisource.csv\", index=False)",
+        "generated_csv_head": "userId,movieId,rating,timestamp\n515,2422,5.0,1286399024\n624,88672,3.0,1403449194\n518,1081,5.0,945362262\n602,147,3.0,842359924\n574,1517,2.0,1232810465\n553,118105,4.0,1423011525\n599,90576,5.0,1344134770\n461,3182,3.0,1096527500\n584,163,3.5,1276157463\n471,27075,3.0,1239659793\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.7199516296386719
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0020308,
+          "latency": 8.9902925491333,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read all source tables with index_col=0\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/training_2.csv\", index_col=0)\n\n# Union all source tables\nresult = pd.concat([source0, source1, source2], ignore_index=True)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_1/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.04172325134277344
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9391.820192337036,
+        "critique": 9020.97749710083
+      }
+    }
+  ]
+}

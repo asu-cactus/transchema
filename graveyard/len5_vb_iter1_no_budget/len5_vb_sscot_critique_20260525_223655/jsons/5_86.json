@@ -1,0 +1,46 @@
+{
+  "case": "5_86",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7365,
+        "cost": 0.0022788,
+        "latency": 41.37452292442322,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.473) / 2 = 0.737 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.895, range overlap=0.051.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.051, JS similarity=0.895\n    Generated    \u2014 min: -14141.0, max: 12749.0, mean: 177.1078\n    Ground Truth \u2014 min: 891.0, max: 2253.0, mean: 1399.6667",
+        "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 7152\nExamples:\n Profit\n   -150\n    133\n    -60",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_86/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_86/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length5_86/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length5_86/training_3.csv\"\nsource4_path = \"autopipeline-benchmarks/github-pipelines/length5_86/training_4.csv\"\n\n# Load all source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\ndf2 = pd.read_csv(source2_path, index_col=0)\ndf3 = pd.read_csv(source3_path, index_col=0)\ndf4 = pd.read_csv(source4_path, index_col=0)\n\n# Step 1: Normalize column names for join keys to be consistent\n# Source0 has 'Order_ID' and 'Ship_id'\n# Source2 has 'Ord_id', 'Ship_id', 'Cust_id'\n# Source4 has 'Order_ID', 'Ord_id'\n# Source1 has 'Cust_id'\n# Source3 has 'Prod_id'\n\n# Rename columns to unify keys for joining:\n# - unify Order_ID and Ord_id: \n#   Source0: Order_ID (int), Source4: Order_ID (int), Source4: Ord_id (str), Source2: Ord_id (str)\n# We will keep both Order_ID and Ord_id as separate keys because Order_ID is int and Ord_id is string with prefix \"Ord_\"\n# But we can join Source0 and Source4 on Order_ID\n# Then join Source4 and Source2 on Ord_id\n# Source2 and Source1 join on Cust_id\n# Source2 and Source3 join on Prod_id\n\n# Step 2: Join Source0 and Source4 on Order_ID (int)\ndf0_4 = pd.merge(df0, df4, on=\"Order_ID\", how=\"inner\")\n\n# Step 3: Join the above with Source2 on Ord_id (string)\ndf0_4_2 = pd.merge(df0_4, df2, on=\"Ord_id\", how=\"inner\")\n\n# Step 4: Join with Source1 on Cust_id\ndf_all_1 = pd.merge(df0_4_2, df1, on=\"Cust_id\", how=\"inner\")\n\n# Step 5: Join with Source3 on Prod_id\ndf_all = pd.merge(df_all_1, df3, on=\"Prod_id\", how=\"inner\")\n\n# Step 6: Extract the target column 'Profit' from the joined dataframe\n# According to the target schema, only 'Profit' column is needed as integer\n# Source2 'Profit' column is float, target expects integer, so convert by rounding and then to int\ndf_all['Profit'] = df_all['Profit'].round().astype(int)\n\n# Step 7: Select only the 'Profit' column for the target table\ntarget_df = df_all[['Profit']]\n\n# Step 8: Save the result to the specified path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "Profit\n-213\n-695\n-847\n2267\n-744\n-21\n-236\n-21\n-236\n-21\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7700920104980469
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0024352,
+          "latency": 7.8770692348480225,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 1266661.0, max: 1266661.0, mean: 1266661.0\n    Ground Truth \u2014 min: 891.0, max: 2253.0, mean: 1399.6667",
+          "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 1\nExamples:\n Profit\n1266661",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_4.csv\", index_col=0)\n\n# Join Source5_86_0 and Source5_86_4 on Order_ID\njoined_0_4 = pd.merge(source0, source4, how='inner', left_on='Order_ID', right_on='Order_ID')\n\n# Join the above result with Source5_86_2 on Order_ID = Ord_id (note: source2 has Ord_id, source4 has Ord_id, but source0 and source4 share Order_ID)\n# The join should be on joined_0_4.Order_ID == source2.Ord_id, but source2.Ord_id is like 'Ord_1082' while joined_0_4.Order_ID is int\n# So we need to align keys: source0.Order_ID is int, source4.Order_ID is int, source2.Ord_id is string 'Ord_xxx'\n# We must join on joined_0_4.Ord_id == source2.Ord_id (both string)\njoined_0_4_2 = pd.merge(joined_0_4, source2, how='inner', left_on='Ord_id', right_on='Ord_id')\n\n# Join with Source5_86_1 on Cust_id\njoined_0_4_2_1 = pd.merge(joined_0_4_2, source1, how='inner', on='Cust_id')\n\n# Join with Source5_86_3 on Prod_id\nfinal_join = pd.merge(joined_0_4_2_1, source3, how='inner', on='Prod_id')\n\n# Aggregate sum of Profit (no group by since target has only one column Profit and no keys)\nresult = final_join[['Profit']].sum().to_frame().T\n\n# Ensure column name and type match target schema\nresult['Profit'] = result['Profit'].astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.5950927734375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 41437.90292739868,
+        "critique": 7962.93830871582
+      }
+    }
+  ]
+}

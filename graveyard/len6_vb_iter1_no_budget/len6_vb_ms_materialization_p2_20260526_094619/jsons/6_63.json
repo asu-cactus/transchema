@@ -1,0 +1,29 @@
+{
+  "case": "6_63",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9278,
+        "cost": 0.006450000000000001,
+        "latency": 19.655879974365234,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.856) / 2 = 0.928 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=1.000.\nGround truth candidate keys: {nombre, a\u00f1o}.\nGenerated table candidate keys: {nombre, a\u00f1o}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'n_aprobados': range overlap=1.000, JS similarity=0.942\n    Generated    \u2014 min: 0.0, max: 152.0, mean: 11.6943\n    Ground Truth \u2014 min: 0.0, max: 152.0, mean: 13.8868\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'nombre': Jaccard=0.469",
+        "generated_samples": "Schema: ['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']\nNumber of Tuples: 265\nExamples:\n              nombre  n_concursados  n_aprobados  a\u00f1o\nUNIV. DE ANTOFAGASTA             13            6 2011\n  UNIV. DE LOS ANDES             26            9 2014\n    UNIV. DE ATACAMA              1            1 2015",
+        "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_63/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_63/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_63/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_63/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_63/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_63/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_63/training_6.csv\", index_col=0)\n\n# Concatenate all sources (UNION)\ndf = pd.concat([source0, source1, source2, source3, source4, source5, source6], ignore_index=True)\n\n# Ensure column types match target schema:\n# 'nombre': string\ndf['nombre'] = df['nombre'].astype(str)\n# 'n_concursados': integer\ndf['n_concursados'] = df['n_concursados'].astype(int)\n# 'n_aprobados': integer\ndf['n_aprobados'] = df['n_aprobados'].astype(int)\n# 'a\u00f1o': integer\ndf['a\u00f1o'] = df['a\u00f1o'].astype(int)\n\n# The target key is (nombre, a\u00f1o), so drop duplicates on these keys keeping the first occurrence\ndf = df.drop_duplicates(subset=['nombre', 'a\u00f1o'], keep='first')\n\n# Sort by 'nombre' and 'a\u00f1o' for consistent output (optional)\ndf = df.sort_values(by=['nombre', 'a\u00f1o']).reset_index(drop=True)\n\n# Write the final target table to the specified path without the index column\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_63/target_multisource.csv\", index=False)",
+        "generated_csv_head": "nombre,n_concursados,n_aprobados,a\u00f1o\nOTRAS UNIVERSIDADES,32,0,2010\nOTRAS UNIVERSIDADES,17,0,2011\nOTRAS UNIVERSIDADES,15,0,2012\nPONT. UNIV. CATOLICA DE CHILE,180,100,2010\nPONT. UNIV. CATOLICA DE CHILE,160,103,2011\nPONT. UNIV. CATOLICA DE CHILE,142,89,2012\nPONT. UNIV. CATOLICA DE CHILE,202,118,2014\nPONT. UNIV. CATOLICA DE CHILE,225,108,2015\nPONT. UNIV. CATOLICA DE CHILE,268,113,2016\nPONT. UNIV. CATOLICA DE VALPARAISO,53,13,2010\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9284019470214844
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 19723.384857177734,
+        "critique": 0.0
+      }
+    }
+  ]
+}

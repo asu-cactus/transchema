@@ -1,0 +1,46 @@
+{
+  "case": "2_21",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7558,
+        "cost": 0.003648,
+        "latency": 15.265820503234863,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.762) / 2 = 0.756 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.817, range overlap=0.745.\nGround truth candidate keys: {state, date}.\nGenerated table candidate keys: {state, date, draw_sales}.\nKeys present in ground truth but absent in generated: {date, state}.\nSpurious keys in generated not present in ground truth: {date, draw_sales, state}.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['date', 'draw_sales', 'state'] \u2192 year.\nMissing FDs from ground truth: ['date', 'state'] \u2192 draw_sales.\nDistribution Analysis (numerical columns with issues):\n  Column 'draw_sales': range overlap=0.491, JS similarity=0.989\n    Generated    \u2014 min: 0.0, max: 87836074.0, mean: 746605.4413\n    Ground Truth \u2014 min: 0.0, max: 179007492.0, mean: 758481.4415\n  Column 'year': range overlap=1.000, JS similarity=0.644\n    Generated    \u2014 min: 2010.0, max: 2019.0, mean: 2013.1278\n    Ground Truth \u2014 min: 2010.0, max: 2019.0, mean: 2015.016\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'date': Jaccard=0.484",
+        "generated_samples": "Schema: ['state', 'date', 'draw_sales', 'year']\nNumber of Tuples: 40000\nExamples:\nstate       date  draw_sales  year\n   DE 2011-03-19      184741  2011\n   TN 2011-02-26     1059894  2011\n   VA 2013-10-09      899536  2013",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_21/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length2_21/training_1.csv\"\n]\n\n# Read source tables with index_col=0 to ignore the numerical index column\ndf_list = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    df_list.append(df)\n\n# UNION operation on Source2_21_0 and Source2_21_1\ndf_union = pd.concat(df_list, ignore_index=True)\n\n# Convert 'draw_sales' to integer safely (handle floats and missing values)\n# First, fill NA with 0 (or could drop, but prompt does not specify dropping)\ndf_union['draw_sales'] = pd.to_numeric(df_union['draw_sales'], errors='coerce').fillna(0).astype(int)\n\n# Add 'year' column extracted from 'date' column (format YYYY-MM-DD)\ndf_union['year'] = pd.to_datetime(df_union['date'], errors='coerce').dt.year\n\n# Ensure 'state' and 'date' columns are string type\ndf_union['state'] = df_union['state'].astype(str)\ndf_union['date'] = df_union['date'].astype(str)\n\n# Reorder columns to match target schema: ['state', 'date', 'draw_sales', 'year']\ndf_target = df_union[['state', 'date', 'draw_sales', 'year']]\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_21/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "state,date,draw_sales,year\nOK,2014-03-26,269860,2014\nMI,2010-08-07,542606,2010\nFL,2010-04-03,4057842,2010\nKY,2014-01-15,531438,2014\nPA,2014-02-01,3255620,2014\nOR,2011-09-03,328931,2011\nMA,2010-02-20,511238,2010\nDE,2014-01-08,142530,2014\nMO,2010-10-06,723480,2010\nWV,2013-12-25,251286,2013\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.504587173461914
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8809,
+          "cost": 0.0017152,
+          "latency": 6.7563605308532715,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.762) / 2 = 0.881 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.817, range overlap=0.745.\nGround truth candidate keys: {state, date}.\nGenerated table candidate keys: {state, date}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'draw_sales': range overlap=0.491, JS similarity=0.988\n    Generated    \u2014 min: 0.0, max: 87836074.0, mean: 762678.8991\n    Ground Truth \u2014 min: 0.0, max: 179007492.0, mean: 758481.4415\n  Column 'year': range overlap=1.000, JS similarity=0.646\n    Generated    \u2014 min: 2010.0, max: 2019.0, mean: 2013.135\n    Ground Truth \u2014 min: 2010.0, max: 2019.0, mean: 2015.016\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'date': Jaccard=0.484",
+          "generated_samples": "Schema: ['state', 'date', 'draw_sales', 'year']\nNumber of Tuples: 39157\nExamples:\nstate       date  draw_sales  year\n   RI 2016-02-16       56748  2016\n   MI 2011-09-27     1382873  2011\n   TX 2011-06-17     1406587  2011",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/training_1.csv\", index_col=0)\n\n# UNION the two sources\nunion_df = pd.concat([source0, source1], ignore_index=True)\n\n# GROUP BY state and date, aggregate draw_sales by sum\ngrouped = union_df.groupby(['state', 'date'], as_index=False).agg({'draw_sales': 'sum'})\n\n# Extract year from date column (date format is string 'YYYY-MM-DD')\ngrouped['year'] = grouped['date'].str[:4].astype(int)\n\n# Ensure draw_sales is integer type as in target schema\ngrouped['draw_sales'] = grouped['draw_sales'].astype(int)\n\n# Reorder columns to match target schema\nfinal_df = grouped[['state', 'date', 'draw_sales', 'year']]\n\n# Write to target file\nfinal_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_21/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.6753673553466797
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15331.21132850647,
+        "critique": 10105.797290802002
+      }
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+Case: 4_98
+Status: INCORRECT
+Timestamp: 2026-02-25T12:17:45.643187
+Duration: 203.05 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_86_100/case_4_98/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.8006914433880727
+  matched_columns: ['1-2-3', '0-1-1', '3-1-3', 'Braund, Mr. Owen Harris-Cumings, Mrs. John Bradley (Florence Briggs Thayer)-Heikkinen, Miss. Laina', 'male-female-female', '1-1-0', '0-0-0', 'A/5 21171-PC 17599-STON/O2. 3101282', '7-71-7']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_98
+2. Target Schema: ['PassengerId': integer, 'Survived': integer, 'Pclass': integer, 'Name': string, 'Sex': string, 'Age': float, 'SibSp': integer, 'Parch': integer, 'Ticket': string, 'Fare': float, 'Cabin': string, 'Embarked': string, 'Fare_x': float, 'Fare_y': float]
+3. Target Examples: There are 445 available target examples:      PassengerId  Survived  Pclass  \
+159          244         0       3   
+192          299         1       1   
+83           132         0       3   
+114          176         0       3   
+223          356         0       3   
+108          169         0       1   
+260          422         0       3   
+14            30         0       3   
+427          403         0       3   
+372          276         1       1   
+90           145         0       2   
+403          346         1       2   
+198          314         0       3   
+181          283         0       3   
+26            52         0       3   
+222          355         0       3   
+167          261         0       3   
+321          129         1       3   
+440          436         1       1   
+248          402         0       3   
+202          322         0       3   
+245          398         0       2   
+102          160         0       3   
+421          388         1       2   
+58            97         0       1   
+428          405         0       3   
+401          338         1       1   
+195          305         0       3   
+228          366         0       3   
+177          278         0       2   
+193          302         1       3   
+381          301         1       3   
+316          112         0       3   
+221          354         0       3   
+306           72         0       3   
+64           105         0       3   
+188          293         0       2   
+148          226         0       3   
+103          161         0       3   
+391          319         1       1   
+411          367         1       1   
+81           130         0       3   
+294           42         0       2   
+13            28         0       1   
+
+                                                  Name     Sex   Age  SibSp  \
+159                      Maenpaa, Mr. Matti Alexanteri    male  22.0      0   
+192                              Saalfeld, Mr. Adolphe    male   NaN      0   
+83                      Coelho, Mr. Domingos Fernandeo    male  20.0      0   
+114                             Klasen, Mr. Klas Albin    male  18.0      1   
+223                        Vanden Steen, Mr. Leo Peter    male  28.0      0   
+108                                Baumann, Mr. John D    male   NaN      0   
+260                                Charters, Mr. David    male  21.0      0   
+14                                 Todoroff, Mr. Lalio    male   NaN      0   
+427                           Jussila, Miss. Mari Aina  female  21.0      1   
+372                  Andrews, Miss. Kornelia Theodosia  female  63.0      1   
+90                          Andrew, Mr. Edgardo Samuel    male  18.0      0   
+403                      Brown, Miss. Amelia "Mildred"  female  24.0      0   
+198                             Hendekovic, Mr. Ignjac    male  28.0      0   
+181                          de Pelsmaeker, Mr. Alfons    male  16.0      0   
+26                        Nosworthy, Mr. Richard Cater    male  21.0      0   
+222                                  Yousif, Mr. Wazli    male   NaN      0   
+167                                  Smith, Mr. Thomas    male   NaN      0   
+321                                  Peter, Miss. Anna  female   NaN      1   
+440                          Carter, Miss. Lucile Polk  female  14.0      1   
+248                                    Adams, Mr. John    male  26.0      0   
+202                                   Danoff, Mr. Yoto    male  27.0      0   
+245                            McKane, Mr. Peter David    male  46.0      0   
+102                         Sage, Master. Thomas Henry    male   NaN      8   
+421                                   Buss, Miss. Kate  female  36.0      0   
+58                           Goldschmidt, Mr. George B    male  71.0      0   
+428                            Oreskovic, Miss. Marija  female  20.0      0   
+401                    Burns, Miss. Elizabeth Margaret  female  41.0      0   
+195                  Williams, Mr. Howard Hugh "Harry"    male   NaN      0   
+228                     Adahl, Mr. Mauritz Nils Martin    male  30.0      0   
+177                        Parkes, Mr. Francis "Frank"    male   NaN      0   
+193                                 McCoy, Mr. Bernard    male   NaN      2   
+381           Kelly, Miss. Anna Katherine "Annie Kate"  female   NaN      0   
+316                               Zabour, Miss. Hileni  female  14.5      1   
+221                          Arnold-Franchi, Mr. Josef    male  25.0      1   
+306                         Goodwin, Miss. Lillian Amy  female  16.0      5   
+64                      Gustafsson, Mr. Anders Vilhelm    male  37.0      2   
+188                             Levy, Mr. Rene Jacques    male  36.0      0   
+148                       Berglund, Mr. Karl Ivar Sven    male  22.0      0   
+103                           Cribb, Mr. John Hatfield    male  44.0      0   
+391                           Wick, Miss. Mary Natalie  female  31.0      0   
+411   Warren, Mrs. Frank Manley (Anna Sophia Atkinson)  female  60.0      1   
+81                                  Ekstrom, Mr. Johan    male  45.0      0   
+294  Turpin, Mrs. William John Robert (Dorothy Ann ...  female  27.0      1   
+13                      Fortune, Mr. Charles Alexander    male  19.0      3   
+
+     Parch              Ticket      Fare        Cabin Embarked  Fare_x  \
+159      0   STON/O 2. 3101275    7.1250          NaN        S    10.5   
+192      0               19988   30.5000         C106        S    10.5   
+83       0  SOTON/O.Q. 3101307    7.0500          NaN        S    10.5   
+114      1              350404    7.8542          NaN        S    10.5   
+223      0              345783    9.5000          NaN        S    10.5   
+108      0            PC 17318   25.9250          NaN        S    10.5   
+260      0          A/5. 13032    7.7333          NaN        Q    10.5   
+14       0              349216    7.8958          NaN        S    10.5   
+427      0                4137    9.8250          NaN        S    19.5   
+372      0               13502   77.9583           D7        S    19.5   
+90       0              231945   11.5000          NaN        S    10.5   
+403      0              248733   13.0000          F33        S    19.5   
+198      0              349243    7.8958          NaN        S    10.5   
+181      0              345778    9.5000          NaN        S    10.5   
+26       0          A/4. 39886    7.8000          NaN        S    10.5   
+222      0                2647    7.2250          NaN        C    10.5   
+167      0              384461    7.7500          NaN        Q    10.5   
+321      1                2668   22.3583        F E69        C    19.5   
+440      2              113760  120.0000      B96 B98        S    19.5   
+248      0              341826    8.0500          NaN        S    10.5   
+202      0              349219    7.8958          NaN        S    10.5   
+245      0               28403   26.0000          NaN        S    10.5   
+102      2            CA. 2343   69.5500          NaN        S    10.5   
+421      0               27849   13.0000          NaN        S    19.5   
+58       0            PC 17754   34.6542           A5        C    10.5   
+428      0              315096    8.6625          NaN        S    19.5   
+401      0               16966  134.5000          E40        C    19.5   
+195      0            A/5 2466    8.0500          NaN        S    10.5   
+228      0              C 7076    7.2500          NaN        S    10.5   
+177      0              239853    0.0000          NaN        S    10.5   
+193      0              367226   23.2500          NaN        Q    10.5   
+381      0                9234    7.7500          NaN        Q    19.5   
+316      0                2665   14.4542          NaN        C    19.5   
+221      0              349237   17.8000          NaN        S    10.5   
+306      2             CA 2144   46.9000          NaN        S    19.5   
+64       0             3101276    7.9250          NaN        S    10.5   
+188      0       SC/Paris 2163   12.8750            D        C    10.5   
+148      0             PP 4348    9.3500          NaN        S    10.5   
+103      1              371362   16.1000          NaN        S    10.5   
+391      2               36928  164.8667           C7        S    19.5   
+411      0              110813   75.2500          D37        C    19.5   
+81       0              347061    6.9750          NaN        S    10.5   
+294      0               11668   21.0000          NaN        S    19.5   
+13       2               19950  263.0000  C23 C25 C27        S    10.5   
+
+       Fare_y  
+159  263.0000  
+192  263.0000  
+83   263.0000  
+114  263.0000  
+223  263.0000  
+108  263.0000  
+260  263.0000  
+14   263.0000  
+427  512.3292  
+372  512.3292  
+90   263.0000  
+403  512.3292  
+198  263.0000  
+181  263.0000  
+26   263.0000  
+222  263.0000  
+167  263.0000  
+321  512.3292  
+440  512.3292  
+248  263.0000  
+202  263.0000  
+245  263.0000  
+102  263.0000  
+421  512.3292  
+58   263.0000  
+428  512.3292  
+401  512.3292  
+195  263.0000  
+228  263.0000  
+177  263.0000  
+193  263.0000  
+381  512.3292  
+316  512.3292  
+221  263.0000  
+306  512.3292  
+64   263.0000  
+188  263.0000  
+148  263.0000  
+103  263.0000  
+391  512.3292  
+411  512.3292  
+81   263.0000  
+294  512.3292  
+13   263.0000  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_98_0
+	Source 0 Schema: ['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp', 'Parch', 'Ticket', 'Fare', 'Cabin', 'Embarked']
+	Source 0 Examples: 	 Source 0 contains 445 tuples, with examples as follows: 
+   PassengerId  Survived  Pclass  \
+0            1         0       3   
+1            2         1       1   
+2            3         1       3   
+
+                                                Name     Sex   Age  SibSp  \
+0                            Braund, Mr. Owen Harris    male  22.0      1   
+1  Cumings, Mrs. John Bradley (Florence Briggs Th...  female  38.0      1   
+2                             Heikkinen, Miss. Laina  female  26.0      0   
+
+   Parch            Ticket     Fare Cabin Embarked  
+0      0         A/5 21171   7.2500   NaN        S  
+1      0          PC 17599  71.2833   C85        C  
+2      0  STON/O2. 3101282   7.9250   NaN        S  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_98/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_98/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

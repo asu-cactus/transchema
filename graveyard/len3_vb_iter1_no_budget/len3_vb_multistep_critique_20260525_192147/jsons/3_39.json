@@ -1,0 +1,29 @@
+{
+  "case": "3_39",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.978,
+        "cost": 0.0036792,
+        "latency": 9.356298446655273,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.956) / 2 = 0.978 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.921, range overlap=0.991.\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'movieId': range overlap=0.983, JS similarity=0.926\n    Generated    \u2014 min: 1.0, max: 190221.0, mean: 31760.1377\n    Ground Truth \u2014 min: 1.0, max: 193587.0, mean: 38719.887\n  Column 'rating': range overlap=1.000, JS similarity=0.916\n    Generated    \u2014 min: 0.5, max: 5.0, mean: 3.2552\n    Ground Truth \u2014 min: 0.5, max: 5.0, mean: 3.3801",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 5445\nExamples:\n movieId  rating\n     379    2.25\n    1172    4.25\n     325    2.00",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_39/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_39/training_1.csv\"\n\nSource3_39_0 = pd.read_csv(source0_path, index_col=0)\nSource3_39_1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source3_39_0 and Source3_39_1 on \"movieId\"\n# According to the operation history, join on movieId columns of both tables\njoined_df = pd.merge(Source3_39_0, Source3_39_1, on=\"movieId\", how=\"inner\")\n\n# Operation 2: group_by Source3_39_1.movieId and aggregate avg(Source3_39_1.rating)\n# Since after join, movieId is unique column, group by movieId and average rating\ngrouped = joined_df.groupby(\"movieId\", as_index=False).agg({\"rating\": \"mean\"})\n\n# Rename columns to match target schema exactly\n# Target schema: ['movieId': integer, 'rating': float]\n# movieId is already integer, rating is float by default after mean aggregation\ngrouped[\"movieId\"] = grouped[\"movieId\"].astype(int)\ngrouped[\"rating\"] = grouped[\"rating\"].astype(float)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_39/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "movieId,rating\n1,3.865853658536585\n2,3.53125\n3,2.4166666666666665\n4,2.0\n5,2.4375\n6,3.9210526315789473\n7,3.083333333333333\n8,3.0\n9,2.9\n10,3.517857142857143\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6851425170898438
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 9427.979230880737,
+        "critique": 0.0
+      }
+    }
+  ]
+}

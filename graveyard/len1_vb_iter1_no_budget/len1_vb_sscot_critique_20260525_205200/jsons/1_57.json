@@ -1,0 +1,46 @@
+{
+  "case": "1_57",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4316,
+        "cost": 0.0012384000000000002,
+        "latency": 3.7865090370178223,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.863) / 2 = 0.432 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.727, range overlap=1.000.\nGround truth candidate keys: {movieId}.\nGenerated table candidate keys: {movieId, rating}.\nKeys present in ground truth but absent in generated: {movieId}.\nSpurious keys in generated not present in ground truth: {movieId, rating}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['movieId'] \u2192 rating.\nDistribution Analysis (numerical columns with issues):\n  Column 'movieId': range overlap=0.999, JS similarity=0.831\n    Generated    \u2014 min: 1.0, max: 162542.0, mean: 12831.7864\n    Ground Truth \u2014 min: 1.0, max: 162376.0, mean: 25814.8439\n  Column 'rating': range overlap=1.000, JS similarity=0.624\n    Generated    \u2014 min: 0.5, max: 5.0, mean: 3.5547\n    Ground Truth \u2014 min: 0.5, max: 5.0, mean: 3.3365",
+        "generated_samples": "Schema: ['movieId', 'rating']\nNumber of Tuples: 20000\nExamples:\n movieId  rating\n  109187     2.0\n    3740     2.5\n   73929     1.5",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_57/training_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_df = pd.read_csv(source0_path, index_col=0)\n\n# Transformation plan:\n# - Target schema: ['movieId': int, 'rating': float]\n# - Source0 schema: ['userId', 'movieId', 'rating', 'timestamp']\n# - We only need 'movieId' and 'rating' columns from source0.\n# - The target examples show 'movieId' as integer and 'rating' as float.\n# - No aggregation or join needed since only one source table.\n# - Just select the required columns and ensure correct dtypes.\n\n# Select relevant columns\ntarget_df = source0_df[['movieId', 'rating']].copy()\n\n# Ensure correct dtypes\ntarget_df['movieId'] = target_df['movieId'].astype(int)\ntarget_df['rating'] = target_df['rating'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "movieId,rating\n2662,4.0\n2396,5.0\n69,3.5\n2348,4.0\n2871,4.0\n4901,2.5\n1090,2.5\n593,5.0\n32022,3.0\n110,4.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5010833740234375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0020736,
+          "latency": 8.60446572303772,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/training_1.csv\", index_col=0)\n\n# Use all source tables by unioning them (both have the same schema)\nunion_df = pd.concat([source0, source1], ignore_index=True)\n\n# Group by movieId and aggregate rating by mean to match target schema and functional dependency\nresult = union_df.groupby(\"movieId\", as_index=False).agg({\"rating\": \"mean\"})\n\n# Write the final output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_57/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.025987625122070312
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 3791.0711765289307,
+        "critique": 8629.775524139404
+      }
+    }
+  ]
+}

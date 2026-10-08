@@ -1,0 +1,124 @@
+Case: 1_42
+Status: CORRECT
+Timestamp: 2026-02-24T01:50:29.077212
+Duration: 37.97 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_42/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['user_id', 'item_id', 'rating', 'timestamp', 'movie title']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_42
+2. Target Schema: ['user_id': integer, 'item_id': integer, 'rating': integer, 'timestamp': integer, 'movie title': string]
+3. Target Examples: There are 50000 available target examples:        user_id  item_id  rating  timestamp  \
+13946      256      280       5  882151167   
+7476       508       23       4  883767361   
+29000      174      417       4  886515490   
+23013      347      699       1  881654480   
+28112      521       81       1  885253861   
+...        ...      ...     ...        ...   
+31317      399      566       4  882344871   
+49656      116     1214       3  876453422   
+8174       195      132       5  875771441   
+34324      496       38       2  876068615   
+44231      643      420       4  891449803   
+
+                                             movie title  
+13946                       Up Close and Personal (1996)  
+7476                                  Taxi Driver (1976)  
+29000                            Parent Trap, The (1961)  
+23013                                Little Women (1994)  
+28112                        Hudsucker Proxy, The (1994)  
+...                                                  ...  
+31317                    Clear and Present Danger (1994)  
+49656  In the Realm of the Senses (Ai no corrida) (1976)  
+8174                            Wizard of Oz, The (1939)  
+34324                                    Net, The (1995)  
+44231                         Alice in Wonderland (1951)  
+
+[5000 rows x 5 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_42_0
+	Source 0 Schema: ['user_id', 'item_id', 'rating', 'timestamp']
+	Source 0 Examples: 	 Source 0 contains 50000 tuples, with examples as follows: 
+   user_id  item_id  rating  timestamp
+0      196      242       3  881250949
+1      186      302       3  891717742
+2       22      377       1  878887116
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_42_1
+	Source 1 Schema: ['item_id', 'movie title', 'release date', 'video release date', 'IMDb URL', 'unknown', 'Action', 'Adventure', 'Animation', 'Childrens', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror', 'Musical', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
+	Source 1 Examples: 	 Source 1 contains 1682 tuples, with examples as follows: 
+   item_id        movie title release date  video release date  \
+0        1   Toy Story (1995)  01-Jan-1995                 NaN   
+1        2   GoldenEye (1995)  01-Jan-1995                 NaN   
+2        3  Four Rooms (1995)  01-Jan-1995                 NaN   
+
+                                            IMDb URL  unknown  Action  \
+0  http://us.imdb.com/M/title-exact?Toy%20Story%2...        0       0   
+1  http://us.imdb.com/M/title-exact?GoldenEye%20(...        0       1   
+2  http://us.imdb.com/M/title-exact?Four%20Rooms%...        0       0   
+
+   Adventure  Animation  Childrens  Comedy  Crime  Documentary  Drama  \
+0          0          1          1       1      0            0      0   
+1          1          0          0       0      0            0      0   
+2          0          0          0       0      0            0      0   
+
+   Fantasy  Film-Noir  Horror  Musical  Mystery  Romance  Sci-Fi  Thriller  \
+0        0          0       0        0        0        0       0         0   
+1        0          0       0        0        0        0       0         1   
+2        0          0       0        0        0        0       0         1   
+
+   War  Western  
+0    0        0  
+1    0        0  
+2    0        0  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/test_1.csv"
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_42/target_multisource_agentic.csv"
+
+# Read source files with index_col=0
+df_source0 = pd.read_csv(source0_path, index_col=0)
+df_source1 = pd.read_csv(source1_path, index_col=0)
+
+# Perform inner join on 'item_id'
+df_merged = pd.merge(
+    df_source0,
+    df_source1[['item_id', 'movie title']],
+    on='item_id',
+    how='inner'
+)
+
+# Select and reorder columns to match target schema
+df_target = df_merged[['user_id', 'item_id', 'rating', 'timestamp', 'movie title']]
+
+# Enforce target data types
+df_target = df_target.astype({
+    'user_id': 'int64',
+    'item_id': 'int64',
+    'rating': 'int64',
+    'timestamp': 'int64',
+    'movie title': 'string'
+})
+
+# Save to CSV
+df_target.to_csv(output_path, index=False)
+```

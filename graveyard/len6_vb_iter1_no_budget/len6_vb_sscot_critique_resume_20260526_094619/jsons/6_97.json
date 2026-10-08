@@ -1,0 +1,29 @@
+{
+  "case": "6_97",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9997,
+        "cost": 0.0026076,
+        "latency": 22.283573865890503,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.999) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.997, range overlap=1.000.\nGround truth candidate keys: {mkt_name, cm_name, mp_month, mp_year, mp_price}; {mkt_name, cm_name, mp_price, Year}.\nGenerated table candidate keys: {mkt_name, cm_name, mp_month, mp_year, mp_price}; {mkt_name, cm_name, mp_price, Year}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['adm0_name', 'adm1_name', 'mkt_name', 'cm_name', 'cur_name', 'pt_name', 'um_id', 'um_name', 'mp_month', 'mp_year', 'mp_price', 'Year']\nNumber of Tuples: 25222\nExamples:\n         adm0_name          adm1_name mkt_name                cm_name cur_name pt_name  um_id um_name  mp_month  mp_year  mp_price        Year\n           Lebanon              North  Tripoli                  Pasta      LBP  Retail      5      KG         6     2013 2197.3332 2013.416667\n          Pakistan             Punjab   Multan Rice (basmati, broken)      PKR  Retail      5      KG        12     2012   75.0000 2012.916667\nState of Palestine Al Khalil (Hebron)   Hebron                   Salt      NIS  Retail      5      KG         8     2014    1.5000 2014.583333",
+        "code": "import pandas as pd\nimport numpy as np\n\n# File paths for all source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length6_97/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_97/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_97/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_97/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_97/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_97/training_5.csv\"\n]\n\n# Columns of the target schema\ntarget_columns = [\n    'adm0_name', 'adm1_name', 'mkt_name', 'cm_name', 'cur_name', 'pt_name',\n    'um_id', 'um_name', 'mp_month', 'mp_year', 'mp_price', 'Year'\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# All source tables have the exact same schema (except Source 4 is empty but same schema)\n# The target schema has one extra column 'Year' which is a float version of 'mp_year' with some fractional part.\n# From target examples, 'Year' is basically mp_year plus possibly fractional quarter (e.g., 2017.25 means 2017 + 0.25)\n# Since source tables do not have 'Year', we will create it from mp_year and mp_month.\n# We can approximate fractional year as: Year = mp_year + (mp_month - 1)/12\n\n# Concatenate all source DataFrames (union)\ndf_all = pd.concat(dfs, ignore_index=True)\n\n# Ensure correct dtypes for columns according to target schema\n# adm0_name, adm1_name, mkt_name, cm_name, cur_name, pt_name, um_name are strings\nstr_cols = ['adm0_name', 'adm1_name', 'mkt_name', 'cm_name', 'cur_name', 'pt_name', 'um_name']\nfor col in str_cols:\n    df_all[col] = df_all[col].astype(str)\n\n# um_id, mp_month, mp_year are integers\nint_cols = ['um_id', 'mp_month', 'mp_year']\nfor col in int_cols:\n    # Some source data might have floats or missing values, convert safely\n    df_all[col] = pd.to_numeric(df_all[col], errors='coerce').fillna(0).astype(int)\n\n# mp_price is float\ndf_all['mp_price'] = pd.to_numeric(df_all['mp_price'], errors='coerce').fillna(0.0).astype(float)\n\n# Create 'Year' column as float: Year = mp_year + (mp_month - 1)/12\ndf_all['Year'] = df_all['mp_year'] + (df_all['mp_month'] - 1) / 12.0\n\n# Reorder columns to match target schema\ndf_all = df_all[target_columns]\n\n# Save the final DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length6_97/target_multisource_cot.csv\"\ndf_all.to_csv(output_path, index=False)",
+        "generated_csv_head": "adm0_name,adm1_name,mkt_name,cm_name,cur_name,pt_name,um_id,um_name,mp_month,mp_year,mp_price,Year\nAfghanistan,Kandahar,Kandahar,Fuel (diesel),AFN,Retail,15,L,1,2004,14.4,2004.0\nAfghanistan,Balkh,Mazar,Bread,AFN,Retail,5,KG,5,2016,50.0,2016.3333333333333\nAfghanistan,Faryab,Maymana,Wage (qualified labour),AFN,Retail,51,Day,7,2014,700.0,2014.5\nAfghanistan,Badakhshan,Fayzabad,\"Wage (non-qualified labour, non-agricultural)\",AFN,Retail,51,Day,8,2015,300.0,2015.5833333333333\nAfghanistan,$Daykundi,Nili,Bread,AFN,Retail,5,KG,8,2017,51.72,2017.5833333333333\nAfghanistan,Badakhshan,Fayzabad,Wheat,AFN,Retail,5,KG,4,2015,25.0,2015.25\nAfghanistan,Faryab,Maymana,Wheat,AFN,Retail,5,KG,5,2004,6.9,2004.3333333333333\nAfghanistan,Nangarhar,Jalalabad,Wheat,AFN,Retail,5,KG,1,2007,11.9,2007.0\nAfghanistan,Badakhshan,Fayzabad,Exchange rate,AFN,Retail,56,USD/LCU,3,2016,68.275,2016.1666666666667\nAfghanistan,Nangarhar,Jalalabad,Bread,AFN,Retail,5,KG,10,2017,50.0,2017.75\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 4.118919372558594
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 22358.044147491455,
+        "critique": 0.0
+      }
+    }
+  ]
+}

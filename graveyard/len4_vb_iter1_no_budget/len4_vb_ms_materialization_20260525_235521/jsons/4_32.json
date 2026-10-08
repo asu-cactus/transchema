@@ -1,0 +1,46 @@
+{
+  "case": "4_32",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4369,
+        "cost": 0.0093208,
+        "latency": 32.095404863357544,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.429 + 0.445) / 2 = 0.437 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.429 (precision=0.500, recall=0.375).\nSpurious FDs in generated (not in ground truth): ['r1401', 'r1402'] \u2192 r1403_x; ['r1402', 'r1403_x'] \u2192 r1401; ['r1402', 'r1403_x'] \u2192 r1403_y; ['r1401', 'r1403_x'] \u2192 r1402; ['r1401', 'r1402'] \u2192 r1403_y (and 1 more).\nMissing FDs from ground truth: ['r1403_y'] \u2192 r1401; ['r1401'] \u2192 r1403_y; ['r1403_x'] \u2192 r1402; ['r1402'] \u2192 r1403_x; ['r1401'] \u2192 r1402 (and 5 more).\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.359\n  Column 'r1401': Jaccard=0.555\n  Column 'r1402': Jaccard=0.516\n  Column 'r1403_x': Jaccard=0.398\n  Column 'r1403_y': Jaccard=0.398",
+        "generated_samples": "Schema: ['County', 'r1401', 'r1402', 'r1403_x', 'r1403_y']\nNumber of Tuples: 19\nExamples:\n     County      r1401      r1402     r1403_x     r1403_y\nClear Creek   $459,640   $445,976    $524,541    $524,541\n     Denver $8,482,593 $8,349,069 $10,746,117 $10,746,117\n       Lake         NR         NR          NR          NR",
+        "code": "import pandas as pd\n\n# Load intermediate results from the given paths\nintermediate_step1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_32/intermediate_step1.csv\"\nintermediate_step2_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_32/intermediate_step2.csv\"\n\n# Read intermediate_step1.csv (has columns: ['Unnamed: 0', 'County', 'r1401', 'r1402', 'r1403_x', 'r1403_y'])\ndf1 = pd.read_csv(intermediate_step1_path)\n\n# Read intermediate_step2.csv (has columns: ['County', 'r1403_x', 'r1403_y'])\ndf2 = pd.read_csv(intermediate_step2_path)\n\n# The final target schema is:\n# ['County': string, 'r1401': string, 'r1402': string, 'r1403_x': string, 'r1403_y': string]\n\n# From intermediate_step1, we have 'County', 'r1401', 'r1402', 'r1403_x', 'r1403_y' plus 'Unnamed: 0'\n# From intermediate_step2, we have 'County', 'r1403_x', 'r1403_y'\n\n# The target examples show that r1403_x and r1403_y should come from the join of Source0 and Source4 (intermediate_step2),\n# while r1401 and r1402 come from intermediate_step1.\n\n# To produce the final table, we join intermediate_step1 and intermediate_step2 on 'County' to get the correct r1403_x and r1403_y,\n# replacing the r1403_x and r1403_y columns from intermediate_step1 with those from intermediate_step2.\n\n# Drop 'Unnamed: 0' from df1 as it is an index column from intermediate step\ndf1 = df1.drop(columns=['Unnamed: 0'])\n\n# Merge df1 and df2 on 'County' to get r1403_x and r1403_y from df2\n# We will drop r1403_x and r1403_y from df1 before merging to avoid suffixes\ndf1_drop_r1403 = df1.drop(columns=['r1403_x', 'r1403_y'])\n\n# Merge on 'County'\nfinal_df = pd.merge(df1_drop_r1403, df2, on='County', how='left')\n\n# Reorder columns to match target schema\nfinal_df = final_df[['County', 'r1401', 'r1402', 'r1403_x', 'r1403_y']]\n\n# Save the final dataframe to the specified path\nfinal_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/target_multisource.csv\", index=False)",
+        "generated_csv_head": "County,r1401,r1402,r1403_x,r1403_y\nAdams,NR,NR,NR,NR\nClear Creek,\"$459,640\",\"$445,976\",\"$524,541\",\"$524,541\"\nDenver,\"$8,482,593\",\"$8,349,069\",\"$10,746,117\",\"$10,746,117\"\nGarfield,NR,NR,NR,NR\nGilpin,\"$197,379\",\"$113,337\",\"$131,685\",\"$131,685\"\nGunnison,NR,NR,NR,NR\nJefferson,\"$853,675\",\"$880,367\",\"$1,056,723\",\"$1,056,723\"\nLake,NR,NR,NR,NR\nOuray,NR,NR,NR,NR\nPark,NR,NR,NR,NR\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1906623840332031
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.4944,
+          "cost": 0.0022848,
+          "latency": 10.078967332839966,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.897 + 0.092) / 2 = 0.494 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {County}.\nGenerated table candidate keys: {County}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.897 (precision=1.000, recall=0.812).\nMissing FDs from ground truth: ['r1402'] \u2192 r1403_x; ['r1402'] \u2192 r1401; ['r1402'] \u2192 r1403_y.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'County': Jaccard=0.000\n  Column 'r1401': Jaccard=0.117\n  Column 'r1402': Jaccard=0.094\n  Column 'r1403_x': Jaccard=0.125\n  Column 'r1403_y': Jaccard=0.125",
+          "generated_samples": "Schema: ['County', 'r1401', 'r1402', 'r1403_x', 'r1403_y']\nNumber of Tuples: 8\nExamples:\n    County    r1401    r1402    r1403_x    r1403_y\n      Lake       NR       NR         NR         NR\nSan Miguel $338,934 $230,470   $319,620   $319,620\n    Pueblo       NR $823,156 $1,196,018 $1,196,018",
+          "code": "import pandas as pd\n\n# Read sources with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/training_4.csv\", index_col=0)\n\n# Join Source4_32_3 and Source4_32_2 on County\njoin_32_3_32_2 = pd.merge(source3, source2, on=\"County\", how=\"inner\")\n\n# Join Source4_32_0 and Source4_32_4 on County\njoin_32_0_32_4 = pd.merge(source0, source4, on=\"County\", how=\"inner\")\n\n# Join the two joined tables on County\njoin_all_r = pd.merge(join_32_3_32_2, join_32_0_32_4, on=\"County\", how=\"inner\")\n\n# Join with Source4_32_1 on County to ensure all counties are included\nfinal_join = pd.merge(join_all_r, source1, on=\"County\", how=\"inner\")\n\n# Group by County to ensure unique rows as per target keys\nfinal = final_join.groupby(\"County\", as_index=False).first()\n\n# Rename columns to match target schema exactly\n# The join created columns: County, r1401, r1402, r1403_x, r1403_y\n# Because source0 and source4 both have r1403, after join they become r1403_x and r1403_y automatically\n# source3 has r1401, source2 has r1402\n\n# Select and reorder columns exactly as target schema\nfinal = final[[\"County\", \"r1401\", \"r1402\", \"r1403_x\", \"r1403_y\"]]\n\n# Write output\nfinal.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_32/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1811256408691406
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 32169.26407814026,
+        "critique": 10154.620170593262
+      }
+    }
+  ]
+}

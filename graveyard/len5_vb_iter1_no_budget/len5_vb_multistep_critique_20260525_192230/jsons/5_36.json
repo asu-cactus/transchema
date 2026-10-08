@@ -1,0 +1,46 @@
+{
+  "case": "5_36",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7656,
+        "cost": 0.002298,
+        "latency": 5.653356552124023,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.531) / 2 = 0.766 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {variable}.\nGenerated table candidate keys: {variable}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'variable': Jaccard=0.531",
+        "generated_samples": "Schema: ['variable']\nNumber of Tuples: 316\nExamples:\n                 variable\n['Deaths', 'SierraLeone']\n      ['Cases', 'Guinea']\n    ['Deaths', 'Liberia']",
+        "code": "import pandas as pd\n\n# Load the source table\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length5_36/training_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Columns to unpivot: all columns except 'Date' and 'Day'\nid_vars = ['Date', 'Day']\nvalue_vars = [col for col in df0.columns if col not in id_vars]\n\n# Unpivot the dataframe from wide to long format\ndf_unpivot = df0.melt(id_vars=id_vars, value_vars=value_vars, var_name='variable', value_name='value')\n\n# Drop rows where value is NaN (no data)\ndf_unpivot = df_unpivot.dropna(subset=['value'])\n\n# Split 'variable' column into 'case_type' and 'country'\ndf_unpivot[['case_type', 'country']] = df_unpivot['variable'].str.split('_', n=1, expand=True)\n\n# Construct the target 'variable' column as a list [case_type, country]\ndf_unpivot['variable'] = df_unpivot.apply(lambda row: [row['case_type'], row['country']], axis=1)\n\n# Select only the target column as per target schema\ntarget_df = df_unpivot[['variable']].reset_index(drop=True)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length5_36/target_multisource.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "variable\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n\"['Cases', 'Guinea']\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0082721710205078
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7656,
+          "cost": 0.0016404000000000002,
+          "latency": 5.910417079925537,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.531) / 2 = 0.766 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {variable}.\nGenerated table candidate keys: {variable}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'variable': Jaccard=0.531",
+          "generated_samples": "Schema: ['variable']\nNumber of Tuples: 316\nExamples:\n             variable\n  ['Cases', 'Guinea']\n['Deaths', 'Nigeria']\n  ['Cases', 'Guinea']",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_36/training_0.csv\", index_col=0)\n\n# The target schema is a single column 'variable' which contains lists like ['Cases', 'Guinea']\n# We need to unpivot the source data columns that start with 'Cases_' or 'Deaths_' into this format\n\n# Select columns that start with 'Cases_' or 'Deaths_'\ncases_cols = [col for col in source0.columns if col.startswith('Cases_')]\ndeaths_cols = [col for col in source0.columns if col.startswith('Deaths_')]\n\n# Melt cases columns\ncases_melted = source0.melt(id_vars=['Date', 'Day'], value_vars=cases_cols, var_name='variable', value_name='value')\n# Melt deaths columns\ndeaths_melted = source0.melt(id_vars=['Date', 'Day'], value_vars=deaths_cols, var_name='variable', value_name='value')\n\n# Combine melted data\ncombined = pd.concat([cases_melted, deaths_melted], ignore_index=True)\n\n# Drop rows with NaN in 'value' to avoid empty entries\ncombined = combined.dropna(subset=['value'])\n\n# Split 'variable' column into ['Cases' or 'Deaths', country]\ncombined['variable'] = combined['variable'].str.split('_')\n\n# Select only the 'variable' column as per target schema\nresult = combined[['variable']]\n\n# Write to the target CSV file without index\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_36/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.89263916015625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5655.864477157593,
+        "critique": 5974.2021560668945
+      }
+    }
+  ]
+}

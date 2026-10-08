@@ -1,0 +1,46 @@
+{
+  "case": "1_65",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8871,
+        "cost": 0.0017092,
+        "latency": 6.884580135345459,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.774) / 2 = 0.887 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.688, range overlap=0.861.\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {year}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'year': range overlap=0.752, JS similarity=0.585\n    Generated    \u2014 min: 1916.0, max: 2017.0, mean: 1972.1222\n    Ground Truth \u2014 min: 1940.0, max: 2016.0, mean: 1988.9245\n  Column '0': range overlap=0.970, JS similarity=0.790\n    Generated    \u2014 min: 1.0, max: 133.0, mean: 26.6778\n    Ground Truth \u2014 min: 1.0, max: 129.0, mean: 45.3019",
+        "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 90\nExamples:\n year  0\n 2002 99\n 1950  1\n 1998 62",
+        "code": "import pandas as pd\n\n# Step 1: Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_65/training_0.csv\"\n]\n\n# Step 2: Load all source tables\n# According to the prompt, there is only one source table (Source1_65_0) with the given schema.\n# We load it with index_col=0 to ignore the numerical index column.\n\ndf_list = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    df_list.append(df)\n\n# Step 3: Since there is only one source table, no union or join is needed.\n# The target schema is ['year': integer, '0': integer].\n# The target examples show that the column '0' is an integer count or aggregation.\n# The source table has a 'year' column, but no column named '0'.\n# We need to produce a DataFrame with columns 'year' and '0'.\n\n# Step 4: Transformation plan:\n# - Group the source data by 'year'.\n# - Count the number of rows per year (this count corresponds to the '0' column in the target).\n# - The 'year' column is integer, and the count is integer.\n# - This matches the target examples where '0' is a count per year.\n\n# Step 5: Apply the transformation\ndf_source = df_list[0]\n\n# Group by 'year' and count rows per year\ndf_target = df_source.groupby('year').size().reset_index(name='0')\n\n# Ensure the data types match the target schema\ndf_target['year'] = df_target['year'].astype(int)\ndf_target['0'] = df_target['0'].astype(int)\n\n# Step 6: Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "year,0\n1916,1\n1925,1\n1927,1\n1929,2\n1930,1\n1932,1\n1933,2\n1934,1\n1935,1\n1936,2\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7920265197753906
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5709,
+          "cost": 0.0018552000000000002,
+          "latency": 6.654856204986572,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.475) / 2 = 0.571 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.574, range overlap=0.376.\nGround truth candidate keys: {year}.\nGenerated table candidate keys: {0}; {year}.\nSpurious keys in generated not present in ground truth: {0}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['0'] \u2192 year.\nDistribution Analysis (numerical columns with issues):\n  Column 'year': range overlap=0.752, JS similarity=0.585\n    Generated    \u2014 min: 1916.0, max: 2017.0, mean: 1972.1222\n    Ground Truth \u2014 min: 1940.0, max: 2016.0, mean: 1988.9245\n  Column '0': range overlap=0.000, JS similarity=0.563\n    Generated    \u2014 min: 0.0, max: 763429867.0, mean: 133204982.5444\n    Ground Truth \u2014 min: 1.0, max: 129.0, mean: 45.3019",
+          "generated_samples": "Schema: ['year', '0']\nNumber of Tuples: 90\nExamples:\n year        0\n 1938  3644736\n 1980 67100000\n 1948  6700000",
+          "code": "import pandas as pd\n\n# Read source data\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_65/training_0.csv\", index_col=0)\n\n# Since only one source table is given, and target schema is ['year', '0'] where '0' is an integer column,\n# we interpret '0' as the count or sum of some numeric attribute grouped by 'year'.\n# The source table has 'year' and 'budget' columns, budget is integer.\n# The target examples show '0' values that look like counts or sums per year.\n# We sum 'budget' grouped by 'year' to produce the target.\n\n# Group by 'year' and aggregate sum of 'budget'\nresult = source0.groupby('year', as_index=False).agg({'budget': 'sum'})\n\n# Rename 'budget' to '0' to match target schema\nresult.rename(columns={'budget': '0'}, inplace=True)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_65/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1758804321289062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6887.068271636963,
+        "critique": 6762.457847595215
+      }
+    }
+  ]
+}

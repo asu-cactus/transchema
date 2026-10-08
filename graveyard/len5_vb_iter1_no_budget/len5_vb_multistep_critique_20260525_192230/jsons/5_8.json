@@ -1,0 +1,46 @@
+{
+  "case": "5_8",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5461,
+        "cost": 0.0037516000000000003,
+        "latency": 13.018960952758789,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.092) / 2 = 0.546 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.259, range overlap=0.000.\nGround truth candidate keys: {school_name}; {math_score}.\nGenerated table candidate keys: {school_name}; {math_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'math_score': range overlap=0.000, JS similarity=0.259\n    Generated    \u2014 min: 35784.0, max: 366942.0, mean: 192514.5\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+        "generated_samples": "Schema: ['school_name', 'math_score']\nNumber of Tuples: 8\nExamples:\n       school_name  math_score\n  Pena High School       80654\nThomas High School      136389\n  Ford High School      211184",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_8/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_8/training_1.csv\"\n\nSource5_8_0 = pd.read_csv(source0_path, index_col=0)\nSource5_8_1 = pd.read_csv(source1_path, index_col=0)\n\n# Step 1: Group by Source5_8_0.school_name and sum the math_score\ngrouped = Source5_8_0.groupby(\"school_name\", as_index=False)[\"math_score\"].sum()\n\n# Step 2: Join the grouped result with Source5_8_1 on school_name\njoined = pd.merge(grouped, Source5_8_1[[\"school_name\"]], on=\"school_name\", how=\"inner\")\n\n# The target schema is ['school_name': string, 'math_score': integer]\n# Ensure math_score is integer type\njoined[\"math_score\"] = joined[\"math_score\"].astype(int)\n\n# Rename columns if needed (already matching target schema)\nTarget5_8 = joined[[\"school_name\", \"math_score\"]]\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length5_8/target_multisource.csv\"\nTarget5_8.to_csv(target_path, index=False)",
+        "generated_csv_head": "school_name,math_score\nBailey High School,251241\nFord High School,211184\nHolden High School,35784\nJohnson High School,366942\nPena High School,80654\nRodriguez High School,307294\nThomas High School,136389\nWright High School,150628\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9186267852783203
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5461,
+          "cost": 0.0014588000000000001,
+          "latency": 6.450019598007202,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.092) / 2 = 0.546 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.259, range overlap=0.000.\nGround truth candidate keys: {school_name}; {math_score}.\nGenerated table candidate keys: {school_name}; {math_score}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'math_score': range overlap=0.000, JS similarity=0.259\n    Generated    \u2014 min: 35784.0, max: 366942.0, mean: 192514.5\n    Ground Truth \u2014 min: 1468.0, max: 4635.0, mean: 2448.125\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'school_name': Jaccard=0.055",
+          "generated_samples": "Schema: ['school_name', 'math_score']\nNumber of Tuples: 8\nExamples:\n          school_name  math_score\n     Pena High School       80654\n   Wright High School      150628\nRodriguez High School      307294",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_8/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_8/training_1.csv\", index_col=0)\n\n# Join Source5_8_0 and Source5_8_1 on school_name (inner join to keep only matching schools)\njoined = pd.merge(source0, source1, how='inner', on='school_name')\n\n# Group by school_name and sum math_score\nresult = joined.groupby('school_name', as_index=False).agg({'math_score': 'sum'})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_8/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8077621459960938
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13080.10745048523,
+        "critique": 6534.479141235352
+      }
+    }
+  ]
+}

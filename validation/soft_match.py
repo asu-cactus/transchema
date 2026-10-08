@@ -71,7 +71,6 @@ def compare_columns_1(pred_column, gold_column, tol=0.001):
         # else:
         #     print(f"Failed to match {g} in {pred_nums} with tolerance {tol}")
 
-    # print(pred_nums, matched_nums)
 
     # --- 4) Combine and return recall over all gold values ---
     total_gold = len(gold_column)
@@ -97,7 +96,6 @@ def compare_lists_matching_soft(ground_truth_df, generated_sql_df, padding_added
             padded_dfs = pad_comp(ground_truth_df, generated_sql_df)
             return compare_lists_matching_soft(*padded_dfs, padding_added=True)
 
-    # generated_sql_df, ground_truth_df = pad_comp(generated_sql_df, ground_truth_df)
 
     similarities = []
     all_mismatches = []
@@ -119,8 +117,6 @@ def compare_lists_matching_soft(ground_truth_df, generated_sql_df, padding_added
         else:
             gold_column = ground_truth_df[col].tolist()
 
-        # print(pred_column)
-        # print(gold_column)
 
         column_similarity = compare_columns_1(pred_column, gold_column)
         similarities.append(column_similarity)

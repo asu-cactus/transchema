@@ -1,0 +1,75 @@
+Case: 1_12
+Status: CORRECT
+Timestamp: 2026-02-24T08:52:07.916933
+Duration: 46.62 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_51_101/case_1_12/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['Athlete', 'Age', 'Year', 'Closing Ceremony Date', 'Gold Medals', 'Silver Medals', 'Bronze Medals', 'Total Medals', 'Country']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_12
+2. Target Schema: ['Athlete': string, 'Age': float, 'Year': integer, 'Closing Ceremony Date': string, 'Gold Medals': integer, 'Silver Medals': integer, 'Bronze Medals': integer, 'Total Medals': integer, 'Country': string]
+3. Target Examples: There are 4339 available target examples:                      Athlete   Age  Year Closing Ceremony Date  Gold Medals  \
+766            Greg Haughton  26.0  2000            10/01/2000            0   
+1364           Natalie Golda  22.0  2004            08/29/2004            0   
+511              Isao Yoneda  26.0  2004            08/29/2004            1   
+2762           Doriane Vidal  25.0  2002            02/24/2002            0   
+1940           Joel González  22.0  2012            08/12/2012            1   
+...                      ...   ...   ...                   ...          ...   
+3185            Jacob Barsøe  23.0  2012            08/12/2012            0   
+3809           Anna Glazkova  19.0  2000            10/01/2000            0   
+1173         Udomporn Polsak  22.0  2004            08/29/2004            1   
+1073              Li Xueying  22.0  2012            08/12/2012            1   
+2965  Nancy Napolski-Johnson  26.0  2000            10/01/2000            1   
+
+      Silver Medals  Bronze Medals  Total Medals        Country  
+766               1              1             2        Jamaica  
+1364              0              1             1  United States  
+511               0              1             2          Japan  
+2762              1              0             1         France  
+1940              0              0             1          Spain  
+...             ...            ...           ...            ...  
+3185              0              1             1        Denmark  
+3809              1              0             1        Belarus  
+1173              0              0             1       Thailand  
+1073              0              0             1          China  
+2965              0              0             1  United States  
+
+[434 rows x 9 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_12_0
+	Source 0 Schema: ['Athlete', 'Age', 'Year', 'Closing Ceremony Date', 'Gold Medals', 'Silver Medals', 'Bronze Medals', 'Total Medals']
+	Source 0 Examples: 	 Source 0 contains 4309 tuples, with examples as follows: 
+          Athlete   Age  Year Closing Ceremony Date  Gold Medals  \
+0  Michael Phelps  23.0  2008            08/24/2008            8   
+1  Michael Phelps  19.0  2004            08/29/2004            6   
+2  Michael Phelps  27.0  2012            08/12/2012            4   
+
+   Silver Medals  Bronze Medals  Total Medals  
+0              0              0             8  
+1              0              2             8  
+2              2              0             6  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_12/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_12_1
+	Source 1 Schema: ['Athlete', 'Country']
+	Source 1 Examples: 	 Source 1 contains 6970 tuples, with examples as follows: 
+            Athlete        Country
+0    Michael Phelps  United States
+1  Natalie Coughlin  United States
+2     Aleksey Nemov         Russia
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_12/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_12/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

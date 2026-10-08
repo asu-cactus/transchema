@@ -1,0 +1,187 @@
+{
+  "case": "9_51",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0045211999999999995,
+        "latency": 9.61996054649353,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     3\n     1\n     2",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# UNION operation: concatenate all source DataFrames vertically\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0036168000000000003,
+        "latency": 9.425350904464722,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0041612,
+        "latency": 5.992680549621582,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     2\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0047064,
+        "latency": 5.443312406539917,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0052512,
+        "latency": 9.246191263198853,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.005796000000000001,
+        "latency": 6.841203451156616,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.006340800000000001,
+        "latency": 11.842658758163452,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0068856,
+        "latency": 7.03050971031189,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0074304,
+        "latency": 7.221068620681763,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0079752,
+        "latency": 5.7817888259887695,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0085196,
+        "latency": 7.10475754737854,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 12,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.009064000000000001,
+        "latency": 7.667808294296265,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 13,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.009609600000000001,
+        "latency": 6.45215916633606,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['title']\nNumber of Tuples: 25710\nExamples:\n title\n     1\n     1\n     1",
+        "code": "import pandas as pd\n\n# List of source CSV file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length9_51/test_14.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    # index_col=0 to ignore the numerical index column as per hint 24\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure the column 'title' is integer type as per target schema\n    df['title'] = df['title'].astype(int)\n    dfs.append(df)\n\n# Since all source tables have the same schema ['title'] and target schema is also ['title'],\n# we perform a UNION operation by concatenating all DataFrames vertically.\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_51/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title\n17\n13\n7\n6\n5\n5\n3\n3\n2\n2\n"
+      },
+      "critiques": []
+    }
+  ]
+}

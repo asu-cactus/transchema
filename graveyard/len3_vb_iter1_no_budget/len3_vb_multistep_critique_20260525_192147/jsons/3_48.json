@@ -1,0 +1,29 @@
+{
+  "case": "3_48",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9866,
+        "cost": 0.004646,
+        "latency": 13.309718608856201,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.973) / 2 = 0.987 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.954, range overlap=0.993.\nGround truth candidate keys: {track_id, playlist_id}; {index_playlist, index_track}; {track_id, index_playlist}; {playlist_id, index_track}.\nGenerated table candidate keys: {track_id, playlist_id}; {index_playlist, index_track}; {track_id, index_playlist}; {playlist_id, index_track}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'track_id': range overlap=0.961, JS similarity=0.930\n    Generated    \u2014 min: 52750.0, max: 4873233.0, mean: 2082218.306\n    Ground Truth \u2014 min: 252.0, max: 5018274.0, mean: 1984845.1994\n  Column 'playlist_id': range overlap=1.000, JS similarity=0.933\n    Generated    \u2014 min: 9890.0, max: 11764751.0, mean: 6265021.5765\n    Ground Truth \u2014 min: 7641.0, max: 11764851.0, mean: 6528721.7119\n  Column 'index_playlist': range overlap=0.999, JS similarity=0.937\n    Generated    \u2014 min: 40.0, max: 45643.0, mean: 21742.9147\n    Ground Truth \u2014 min: 2.0, max: 45644.0, mean: 22951.7079\n  Column 'index_track': range overlap=0.998, JS similarity=0.922\n    Generated    \u2014 min: 151.0, max: 99912.0, mean: 47380.9034\n    Ground Truth \u2014 min: 1.0, max: 99987.0, mean: 50149.6852",
+        "generated_samples": "Schema: ['track_id', 'dummy', 'playlist_id', 'interaction', 'index_playlist', 'index_track']\nNumber of Tuples: 621\nExamples:\n track_id  dummy  playlist_id  interaction  index_playlist  index_track\n  3772001      1     11551040            1           44519        38121\n   110782      1      8062998            1           30910        41710\n   290643      1      3529739            1            8113        10247",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_48/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_48/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length3_48/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length3_48/training_3.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)  # ['track_id', 'dummy']\ndf1 = pd.read_csv(source1_path, index_col=0)  # ['index_playlist', 'playlist_id']\ndf2 = pd.read_csv(source2_path, index_col=0)  # ['playlist_id', 'track_id', 'interaction']\ndf3 = pd.read_csv(source3_path, index_col=0)  # ['index_track', 'track_id']\n\n# Operation History:\n# 1) JOIN : [[\"Source3_48_1\", \"Source3_48_2\"], [\"playlist_id\", \"playlist_id\"]]\n# Join df1 and df2 on 'playlist_id'\ndf_join_1 = pd.merge(df1, df2, on=\"playlist_id\", how=\"inner\")\n\n# 2) JOIN : [[\"Source3_48_0\", \"Source3_48_3\"], [\"track_id\", \"track_id\"]]\n# Join df0 and df3 on 'track_id'\ndf_join_2 = pd.merge(df0, df3, on=\"track_id\", how=\"inner\")\n\n# Now join the two intermediate results on 'track_id' to combine all sources\n# Because df_join_1 has 'track_id' from df2 and df_join_2 has 'track_id' from df0/df3\ndf_final = pd.merge(df_join_1, df_join_2, on=\"track_id\", how=\"inner\")\n\n# Reorder and select columns to match target schema:\n# Target Schema: ['track_id': int, 'dummy': int, 'playlist_id': int, 'interaction': int, 'index_playlist': int, 'index_track': int]\n\ndf_final = df_final[['track_id', 'dummy', 'playlist_id', 'interaction', 'index_playlist', 'index_track']]\n\n# Ensure correct dtypes (all integer)\ndf_final = df_final.astype({\n    'track_id': 'int64',\n    'dummy': 'int64',\n    'playlist_id': 'int64',\n    'interaction': 'int64',\n    'index_playlist': 'int64',\n    'index_track': 'int64'\n})\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length3_48/target_multisource.csv\"\ndf_final.to_csv(target_path, index=False)",
+        "generated_csv_head": "track_id,dummy,playlist_id,interaction,index_playlist,index_track\n3451414,1,10790576,1,41232,16176\n3638206,1,7246219,1,25886,90090\n3638206,1,10550249,1,39950,90090\n3638206,1,4180830,1,11213,90090\n1537399,1,6122022,1,20393,88940\n409067,1,6014433,1,19869,55469\n2833181,1,4027905,1,10403,83659\n2203596,1,8945367,1,36248,39800\n2203596,1,4431346,1,12280,39800\n3248989,1,5722356,1,18330,38538\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3234615325927734
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 13376.606225967407,
+        "critique": 0.0
+      }
+    }
+  ]
+}

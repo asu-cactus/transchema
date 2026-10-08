@@ -1,0 +1,29 @@
+{
+  "case": "3_48",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9866,
+        "cost": 0.014254800000000001,
+        "latency": 51.6961567401886,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.973) / 2 = 0.987 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.954, range overlap=0.993.\nGround truth candidate keys: {track_id, playlist_id}; {index_playlist, index_track}; {playlist_id, index_track}; {track_id, index_playlist}.\nGenerated table candidate keys: {track_id, playlist_id}; {index_playlist, index_track}; {playlist_id, index_track}; {track_id, index_playlist}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'track_id': range overlap=0.961, JS similarity=0.930\n    Generated    \u2014 min: 52750.0, max: 4873233.0, mean: 2082218.306\n    Ground Truth \u2014 min: 252.0, max: 5018274.0, mean: 1984845.1994\n  Column 'playlist_id': range overlap=1.000, JS similarity=0.933\n    Generated    \u2014 min: 9890.0, max: 11764751.0, mean: 6265021.5765\n    Ground Truth \u2014 min: 7641.0, max: 11764851.0, mean: 6528721.7119\n  Column 'index_playlist': range overlap=0.999, JS similarity=0.937\n    Generated    \u2014 min: 40.0, max: 45643.0, mean: 21742.9147\n    Ground Truth \u2014 min: 2.0, max: 45644.0, mean: 22951.7079\n  Column 'index_track': range overlap=0.998, JS similarity=0.922\n    Generated    \u2014 min: 151.0, max: 99912.0, mean: 47380.9034\n    Ground Truth \u2014 min: 1.0, max: 99987.0, mean: 50149.6852",
+        "generated_samples": "Schema: ['track_id', 'dummy', 'playlist_id', 'interaction', 'index_playlist', 'index_track']\nNumber of Tuples: 621\nExamples:\n track_id  dummy  playlist_id  interaction  index_playlist  index_track\n  1210938      1      8545409            1           33478        62266\n  3755578      1       879522            1            2376        31885\n   135600      1      6959063            1           24566        51382",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_48/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_48/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_48/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_48/training_3.csv\", index_col=0)\n\n# First join: Source3_48_2 and Source3_48_1 on 'playlist_id'\nstep1 = pd.merge(source2, source1, on=\"playlist_id\", how=\"inner\")\n\n# Second join: Source3_48_0 and Source3_48_3 on 'track_id'\nstep2 = pd.merge(source0, source3, on=\"track_id\", how=\"inner\")\n\n# Final join: join step1 and step2 on ['track_id', 'dummy', 'index_track']\n# Note: step1 has columns: ['playlist_id', 'track_id', 'interaction', 'index_playlist']\n# step2 has columns: ['track_id', 'dummy', 'index_track']\n# We join on 'track_id' and 'dummy' and 'index_track' to get all columns for target\n\n# But step1 does not have 'dummy' or 'index_track' columns.\n# step1 has 'track_id', 'dummy' is from source0 only, so not in step1.\n# step2 has 'dummy' and 'index_track'.\n\n# So to join step1 and step2, join on 'track_id' only, then add 'dummy' and 'index_track' from step2.\n\n# Merge step1 and step2 on 'track_id'\nfinal = pd.merge(step1, step2, on=\"track_id\", how=\"inner\")\n\n# Reorder columns to match target schema:\n# ['track_id', 'dummy', 'playlist_id', 'interaction', 'index_playlist', 'index_track']\n\nfinal = final[['track_id', 'dummy', 'playlist_id', 'interaction', 'index_playlist', 'index_track']]\n\n# Save to target path\nfinal.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_48/target_multisource.csv\", index=False)",
+        "generated_csv_head": "track_id,dummy,playlist_id,interaction,index_playlist,index_track\n1186190,1,182806,1,905,52061\n3358237,1,7902849,1,30193,83982\n506014,1,4277862,1,11667,94316\n506014,1,3781086,1,9171,94316\n3591081,1,2157709,1,3996,71788\n3061777,1,2572585,1,4468,69348\n3061777,1,7541617,1,27747,69348\n3061777,1,3362216,1,7423,69348\n3061777,1,3701460,1,8785,69348\n1230923,1,7883618,1,30085,71369\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3442039489746094
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 51789.21842575073,
+        "critique": 0.0
+      }
+    }
+  ]
+}

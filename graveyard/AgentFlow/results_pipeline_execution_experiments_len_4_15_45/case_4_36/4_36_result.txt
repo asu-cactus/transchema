@@ -1,0 +1,346 @@
+Case: 4_36
+Status: INCORRECT
+Timestamp: 2026-02-25T12:42:34.571636
+Duration: 317.62 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_15_45/case_4_36/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_36
+2. Target Schema: ['Fecha': string, 'IdAhogado': integer, 'IdPersona': integer, 'Localidad': string, 'Provincia': string, 'CCAA': string, 'Hora': string, 'Latitud_inc': float, 'Longitud_inc': float, 'Sexo': string, 'Edad': float, 'Nacionalidad': string, 'Origen': string, 'Extraccion': string, 'Causa': string, 'TipoAhogamiento': string, 'Factor': string, 'Intervencion': string, 'Pronostico': string, 'Localizacion': string, 'Riesgo': string, 'Reanimacion': string, 'Vigilancia': string, 'Actividad': string, 'Deteccion': string, 'ID': integer, 'Estacion': string, 'Estado': string, 'Latitud_est': float, 'Longitud_est': float, 'T_med': float, 'T_max': float, 'T_min': float, 'Presion': float, 'Dir. vi.': float, 'V_Viento': integer, 'Nubosidad': float, 'ProfNievecm': float, 'InsolacHoras': float, 'Distancia': float, 'IdActividad': integer, 'IdCausa': integer, 'IdDeteccion': integer, 'IdFactor': integer]
+3. Target Examples: There are 3241 available target examples:            Fecha  IdAhogado  IdPersona  \
+3066  19/08/2017       3770       3343   
+1991  14/07/2013        656        552   
+2227  05/11/2013        557        295   
+2260  22/07/2015       1800       1637   
+2835  03/03/2017       3180       2569   
+...          ...        ...        ...   
+1402  24/08/2015       1916       1803   
+2650  16/07/2015       1811       1648   
+706   29/03/2015       1535       1390   
+160   26/12/2013        890        341   
+942   07/09/2014       1339       1113   
+
+                                           Localidad  Provincia  \
+3066                 OROPESA, PLAYA DE MORRO DE GROS  CASTELLON   
+1991                                       RIBAFORDA    NAVARRA   
+2227                  PUENTE DE DON GUARIN, PALENCIA   PALENCIA   
+2260                              MONFORTE, RIO CABE       LUGO   
+2835                               A CORUÑA, PALEXCO   A CORUÑA   
+...                                              ...        ...   
+1402  SANT CARLES DE LA RAPITA, PLAYA DEL TRABUCADOR  TARRAGONA   
+2650                     ALICANTE, PLAYA DE SAN JUAN   ALICANTE   
+706                    PUERTO LUMBRERAS, LA RETAMOSA     MURCIA   
+160                PLAYA DE LAS CONCHAS, LA GRACIOSA  LANZAROTE   
+942           PLAYA DE CAN PICAFORT, SANTA MARGALIDA   MALLORCA   
+
+                 CCAA   Hora  Latitud_inc  Longitud_inc    Sexo  Edad  \
+3066  CDAD VALENCIANA  18:30     0.699711      0.002569  Hombre   8.0   
+1991          NAVARRA    NaN     0.732994     -0.026421  Hombre  13.0   
+2227  CASTILLA Y LEON  12:00     0.733757     -0.079557   Mujer  73.0   
+2260          GALICIA  14:00     0.742185     -0.131157   Mujer  70.0   
+2835          GALICIA   6:30     0.756903     -0.146594  Hombre  27.0   
+...               ...    ...          ...           ...     ...   ...   
+1402         CATALUÑA  13:30     0.708759      0.012633  Hombre   NaN   
+2650  CDAD VALENCIANA  18:30     0.669848     -0.007145  Hombre  73.0   
+706            MURCIA  11:51     0.656218     -0.030382  Hombre  40.0   
+160          CANARIAS  12:25     0.510970     -0.235892   Mujer  12.0   
+942          BALEARES  10:30     0.694082      0.055033   Mujer  75.0   
+
+     Nacionalidad      Origen                         Extraccion  \
+3066      Ucrania   Sin datos                         Socorrista   
+1991       España   Sin datos                          Ciudadano   
+2227       España       Local  Cuerpo de Seguridad o Emergencias   
+2260       España       Local  Cuerpo de Seguridad o Emergencias   
+2835       España       Local  Cuerpo de Seguridad o Emergencias   
+...           ...         ...                                ...   
+1402       España   Sin datos             Embarcación de rescate   
+2650       España   Sin datos                         Socorrista   
+706        España       Local  Cuerpo de Seguridad o Emergencias   
+160       Francia  Extranjero              Embarcación de recreo   
+942      Alemania  Extranjero                          Ciudadano   
+
+                                           Causa  \
+3066              Condiciones del medio acuático   
+1991                                   Sin datos   
+2227                                   Sin datos   
+2260  Accidente, caída o zambullida accidentales   
+2835  Accidente, caída o zambullida accidentales   
+...                                          ...   
+1402              Condiciones del medio acuático   
+2650                                   Sin datos   
+706   Accidente, caída o zambullida accidentales   
+160               Condiciones del medio acuático   
+942                                    Sin datos   
+
+                                 TipoAhogamiento  \
+3066                          Perdida de Control   
+1991  Ahogado con sintomas de aspiración de agua   
+2227                         Posible Ahogamiento   
+2260                         Posible Ahogamiento   
+2835                         Posible Ahogamiento   
+...                                          ...   
+1402         Victima sin sintomas de ahogamiento   
+2650                         Posible Ahogamiento   
+706          Victima sin sintomas de ahogamiento   
+160                           Perdida de Control   
+942   Ahogado con sintomas de aspiración de agua   
+
+                                   Factor  \
+3066       Navegación, deportes acuáticos   
+1991    Falta de supervisión o vigilancia   
+2227  Edad, Enfermedad, Enfermedad Mental   
+2260  Edad, Enfermedad, Enfermedad Mental   
+2835             Drogas, Alcohol, tóxicos   
+...                                   ...   
+1402                            Sin datos   
+2650  Edad, Enfermedad, Enfermedad Mental   
+706                             Sin datos   
+160              Peligrosidad del entorno   
+942                             Sin datos   
+
+                                           Intervencion  \
+3066  Rescate por Socorristas o personas adiestradas...   
+1991          Asistencia por transeúntes no adiestrados   
+2227                            Recuperación de cadaver   
+2260                            Recuperación de cadaver   
+2835                            Recuperación de cadaver   
+...                                                 ...   
+1402   Rescate por personal adiestrado con equipamiento   
+2650  Rescate por Socorristas o personas adiestradas...   
+706    Rescate por personal adiestrado con equipamiento   
+160           Asistencia por transeúntes no adiestrados   
+942           Asistencia por transeúntes no adiestrados   
+
+                                     Pronostico  \
+3066                  Rescate sin consecuencias   
+1991                         Ahogamiento mortal   
+2227                         Ahogamiento mortal   
+2260                         Ahogamiento mortal   
+2835                         Ahogamiento mortal   
+...                                         ...   
+1402                  Rescate sin consecuencias   
+2650                         Ahogamiento mortal   
+706     Rescate y traslado a supervisión médica   
+160     Rescate y traslado a supervisión médica   
+942   Ahogamiento no mortal con hospitalizacion   
+
+                                           Localizacion  \
+3066                              Playas con vigilancia   
+1991                   Piscinas publicas con vigilancia   
+2227                          Rios, canales y similares   
+2260                          Rios, canales y similares   
+2835                     Puertos, embarcaderos, amarres   
+...                                                 ...   
+1402                              Playas sin vigilancia   
+2650                              Playas con vigilancia   
+706   Sistemas de recogida, transporte o almacenamie...   
+160                               Playas sin vigilancia   
+942                               Playas sin vigilancia   
+
+                                                 Riesgo  \
+3066  Malas condiciones meterológicas o del agua (Ba...   
+1991  Excelentes condiciones, entornos cerrados o cu...   
+2227                                          Sin datos   
+2260  Buenas condiciones metereológicas o del agua (...   
+2835                                          Sin datos   
+...                                                 ...   
+1402                                          Sin datos   
+2650                                          Sin datos   
+706                                           Sin datos   
+160   Moderadas condiciones metereológicas o del agu...   
+942                                           Sin datos   
+
+                       Reanimacion                Vigilancia  \
+3066               Sin Reanimacion  En horario de vigilancia   
+1991  RCP basica SOS y SVA por SEM  En horario de vigilancia   
+2227       Recuperacion de cadaver               No vigilado   
+2260       Recuperacion de cadaver               No vigilado   
+2835       Recuperacion de cadaver               No vigilado   
+...                            ...                       ...   
+1402               Sin Reanimacion               No vigilado   
+2650                     Sin datos  En horario de vigilancia   
+706                Sin Reanimacion               No vigilado   
+160                Sin Reanimacion               No vigilado   
+942   RCP basica SOS y SVA por SEM               No vigilado   
+
+                     Actividad                                   Deteccion  \
+3066       Natación recreativa                                   Sin datos   
+1991       Natación recreativa                                   Ciudadano   
+2227  Actividad cerca del agua  Servicios de emergencia, policia, bomberos   
+2260  Actividad cerca del agua                                   Ciudadano   
+2835  Actividad cerca del agua                Acompañante, familiar, amigo   
+...                        ...                                         ...   
+1402         Juegos en el agua                                   Ciudadano   
+2650       Natación recreativa                      Socorrista en servicio   
+706   Actividad cerca del agua                                   Ciudadano   
+160        Natación recreativa                                   Ciudadano   
+942        Natación recreativa                                   Ciudadano   
+
+        ID                         Estacion Estado  Latitud_est  Longitud_est  \
+3066  8286               CASTELLON-ALMAZORA  SPAIN     0.697259     -0.001164   
+1991  8160              ZARAGOZA/AEROPUERTO  SPAIN     0.727114     -0.017526   
+2227  8140            VALLADOLID/VILLANUBLA  SPAIN     0.728093     -0.084648   
+2260  8048                           ORENSE  SPAIN     0.738856     -0.137299   
+2835  8001                        LA CORUNA  SPAIN     0.756891     -0.146899   
+...    ...                              ...    ...          ...           ...   
+1402  8238                          TORTOSA  SPAIN     0.712385      0.008727   
+2650  8359                         ALICANTE  SPAIN     0.669625     -0.008727   
+706   8429              MURCIA/ALCANTARILLA  SPAIN     0.662352     -0.021526   
+160   8451  JEREZ DE LA FRONTERA AEROPUERTO  SPAIN     0.641409     -0.105883   
+942   8306   PALMA DE MALLORCA/SON SAN JUAN  SPAIN     0.690278      0.047706   
+
+      T_med  T_max  T_min  Presion  Dir. vi.  V_Viento  Nubosidad  \
+3066   26.8   30.1   23.5   1018.2      67.0         6      1.000   
+1991   25.5   33.0   18.0   1017.6     109.0         7      0.375   
+2227   15.5   19.4   11.6    850.0     273.0        29      0.625   
+2260   25.8   33.3   18.2   1018.6     127.0         5      0.250   
+2835    8.7   10.2    7.1   1002.9     226.0        20      0.750   
+...     ...    ...    ...      ...       ...       ...        ...   
+1402   25.5   30.9   20.1   1010.7     318.0        12      0.375   
+2650   28.1   34.5   21.6   1015.7      56.0         6      0.125   
+706    20.6   29.6   11.6   1022.6      10.0         9      0.500   
+160    13.9   17.3   10.6   1021.4     274.0         8      0.500   
+942    26.1   30.2   21.9   1012.6     186.0         9      0.375   
+
+      ProfNievecm  InsolacHoras    Distancia  IdActividad  IdCausa  \
+3066          NaN           NaN    23.998658           10        1   
+1991          3.0           8.0    56.465898           10        0   
+2227          5.0           8.0    43.432183            6        0   
+2260          2.0           8.0    35.848259            6        2   
+2835          6.0           8.0     1.412241            6        2   
+...           ...           ...          ...          ...      ...   
+1402          3.0           8.0    29.832275            8        1   
+2650          1.0           8.0     8.031778           10        0   
+706           4.0           8.0    59.315344            6        2   
+160           4.0           8.0  1082.583806           10        1   
+942           3.0           8.0    43.362938           10        0   
+
+      IdDeteccion  IdFactor  
+3066            0         3  
+1991            2         8  
+2227            3         9  
+2260            2         9  
+2835            1         1  
+...           ...       ...  
+1402            2         0  
+2650            5         9  
+706             2         0  
+160             2         5  
+942             2         0  
+
+[324 rows x 44 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_36_0
+	Source 0 Schema: ['IdCausa', 'Causa']
+	Source 0 Examples: 	 Source 0 contains 19 tuples, with examples as follows: 
+   IdCausa                                       Causa
+0        0                                   Sin datos
+1        1              Condiciones del medio acuático
+2        2  Accidente, caída o zambullida accidentales
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_36/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_36_1
+	Source 1 Schema: ['IdDeteccion', 'Deteccion']
+	Source 1 Examples: 	 Source 1 contains 9 tuples, with examples as follows: 
+   IdDeteccion                     Deteccion
+0            0                     Sin datos
+1            1  Acompañante, familiar, amigo
+2            2                     Ciudadano
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_36/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_36_2
+	Source 2 Schema: ['Fecha', 'IdAhogado', 'IdPersona', 'Localidad', 'Provincia', 'CCAA', 'Hora', 'Latitud_inc', 'Longitud_inc', 'Sexo', 'Edad', 'Nacionalidad', 'Origen', 'Extraccion', 'Causa', 'TipoAhogamiento', 'Factor', 'Intervencion', 'Pronostico', 'Localizacion', 'Riesgo', 'Reanimacion', 'Vigilancia', 'Actividad', 'Deteccion', 'ID', 'Estacion', 'Estado', 'Latitud_est', 'Longitud_est', 'T_med', 'T_max', 'T_min', 'Precipitaciones', 'Presion', 'Dir. vi.', 'V_Viento', 'Nubosidad', 'ProfNievecm', 'InsolacHoras', 'Distancia']
+	Source 2 Examples: 	 Source 2 contains 3241 tuples, with examples as follows: 
+        Fecha  IdAhogado  IdPersona          Localidad  Provincia       CCAA  \
+0  01/01/2013        144        166            IZNAJAR    CORDOBA  ANDALUCIA   
+1  09/01/2013        146        168  PUERTO DE LA CRUZ   TENERIFE   CANARIAS   
+2  05/01/2013        147        169           ARRECIFE  LANZAROTE   CANARIAS   
+
+    Hora  Latitud_inc  Longitud_inc    Sexo  Edad Nacionalidad      Origen  \
+0   9:40     0.650319     -0.075250  Hombre  19.0       España       Local   
+1  15:36     0.495824     -0.288784  Hombre  59.0     Alemania  Extranjero   
+2  16:00     0.504845     -0.237980  Hombre  44.0  Reino Unido  Extranjero   
+
+                          Extraccion  \
+0  Cuerpo de Seguridad o Emergencias   
+1                         Socorrista   
+2                          Ciudadano   
+
+                                        Causa  \
+0  Accidente, caída o zambullida accidentales   
+1                                   Sin datos   
+2                                   Sin datos   
+
+                              TipoAhogamiento                    Factor  \
+0          Ahogamiento secundario a accidente  Peligrosidad del entorno   
+1                         Posible Ahogamiento                 Sin datos   
+2  Ahogado con sintomas de aspiración de agua                 Sin datos   
+
+                                        Intervencion          Pronostico  \
+0                            Recuperación de cadaver  Ahogamiento mortal   
+1  Rescate por Socorristas o personas adiestradas...  Ahogamiento mortal   
+2          Asistencia por transeúntes no adiestrados  Ahogamiento mortal   
+
+                                      Localizacion  \
+0                               Embalses, Pantanos   
+1  Piscinas de equipamientos hoteleros y similares   
+2                            Playas con vigilancia   
+
+                                              Riesgo  \
+0  Malas condiciones meterológicas o del agua (Ba...   
+1  Excelentes condiciones, entornos cerrados o cu...   
+2  Buenas condiciones metereológicas o del agua (...   
+
+                    Reanimacion                Vigilancia  \
+0       Recuperacion de cadaver               No vigilado   
+1  RCP basica SOS y SVA por SEM  En horario de vigilancia   
+2                   SVA por SEM                 Sin datos   
+
+                 Actividad                     Deteccion    ID  \
+0  Circulación en vehiculo  Acompañante, familiar, amigo  8419   
+1           Buceo a pulmon        Socorrista en servicio  8451   
+2      Natación recreativa                     Ciudadano  8451   
+
+                          Estacion Estado  Latitud_est  Longitud_est  T_med  \
+0               GRANADA/AEROPUERTO  SPAIN     0.648972     -0.066032    7.7   
+1  JEREZ DE LA FRONTERA AEROPUERTO  SPAIN     0.641409     -0.105883   10.3   
+2  JEREZ DE LA FRONTERA AEROPUERTO  SPAIN     0.641409     -0.105883   11.0   
+
+   T_max  T_min  Precipitaciones  Presion  Dir. vi.  V_Viento  Nubosidad  \
+0   12.3    3.1              0.9   1022.7     340.0         3      0.750   
+1   17.4    3.3              0.0   1028.7     347.0         5      0.125   
+2   18.7    3.3              0.0   1033.9     350.0         3      0.000   
+
+   ProfNievecm  InsolacHoras    Distancia  
+0          6.0           8.0    47.562655  
+1          1.0           8.0  1349.441373  
+2          0.0           8.0  1120.630572  
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_36/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_36_3
+	Source 3 Schema: ['IdActividad', 'Actividad']
+	Source 3 Examples: 	 Source 3 contains 27 tuples, with examples as follows: 
+   IdActividad          Actividad
+0            0          Sin datos
+1            1     Baño en reposo
+2            2  Buceo profesional
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_36/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_36_4
+	Source 4 Schema: ['IdFactor', 'Factor']
+	Source 4 Examples: 	 Source 4 contains 12 tuples, with examples as follows: 
+   IdFactor                        Factor
+0         0                     Sin datos
+1         1      Drogas, Alcohol, tóxicos
+2         2  Psicológicos, roles de grupo
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_36/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_36/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

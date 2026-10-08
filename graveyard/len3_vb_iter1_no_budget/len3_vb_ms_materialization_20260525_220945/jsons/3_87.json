@@ -1,0 +1,29 @@
+{
+  "case": "3_87",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9781,
+        "cost": 0.0212088,
+        "latency": 33.59414553642273,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.956) / 2 = 0.978 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.933, range overlap=0.979.\nGround truth candidate keys: {Rank}.\nGenerated table candidate keys: {Rank}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Rank': range overlap=0.958, JS similarity=0.867\n    Generated    \u2014 min: 2.0, max: 191.0, mean: 97.1795\n    Ground Truth \u2014 min: 6.0, max: 187.0, mean: 97.0141",
+        "generated_samples": "Schema: ['Rank', '0']\nNumber of Tuples: 78\nExamples:\n Rank  0\n   65  1\n  183  1\n  186  1",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_87/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_87/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_87/training_2.csv\", index_col=0)\n\n# Operation 1: JOIN Source3_87_2 and Source3_87_0 on Country = Country Name\n# Rename Source3_87_0 'Country Name' to 'Country' to join easily\nsource0_renamed = source0.rename(columns={\"Country Name\": \"Country\"})\n\n# Perform inner join on 'Country'\njoined = pd.merge(source2, source0_renamed, on=\"Country\", how=\"inner\")\n\n# Operation 2: group by Source3_87_2.Rank and count occurrences of Rank\n# Since Rank is unique in source2, count will be 1 for each Rank\ngrouped = joined.groupby(\"Rank\").size().reset_index(name=\"0\")\n\n# Ensure columns have correct types as per target schema\ngrouped[\"Rank\"] = grouped[\"Rank\"].astype(int)\ngrouped[\"0\"] = grouped[\"0\"].astype(int)\n\n# Save the final target table\ngrouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_87/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Rank,0\n2,1\n5,1\n17,1\n18,1\n19,1\n20,1\n21,1\n24,1\n25,1\n26,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.7262229919433594
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 33662.06192970276,
+        "critique": 0.0
+      }
+    }
+  ]
+}

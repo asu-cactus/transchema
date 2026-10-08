@@ -1,0 +1,46 @@
+{
+  "case": "1_0",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4073,
+        "cost": 0.0019488,
+        "latency": 6.900065660476685,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.815) / 2 = 0.407 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.753, range overlap=0.505.\nGround truth candidate keys: {State}; {AverageTemperature}.\nGenerated table candidate keys: {State, AverageTemperature}.\nKeys present in ground truth but absent in generated: {AverageTemperature}; {State}.\nSpurious keys in generated not present in ground truth: {AverageTemperature, State}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['AverageTemperature'] \u2192 State; ['State'] \u2192 AverageTemperature.\nDistribution Analysis (numerical columns with issues):\n  Column 'AverageTemperature': range overlap=0.505, JS similarity=0.753\n    Generated    \u2014 min: -44.736, max: 35.589, mean: 8.9083\n    Ground Truth \u2014 min: -13.196, max: 27.3959, mean: 9.466",
+        "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 19207\nExamples:\n      State  AverageTemperature\n     Yunnan              18.832\nNova Scotia              18.188\n     Kalmyk              16.816",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_0/training_0.csv\"\n]\n\n# List to hold transformed DataFrames from each source\ntransformed_dfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Select only the columns needed for the target schema: 'State' and 'AverageTemperature'\n    # Ensure the columns exist in the source\n    if 'State' in df.columns and 'AverageTemperature' in df.columns:\n        df_sub = df[['State', 'AverageTemperature']].copy()\n        \n        # Convert 'State' to string type explicitly\n        df_sub['State'] = df_sub['State'].astype(str)\n        \n        # Convert 'AverageTemperature' to float type explicitly\n        df_sub['AverageTemperature'] = pd.to_numeric(df_sub['AverageTemperature'], errors='coerce')\n        \n        # Drop rows where 'State' is missing or 'AverageTemperature' is NaN\n        df_sub = df_sub.dropna(subset=['State', 'AverageTemperature'])\n        \n        transformed_dfs.append(df_sub)\n    else:\n        raise ValueError(f\"Required columns not found in source file: {file_path}\")\n\n# Since there is only one source table, no union or join needed beyond this.\n# If there were multiple sources with the same schema, we would concat here.\n\n# Concatenate all transformed DataFrames (only one here, but code is generic)\nresult_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# According to the target examples, the target table has 241 rows.\n# The source has 20000 tuples, so presumably we keep all rows as is.\n# No aggregation or grouping is specified or needed.\n\n# Write the result to the target CSV file path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource.csv\"\nresult_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "State,AverageTemperature\nIrkutsk,-5.742000000000001\nYamal Nenets,-24.669\nKursk,14.481\nBeijing,21.88\nWyoming,-6.598\nMissouri,11.875\nNovgorod,-5.85\nSergipe,27.064\nChhattisgarh,32.787\nUttaranchal,20.938\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.341104507446289
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9796,
+          "cost": 0.0012384,
+          "latency": 2.9294276237487793,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.959) / 2 = 0.980 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.920, range overlap=0.917.\nGround truth candidate keys: {State}; {AverageTemperature}.\nGenerated table candidate keys: {State}; {AverageTemperature}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'AverageTemperature': range overlap=0.917, JS similarity=0.920\n    Generated    \u2014 min: -16.4544, max: 27.8268, mean: 9.4435\n    Ground Truth \u2014 min: -13.196, max: 27.3959, mean: 9.466",
+          "generated_samples": "Schema: ['State', 'AverageTemperature']\nNumber of Tuples: 241\nExamples:\n         State  AverageTemperature\n       Saratov            3.938963\nSanta Catarina           18.319419\n        Moskva            4.207118",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\nsource1_0_0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_0/training_0.csv\", index_col=0)\n\n# Union operation: only one source table, so just use it directly\ndf_union = source1_0_0\n\n# Group by 'State' and aggregate AverageTemperature by mean\nresult = df_union.groupby('State', as_index=False).agg({'AverageTemperature': 'mean'})\n\n# Write the final output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_0/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9579658508300781
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6905.153274536133,
+        "critique": 3060.3878498077393
+      }
+    }
+  ]
+}

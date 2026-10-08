@@ -1,0 +1,121 @@
+Case: 1_10
+Status: CORRECT
+Timestamp: 2026-02-24T00:52:28.463175
+Duration: 26.82 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_10/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['PRECINCT', 'ELIGIBLE_VOTERS', 'POLLS', 'EARLY_VOING', 'ABSENTEE', 'PROVISIONAL']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_10
+2. Target Schema: ['PRECINCT': string, 'ELIGIBLE_VOTERS': integer, 'POLLS': integer, 'EARLY_VOING': integer, 'ABSENTEE': integer, 'PROVISIONAL': integer]
+3. Target Examples: There are 560 available target examples:     PRECINCT  ELIGIBLE_VOTERS  POLLS  EARLY_VOING  ABSENTEE  PROVISIONAL
+29   002-002            14273   6318         3319       447          205
+362  015-021             4930   1930          845       128           48
+287  011-015             1975   1219          129       127           19
+32   002-005            11192   4909         2888       465          193
+205  008-000             2093   1320           50        55           25
+174  006-029             1097    588          216        76           29
+16   001-016             4270   2004          439       423           71
+59   003-000              692    438           57        20            6
+254  009-020             3090   1179          484        56           78
+148  006-003             5771   2444         1319       196          116
+209  008-004             6301   2857         1580       235          125
+474  027-003              595    243          158        24           13
+385  018-000             1381    900           66        55           14
+128  005-018             2045   1010          429        96           39
+330  014-003             5414   2451         1135       144          106
+241  009-007             8116   4345         1313       306          129
+381  016-013             1644    503          356        31           79
+105  004-021             2932   1369          580       117           57
+289  011-017             3282   1486          839        83           34
+233  008-028              427    222           91        19            1
+299  012-000             1998   1141          142        84          108
+517  027-046              835    452          153        98           10
+222  008-017             1962   1107          323       128           21
+153  006-008             3699   1710          756       150           73
+124  005-014             1982    769          591       114           45
+273  011-001             8228   4701         1153       401          106
+489  027-018             2064    713          322        79           90
+211  008-006             6115   2252          934       147          155
+336  014-009             3435   1510          696        74           64
+540  028-002             2029    588          597        72           46
+19   001-019             2207    833          632        77           60
+216  008-011             2100    901          304        62          113
+534  027-063             1841    565          473        74           43
+161  006-016             2763   1240          547        87           65
+443  026-005              487    204           49         5           10
+351  015-010             3874   1668          569        78           97
+100  004-016             1950    877          410       108           25
+261  009-027               18     12            2         0            0
+89   004-005             4666   2099          983       164          115
+41   002-014             8493   3099         2417       236          149
+501  027-030             1394    421          387        28           39
+541  028-003              449    142          111         6           17
+524  027-053             1530    507          257        37           69
+372  016-004              532    184           53        13            5
+497  027-026              903    218          341        23           70
+304  012-005             3754   1832          473       100           53
+184  007-007             8504   4147         1803       315           87
+265  010-001             9147   4840         1332       348          160
+457  026-019             1318    535          211        21           63
+440  026-002             1543    541          105        16           35
+80   003-021             2487   1211          401        42           37
+418  024-004             2425   1335          215       121           78
+43   002-016             4998   2105         1115       175          133
+422  025-003             1589    752          112        90           59
+157  006-012             3500   1473          810       137           91
+424  025-005             1905    797          156        25           49
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_10_0
+	Source 0 Schema: ['LBE', 'CONGRESSIONAL_DISTRICT_CODE', 'LEGISLATIVE_DISTRICT_CODE', 'PRECINCT', 'PARTY', 'POLLS', 'EARLY_VOING', 'ABSENTEE', 'PROVISIONAL', 'ELIGIBLE_VOTERS']
+	Source 0 Examples: 	 Source 0 contains 6042 tuples, with examples as follows: 
+        LBE  CONGRESSIONAL_DISTRICT_CODE LEGISLATIVE_DISTRICT_CODE PRECINCT  \
+0  Allegany                          6.0                       01C  001-000   
+1  Allegany                          6.0                       01C  001-000   
+2  Allegany                          6.0                       01C  001-000   
+
+         PARTY  POLLS  EARLY_VOING  ABSENTEE  PROVISIONAL  ELIGIBLE_VOTERS  
+0     DEMOCRAT     83            9         4            1            126.0  
+1        GREEN      1            0         0            1              2.0  
+2  LIBERTARIAN      3            0         0            0              3.0  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_10/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_10/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Read the source CSV file with index_col=0
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_10/test_0.csv"
+df = pd.read_csv(source_path, index_col=0)
+
+# Group by PRECINCT and sum the relevant columns
+agg_columns = ['ELIGIBLE_VOTERS', 'POLLS', 'EARLY_VOING', 'ABSENTEE', 'PROVISIONAL']
+grouped = df.groupby('PRECINCT')[agg_columns].sum()
+
+# Cast aggregated columns to integer type
+grouped = grouped.astype(int)
+
+# Reset index to bring PRECINCT back as a column and cast to string
+grouped = grouped.reset_index()
+grouped['PRECINCT'] = grouped['PRECINCT'].astype(str)
+
+# Reorder columns to match target schema exactly
+target_columns = ['PRECINCT', 'ELIGIBLE_VOTERS', 'POLLS', 'EARLY_VOING', 'ABSENTEE', 'PROVISIONAL']
+result = grouped[target_columns]
+
+# Save the resulting DataFrame to the specified CSV file path
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_10/target_multisource_agentic.csv"
+result.to_csv(output_path, index=False)
+```

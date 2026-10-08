@@ -1,0 +1,29 @@
+{
+  "case": "1_29",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.998,
+        "cost": 0.003664400000000001,
+        "latency": 13.542088508605957,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.996) / 2 = 0.998 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.984.\nGround truth candidate keys: {Gender}; {0}.\nGenerated table candidate keys: {Gender}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['Gender', '0']\nNumber of Tuples: 3\nExamples:\n               Gender   0\nOther / Non-Disclosed   6\n               Female  57\n                 Male 327",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_29/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by 'Gender' and count the number of 'Purchase ID' entries per gender\nresult = df.groupby('Gender', as_index=False)['Purchase ID'].count()\n\n# Rename the count column to '0' as per target schema\nresult.rename(columns={'Purchase ID': '0'}, inplace=True)\n\n# Ensure the 'Gender' column is string type and '0' column is integer type\nresult['Gender'] = result['Gender'].astype(str)\nresult['0'] = result['0'].astype(int)\n\n# Write the result to the target CSV file without the index\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_29/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "Gender,0\nFemale,57\nMale,327\nOther / Non-Disclosed,6\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0447502136230469
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 13551.181316375732,
+        "critique": 0.0
+      }
+    }
+  ]
+}

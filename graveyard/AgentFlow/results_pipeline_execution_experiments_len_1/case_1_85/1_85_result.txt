@@ -1,0 +1,382 @@
+Case: 1_85
+Status: CORRECT
+Timestamp: 2026-02-24T04:22:53.025313
+Duration: 472.26 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_85/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['ocd_prop_id', 'calaccess_prop_id', 'ccdc_prop_id', 'prop_name', 'ccdc_committee_id', 'calaccess_committee_id', 'committee_name_x', 'committee_position', 'committee_name_y', 'calaccess_filing_id', 'date_received', 'contributor_lastname', 'contributor_firstname', 'contributor_city', 'contributor_state', 'contributor_zip', 'contributor_employer', 'contributor_occupation', 'contributor_is_self_employed', 'amount']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_85
+2. Target Schema: ['ocd_prop_id': string, 'calaccess_prop_id': integer, 'ccdc_prop_id': integer, 'prop_name': string, 'ccdc_committee_id': integer, 'calaccess_committee_id': integer, 'committee_name_x': string, 'committee_position': string, 'committee_name_y': string, 'calaccess_filing_id': integer, 'date_received': string, 'contributor_lastname': string, 'contributor_firstname': string, 'contributor_city': string, 'contributor_state': string, 'contributor_zip': string, 'contributor_employer': string, 'contributor_occupation': string, 'contributor_is_self_employed': boolean, 'amount': float]
+3. Target Examples: There are 56326 available target examples:                                             ocd_prop_id  calaccess_prop_id  \
+22162  ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+20025  ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+5610   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+2316   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+13789  ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+...                                                 ...                ...   
+46101  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+41811  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+5820   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+7549   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+38223  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+
+       ccdc_prop_id                                          prop_name  \
+22162            81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+20025            81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+5610             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+2316             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+13789            81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+...             ...                                                ...   
+46101            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+41811            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+5820             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+7549             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+38223            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+
+       ccdc_committee_id  calaccess_committee_id  \
+22162                446                 1302403   
+20025                446                 1302403   
+5610                 446                 1302403   
+2316                 446                 1302403   
+13789                446                 1302403   
+...                  ...                     ...   
+46101                469                 1302403   
+41811                469                 1302403   
+5820                 446                 1302403   
+7549                 446                 1302403   
+38223                469                 1302403   
+
+                                        committee_name_x committee_position  \
+22162  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+20025  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+5610   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+2316   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+13789  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+...                                                  ...                ...   
+46101  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+41811  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+5820   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+7549   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+38223  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+
+                                        committee_name_y  calaccess_filing_id  \
+22162  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+20025  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+5610   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+2316   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+13789  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+...                                                  ...                  ...   
+46101  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+41811  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+5820   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+7549   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+38223  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+
+      date_received contributor_lastname contributor_firstname  \
+22162    2015-12-16              MOULTON               STEVE R   
+20025    2015-12-16                SILFA           FRANCISCO M   
+5610     2015-12-16                PEREZ            CAROLINA P   
+2316     2015-12-16             MARTINEZ             ENRIQUE J   
+13789    2015-12-16                SMITH             MICHAEL C   
+...             ...                  ...                   ...   
+46101    2015-12-16                GARZA                JOSE A   
+41811    2015-12-16                 MANN            MARSHALL E   
+5820     2015-12-16              DELGADO               DIANE C   
+7549     2015-12-16              REYNAGA               ARMANDO   
+38223    2015-12-16               ZUNIGA               KENNY G   
+
+      contributor_city contributor_state contributor_zip contributor_employer  \
+22162  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+20025  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+5610   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+2316   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+13789  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+...                ...               ...             ...                  ...   
+46101  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+41811  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+5820   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+7549   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+38223  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+
+      contributor_occupation  contributor_is_self_employed  amount  
+22162   CORRECTIONAL OFFICER                         False  287.08  
+20025   CORRECTIONAL OFFICER                         False  287.08  
+5610    CORRECTIONAL OFFICER                         False  287.08  
+2316    CORRECTIONAL OFFICER                         False  287.08  
+13789   CORRECTIONAL OFFICER                         False  287.08  
+...                      ...                           ...     ...  
+46101   CORRECTIONAL OFFICER                         False  287.08  
+41811   CORRECTIONAL OFFICER                         False  287.08  
+5820    CORRECTIONAL OFFICER                         False  287.08  
+7549    CORRECTIONAL OFFICER                         False  287.08  
+38223   CORRECTIONAL OFFICER                         False  287.08  
+
+[5633 rows x 20 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_85_0
+	Source 0 Schema: ['calaccess_committee_id', 'committee_name', 'calaccess_filing_id', 'date_received', 'contributor_lastname', 'contributor_firstname', 'contributor_city', 'contributor_state', 'contributor_zip', 'contributor_employer', 'contributor_occupation', 'contributor_is_self_employed', 'amount']
+	Source 0 Examples: 	 Source 0 contains 28189 tuples, with examples as follows: 
+   calaccess_committee_id                              committee_name  \
+0                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+1                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+2                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+
+   calaccess_filing_id date_received contributor_lastname  \
+0              2083796    2016-09-18              BERGMAN   
+1              2083796    2016-09-18                KAHLE   
+2              2083796    2016-07-15             MCDEVITT   
+
+  contributor_firstname contributor_city contributor_state contributor_zip  \
+0              GRETCHEN    SPRING VALLEY                CA           91978   
+1                 MYRNA        SAN DIEGO                CA           92109   
+2                   LEO        ESCONDIDO                CA           92025   
+
+       contributor_employer contributor_occupation  \
+0                A NEW PATH     EXECUTIVE DIRECTOR   
+1  NATIONAL SCHOOL DISTRICT                TEACHER   
+2             LIFE IONIZERS    SEO/CONTENT MANAGER   
+
+   contributor_is_self_employed  amount  
+0                         False    84.0  
+1                         False    35.0  
+2                         False   198.0  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_85/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_85_1
+	Source 1 Schema: ['ocd_prop_id', 'calaccess_prop_id', 'ccdc_prop_id', 'prop_name', 'ccdc_committee_id', 'calaccess_committee_id', 'committee_name', 'committee_position']
+	Source 1 Examples: 	 Source 1 contains 102 tuples, with examples as follows: 
+                                        ocd_prop_id  calaccess_prop_id  \
+0  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+1  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+2  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+
+   ccdc_prop_id                                          prop_name  \
+0            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+1            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+2            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+
+   ccdc_committee_id  calaccess_committee_id  \
+0                382                 1374469   
+1                383                 1220380   
+2                384                 1282321   
+
+                                      committee_name committee_position  
+0  YES ON PROPOSITION 51 - CALIFORNIANS FOR QUALI...            SUPPORT  
+1  COMMUNITY COLLEGE FACILITY COALITION ISSUES CO...            SUPPORT  
+2  TORLAKSON'S INVEST IN CALIFORNIA A BALLOT MEAS...            SUPPORT  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_85/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_85/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+import numpy as np
+
+# File paths for source CSVs
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_85/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_85/test_1.csv"
+
+# Output file path
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_85/target_multisource_agentic.csv"
+
+# Read source CSVs with index_col=0 as specified
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Rename committee_name in df0 and df1 before join to avoid conflicts
+# According to instructions:
+# committee_name_x from Source1_85_0 (df0)
+# committee_name_y from Source1_85_1 (df1)
+df0_renamed = df0.rename(columns={"committee_name": "committee_name_x"})
+df1_renamed = df1.rename(columns={"committee_name": "committee_name_y"})
+
+# Perform inner join on 'calaccess_committee_id'
+df_merged = pd.merge(
+    df0_renamed,
+    df1_renamed,
+    on="calaccess_committee_id",
+    how="inner",
+    suffixes=('_0', '_1')  # Just in case, but committee_name already renamed
+)
+
+# Now map and select columns to match target schema exactly:
+# Target schema:
+# ['ocd_prop_id': string, 
+#  'calaccess_prop_id': integer, 
+#  'ccdc_prop_id': integer, 
+#  'prop_name': string, 
+#  'ccdc_committee_id': integer, 
+#  'calaccess_committee_id': integer, 
+#  'committee_name_x': string, 
+#  'committee_position': string, 
+#  'committee_name_y': string, 
+#  'calaccess_filing_id': integer, 
+#  'date_received': string, 
+#  'contributor_lastname': string, 
+#  'contributor_firstname': string, 
+#  'contributor_city': string, 
+#  'contributor_state': string, 
+#  'contributor_zip': string, 
+#  'contributor_employer': string, 
+#  'contributor_occupation': string, 
+#  'contributor_is_self_employed': boolean, 
+#  'amount': float]
+
+# According to the critique and instructions:
+# Columns from Source1_85_1 (df1): 
+#   ocd_prop_id, calaccess_prop_id, ccdc_prop_id, prop_name, ccdc_committee_id
+#   committee_position, committee_name_y, calaccess_filing_id
+# Columns from Source1_85_0 (df0):
+#   calaccess_committee_id, committee_name_x, date_received, contributor_lastname,
+#   contributor_firstname, contributor_city, contributor_state, contributor_zip,
+#   contributor_employer, contributor_occupation, contributor_is_self_employed, amount
+
+# But note that ocd_prop_id, calaccess_prop_id, ccdc_prop_id, prop_name, ccdc_committee_id, committee_position, committee_name_y, calaccess_filing_id are only in df1 (Source1_85_1)
+# committee_name_x is from df0 (Source1_85_0)
+# The rest contributor_* and amount are from df0
+
+# Select and rename columns accordingly:
+
+# Extract columns from merged dataframe:
+final_df = pd.DataFrame()
+
+# From df1 (suffix _1)
+final_df['ocd_prop_id'] = df_merged['ocd_prop_id']
+final_df['calaccess_prop_id'] = df_merged['calaccess_prop_id']
+final_df['ccdc_prop_id'] = df_merged['ccdc_prop_id']
+final_df['prop_name'] = df_merged['prop_name']
+final_df['ccdc_committee_id'] = df_merged['ccdc_committee_id']
+final_df['calaccess_committee_id'] = df_merged['calaccess_committee_id']  # join key, same in both
+final_df['committee_position'] = df_merged['committee_position']
+final_df['committee_name_y'] = df_merged['committee_name_y']
+final_df['calaccess_filing_id'] = df_merged['calaccess_filing_id']
+
+# From df0 (suffix _0)
+final_df['committee_name_x'] = df_merged['committee_name_x']
+final_df['date_received'] = df_merged['date_received']
+final_df['contributor_lastname'] = df_merged['contributor_lastname']
+final_df['contributor_firstname'] = df_merged['contributor_firstname']
+final_df['contributor_city'] = df_merged['contributor_city']
+final_df['contributor_state'] = df_merged['contributor_state']
+final_df['contributor_zip'] = df_merged['contributor_zip']
+final_df['contributor_employer'] = df_merged['contributor_employer']
+final_df['contributor_occupation'] = df_merged['contributor_occupation']
+final_df['contributor_is_self_employed'] = df_merged['contributor_is_self_employed']
+final_df['amount'] = df_merged['amount']
+
+# Reorder columns to exactly match target schema order:
+target_columns = [
+    'ocd_prop_id',
+    'calaccess_prop_id',
+    'ccdc_prop_id',
+    'prop_name',
+    'ccdc_committee_id',
+    'calaccess_committee_id',
+    'committee_name_x',
+    'committee_position',
+    'committee_name_y',
+    'calaccess_filing_id',
+    'date_received',
+    'contributor_lastname',
+    'contributor_firstname',
+    'contributor_city',
+    'contributor_state',
+    'contributor_zip',
+    'contributor_employer',
+    'contributor_occupation',
+    'contributor_is_self_employed',
+    'amount'
+]
+
+final_df = final_df[target_columns]
+
+# Data type casting to match target schema:
+
+# ocd_prop_id: string
+final_df['ocd_prop_id'] = final_df['ocd_prop_id'].astype(str)
+
+# calaccess_prop_id: integer
+final_df['calaccess_prop_id'] = pd.to_numeric(final_df['calaccess_prop_id'], errors='coerce').fillna(0).astype(int)
+
+# ccdc_prop_id: integer
+final_df['ccdc_prop_id'] = pd.to_numeric(final_df['ccdc_prop_id'], errors='coerce').fillna(0).astype(int)
+
+# prop_name: string
+final_df['prop_name'] = final_df['prop_name'].astype(str)
+
+# ccdc_committee_id: integer
+final_df['ccdc_committee_id'] = pd.to_numeric(final_df['ccdc_committee_id'], errors='coerce').fillna(0).astype(int)
+
+# calaccess_committee_id: integer
+final_df['calaccess_committee_id'] = pd.to_numeric(final_df['calaccess_committee_id'], errors='coerce').fillna(0).astype(int)
+
+# committee_name_x: string
+final_df['committee_name_x'] = final_df['committee_name_x'].astype(str)
+
+# committee_position: string
+final_df['committee_position'] = final_df['committee_position'].astype(str)
+
+# committee_name_y: string
+final_df['committee_name_y'] = final_df['committee_name_y'].astype(str)
+
+# calaccess_filing_id: integer
+final_df['calaccess_filing_id'] = pd.to_numeric(final_df['calaccess_filing_id'], errors='coerce').fillna(0).astype(int)
+
+# date_received: string (date as string)
+final_df['date_received'] = final_df['date_received'].astype(str)
+
+# contributor_lastname: string
+final_df['contributor_lastname'] = final_df['contributor_lastname'].astype(str)
+
+# contributor_firstname: string
+final_df['contributor_firstname'] = final_df['contributor_firstname'].astype(str)
+
+# contributor_city: string
+final_df['contributor_city'] = final_df['contributor_city'].astype(str)
+
+# contributor_state: string
+final_df['contributor_state'] = final_df['contributor_state'].astype(str)
+
+# contributor_zip: string
+final_df['contributor_zip'] = final_df['contributor_zip'].astype(str)
+
+# contributor_employer: string
+final_df['contributor_employer'] = final_df['contributor_employer'].astype(str)
+
+# contributor_occupation: string
+final_df['contributor_occupation'] = final_df['contributor_occupation'].astype(str)
+
+# contributor_is_self_employed: boolean
+# Convert to boolean, treating 'False', 'false', 0, '0' as False, else True
+def to_bool(val):
+    if pd.isna(val):
+        return False
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return bool(val)
+    val_str = str(val).strip().lower()
+    if val_str in ['false', '0', 'no', 'n', 'none', '']:
+        return False
+    return True
+
+final_df['contributor_is_self_employed'] = final_df['contributor_is_self_employed'].apply(to_bool)
+
+# amount: float
+final_df['amount'] = pd.to_numeric(final_df['amount'], errors='coerce').fillna(0.0).astype(float)
+
+# Save final dataframe to CSV
+final_df.to_csv(output_path, index=False)
+```

@@ -1,0 +1,75 @@
+Case: 1_37
+Status: INCORRECT
+Timestamp: 2026-02-24T10:12:25.721426
+Duration: 112.80 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_0_50/case_1_37/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_37
+2. Target Schema: ['business_id': integer, 'Score': float, 'date': integer, 'type': string, 'ViolationTypeID': integer, 'risk_category': string, 'description': string]
+3. Target Examples: There are 21475 available target examples:        business_id  Score      date                   type  ViolationTypeID  \
+2424           972   76.0  20140728  Routine - Unscheduled           103103   
+9339          3252   88.0  20150317  Routine - Unscheduled           103156   
+15720         7474   96.0  20131101  Routine - Unscheduled           103133   
+17884        16329   88.0  20140604  Routine - Unscheduled           103121   
+7173          2652   92.0  20150727  Routine - Unscheduled           103154   
+...            ...    ...       ...                    ...              ...   
+8192          2942    NaN  20150121  Reinspection/Followup           103119   
+15491         7093   94.0  20130917  Routine - Unscheduled           103157   
+19042        23068    NaN  20151228  Reinspection/Followup           103157   
+16535         8249    NaN  20130925  Reinspection/Followup           103119   
+13206         4957   85.0  20130924  Routine - Unscheduled           103103   
+
+       risk_category                                        description  
+2424       High Risk                High risk food holding temperature   
+9339        Low Risk     Permit license or inspection report not posted  
+15720  Moderate Risk             Foods not protected from contamination  
+17884  Moderate Risk  Inadequate procedures or records for time as a...  
+7173        Low Risk       Unclean or degraded floors walls or ceilings  
+...              ...                                                ...  
+8192   Moderate Risk  Inadequate and inaccessible handwashing facili...  
+15491       Low Risk  Food safety certificate or food handler card n...  
+19042       Low Risk  Food safety certificate or food handler card n...  
+16535  Moderate Risk  Inadequate and inaccessible handwashing facili...  
+13206      High Risk                High risk food holding temperature   
+
+[2148 rows x 7 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_37_0
+	Source 0 Schema: ['business_id', 'Score', 'date', 'type']
+	Source 0 Examples: 	 Source 0 contains 27285 tuples, with examples as follows: 
+   business_id  Score      date                   type
+0           10    NaN  20140807  Reinspection/Followup
+1           10   94.0  20140729  Routine - Unscheduled
+2           10    NaN  20140124  Reinspection/Followup
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_37_1
+	Source 1 Schema: ['business_id', 'date', 'ViolationTypeID', 'risk_category', 'description']
+	Source 1 Examples: 	 Source 1 contains 19860 tuples, with examples as follows: 
+   business_id      date  ViolationTypeID  risk_category  \
+0           10  20140114           103154       Low Risk   
+1           10  20140114           103119  Moderate Risk   
+2           10  20140114           103145       Low Risk   
+
+                                         description  
+0       Unclean or degraded floors walls or ceilings  
+1  Inadequate and inaccessible handwashing facili...  
+2   Improper storage of equipment utensils or linens  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_37/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

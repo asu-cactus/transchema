@@ -1,0 +1,46 @@
+{
+  "case": "1_92",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.6666,
+        "cost": 0.0017316,
+        "latency": 3.733243942260742,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.333) / 2 = 0.667 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {user_id}; {email}.\nGenerated table candidate keys: {user_id}; {email}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'user_id': Jaccard=0.000\n  Column 'email': Jaccard=0.000",
+        "generated_samples": "Schema: ['user_id', 'email', 'geo']\nNumber of Tuples: 50\nExamples:\n user_id              email         geo\nuser_925 Sianscot@yandex.ru      \u0422\u044e\u043c\u0435\u043d\u044c\nuser_915   PongCute@mail.ru \u0410\u0440\u0437\u0430\u043d\u0433\u0435\u043b\u0442\u0441\u043a\nuser_996 Trantawe@yandex.ru   \u041a\u0440\u0430\u0441\u043d\u043e\u0434\u0430\u0440",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_92/training_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\nfor file_path in source_files:\n    # Read each source CSV, ignoring the first index column (index_col=0)\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Normalize column names to lowercase for safety (optional)\n    df.columns = [col.strip() for col in df.columns]\n    \n    # According to the target schema, ensure columns are exactly ['user_id', 'email', 'geo']\n    # Source schema matches target schema, so no renaming needed.\n    # But user_id values in source start with uppercase 'User_' while target examples show lowercase 'user_'\n    # Normalize user_id to lowercase to match target examples format.\n    df['user_id'] = df['user_id'].str.lower()\n    \n    # Append to list\n    dfs.append(df)\n\n# Since all source tables have the same schema as the target, union (concat) all dataframes\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure columns are in the order of target schema\ntarget_df = target_df[['user_id', 'email', 'geo']]\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_92/target_multisource.csv\", index=False)",
+        "generated_csv_head": "user_id,email,geo\nuser_984,Kittysineos@rambler.ru,\u0421\u0430\u043d\u043a\u0442-\u041f\u0435\u0442\u0435\u0440\u0431\u0443\u0440\u0433\nuser_969,Knightstra@icloud.com,\u041a\u0440\u0430\u0441\u043d\u043e\u044f\u0440\u0441\u043a\nuser_904,Kryptoburs@yahoo.com,\u042f\u0440\u043e\u0441\u043b\u0430\u0432\u043b\u044c\nuser_953,Lassour@ukr.net,\u041a\u0440\u0430\u0441\u043d\u043e\u0434\u0430\u0440\nuser_995,Latinarysa@rambler.ru,\u042f\u0440\u043e\u0441\u043b\u0430\u0432\u043b\u044c\nuser_951,Lessomaire@rambler.ru,\u0421\u0442\u0430\u0432\u0440\u043e\u043f\u043e\u043b\u044c\nuser_900,Lipsxiptp@yahoo.com,\u0421\u0430\u043d\u043a\u0442-\u041f\u0435\u0442\u0435\u0440\u0431\u0443\u0440\u0433\nuser_930,Loqutio@yandex.ru,\u0410\u0440\u0437\u0430\u043d\u0433\u0435\u043b\u0442\u0441\u043a\nuser_922,Lyfernozoi@inbox.ru,\u0425\u0430\u0431\u0430\u0440\u043e\u0432\u0441\u043a\nuser_926,Magazineli@ya.ru,\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5456676483154297
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6666,
+          "cost": 0.002038,
+          "latency": 11.251885175704956,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.333) / 2 = 0.667 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {user_id}; {email}.\nGenerated table candidate keys: {user_id}; {email}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'user_id': Jaccard=0.000\n  Column 'email': Jaccard=0.000",
+          "generated_samples": "Schema: ['Unnamed: 0', 'user_id', 'email', 'geo']\nNumber of Tuples: 50\nExamples:\n Unnamed: 0  user_id                 email          geo\n         81 user_944  Seenomvura@yahoo.com \u0415\u043a\u0430\u0442\u0435\u0440\u0438\u043d\u0431\u0443\u0440\u0433\n         55 user_951 Lessomaire@rambler.ru   \u0421\u0442\u0430\u0432\u0440\u043e\u043f\u043e\u043b\u044c\n         71 user_905       Pinkelysi@ya.ru       \u041c\u043e\u0441\u043a\u0432\u0430",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_92/training_0.csv\", index_col=0)\n\n# The target schema is ['user_id', 'email', 'geo']\n# The source table already has the same schema and 50 tuples.\n# The failed pipeline output matches the source data exactly, but the target examples show some differences in case (user_id lowercase) and some NaNs in geo.\n# We need to:\n# - Normalize user_id to lowercase to match target examples (e.g., user_902 vs User_984)\n# - Keep all rows (no filtering)\n# - Keep NaNs as is (some geo are NaN in target)\n# Since only one source table is given, and the target has 50 tuples, no join or union is needed.\n# The failed pipeline had no operations, so the output was just the source data with user_id uppercase.\n# The target examples show user_id lowercase, so apply string lower() on user_id.\n\n# Apply string lower() on user_id column\nsource0['user_id'] = source0['user_id'].str.lower()\n\n# Write the output to the target file\nsource0.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_92/target_multisource_critique_history.csv\")",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.4095306396484375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 3735.7027530670166,
+        "critique": 11292.117595672607
+      }
+    }
+  ]
+}

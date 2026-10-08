@@ -1,0 +1,119 @@
+Case: 4_34
+Status: INCORRECT
+Timestamp: 2026-02-25T12:32:35.337319
+Duration: 249.48 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_15_45/case_4_34/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_34
+2. Target Schema: ['batsman': string, 'total_runs_x': integer, 'batsman_runs_x': integer, 'batsman_runs_y': integer, 'no of balls': integer, 'batsman_runs': integer, 'strike': float, 'total_runs_y': integer]
+3. Target Examples: There are 258 available target examples:           batsman  total_runs_x  batsman_runs_x  batsman_runs_y  no of balls  \
+44      JA Morkel            54               3               0          712   
+200     MM Sharma             4               0               0          120   
+26      JP Duminy            79              14               0         1680   
+139   SA Asnodkar            10               1               0          352   
+51      SS Tiwary            45               7               0         1111   
+18        RR Pant            95              12               1         1104   
+136       AP Tare            11               1               0          285   
+43      Q de Kock            55              10               1         1136   
+254     JO Holder             2               0               0           32   
+125    MJ Guptill            14               0               0          197   
+42      G Gambhir            58              34               0         3524   
+110    MP Stoinis            18               1               0          373   
+235   Salman Butt             2               1               0          172   
+87    NLTC Perera            26               0               0          326   
+21        M Vijay            91              13               2         2164   
+80       AS Yadav            28               6               0          760   
+214     DJ Jacobs             4               0               0          101   
+85       TL Suman            26               2               0          587   
+112     PP Chawla            18               0               0          541   
+213     CA Pujara             4               1               0          403   
+27        NV Ojha            78               6               0         1360   
+183      JDP Oram             5               0               0          110   
+90      BA Stokes            25               1               1          493   
+193       J Botha             5               1               0          364   
+171    S Anirudha             7               1               0          121   
+107  DT Christian            18               0               0          384   
+
+     batsman_runs      strike  total_runs_y  
+44            975  136.938202            61  
+200           124  103.333333             9  
+26           2041  121.488095           128  
+139           423  120.170455            59  
+51           1276  114.851485            93  
+18           1792  162.318841           151  
+136           339  118.947368            41  
+43           1489  131.073944           160  
+254            38  118.750000             4  
+125           271  137.563452            25  
+42           4223  119.835414           499  
+110           482  129.222520            35  
+235           193  112.209302            30  
+87            424  130.061350            26  
+21           2590  119.685767           247  
+80           1011  133.026316           111  
+214            92   91.089109            10  
+85            676  115.161840            55  
+112           587  108.502773            54  
+213           390   96.774194            51  
+27           1555  114.338235           122  
+183           106   96.363636             6  
+90            647  131.237323            43  
+193           409  112.362637            39  
+171           136  112.396694            11  
+107           448  116.666667            22  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_34_0
+	Source 0 Schema: ['batsman', 'batsman_runs']
+	Source 0 Examples: 	 Source 0 contains 516 tuples, with examples as follows: 
+     batsman  batsman_runs
+0   CH Gayle             7
+1    V Kohli             5
+2  SR Watson             4
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_34/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_34_1
+	Source 1 Schema: ['batsman', 'total_runs']
+	Source 1 Examples: 	 Source 1 contains 258 tuples, with examples as follows: 
+          batsman  total_runs
+0        CH Gayle         322
+1  AB de Villiers         211
+2        MS Dhoni         207
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_34/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_34_2
+	Source 2 Schema: ['batsman', 'no of balls', 'batsman_runs', 'strike']
+	Source 2 Examples: 	 Source 2 contains 516 tuples, with examples as follows: 
+          batsman  no of balls  batsman_runs      strike
+0  A Ashish Reddy          196           280  142.857143
+1      A Chandila            7             4   57.142857
+2        A Chopra           75            53   70.666667
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_34/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_34_3
+	Source 3 Schema: ['batsman', 'batsman_runs']
+	Source 3 Examples: 	 Source 3 contains 516 tuples, with examples as follows: 
+     batsman  batsman_runs
+0  DA Warner            48
+1    V Kohli            42
+2   SK Raina            38
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_34/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_34_4
+	Source 4 Schema: ['batsman', 'total_runs']
+	Source 4 Examples: 	 Source 4 contains 516 tuples, with examples as follows: 
+     batsman  total_runs
+0   S Dhawan         529
+1  G Gambhir         499
+2   SK Raina         492
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_34/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_34/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

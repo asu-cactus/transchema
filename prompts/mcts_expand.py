@@ -1,0 +1,412 @@
+"""
+mcts_expand.py — MCTS Expansion prompt.
+
+
+Combines operator selection AND configuration into a single LLM call.
+Returns up to k ranked candidate next operators, each with its full configuration,
+so no separate "configure" call is needed.
+
+Output format parsed by get_mcts_candidates() in auto_suggest_llm_util.py:
+
+    $CANDIDATE 1$
+    OPERATOR: JOIN
+    TABLES: [[test_0, test_1]]
+    COLUMNS: [[test_0.order_id, test_1.id]]
+    $END$
+
+    $CANDIDATE 2$
+    OPERATOR: GROUP_BY/AGGREGATE
+    GROUP_BY: [test_0.category]
+    AGGREGATIONS: [COUNT(test_0.id), SUM(test_0.amount)]
+    $END$
+
+Note: NO_MORE_OPERATION is intentionally NOT a valid expansion candidate —
+expansion always proposes a structural operator. Plan termination is decided
+later by simulation / critique, not here.
+"""
+
+import re
+import sys
+from pathlib import Path
+
+_TRANSCHEMA_ROOT = str(Path(__file__).resolve().parents[1])
+if _TRANSCHEMA_ROOT not in sys.path:
+    sys.path.insert(0, _TRANSCHEMA_ROOT)
+from hints.hints_static import (
+    get_hints_section,
+    hints_for_benchmark,
+    NEXT_OPERATOR_HINT_IDS,
+    JOIN_HINT_IDS,
+    GROUPBY_AGG_HINT_IDS,
+    GROUPBY_HINT_IDS,
+    AGGREGATE_HINT_IDS,
+)
+from hints.hint import get_hints
+
+
+def get_mcts_expand_prompt(
+    allowed_operation_list,
+    operation_history,
+    target_data_name,
+    target_data_schema,
+    target_samples,
+    file_count,
+    source_information,
+    fd_hints,
+    k=3,
+    hint_source="",
+    source_data_name_list=None,
+    source_data_schema_list=None,
+    directory="",
+    len_idx_target_idx="",
+    raw_target_schema="",
+    static_hints=True,
+    rag_hints="",
+    explored_steps=None,
+):
+    """
+    MCTS Expansion prompt.
+
+    Given the current partial operation history, propose up to k ranked next
+    operations, each with its COMPLETE configuration (tables, columns,
+    aggregation specs, etc.).  The highest-ranked untried candidate will be
+    added as a new child node in the MCTS tree; lower-ranked candidates serve
+    as fallbacks if the top choice is already explored.
+
+    Parameters
+    ----------
+    allowed_operation_list : list[str]
+        Operator types the LLM may choose from.
+    operation_history : list[str]
+        Operators already committed in this MCTS path.
+    target_data_name : str
+    target_data_schema : str
+    target_samples : str
+        Sample rows from the target table (token-budget-capped by the caller).
+    file_count : int
+    source_information : str
+        Formatted block describing all source tables (schema + examples).
+    fd_hints : str
+        Functional-dependency hints (empty string when fd_flag == 0).
+    k : int
+        Maximum number of candidates to return (default 3).
+
+    Returns
+    -------
+    list[str]  — single-element list containing the prompt string.
+    """
+
+    # Compute data-specific operator selection hints (v1-text table matching)
+    operator_data_hints = ""
+    if hint_source and hint_source not in ("none", "") and source_data_name_list is not None:
+        schema_for_hints = raw_target_schema if raw_target_schema else target_data_schema
+        operator_h = get_hints(
+            "get_next_operator", hint_source, schema_for_hints, file_count,
+            source_data_name_list, source_data_schema_list, directory, len_idx_target_idx,
+            0, [],
+        )
+        if operator_h and operator_h[0]:
+            operator_data_hints = "\nData-specific table matching:\n" + operator_h[0]
+
+    join_hints = get_hints_section(JOIN_HINT_IDS, fmt="bullet") if static_hints else ""
+    groupby_hints = get_hints_section(GROUPBY_HINT_IDS, fmt="bullet") if static_hints else ""
+    selection_hints = get_hints_section(
+        hints_for_benchmark(NEXT_OPERATOR_HINT_IDS, directory), fmt="bullet"
+    ) if static_hints else ""
+    # COLUMN_TRANSFORM_HINT_IDS and the smart-building date-format override are
+    # intentionally NOT injected here -- reverted to match the 2026-08-24 17/20
+    # baseline run's Expand prompt, which had no column-level operator (or any
+    # hints for one) at all.
+
+    rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
+
+    if explored_steps:
+        explored_lines = "\n".join(f"  • {s[:100]}" for s in explored_steps)
+        remaining = ", ".join(allowed_operation_list) if allowed_operation_list else "none"
+        explored_block = (
+            f"══════════════════════════════════════════════════════\n"
+            f"ALREADY EXPLORED AT THIS POSITION (do NOT re-propose)\n"
+            f"══════════════════════════════════════════════════════\n"
+            f"The following configurations have already been tried here:\n"
+            f"{explored_lines}\n\n"
+            f"Remaining operator types to explore: {remaining}\n"
+            f"Propose only candidates using operator types from the remaining list above.\n"
+        )
+    else:
+        explored_block = ""
+
+    prompt = f"""You are generating a data-pipeline to transform multiple source tables to the target table and you need to answer "what operation should be performed next?". Take this decision based on "Operation History", the schema of the source, target tables, and examples in the target table.
+
+Your task: propose up to {k} ALTERNATIVE candidates for the SINGLE NEXT operation step, ranked from most to least promising.
+
+CRITICAL: Each candidate is an INDEPENDENT ALTERNATIVE for the same next step.
+They are NOT sequential — candidate 2 does NOT build on candidate 1.
+Each candidate must reference ONLY the original source tables (or the last result of
+the Operation History), never the output of another candidate.
+
+For EVERY candidate you must specify BOTH the operator type AND its full configuration — no
+separate configuration step will be performed.
+
+Allowed Operations: {allowed_operation_list}
+Operation History (completed so far): {operation_history}
+
+1. Target Table Name:   {target_data_name}
+2. Target Schema:       {target_data_schema}
+3. Target Examples:     {target_samples}
+4. Source Information:  {source_information}
+{fd_hints}
+
+══════════════════════════════════════════════════════
+CONFIGURATION RULES — one section per operator type
+══════════════════════════════════════════════════════
+
+JOIN — join two tables on shared columns
+{join_hints}
+  • You should only use columns that actually exist in the source tables.
+  Format:
+    TABLES: [[table1, table2]]
+    COLUMNS: [[table1.col_a, table2.col_b], [table1.col_c, table2.col_d], ...]
+    (one pair per join condition; use multiple pairs for composite keys)
+
+UNION — stack tables that have IDENTICAL schemas
+  • Only union tables with EXACTLY the same column names; do NOT rename.
+  • If tables have different schemas, use JOIN instead of UNION.
+  Format:
+    TABLES: [table1, table2, table3, ...]
+
+GROUP_BY — choose which columns to group rows by
+  NOTE: aggregation functions are chosen separately in the NEXT expansion step.
+  Propose only the group-by columns here.
+{groupby_hints}
+  • Do NOT include float-valued columns as GROUP BY attributes.
+  Format:
+    COLUMNS: [table.col1, table.col2, ...]
+
+PIVOT / UNPIVOT — no additional configuration needed
+  Format: (just the operator line; no TABLES or COLUMNS line)
+
+COLUMN_TRANSFORM — define the target columns as row-wise expressions over existing columns
+
+══════════════════════════════════════════════════════
+SELECTION GUIDANCE (apply these rules when ranking candidates)
+══════════════════════════════════════════════════════
+{selection_hints}
+{operator_data_hints}
+- Always propose at least one structural operator for the next step; do NOT signal
+  that the pipeline is complete here — termination is decided later, not in expansion.
+- Do NOT repeat an operation+configuration already present in the operation history.
+
+{explored_block}{rag_hints_section}══════════════════════════════════════════════════════
+OUTPUT FORMAT  (follow exactly)
+══════════════════════════════════════════════════════
+List up to {k} candidates ranked most-to-least promising using the markers below.
+Include ONLY candidates you genuinely believe are viable.
+
+$CANDIDATE 1$
+OPERATOR: <OPERATOR_TYPE>
+<configuration lines>
+$END$
+
+$CANDIDATE 2$
+OPERATOR: <OPERATOR_TYPE>
+<configuration lines>
+$END$
+
+... (up to {k} candidates)
+
+Example (Operation History is empty — four independent alternatives for the FIRST step):
+
+$CANDIDATE 1$
+OPERATOR: JOIN
+TABLES: [[test_0, test_1]]
+COLUMNS: [[test_0.order_id, test_1.order_id]]
+$END$
+
+$CANDIDATE 2$
+OPERATOR: UNION
+TABLES: [test_0, test_1]
+$END$
+
+$CANDIDATE 3$
+OPERATOR: GROUP_BY
+COLUMNS: [test_0.category]
+$END$
+
+$CANDIDATE 4$
+OPERATOR: COLUMN_TRANSFORM
+COLUMNS: [date = FORMAT(test_0.timestamp, '%m/%d/%Y'), total_load = SUM(test_0.hvac_kw, test_0.light_kw, test_0.plug_kw)]
+$END$
+
+Note: all four candidates above operate on the SAME original source tables.
+Candidate 2 does NOT depend on candidate 1 having been applied first.
+When GROUP_BY is chosen, the aggregation functions are selected in the next expansion step.
+
+Now provide your ranked candidates:"""
+
+    return [prompt]
+
+
+def get_mcts_expand_aggregate_prompt(
+    operation_history,
+    target_data_name,
+    target_data_schema,
+    target_samples,
+    file_count,
+    source_information,
+    fd_hints,
+    k=3,
+    static_hints=True,
+    rag_hints="",
+    explored_steps=None,
+    agg_evidence="",
+):
+    """
+    MCTS Aggregation Expansion prompt.
+
+    Called when the selected MCTS tree node is GROUP_BY — the group-by columns
+    have already been committed.  This prompt proposes up to k independent
+    AGGREGATE candidates (different sets of aggregation functions) to follow
+    the GROUP_BY step, so the MCTS tree can explore multiple aggregation
+    variants under the same GROUP_BY node.
+
+    The last element of operation_history is the GROUP_BY step that was chosen,
+    e.g. "GROUP_BY : [test_0.category]".
+
+    Returns
+    -------
+    list[str]  — single-element list containing the prompt string.
+    """
+    groupby_step = operation_history[-1] if operation_history else "(none)"
+    agg_hints = get_hints_section(AGGREGATE_HINT_IDS, fmt="bullet") if static_hints else ""
+    rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
+
+    # ── Column-coverage requirement ────────────────────────────────────────
+    # Every target column that is NOT a GROUP BY key must be produced by an
+    # aggregation, otherwise the candidate cannot possibly reproduce the
+    # target. Without stating this explicitly (and naming the columns), the
+    # model routinely aggregates only a subset: on length1_9, GROUP BY
+    # [zipcode] with target [zipcode, AGI_STUB, N1, A00100] produced
+    # SUM(N1), SUM(A00100) in every candidate and silently dropped AGI_STUB,
+    # so no candidate under that GROUP BY could ever be correct.
+    _gb_cols = set()
+    _gb_inner = re.findall(r"\[(.*?)\]", groupby_step)
+    if _gb_inner:
+        _gb_cols = {
+            c.strip().split(".")[-1]
+            for c in _gb_inner[0].split(",")
+            if c.strip()
+        }
+    # target_data_schema looks like "['zipcode': integer, 'AGI_STUB': integer, ...]"
+    _tgt_cols = re.findall(r"'([^']+)'\s*:", str(target_data_schema))
+    if not _tgt_cols:
+        _tgt_cols = [
+            c.strip().strip("'\"")
+            for c in str(target_data_schema).strip("[] ").split(",")
+            if c.strip()
+        ]
+    _need_cols = [c for c in _tgt_cols if c not in _gb_cols]
+
+    if _need_cols:
+        coverage_line = (
+            f"- EVERY candidate must cover all {len(_need_cols)} target column(s) that are "
+            f"NOT GROUP BY keys — {', '.join(_need_cols)} — with exactly one aggregation "
+            f"each. Never drop or add a target column between candidates. "
+            f"This applies to columns that look like categories, codes or brackets too.\n"
+            f"- An aggregation's argument may be an EXPRESSION over several source columns, "
+            f"not only a single column: AGG_FUNC(t.a + t.b + t.c) is valid wherever "
+            f"AGG_FUNC(t.a) is. Choose the expression that the target column's name, dtype "
+            f"and example values actually imply.\n"
+            f"- Candidates should differ in these expressions as well as in the functions. "
+            f"Varying only the function while holding one fixed source→target mapping "
+            f"explores a single mapping: if that mapping is wrong, every candidate is wrong.\n"
+        )
+    else:
+        coverage_line = ""
+
+    if explored_steps:
+        explored_lines = "\n".join(f"  • {s[:100]}" for s in explored_steps)
+        agg_explored_block = (
+            f"══════════════════════════════════════════════════════\n"
+            f"ALREADY EXPLORED AGGREGATIONS (do NOT re-propose)\n"
+            f"══════════════════════════════════════════════════════\n"
+            f"The following aggregation configurations have already been tried:\n"
+            f"{explored_lines}\n\n"
+            f"Propose aggregation patterns that are genuinely different from the above.\n"
+        )
+    else:
+        agg_explored_block = ""
+
+    prompt = f"""You are building a data-pipeline. The GROUP BY step has already been chosen:
+
+  {groupby_step}
+
+Your task: propose up to {k} ALTERNATIVE AGGREGATE candidates to apply immediately after
+the GROUP BY above, ranked from most to least promising.
+
+CRITICAL: Each candidate is an INDEPENDENT ALTERNATIVE for the same aggregation step.
+They are NOT sequential — candidate 2 does NOT build on candidate 1.
+Each proposes a DIFFERENT set of aggregation functions on the grouped table.
+
+Operation History (completed so far, ending with the GROUP BY): {operation_history}
+
+1. Target Table Name:   {target_data_name}
+2. Target Schema:       {target_data_schema}
+3. Target Examples:     {target_samples}
+4. Source Information:  {source_information}
+{fd_hints}
+
+{agg_evidence}══════════════════════════════════════════════════════
+AGGREGATION GUIDANCE
+══════════════════════════════════════════════════════
+{agg_hints}
+{coverage_line}- Use ONLY columns that exist in the source tables (or the result of prior steps).
+- Common aggregation functions: COUNT, SUM, AVG, MIN, MAX, COUNT DISTINCT.
+- Columns already used in the GROUP BY step above must NOT appear as aggregation targets.
+- Do NOT repeat an aggregation configuration already present in the operation history.
+- There is no limit on how many aggregations a candidate may contain — include as
+  many as the coverage rule requires, not the number shown in the examples.
+
+{agg_explored_block}{rag_hints_section}══════════════════════════════════════════════════════
+OUTPUT FORMAT  (follow exactly)
+══════════════════════════════════════════════════════
+List up to {k} candidates ranked most-to-least promising.
+
+$CANDIDATE 1$
+OPERATOR: AGGREGATE
+AGGREGATIONS: [AGG_FUNC(table.col), AGG_FUNC(table.col2), ...]
+$END$
+
+$CANDIDATE 2$
+OPERATOR: AGGREGATE
+AGGREGATIONS: [AGG_FUNC(table.col), AGG_FUNC(table.col2), ...]
+$END$
+
+... (up to {k} candidates)
+
+Example — GROUP BY already set to [test_0.category], target's non-key columns are
+exactly: tier, id, revenue. Every candidate covers ALL THREE. Candidates differ in
+the aggregation FUNCTION and, where the target implies it, in the EXPRESSION over
+source columns:
+
+$CANDIDATE 1$
+OPERATOR: AGGREGATE
+AGGREGATIONS: [SUM(test_0.tier) AS tier, COUNT(test_0.id) AS id, SUM(test_0.revenue) AS revenue]
+$END$
+
+$CANDIDATE 2$
+OPERATOR: AGGREGATE
+AGGREGATIONS: [
+  MAX(test_0.tier) AS tier,
+  COUNT(test_0.id) AS id,
+  SUM(test_0.revenue + test_0.revenue_adj) AS revenue
+]
+$END$
+
+$CANDIDATE 3$
+OPERATOR: AGGREGATE
+AGGREGATIONS: [MIN(test_0.tier) AS tier, COUNT DISTINCT(test_0.id) AS id, AVG(test_0.revenue) AS revenue]
+$END$
+
+Now provide your ranked candidates:"""
+
+    return [prompt]

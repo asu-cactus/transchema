@@ -1,0 +1,123 @@
+Case: 1_25
+Status: CORRECT
+Timestamp: 2026-02-24T01:21:41.793415
+Duration: 32.70 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_25/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['State', 'Participation_x', 'English', 'Math_x', 'Reading', 'Science', 'Composite', 'Participation_y', 'Evidence-Based Reading and Writing', 'Math_y', 'Total']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_25
+2. Target Schema: ['State': string, 'Participation_x': string, 'English': float, 'Math_x': float, 'Reading': float, 'Science': float, 'Composite': float, 'Participation_y': string, 'Evidence-Based Reading and Writing': integer, 'Math_y': integer, 'Total': integer]
+3. Target Examples: There are 25 available target examples:          State Participation_x  English  Math_x  Reading  Science  Composite  \
+12       Idaho             38%     21.9    21.8     23.0     22.1       22.3   
+4   California             31%     22.5    22.7     23.1     22.2       22.8   
+
+   Participation_y  Evidence-Based Reading and Writing  Math_y  Total  
+12             93%                                 513     493   1005  
+4              53%                                 531     524   1055  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_25_0
+	Source 0 Schema: ['State', 'Participation', 'English', 'Math', 'Reading', 'Science', 'Composite']
+	Source 0 Examples: 	 Source 0 contains 26 tuples, with examples as follows: 
+      State Participation  English  Math  Reading  Science  Composite
+0  National           60%     20.3  20.7     21.4     21.0       21.0
+1   Alabama          100%     18.9  18.4     19.7     19.4       19.2
+2    Alaska           65%     18.7  19.8     20.4     19.9       19.8
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_25/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_25_1
+	Source 1 Schema: ['State', 'Participation', 'Evidence-Based Reading and Writing', 'Math', 'Total']
+	Source 1 Examples: 	 Source 1 contains 51 tuples, with examples as follows: 
+     State Participation  Evidence-Based Reading and Writing  Math  Total
+0  Alabama            5%                                 593   572   1165
+1   Alaska           38%                                 547   533   1080
+2  Arizona           30%                                 563   553   1116
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_25/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_25/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Step 1: Read source CSV files with index_col=0
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_25/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_25/test_1.csv"
+
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Step 2: Join Source1_25_0 and Source1_25_1 on 'State' (inner join)
+df_merged = pd.merge(df0, df1, on='State', how='inner', suffixes=('_x', '_y'))
+
+# Step 3: Rename columns to match target schema
+# From Source0: 'Participation' -> 'Participation_x', 'Math' -> 'Math_x'
+# From Source1: 'Participation' -> 'Participation_y', 'Math' -> 'Math_y'
+# The merge with suffixes already renamed 'Participation' and 'Math' columns accordingly.
+# But to be safe, rename explicitly:
+
+df_merged.rename(columns={
+    'Participation_x': 'Participation_x',
+    'Math_x': 'Math_x',
+    'Participation_y': 'Participation_y',
+    'Math_y': 'Math_y'
+}, inplace=True)
+
+# Step 4: Select and reorder columns to match target schema
+target_columns = [
+    'State',
+    'Participation_x',
+    'English',
+    'Math_x',
+    'Reading',
+    'Science',
+    'Composite',
+    'Participation_y',
+    'Evidence-Based Reading and Writing',
+    'Math_y',
+    'Total'
+]
+
+df_final = df_merged[target_columns]
+
+# Step 5: Convert data types to target schema types
+# Target schema types:
+# 'State': string
+# 'Participation_x': string
+# 'English': float
+# 'Math_x': float
+# 'Reading': float
+# 'Science': float
+# 'Composite': float
+# 'Participation_y': string
+# 'Evidence-Based Reading and Writing': integer
+# 'Math_y': integer
+# 'Total': integer
+
+# Convert string columns
+df_final['State'] = df_final['State'].astype(str)
+df_final['Participation_x'] = df_final['Participation_x'].astype(str)
+df_final['Participation_y'] = df_final['Participation_y'].astype(str)
+
+# Convert float columns
+float_cols = ['English', 'Math_x', 'Reading', 'Science', 'Composite']
+df_final[float_cols] = df_final[float_cols].astype(float)
+
+# Convert integer columns
+int_cols = ['Evidence-Based Reading and Writing', 'Math_y', 'Total']
+df_final[int_cols] = df_final[int_cols].astype(int)
+
+# Step 6: Save the resulting dataframe as CSV
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_25/target_multisource_agentic.csv"
+df_final.to_csv(output_path, index=False)
+```

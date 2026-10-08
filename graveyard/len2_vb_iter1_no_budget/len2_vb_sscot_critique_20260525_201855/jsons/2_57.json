@@ -1,0 +1,46 @@
+{
+  "case": "2_57",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.3924,
+        "cost": 0.001562,
+        "latency": 7.498128652572632,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.785) / 2 = 0.392 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.825, range overlap=0.717.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title, size, mean}.\nKeys present in ground truth but absent in generated: {title}.\nSpurious keys in generated not present in ground truth: {title, size, mean}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['title'] \u2192 size; ['title'] \u2192 mean.\nDistribution Analysis (numerical columns with issues):\n  Column 'size': range overlap=0.433, JS similarity=0.755\n    Generated    \u2014 min: 1.0, max: 121.0, mean: 14.2653\n    Ground Truth \u2014 min: 1.0, max: 278.0, mean: 31.6863\n  Column 'mean': range overlap=1.000, JS similarity=0.896\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2021\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.812",
+        "generated_samples": "Schema: ['title', 'size', 'mean']\nNumber of Tuples: 1402\nExamples:\n              title  size     mean\n     Stalker (1979)     3 3.333333\n       Dumbo (1941)    22 3.318182\nNil By Mouth (1997)     2 2.500000",
+        "code": "import pandas as pd\n\n# File paths for source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_57/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_57/training_1.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(source0_path, index_col=0)  # Columns: ['user_id', 'movie_id', 'rating']\nsource1 = pd.read_csv(source1_path, index_col=0)  # Columns: ['movie_id', 'title']\n\n# Transformation plan:\n# - The target table schema is ['title': string, 'size': integer, 'mean': float]\n# - source0 has ratings per user per movie_id\n# - source1 maps movie_id to title\n# - We need to aggregate source0 by movie_id to get:\n#     size = count of ratings per movie_id\n#     mean = average rating per movie_id\n# - Then join with source1 on movie_id to get the title\n# - Finally, select columns ['title', 'size', 'mean'] as target schema\n\n# Aggregate source0 by movie_id\nagg_ratings = source0.groupby('movie_id').agg(\n    size=('rating', 'count'),\n    mean=('rating', 'mean')\n).reset_index()\n\n# Join aggregated ratings with source1 to get titles\nmerged = pd.merge(agg_ratings, source1, on='movie_id', how='inner')\n\n# Select and reorder columns to match target schema\ntarget_df = merged[['title', 'size', 'mean']]\n\n# Ensure correct data types as per target schema\ntarget_df['title'] = target_df['title'].astype(str)\ntarget_df['size'] = target_df['size'].astype(int)\ntarget_df['mean'] = target_df['mean'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_57/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "title,size,mean\nToy Story (1995),91,3.912087912087912\nGoldenEye (1995),30,3.3\nFour Rooms (1995),18,2.611111111111111\nGet Shorty (1995),50,3.4\nCopycat (1995),14,3.5\nShanghai Triad (Yao a yao yao dao waipo qiao) (1995),3,3.333333333333333\nTwelve Monkeys (1995),83,3.891566265060241\nBabe (1995),46,3.934782608695652\nDead Man Walking (1995),70,3.8285714285714287\nRichard III (1995),20,3.9\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6202926635742188
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8923,
+          "cost": 0.0014236000000000001,
+          "latency": 4.109628677368164,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.785) / 2 = 0.892 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.825, range overlap=0.717.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'size': range overlap=0.433, JS similarity=0.756\n    Generated    \u2014 min: 1.0, max: 121.0, mean: 14.3678\n    Ground Truth \u2014 min: 1.0, max: 278.0, mean: 31.6863\n  Column 'mean': range overlap=1.000, JS similarity=0.893\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2014\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.812",
+          "generated_samples": "Schema: ['title', 'size', 'mean']\nNumber of Tuples: 1392\nExamples:\n                       title  size  mean\n        Guilty as Sin (1993)     2   2.0\nPompatus of Love, The (1996)     1   4.0\n         Three Wishes (1995)     2   3.0",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_57/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_57/training_1.csv\", index_col=0)\n\n# Join Source2_57_0 and Source2_57_1 on movie_id\njoined = pd.merge(source0, source1, how='inner', left_on='movie_id', right_on='movie_id')\n\n# Group by title, aggregate count of rating as size and mean of rating as mean\nresult = joined.groupby('title', as_index=False).agg(\n    size=('rating', 'count'),\n    mean=('rating', 'mean')\n)\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_57/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.0595321655273438
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7559.806823730469,
+        "critique": 4239.463806152344
+      }
+    }
+  ]
+}

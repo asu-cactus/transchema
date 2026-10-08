@@ -49,7 +49,6 @@ def get_hints(
             table_matching = h.get_table_matching(
                 source_data_schema_list, source_data_name_list, target_data_schema
             )
-            # column_table_mapping = h.get_column_table_mapping(target_data_schema, source_data_schema_list, source_data_name_list)
             hints = [table_matching]
     elif hint_source == "v2":
         tables = summary.load_tables(directory + "/length" + len_idx_target_idx)
@@ -75,7 +74,6 @@ def get_hints(
         key_candidates = predict_columns(tables, key_model, label_encoder)
         all_key_candidates.extend(key_candidates)
 
-        # print(candidate_matching_columns,'\n\n',all_key_candidates)
 
         # Generate transformation hints
         source_dfs = [tables[table] for table in tables if table != target_table_name]
@@ -88,7 +86,6 @@ def get_hints(
             candidate_key_columns=key_candidates,
             type=prompt_type,
         )
-        # print(hints)
 
     elif hint_source == "v3":
         if prompt_type == "join":
@@ -131,7 +128,6 @@ def get_hints(
         # column_table_mapping = h.get_column_table_mapping(target_data_schema, source_data_schema_list, source_data_name_list)
         # hints = [table_matching]
 
-        # return [hints]
     else:
         pass
     return hints

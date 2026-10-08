@@ -1,0 +1,46 @@
+{
+  "case": "6_2",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0,
+        "cost": 0.014438000000000003,
+        "latency": 73.27593564987183,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\nimport os\nfrom datetime import datetime\n\ndef parse_datetime_zone(datetime_zone_str):\n    \"\"\"\n    Parse the datetime and zone from a string like:\n    '[12/Mar/2017:20:40:00  +0100]'\n    Returns:\n        date_str: '12/Mar/2017'\n        hour: int\n        minute: int\n        seconds: int\n        zone: int (e.g. +0100 -> 100, -0200 -> -200)\n    \"\"\"\n    # Strip the square brackets and split by space\n    s = datetime_zone_str.strip('[]')\n    # s example: '12/Mar/2017:20:40:00  +0100'\n    # Split by whitespace to separate datetime and zone\n    parts = s.split()\n    if len(parts) != 2:\n        raise ValueError(f\"Unexpected datetime_zone format: {datetime_zone_str}\")\n    datetime_part, zone_part = parts\n    # datetime_part example: '12/Mar/2017:20:40:00'\n    # Split date and time by the last colon before time\n    # The date is before the first colon, time after\n    # Actually date and time are separated by ':', but date contains slashes\n    # The format is: dd/Mon/yyyy:HH:MM:SS\n    # So split on first colon to separate date and time\n    date_str, time_str = datetime_part.split(':', 1)\n    # date_str example: '12/Mar/2017'\n    # time_str example: '20:40:00'\n    # Parse time components\n    hour, minute, seconds = map(int, time_str.split(':'))\n    # Parse zone: e.g. '+0100' -> 100, '-0200' -> -200\n    zone = int(zone_part.replace('+', '').replace('-', ''))\n    if zone_part.startswith('-'):\n        zone = -zone\n    return date_str, hour, minute, seconds, zone\n\ndef transform_source_df(df):\n    \"\"\"\n    Transform the source dataframe to match the target schema and types.\n    The source schema is the same as target schema, but the datetime and zone columns\n    need to be parsed from column '0' and '1' combined (in source, '0' contains the datetime+zone string,\n    '1' is a string column).\n    \"\"\"\n    # The source column '0' contains the datetime+zone string like '[12/Mar/2017:20:40:00  +0100]'\n    # The source column '1' is a string column (e.g. part of the request)\n    # The target schema expects columns:\n    # ['0': string, '1': string, '2': string, '3': integer, '4': integer, '5': string,\n    #  '6': string, '7': integer, '8': string, 'date': string, 'hour': integer,\n    #  'minute': integer, 'seconds': integer, 'zone': integer]\n\n    # Parse datetime and zone from column '0'\n    parsed = df['0'].apply(parse_datetime_zone)\n    df['date'] = parsed.apply(lambda x: x[0])\n    df['hour'] = parsed.apply(lambda x: x[1])\n    df['minute'] = parsed.apply(lambda x: x[2])\n    df['seconds'] = parsed.apply(lambda x: x[3])\n    df['zone'] = parsed.apply(lambda x: x[4])\n\n    # Ensure correct dtypes for integer columns\n    int_cols = ['3', '4', '7', 'hour', 'minute', 'seconds', 'zone']\n    for col in int_cols:\n        df[col] = pd.to_numeric(df[col], errors='raise', downcast='integer')\n\n    # Ensure string columns are string type\n    str_cols = ['0', '1', '2', '5', '6', '8', 'date']\n    for col in str_cols:\n        df[col] = df[col].astype(str)\n\n    # Reorder columns to match target schema exactly\n    target_columns = ['0', '1', '2', '3', '4', '5', '6', '7', '8',\n                      'date', 'hour', 'minute', 'seconds', 'zone']\n    df = df[target_columns]\n\n    return df\n\ndef main():\n    # Source file paths (only one source given in prompt)\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_2/training_0.csv\"\n    ]\n\n    # Read all source files, transform and concatenate (union)\n    dfs = []\n    for file_path in source_files:\n        if not os.path.exists(file_path):\n            raise FileNotFoundError(f\"Source file not found: {file_path}\")\n        # Read CSV with index_col=0 as per hint 24\n        df = pd.read_csv(file_path, index_col=0)\n        # Transform source df to target format\n        df_transformed = transform_source_df(df)\n        dfs.append(df_transformed)\n\n    # Since only one source, no union needed, but code supports multiple sources\n    target_df = pd.concat(dfs, ignore_index=True)\n\n    # Write to target path\n    target_path = \"autopipeline-benchmarks/github-pipelines/length6_2/target_multisource.csv\"\n    os.makedirs(os.path.dirname(target_path), exist_ok=True)\n    target_df.to_csv(target_path, index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.03695487976074219
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0023564,
+          "latency": 13.79167652130127,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_2/training_0.csv\", index_col=0)\n\n# The target schema columns and types:\n# ['0': string, '1': string, '2': string, '3': integer, '4': integer, '5': string, '6': string, '7': integer, '8': string,\n#  'date': string, 'hour': integer, 'minute': integer, 'seconds': integer, 'zone': integer]\n\n# The source0 columns are already matching the target schema columns exactly.\n# The only difference is that the 'zone' column in source is string (e.g., '+0100'), but in target it is integer (e.g., 100).\n# We need to convert 'zone' from string like '+0100' to integer 100 (dropping the sign and leading zeros).\n\n# Extract zone as integer: remove '+' or '-' sign and convert to int, then multiply by sign\ndef convert_zone(z):\n    if isinstance(z, str):\n        sign = 1\n        if z.startswith('+'):\n            sign = 1\n            z = z[1:]\n        elif z.startswith('-'):\n            sign = -1\n            z = z[1:]\n        try:\n            return sign * int(z)\n        except:\n            return 0\n    else:\n        return 0\n\n# Convert zone column\nsource0['zone'] = source0['zone'].apply(convert_zone)\n\n# Convert hour, minute, seconds to int (they might be string)\nsource0['hour'] = source0['hour'].astype(int)\nsource0['minute'] = source0['minute'].astype(int)\nsource0['seconds'] = source0['seconds'].astype(int)\n\n# Convert columns 3,4,7 to int (they might be string)\nsource0['3'] = source0['3'].astype(int)\nsource0['4'] = source0['4'].astype(int)\nsource0['7'] = source0['7'].astype(int)\n\n# The 'date' column in source0 is already in the format like '19/Jan/2017' in target examples.\n# The '0' column is string like '[19/Jan/2017:22:55:00  +0100]' which matches target examples.\n\n# No join needed because only one source table.\n\n# Write output to target file\nsource0.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_2/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.024080276489257812
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 73292.59300231934,
+        "critique": 14343.289375305176
+      }
+    }
+  ]
+}

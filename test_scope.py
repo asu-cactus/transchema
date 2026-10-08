@@ -23,7 +23,6 @@ def get_test_cases_ids(json_file_path, len_id, max_len_id, target_id, max_target
             ):
                 filtered_ids.append(id)
 
-    # bad_ids = ['Target1_16']
     past_at_least_once = [
         "Target1_0",
         "Target1_3",
@@ -63,9 +62,6 @@ def get_test_cases_ids(json_file_path, len_id, max_len_id, target_id, max_target
     ]
 
     print("Total number of test cases:", len(filtered_ids))
-    # print('Number of bad test cases:', len(bad_ids))
-    # filtered_ids = [id for id in filtered_ids if id not in bad_ids]
-    # filtered_ids = [id for id in filtered_ids if id not in past_at_least_once]
     baseline_5_iters = [
         "Target1_6",
         "Target1_9",
@@ -360,8 +356,4 @@ def get_test_cases_ids(json_file_path, len_id, max_len_id, target_id, max_target
         list(set(filtered_ids)),
         key=lambda x: (int(x[6:].split("_")[0]), int(x.split("_")[1])),
     )
-    # seen = set()
-    # filtered_ids = [x for x in filtered_ids if not (x in seen or seen.add(x))]
-    # print(len(filtered_ids))
 
-    # return ["Target9_79"]

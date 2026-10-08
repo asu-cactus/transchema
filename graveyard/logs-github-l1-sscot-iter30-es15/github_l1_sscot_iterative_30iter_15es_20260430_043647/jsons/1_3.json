@@ -1,0 +1,229 @@
+{
+  "case": "1_3",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0012900000000000001,
+        "latency": 10.124876260757446,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n             Major_category  Median\nCommunications & Journalism 50000.0\n                Engineering 76500.0\n                  Education 42800.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\n\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0014936,
+        "latency": 6.709423780441284,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category  Median\n            Computers & Mathematics 60000.0\n        Communications & Journalism 50000.0\nIndustrial Arts & Consumer Services 40250.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\n\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0016920000000000001,
+        "latency": 7.239576578140259,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n           Major_category  Median\n      Law & Public Policy 49000.0\n  Computers & Mathematics 60000.0\nHumanities & Liberal Arts 47350.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0018916000000000002,
+        "latency": 6.268026351928711,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                 Major_category  Median\n                    Engineering 76500.0\nAgriculture & Natural Resources 53000.0\n        Computers & Mathematics 60000.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0020892000000000003,
+        "latency": 6.920970678329468,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n           Major_category  Median\nHumanities & Liberal Arts 47350.0\n                Education 42800.0\n      Law & Public Policy 49000.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0022884,
+        "latency": 8.258004426956177,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n             Major_category  Median\n                  Education 42800.0\nCommunications & Journalism 50000.0\n     Biology & Life Science 51000.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0024884,
+        "latency": 5.914500951766968,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                 Major_category  Median\nAgriculture & Natural Resources 53000.0\n            Law & Public Policy 49000.0\n                      Education 42800.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0026872000000000007,
+        "latency": 7.24681830406189,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                 Major_category  Median\n        Computers & Mathematics 60000.0\n      Humanities & Liberal Arts 47350.0\nAgriculture & Natural Resources 53000.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0028856000000000003,
+        "latency": 5.80839204788208,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                 Major_category  Median\n                    Engineering 76500.0\n      Humanities & Liberal Arts 47350.0\nAgriculture & Natural Resources 53000.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0030851999999999997,
+        "latency": 5.9171741008758545,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n         Major_category  Median\n Biology & Life Science 51000.0\n    Law & Public Policy 49000.0\nComputers & Mathematics 60000.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0032844,
+        "latency": 4.567746639251709,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category  Median\n                Law & Public Policy 49000.0\n        Communications & Journalism 50000.0\nIndustrial Arts & Consumer Services 40250.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 12,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0034848000000000006,
+        "latency": 4.727775573730469,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category  Median\n        Communications & Journalism 50000.0\nIndustrial Arts & Consumer Services 40250.0\n    Agriculture & Natural Resources 53000.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 13,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0036839999999999998,
+        "latency": 4.107257127761841,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category  Median\n                        Engineering 76500.0\n    Agriculture & Natural Resources 53000.0\nIndustrial Arts & Consumer Services 40250.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 14,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.003882,
+        "latency": 4.691245794296265,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n             Major_category  Median\nCommunications & Journalism 50000.0\n     Biology & Life Science 51000.0\n    Computers & Mathematics 60000.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 15,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0040804,
+        "latency": 4.802366256713867,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n           Major_category  Median\n  Computers & Mathematics 60000.0\n              Engineering 76500.0\nHumanities & Liberal Arts 47350.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 16,
+      "ms": {
+        "is_correct": true,
+        "score": 0.988,
+        "cost": 0.0042804,
+        "latency": 4.310720682144165,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 0.964 + 1.000) / 3 = 0.988 (1.0 is perfect).\nGround truth candidate keys: {Median}; {Major_category}.\nGenerated table candidate keys: {Median}; {Major_category}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['Major_category', 'Median']\nNumber of Tuples: 9\nExamples:\n                     Major_category  Median\n             Biology & Life Science 51000.0\n          Humanities & Liberal Arts 47350.0\nIndustrial Arts & Consumer Services 40250.0",
+        "code": "import pandas as pd\n\n# Source file path\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_3/test_0.csv\"\n\n# Load source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# The target schema is ['Major_category': string, 'Median': float]\n# Source0 has these columns, so we can directly select and aggregate by Major_category\n\n# Since the target table has one row per Major_category with a Median value,\n# and source0 has multiple rows per Major_category with Median values,\n# we need to aggregate Median per Major_category.\n\n# Aggregation: take the median of the Median column per Major_category\n# (Median of Median salaries per Major_category)\ntarget_df = df0.groupby('Major_category', as_index=False)['Median'].median()\n\n# Convert Median to float explicitly (should already be float, but to be safe)\ntarget_df['Median'] = target_df['Median'].astype(float)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_3/target_multisource_cot.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Major_category,Median\nAgriculture & Natural Resources,53000.0\nBiology & Life Science,51000.0\nCommunications & Journalism,50000.0\nComputers & Mathematics,60000.0\nEducation,42800.0\nEngineering,76500.0\nHumanities & Liberal Arts,47350.0\nIndustrial Arts & Consumer Services,40250.0\nLaw & Public Policy,49000.0\n"
+      },
+      "critiques": []
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "4_54",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5878,
+        "cost": 0.0025804,
+        "latency": 5.820968866348267,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.509) / 2 = 0.588 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.478, range overlap=0.540.\nGround truth candidate keys: {WhereFought}.\nGenerated table candidate keys: {WhereFought}; {WarNum}.\nSpurious keys in generated not present in ground truth: {WarNum}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['WarNum'] \u2192 WhereFought.\nDistribution Analysis (numerical columns with issues):\n  Column 'WhereFought': range overlap=1.000, JS similarity=0.392\n    Generated    \u2014 min: 1.0, max: 19.0, mean: 4.9535\n    Ground Truth \u2014 min: 1.0, max: 19.0, mean: 10.9333\n  Column 'WarNum': range overlap=0.080, JS similarity=0.563\n    Generated    \u2014 min: 1.0, max: 19.0, mean: 4.9535\n    Ground Truth \u2014 min: 1.0, max: 225.0, mean: 54.5333",
+        "generated_samples": "Schema: ['WhereFought', 'WarNum']\nNumber of Tuples: 818\nExamples:\n WhereFought  WarNum\n           4     902\n           6     172\n           4     898",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_54/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_54/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_54/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_54/training_3.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    # Reorder columns to match target schema ['WhereFought', 'WarNum']\n    # Source schema is ['WarNum', 'WhereFought'], so reorder columns\n    df = df[['WhereFought', 'WarNum']]\n    # Ensure columns are integer type as per target schema\n    df['WhereFought'] = df['WhereFought'].astype(int)\n    df['WarNum'] = df['WarNum'].astype(int)\n    dfs.append(df)\n\n# UNION operation: concatenate all source DataFrames\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_54/target_multisource.csv\", index=False)",
+        "generated_csv_head": "WhereFought,WarNum\n2,1\n2,1\n11,4\n11,4\n1,7\n1,7\n2,10\n2,10\n2,10\n2,10\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0488033294677734
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.897,
+          "cost": 0.0017816,
+          "latency": 5.7354044914245605,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.794) / 2 = 0.897 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.772, range overlap=0.816.\nGround truth candidate keys: {WhereFought}.\nGenerated table candidate keys: {WhereFought}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'WarNum': range overlap=0.633, JS similarity=0.543\n    Generated    \u2014 min: 1.0, max: 355.0, mean: 109.3333\n    Ground Truth \u2014 min: 1.0, max: 225.0, mean: 54.5333",
+          "generated_samples": "Schema: ['WhereFought', 'WarNum']\nNumber of Tuples: 15\nExamples:\n WhereFought  WarNum\n          13      79\n           1       7\n          11       4",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_54/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_54/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_54/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_54/training_3.csv\", index_col=0)\n\n# UNION all source tables\nunion_df = pd.concat([source0, source1, source2, source3], ignore_index=True)\n\n# GROUP BY WhereFought and aggregate WarNum by MIN to enforce uniqueness and match FD\nresult = union_df.groupby(\"WhereFought\", as_index=False).agg({\"WarNum\": \"min\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_54/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.03759765625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5891.340970993042,
+        "critique": 5775.933265686035
+      }
+    }
+  ]
+}

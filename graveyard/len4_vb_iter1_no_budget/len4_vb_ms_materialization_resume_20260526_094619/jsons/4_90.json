@@ -1,0 +1,29 @@
+{
+  "case": "4_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9952,
+        "cost": 0.00523,
+        "latency": 20.937912940979004,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.990) / 2 = 0.995 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.981, range overlap=1.000.\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 22540\nExamples:\n occluded\n        1\n        1\n        1",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_90/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_90/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_90/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_90/training_3.csv\"\n]\n\n# Read all source files with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Extract only the 'occluded' column from each dataframe\noccluded_dfs = [df[['occluded']] for df in dfs]\n\n# Concatenate (union) all occluded columns vertically\nunion_df = pd.concat(occluded_dfs, ignore_index=True)\n\n# The target schema is ['occluded'] with integer type\n# Ensure the 'occluded' column is integer type\nunion_df['occluded'] = union_df['occluded'].astype(int)\n\n# Write the final target dataframe to the specified path without the index\nunion_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n0\n0\n0\n1\n1\n1\n1\n1\n1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9746551513671875
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 21014.375686645508,
+        "critique": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,321 @@
+Case: 1_50
+Status: INCORRECT
+Timestamp: 2026-02-24T02:12:50.832379
+Duration: 176.42 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_50/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_50
+2. Target Schema: ['ocd_prop_id': string, 'calaccess_prop_id': integer, 'ccdc_prop_id': integer, 'prop_name': string, 'ccdc_committee_id': integer, 'calaccess_committee_id': integer, 'committee_name_x': string, 'committee_position': string, 'committee_name_y': string, 'calaccess_filing_id': integer, 'date_received': string, 'contributor_lastname': string, 'contributor_firstname': string, 'contributor_city': string, 'contributor_state': string, 'contributor_zip': string, 'contributor_employer': string, 'contributor_occupation': string, 'contributor_is_self_employed': boolean, 'amount': float]
+3. Target Examples: There are 56326 available target examples:                                             ocd_prop_id  calaccess_prop_id  \
+47459  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+6227   ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+21563  ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+20672  ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+44181  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+...                                                 ...                ...   
+34409  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+42983  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+15562  ocd-contest/cad98dde-416b-4cb3-8565-c1e8079511b3            1381268   
+40632  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+34046  ocd-contest/19eca91d-e494-4ee0-a345-8f96eeec8a3e            1381724   
+
+       ccdc_prop_id                                          prop_name  \
+47459            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+6227             81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+21563            81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+20672            81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+44181            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+...             ...                                                ...   
+34409            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+42983            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+15562            81  PROPOSITION 062- DEATH PENALTY. INITIATIVE STA...   
+40632            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+34046            85  PROPOSITION 066- DEATH PENALTY. PROCEDURES. IN...   
+
+       ccdc_committee_id  calaccess_committee_id  \
+47459                469                 1302403   
+6227                 446                 1302403   
+21563                446                 1302403   
+20672                446                 1302403   
+44181                469                 1302403   
+...                  ...                     ...   
+34409                469                 1302403   
+42983                469                 1302403   
+15562                446                 1302403   
+40632                469                 1302403   
+34046                469                 1302403   
+
+                                        committee_name_x committee_position  \
+47459  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+6227   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+21563  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+20672  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+44181  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+...                                                  ...                ...   
+34409  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+42983  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+15562  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...             OPPOSE   
+40632  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+34046  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...            SUPPORT   
+
+                                        committee_name_y  calaccess_filing_id  \
+47459  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+6227   CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+21563  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+20672  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+44181  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+...                                                  ...                  ...   
+34409  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+42983  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+15562  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+40632  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+34046  CALIFORNIA CORRECTIONAL PEACE OFFICERS ASSOCIA...              2013304   
+
+      date_received contributor_lastname contributor_firstname  \
+47459    2015-12-16               LUBINO            MARCELLO G   
+6227     2015-12-16               BECKER              DANIEL J   
+21563    2015-12-16               CARTER            LAWRENCE C   
+20672    2015-12-16             GONZALEZ                NESTOR   
+44181    2015-12-16                OCHOA              NATHAN L   
+...             ...                  ...                   ...   
+34409    2015-12-16          MARQUEZ III                 DIEGO   
+42983    2015-12-16             KAWAKAMI              MELVIN B   
+15562    2015-12-16             PONTIOUS               JASON W   
+40632    2015-12-16               TORRES                LUIS F   
+34046    2015-12-16               MADSEN               ALLAN E   
+
+      contributor_city contributor_state contributor_zip contributor_employer  \
+47459  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+6227   WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+21563  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+20672  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+44181  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+...                ...               ...             ...                  ...   
+34409  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+42983  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+15562  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+40632  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+34046  WEST SACRAMENTO                CA           95605  STATE OF CALIFORNIA   
+
+      contributor_occupation  contributor_is_self_employed  amount  
+47459   CORRECTIONAL OFFICER                         False  287.08  
+6227    CORRECTIONAL OFFICER                         False  287.08  
+21563   CORRECTIONAL OFFICER                         False  287.08  
+20672   CORRECTIONAL OFFICER                         False  287.08  
+44181   CORRECTIONAL OFFICER                         False  287.08  
+...                      ...                           ...     ...  
+34409   CORRECTIONAL OFFICER                         False  287.08  
+42983   CORRECTIONAL OFFICER                         False  287.08  
+15562   CORRECTIONAL OFFICER                         False  287.08  
+40632   CORRECTIONAL OFFICER                         False  287.08  
+34046   CORRECTIONAL OFFICER                         False  287.08  
+
+[5633 rows x 20 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_50_0
+	Source 0 Schema: ['ocd_prop_id', 'calaccess_prop_id', 'ccdc_prop_id', 'prop_name', 'ccdc_committee_id', 'calaccess_committee_id', 'committee_name', 'committee_position']
+	Source 0 Examples: 	 Source 0 contains 102 tuples, with examples as follows: 
+                                        ocd_prop_id  calaccess_prop_id  \
+0  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+1  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+2  ocd-contest/b51dc64d-3562-4913-a190-69f5088c22a6            1376258   
+
+   ccdc_prop_id                                          prop_name  \
+0            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+1            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+2            70  PROPOSITION 051 - SCHOOL BONDS. FUNDING FOR K-...   
+
+   ccdc_committee_id  calaccess_committee_id  \
+0                382                 1374469   
+1                383                 1220380   
+2                384                 1282321   
+
+                                      committee_name committee_position  
+0  YES ON PROPOSITION 51 - CALIFORNIANS FOR QUALI...            SUPPORT  
+1  COMMUNITY COLLEGE FACILITY COALITION ISSUES CO...            SUPPORT  
+2  TORLAKSON'S INVEST IN CALIFORNIA A BALLOT MEAS...            SUPPORT  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_50/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_50_1
+	Source 1 Schema: ['calaccess_committee_id', 'committee_name', 'calaccess_filing_id', 'date_received', 'contributor_lastname', 'contributor_firstname', 'contributor_city', 'contributor_state', 'contributor_zip', 'contributor_employer', 'contributor_occupation', 'contributor_is_self_employed', 'amount']
+	Source 1 Examples: 	 Source 1 contains 28189 tuples, with examples as follows: 
+   calaccess_committee_id                              committee_name  \
+0                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+1                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+2                 1386560  ADULT USE CAMPAIGN FOR PROPOSITION 64; THE   
+
+   calaccess_filing_id date_received contributor_lastname  \
+0              2083796    2016-09-18              BERGMAN   
+1              2083796    2016-09-18                KAHLE   
+2              2083796    2016-07-15             MCDEVITT   
+
+  contributor_firstname contributor_city contributor_state contributor_zip  \
+0              GRETCHEN    SPRING VALLEY                CA           91978   
+1                 MYRNA        SAN DIEGO                CA           92109   
+2                   LEO        ESCONDIDO                CA           92025   
+
+       contributor_employer contributor_occupation  \
+0                A NEW PATH     EXECUTIVE DIRECTOR   
+1  NATIONAL SCHOOL DISTRICT                TEACHER   
+2             LIFE IONIZERS    SEO/CONTENT MANAGER   
+
+   contributor_is_self_employed  amount  
+0                         False    84.0  
+1                         False    35.0  
+2                         False   198.0  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_50/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_50/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSVs
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_50/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_50/test_1.csv"
+
+# Output file path
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_50/target_multisource_agentic.csv"
+
+# Read source CSV files with index_col=0
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Select and rename columns from Source0
+df0_selected = df0[[
+    'ocd_prop_id',
+    'calaccess_prop_id',
+    'ccdc_prop_id',
+    'prop_name',
+    'ccdc_committee_id',
+    'calaccess_committee_id',
+    'committee_name',
+    'committee_position'
+]].copy()
+df0_selected.rename(columns={'committee_name': 'committee_name_x'}, inplace=True)
+
+# Select and rename columns from Source1
+df1_selected = df1[[
+    'calaccess_committee_id',
+    'committee_name',
+    'calaccess_filing_id',
+    'date_received',
+    'contributor_lastname',
+    'contributor_firstname',
+    'contributor_city',
+    'contributor_state',
+    'contributor_zip',
+    'contributor_employer',
+    'contributor_occupation',
+    'contributor_is_self_employed',
+    'amount'
+]].copy()
+df1_selected.rename(columns={'committee_name': 'committee_name_y'}, inplace=True)
+
+# Perform LEFT OUTER JOIN on calaccess_committee_id
+df_merged = pd.merge(
+    df0_selected,
+    df1_selected,
+    on='calaccess_committee_id',
+    how='left',
+    validate='m:1'  # Many in df0 to one in df1 or vice versa; no strict info, so no error
+)
+
+# Remove rows with any NaN values (drop rows with missing data)
+df_cleaned = df_merged.dropna()
+
+# Explicitly cast columns to target schema types
+# Target schema:
+# ['ocd_prop_id': string,
+#  'calaccess_prop_id': integer,
+#  'ccdc_prop_id': integer,
+#  'prop_name': string,
+#  'ccdc_committee_id': integer,
+#  'calaccess_committee_id': integer,
+#  'committee_name_x': string,
+#  'committee_position': string,
+#  'committee_name_y': string,
+#  'calaccess_filing_id': integer,
+#  'date_received': string,
+#  'contributor_lastname': string,
+#  'contributor_firstname': string,
+#  'contributor_city': string,
+#  'contributor_state': string,
+#  'contributor_zip': string,
+#  'contributor_employer': string,
+#  'contributor_occupation': string,
+#  'contributor_is_self_employed': boolean,
+#  'amount': float]
+
+# Cast string columns
+string_cols = [
+    'ocd_prop_id',
+    'prop_name',
+    'committee_name_x',
+    'committee_position',
+    'committee_name_y',
+    'date_received',
+    'contributor_lastname',
+    'contributor_firstname',
+    'contributor_city',
+    'contributor_state',
+    'contributor_zip',
+    'contributor_employer',
+    'contributor_occupation'
+]
+for col in string_cols:
+    df_cleaned[col] = df_cleaned[col].astype(str)
+
+# Cast integer columns
+int_cols = [
+    'calaccess_prop_id',
+    'ccdc_prop_id',
+    'ccdc_committee_id',
+    'calaccess_committee_id',
+    'calaccess_filing_id'
+]
+for col in int_cols:
+    df_cleaned[col] = pd.to_numeric(df_cleaned[col], errors='raise', downcast='integer').astype('Int64')
+
+# Cast boolean column
+df_cleaned['contributor_is_self_employed'] = df_cleaned['contributor_is_self_employed'].astype(bool)
+
+# Cast float column
+df_cleaned['amount'] = pd.to_numeric(df_cleaned['amount'], errors='raise').astype(float)
+
+# Reorder columns to match target schema exactly
+target_columns = [
+    'ocd_prop_id',
+    'calaccess_prop_id',
+    'ccdc_prop_id',
+    'prop_name',
+    'ccdc_committee_id',
+    'calaccess_committee_id',
+    'committee_name_x',
+    'committee_position',
+    'committee_name_y',
+    'calaccess_filing_id',
+    'date_received',
+    'contributor_lastname',
+    'contributor_firstname',
+    'contributor_city',
+    'contributor_state',
+    'contributor_zip',
+    'contributor_employer',
+    'contributor_occupation',
+    'contributor_is_self_employed',
+    'amount'
+]
+
+df_final = df_cleaned[target_columns]
+
+# Save the final dataframe to CSV
+df_final.to_csv(output_path, index=False)
+```

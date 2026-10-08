@@ -1,0 +1,29 @@
+{
+  "case": "3_99",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9758,
+        "cost": 0.0066396,
+        "latency": 9.761267185211182,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.952) / 2 = 0.976 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=0.806.\nGround truth candidate keys: {MOTATE_V}; {count}.\nGenerated table candidate keys: {MOTATE_V}; {count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'count': range overlap=0.806, JS similarity=1.000\n    Generated    \u2014 min: 162917.0, max: 17037466.0, mean: 3942005.25\n    Ground Truth \u2014 min: 92665.0, max: 21023260.0, mean: 5170387.375",
+        "generated_samples": "Schema: ['MOTATE_V', 'count']\nNumber of Tuples: 8\nExamples:\n                             MOTATE_V   count\n                    GINECO-OBSTETRICA 6223330\nAPOYO A SERVICIOS DE MEDICINA GENERAL  181690\n                           PEDIATRICA 3628075",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_99/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_99/training_1.csv\"\n\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# According to the operation history:\n# '\"group_by\" = [Source3_99_0.MOTATE_V], \"aggregations\" = [sum(Source3_99_0.count)]'\n# We only use Source3_99_0 for the aggregation.\n# The target schema is ['MOTATE_V': string, 'count': integer]\n\n# Group by MOTATE_V and sum count in Source3_99_0\ndf_target = df_source0.groupby('MOTATE_V', as_index=False)['count'].sum()\n\n# Ensure the data types match the target schema\ndf_target['MOTATE_V'] = df_target['MOTATE_V'].astype(str)\ndf_target['count'] = df_target['count'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_99/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "MOTATE_V,count\n\"ACCIDENTES, ENVENENAMIENTO Y VIOLENCIAS\",2395173\nAPOYO A SERVICIOS DE MEDICINA GENERAL,181690\nGINECO-OBSTETRICA,6223330\nMEDICA,17037466\nNO ESPECIFICADO,385458\nPEDIATRICA,3628075\nQUIRURGICA,162917\nURGENCIA NO CALIFICADA,1521933\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8339881896972656
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 9824.18417930603,
+        "critique": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "6_41",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9278,
+        "cost": 0.0041828,
+        "latency": 11.004606485366821,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.856) / 2 = 0.928 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=1.000.\nGround truth candidate keys: {nombre, a\u00f1o}.\nGenerated table candidate keys: {nombre, a\u00f1o}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'n_aprobados': range overlap=1.000, JS similarity=0.942\n    Generated    \u2014 min: 0.0, max: 152.0, mean: 11.6943\n    Ground Truth \u2014 min: 0.0, max: 152.0, mean: 13.8868\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'nombre': Jaccard=0.469",
+        "generated_samples": "Schema: ['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']\nNumber of Tuples: 265\nExamples:\n                            nombre  n_concursados  n_aprobados  a\u00f1o\n                UNIV. DE LOS ANDES             28           11 2015\n            UNIV. CENTRAL DE CHILE              6            1 2011\nUNIV. DE PLAYA ANCHA CS. EDUCACION              5            1 2010",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length6_41/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_41/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_41/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_41/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_41/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_41/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_41/training_6.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    dfs.append(df)\n\n# According to operation_history, perform UNION of all source tables\n# All source tables have the same schema: ['nombre', 'n_concursados', 'n_aprobados', 'a\u00f1o']\n# So we can concatenate them directly\n\nunion_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure the target schema and types:\n# Target Schema: ['nombre': string, 'n_concursados': integer, 'n_aprobados': integer, 'a\u00f1o': integer]\n\n# Convert columns to correct types\nunion_df['nombre'] = union_df['nombre'].astype(str)\nunion_df['n_concursados'] = union_df['n_concursados'].astype(int)\nunion_df['n_aprobados'] = union_df['n_aprobados'].astype(int)\nunion_df['a\u00f1o'] = union_df['a\u00f1o'].astype(int)\n\n# Save the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length6_41/target_multisource.csv\"\nunion_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "nombre,n_concursados,n_aprobados,a\u00f1o\nUNIVERSIDAD ARTURO PRAT,4,3,2013\nUNIVERSIDAD ACADEMIA DE HUMANISMO CRISTIANO,5,2,2013\nUNIVERSIDAD DE LA SERENA,4,2,2013\nUNIVERSIDAD METROPOLITANA DE CIENCIAS DE LA EDUCACIO\u0301N,3,2,2013\nUNIVERSIDAD ARTES Y CIENCIAS SOCIALES,8,1,2013\nUNIVERSIDAD CATO\u0301LICA DE TEMUCO,8,1,2013\nUNIVERSIDAD CATO\u0301LICA CARDENAL SILVA HENRIQUEZ,3,1,2013\nUNIVERSIDAD DE MAGALLANES,3,1,2013\nUNIVERSIDAD AUTO\u0301NOMA DE CHILE,1,1,2013\nUNIVERSIDAD BERNARDO O'HIGGINS,1,1,2013\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.054525375366211
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 11079.095602035522,
+        "critique": 0.0
+      }
+    }
+  ]
+}

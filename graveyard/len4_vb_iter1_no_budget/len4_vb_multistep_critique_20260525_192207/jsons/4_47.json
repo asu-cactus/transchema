@@ -1,0 +1,46 @@
+{
+  "case": "4_47",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.005437600000000001,
+        "latency": 14.530818462371826,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_47/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_47/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length4_47/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length4_47/training_3.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\ndf2 = pd.read_csv(source2_path, index_col=0)\ndf3 = pd.read_csv(source3_path, index_col=0)\n\n# Operation History:\n# 1) JOIN : [[\"Source4_47_1\", \"Source4_47_3\"], [\"WarID\", \"WarID\"]]\n# 2) JOIN : [[\"Source4_47_0\", \"Source4_47_2\"], [\"WarID\", \"WarID\"]]\n\n# Perform first join: Source1 and Source3 on WarID\n# Both have WarID, WarShortName, WarType, but Source1 has IsIntervention and Source3 has IsInternational\njoin_1 = pd.merge(df1, df3[['WarID', 'IsInternational']], on='WarID', how='inner')\n\n# Perform second join: Source0 and Source2 on WarID\n# Both have WarID, WarShortName, WarType\njoin_2 = pd.merge(df0, df2, on='WarID', how='inner', suffixes=('_0', '_2'))\n\n# Now we have two joined tables:\n# join_1: columns = ['WarID', 'WarShortName', 'WarType', 'IsIntervention', 'IsInternational']\n# join_2: columns = ['WarID', 'WarShortName_0', 'WarType_0', 'WarShortName_2', 'WarType_2']\n\n# The target schema is:\n# ['IsIntervention': int, 'WarID': int, 'WarShortName': int, 'WarType': int, 'IsInternational': int]\n\n# We need to combine join_1 and join_2 into the final target table.\n# The only column missing in join_2 is IsIntervention and IsInternational.\n# The only columns missing in join_1 are WarShortName and WarType from join_2 (but join_1 already has WarShortName and WarType).\n\n# The prompt does not specify a union or join between join_1 and join_2.\n# But since all source tables must be used, and the target table has only one set of WarShortName and WarType columns,\n# we need to combine join_1 and join_2 rows vertically (union) with consistent columns.\n\n# To do this, we will:\n# - For join_1 rows: keep IsIntervention, WarID, WarShortName, WarType, IsInternational\n# - For join_2 rows: IsIntervention and IsInternational are missing, so fill with 0 (as in target examples)\n# - For join_2 rows: WarShortName and WarType are ambiguous because join_2 has two versions (from source0 and source2).\n#   We will choose WarShortName_0 and WarType_0 as the main ones (arbitrary but consistent).\n\n# Prepare join_1 for union:\njoin_1_final = join_1[['IsIntervention', 'WarID', 'WarShortName', 'WarType', 'IsInternational']].copy()\n\n# Prepare join_2 for union:\njoin_2_final = pd.DataFrame()\njoin_2_final['IsIntervention'] = 0  # no IsIntervention info in join_2, use 0 as default\njoin_2_final['WarID'] = join_2['WarID']\njoin_2_final['WarShortName'] = join_2['WarShortName_0']\njoin_2_final['WarType'] = join_2['WarType_0']\njoin_2_final['IsInternational'] = 0  # no IsInternational info in join_2, use 0 as default\n\n# Concatenate the two parts to form the final target table\ntarget_df = pd.concat([join_1_final, join_2_final], ignore_index=True)\n\n# Ensure correct dtypes as per target schema (all integers)\ntarget_df = target_df.astype({\n    'IsIntervention': 'int64',\n    'WarID': 'int64',\n    'WarShortName': 'int64',\n    'WarType': 'int64',\n    'IsInternational': 'int64'\n})\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_47/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.04410743713378906
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.0,
+          "cost": 0.0022472,
+          "latency": 12.455402851104736,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/training_3.csv\", index_col=0)\n\n# Step 1: Join Source4_47_1 and Source4_47_3 on WarID\njoined_1_3 = pd.merge(source1, source3, on=\"WarID\", how=\"inner\", suffixes=('_1', '_3'))\n\n# Step 2: Union Source4_47_0 and Source4_47_2 (schemas are the same)\nunion_0_2 = pd.concat([source0, source2], ignore_index=True)\n\n# Step 3: Join the result of step 1 and step 2 on WarID\n# Before join, drop duplicate columns from union_0_2 to avoid conflicts\n# union_0_2 has columns: WarID, WarShortName, WarType\n# joined_1_3 has columns: WarID, WarShortName_1, WarType_1, IsIntervention, WarShortName_3, WarType_3, IsInternational\n# We want to join on WarID and keep IsIntervention, IsInternational, WarShortName, WarType from union_0_2 (to match target schema)\nfinal_join = pd.merge(joined_1_3, union_0_2, on=\"WarID\", how=\"inner\")\n\n# Step 4: Select and rename columns to match target schema exactly\n# Target schema: ['IsIntervention', 'WarID', 'WarShortName', 'WarType', 'IsInternational']\n# IsIntervention from joined_1_3\n# WarID from join key\n# WarShortName and WarType from union_0_2 (no suffix)\n# IsInternational from joined_1_3\n\nfinal_df = final_join[[\"IsIntervention\", \"WarID\", \"WarShortName\", \"WarType\", \"IsInternational\"]]\n\n# Step 5: Group by IsIntervention (primary key) to ensure uniqueness and match target constraints\nfinal_df = final_df.groupby(\"IsIntervention\", as_index=False).first()\n\n# Write output to the target file\nfinal_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_47/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.023126602172851562
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14595.532655715942,
+        "critique": 12481.206893920898
+      }
+    }
+  ]
+}

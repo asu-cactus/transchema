@@ -1,0 +1,29 @@
+{
+  "case": "9_30",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9978,
+        "cost": 0.013682000000000001,
+        "latency": 23.090153217315674,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.996) / 2 = 0.998 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.991, range overlap=1.000.\nGround truth candidate keys: {ARPU}.\nGenerated table candidate keys: {ARPU}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['ROW_WID', 'ARPU']\nNumber of Tuples: 27694\nExamples:\n   ROW_WID   ARPU\n 739098125 610.70\n 891722577 412.81\n1320990724 422.93",
+        "code": "import pandas as pd\n\n# Load all source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/training_9.csv\", index_col=0)\n\n# Operation 1: JOIN Source9_30_3 and Source9_30_0 on ROW_WID\njoin_3_0 = pd.merge(source3, source0, on=\"ROW_WID\", how=\"inner\")\n\n# Operation 2: UNION Source9_30_3, Source9_30_4, Source9_30_5, Source9_30_7\n# These four sources share the same schema, so union is valid\nunion_3_4_5_7 = pd.concat([source3, source4, source5, source7], ignore_index=True)\n\n# Operation 3: JOIN Source9_30_0 and Source9_30_1 on ROW_WID\njoin_0_1 = pd.merge(source0, source1, on=\"ROW_WID\", how=\"inner\")\n\n# Operation 4: group_by = [], aggregations = [avg(Source9_30_3.ARPU), avg(Source9_30_4.ARPU), avg(Source9_30_5.ARPU), avg(Source9_30_7.ARPU)]\n# Since group_by is empty, we compute the average ARPU from the unioned table (union_3_4_5_7)\n# But we need to produce a table with ROW_WID and ARPU averaged over the four sources per ROW_WID.\n# However, the operation history and hints imply the final target table has only ARPU column (float) and 4161 rows.\n# The target examples show ARPU indexed by ROW_WID (index), so we must produce a DataFrame indexed by ROW_WID with ARPU as float.\n\n# To achieve this, we:\n# - For each ROW_WID present in union_3_4_5_7, compute the average ARPU across the four sources.\n# - Since union_3_4_5_7 is a union of the four sources, ARPU values are already combined.\n# - But the operation history suggests averaging ARPU values from the four sources per ROW_WID.\n# - So we need to join the four sources on ROW_WID to get ARPU columns separately, then average.\n\n# Let's create a DataFrame with ROW_WID as index and ARPU columns from each of the four sources:\n\n# Prepare ARPU columns from each source with ROW_WID as index\narpu_3 = source3[['ROW_WID', 'ARPU']].rename(columns={'ARPU': 'ARPU_3'}).set_index('ROW_WID')\narpu_4 = source4[['ROW_WID', 'ARPU']].rename(columns={'ARPU': 'ARPU_4'}).set_index('ROW_WID')\narpu_5 = source5[['ROW_WID', 'ARPU']].rename(columns={'ARPU': 'ARPU_5'}).set_index('ROW_WID')\narpu_7 = source7[['ROW_WID', 'ARPU']].rename(columns={'ARPU': 'ARPU_7'}).set_index('ROW_WID')\n\n# Join all ARPU columns on ROW_WID (outer join to keep all ROW_WID keys)\narpu_all = arpu_3.join(arpu_4, how='outer').join(arpu_5, how='outer').join(arpu_7, how='outer')\n\n# Compute average ARPU across the four columns, ignoring NaNs\narpu_all['ARPU'] = arpu_all.mean(axis=1)\n\n# Final target table: only ARPU column, indexed by ROW_WID\ntarget = arpu_all[['ARPU']].dropna()\n\n# Write the result to the specified path\ntarget.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_30/target_multisource.csv\")",
+        "generated_csv_head": "ROW_WID,ARPU\n27451596,446.0\n307571963,419.8\n307571964,550.0\n307571966,743.0\n307571988,694.44\n307572084,329.0\n307572182,301.0\n307572407,511.0\n307572522,1102.85\n307572609,876.6\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.8405914306640625
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 23152.25839614868,
+        "critique": 0.0
+      }
+    }
+  ]
+}

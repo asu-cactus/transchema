@@ -1,0 +1,46 @@
+{
+  "case": "1_72",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.75,
+        "cost": 0.0021056,
+        "latency": 5.846992254257202,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.500) / 2 = 0.750 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.500, range overlap=0.500.\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.5\n    Ground Truth \u2014 min: 246.0, max: 253.0, mean: 249.5",
+        "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition  0\n         1 29\n         0 20",
+        "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_72/training_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform transformation according to operation history:\n# group_by = [Source1_72_0.condition]\n# aggregations = [sum(Source1_72_0.click)]\n\n# Group by 'condition' and sum 'click'\nresult = df0.groupby('condition', as_index=False)['click'].sum()\n\n# Rename aggregated column 'click' to '0' to match target schema\nresult.rename(columns={'click': '0'}, inplace=True)\n\n# Ensure column types match target schema: 'condition' and '0' as integers\nresult['condition'] = result['condition'].astype(int)\nresult['0'] = result['0'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_72/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "condition,0\n0,20\n1,29\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9407997131347656
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.75,
+          "cost": 0.0015776000000000002,
+          "latency": 5.469929218292236,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.500) / 2 = 0.750 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.500, range overlap=0.500.\nGround truth candidate keys: {condition}; {0}.\nGenerated table candidate keys: {condition}; {0}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.5\n    Ground Truth \u2014 min: 246.0, max: 253.0, mean: 249.5",
+          "generated_samples": "Schema: ['condition', '0']\nNumber of Tuples: 2\nExamples:\n condition  0\n         0 20\n         1 29",
+          "code": "import pandas as pd\n\n# Read source CSV with index_col=0 as per Hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_72/training_0.csv\", index_col=0)\n\n# Group by 'condition' and sum 'click' column, rename aggregation column to '0' as per target schema\nresult = source0.groupby('condition', as_index=False)['click'].sum().rename(columns={'click': '0'})\n\n# Write output to target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_72/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2211799621582031
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5849.389553070068,
+        "critique": 5503.799676895142
+      }
+    }
+  ]
+}

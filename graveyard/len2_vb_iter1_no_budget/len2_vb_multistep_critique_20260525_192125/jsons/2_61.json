@@ -1,0 +1,46 @@
+{
+  "case": "2_61",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8528,
+        "cost": 0.0016392,
+        "latency": 5.342988014221191,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.706) / 2 = 0.853 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.654, range overlap=0.757.\nGround truth candidate keys: {3}; {2}; {0}; {1}.\nGenerated table candidate keys: {3}; {2}; {0}; {1}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=0.783, JS similarity=0.583\n    Generated    \u2014 min: -0.9371, max: 0.6088, mean: -0.2049\n    Ground Truth \u2014 min: -1.1736, max: 0.4577, mean: -0.2879\n  Column '1': range overlap=0.641, JS similarity=0.779\n    Generated    \u2014 min: -1.889, max: 0.7308, mean: -0.4959\n    Ground Truth \u2014 min: -1.2658, max: 1.2275, mean: 0.0564\n  Column '2': range overlap=0.914, JS similarity=0.475\n    Generated    \u2014 min: -1.889, max: 0.7308, mean: -0.4959\n    Ground Truth \u2014 min: -1.7688, max: 0.6271, mean: -0.7619\n  Column '3': range overlap=0.690, JS similarity=0.779\n    Generated    \u2014 min: -0.9371, max: 0.6088, mean: -0.2049\n    Ground Truth \u2014 min: -0.72, max: 0.3468, mean: -0.1022",
+        "generated_samples": "Schema: ['0', '1', '2', '3']\nNumber of Tuples: 5\nExamples:\n        0         1         2         3\n 0.608779 -1.417411 -0.783810  0.332081\n-0.383756 -0.324772  0.730820 -0.099669\n-0.225512  0.169723 -0.022551  1.021709",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_61/training_0.csv\"\n]\n\n# Load all source tables into a list of DataFrames\nsource_dfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since there is only one source table and its schema matches the target schema exactly,\n# the transformation is simply to union (concatenate) all source tables.\n# Here, only one source table exists, so the target is just that source table.\n\n# Concatenate all source DataFrames (union)\ntarget_df = pd.concat(source_dfs, ignore_index=True)\n\n# Ensure the target schema columns are floats\ntarget_df = target_df.astype({'0': float, '1': float, '2': float, '3': float})\n\n# Write the result to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_61/target_multisource.csv\", index=False)",
+        "generated_csv_head": "0,1,2,3\n-0.2255119364694447,0.1697232826802408,-0.0225505919334392,1.0217087657748465\n-0.9370867856778912,-0.9713928337523784,-0.5148379731836522,0.1641582926866071\n0.6087788688267496,-1.4174109730292288,-0.7838098617639586,0.3320809141541891\n-0.086707555361895,-0.0890465848508767,-1.8889840112743848,2.297782340664788\n-0.383755735501202,-0.3247716847786127,0.73082047467096,-0.0996688449135182\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.493215560913086
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8528,
+          "cost": 0.0014876,
+          "latency": 4.9735047817230225,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.706) / 2 = 0.853 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.654, range overlap=0.757.\nGround truth candidate keys: {3}; {2}; {0}; {1}.\nGenerated table candidate keys: {3}; {2}; {0}; {1}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0': range overlap=0.783, JS similarity=0.583\n    Generated    \u2014 min: -0.9371, max: 0.6088, mean: -0.2049\n    Ground Truth \u2014 min: -1.1736, max: 0.4577, mean: -0.2879\n  Column '1': range overlap=0.641, JS similarity=0.779\n    Generated    \u2014 min: -1.889, max: 0.7308, mean: -0.4959\n    Ground Truth \u2014 min: -1.2658, max: 1.2275, mean: 0.0564\n  Column '2': range overlap=0.914, JS similarity=0.475\n    Generated    \u2014 min: -1.889, max: 0.7308, mean: -0.4959\n    Ground Truth \u2014 min: -1.7688, max: 0.6271, mean: -0.7619\n  Column '3': range overlap=0.690, JS similarity=0.779\n    Generated    \u2014 min: -0.9371, max: 0.6088, mean: -0.2049\n    Ground Truth \u2014 min: -0.72, max: 0.3468, mean: -0.1022",
+          "generated_samples": "Schema: ['Unnamed: 0', '0', '1', '2', '3']\nNumber of Tuples: 5\nExamples:\n Unnamed: 0         0         1         2         3\n          5 -0.225512  0.169723 -0.022551  1.021709\n          7  0.608779 -1.417411 -0.783810  0.332081\n          9 -0.383756 -0.324772  0.730820 -0.099669",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 as per Hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_61/training_0.csv\", index_col=0)\n\n# Since only one source table, output it directly\nsource0.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_61/target_multisource_critique_history.csv\", index=True)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.1452903747558594
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5345.401048660278,
+        "critique": 5021.049976348877
+      }
+    }
+  ]
+}

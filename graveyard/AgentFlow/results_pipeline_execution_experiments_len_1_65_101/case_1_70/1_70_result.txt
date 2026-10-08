@@ -1,0 +1,108 @@
+Case: 1_70
+Status: CORRECT
+Timestamp: 2026-02-24T10:56:24.956030
+Duration: 43.59 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1_65_101/case_1_70/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['order_id', 'order_status', 'order_approved_at', 'product_id', 'seller_id', 'price', 'freight_value']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_70
+2. Target Schema: ['order_id': string, 'order_status': string, 'order_approved_at': string, 'product_id': string, 'seller_id': string, 'price': float, 'freight_value': float]
+3. Target Examples: There are 56325 available target examples:                                order_id order_status    order_approved_at  \
+38135  52f1efb2a407df9b385cd3960975d107    delivered  2017-07-03 14:23:53   
+44862  0559598ddb2398bb4c202d6efd54f04e    delivered  2018-07-17 04:32:18   
+30148  1a3b6feac1253a77e02f09ec28406057    delivered  2018-08-11 18:50:22   
+36921  74da1d033cecf62865d267673aeec395    delivered  2017-07-14 10:03:50   
+38549  55ea42c21b83d2496cbaea27a33ca8d4    delivered  2017-10-22 22:26:16   
+...                                 ...          ...                  ...   
+48726  186479344a69b9f7b3135a60364d4243    delivered  2017-06-08 18:43:25   
+38748  161a55eab21951950a31e5106a7026f4    delivered  2018-03-28 02:47:57   
+45490  483e06611c77dee5a2e4b91b489eb95e    delivered  2017-09-15 15:15:16   
+51406  800527a0973637e539fec69236ce5938    delivered  2017-02-05 13:50:12   
+30195  4f1eeea688bd0014cf7f81a1f23bb8c4    delivered  2018-01-29 15:31:22   
+
+                             product_id                         seller_id  \
+38135  d70a73b4d166dd09290e3b484ff14b82  92eb0f42c21942b6552362b9b114707d   
+44862  27617ba1ba0b3e090f9397a809f18e95  b561927807645834b59ef0d16ba55a24   
+30148  d04857e7b4b708ee8b8b9921163edba3  9f505651f4a6abe901a56cdc21508025   
+36921  aa5d6a9bd4be367ae1a3a29c323c7c11  e9779976487b77c6d4ac45f75ec7afe9   
+38549  6c222e25e3d3c28a643590b836585b4e  b9c0ffa92f3ff9a5a3d45ef7213c0842   
+...                                 ...                               ...   
+48726  11875b30b49585209e608f40e8082e65  669ae81880e08f269a64487cfb287169   
+38748  eb8c629f70275fd1c4f809116cce1efc  1025f0e2d44d7041d6cf58b6550e0bfa   
+45490  c21afe62d4629a660593fd9b5e6223bb  ea8482cd71df3c1969d7b9473ff13abc   
+51406  0c61745b90fbcbd2a7ac7d3cccde8776  6df688df543f90e9b38f4319e75a9d88   
+30195  e0a36dd15c245dbe1a52080fd6d048b2  4aba391bc3b88717ce08eb11e44937b2   
+
+        price  freight_value  
+38135   12.50          14.10  
+44862   19.90           7.40  
+30148   79.99          15.66  
+36921  130.00          10.45  
+38549  180.00          21.75  
+...       ...            ...  
+48726   65.00          34.25  
+38748   35.00          15.18  
+45490   29.99          14.10  
+51406   14.89          10.96  
+30195  339.00          27.65  
+
+[5632 rows x 7 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_70_0
+	Source 0 Schema: ['order_id', 'customer_id', 'order_status', 'order_purchase_timestamp', 'order_approved_at', 'order_delivered_carrier_date', 'order_delivered_customer_date', 'order_estimated_delivery_date']
+	Source 0 Examples: 	 Source 0 contains 99441 tuples, with examples as follows: 
+                           order_id                       customer_id  \
+0  e481f51cbdc54678b7cc49136f2d6af7  9ef432eb6251297304e76186b10a928d   
+1  53cdb2fc8bc7dce0b6741e2150273451  b0830fb4747a6c6d20dea0b8c802d7ef   
+2  47770eb9100c2d0c44946d9cf07ec65d  41ce2a54c0b03bf3443c3d931a367089   
+
+  order_status order_purchase_timestamp    order_approved_at  \
+0    delivered      2017-10-02 10:56:33  2017-10-02 11:07:15   
+1    delivered      2018-07-24 20:41:37  2018-07-26 03:24:27   
+2    delivered      2018-08-08 08:38:49  2018-08-08 08:55:23   
+
+  order_delivered_carrier_date order_delivered_customer_date  \
+0          2017-10-04 19:55:00           2017-10-10 21:25:13   
+1          2018-07-26 14:31:00           2018-08-07 15:27:45   
+2          2018-08-08 13:50:00           2018-08-17 18:06:29   
+
+  order_estimated_delivery_date  
+0           2017-10-18 00:00:00  
+1           2018-08-13 00:00:00  
+2           2018-09-04 00:00:00  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_70/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_70_1
+	Source 1 Schema: ['order_id', 'order_item_id', 'product_id', 'seller_id', 'price', 'freight_value']
+	Source 1 Examples: 	 Source 1 contains 56325 tuples, with examples as follows: 
+                           order_id  order_item_id  \
+0  00010242fe8c5a6d1ba2dd792cb16214              1   
+1  00018f77f2f0320c557190d7a144bdd3              1   
+2  000229ec398224ef6ca0657da4fc703e              1   
+
+                         product_id                         seller_id  price  \
+0  4244733e06e7ecb4970a6e2683c13e61  48436dade18ac8b2bce089ec2a041202   58.9   
+1  e5f2d52b802189ee658865ca93d83a8f  dd7ddc04e1b6c2c614352b383efe2d36  239.9   
+2  c777355d18b72b67abbeef9df44fd0fd  5b51032eddd242adc84c38acab88f23d  199.0   
+
+   freight_value  
+0          13.29  
+1          19.93  
+2          17.87  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_70/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_70/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

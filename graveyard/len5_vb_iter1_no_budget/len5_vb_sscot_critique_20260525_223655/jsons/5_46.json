@@ -1,0 +1,46 @@
+{
+  "case": "5_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5582,
+        "cost": 0.0026412,
+        "latency": 11.864729881286621,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.706 + 0.411) / 2 = 0.558 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.695, range overlap=0.400.\nGround truth candidate keys: {Customer_Name}.\nGenerated table candidate keys: {Customer_Name, Ord_id}; {Customer_Name, Ship_id}; {Customer_Name, Prod_id}.\nKeys present in ground truth but absent in generated: {Customer_Name}.\nSpurious keys in generated not present in ground truth: {Ship_id, Customer_Name}; {Ord_id, Customer_Name}; {Prod_id, Customer_Name}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.706 (precision=0.750, recall=0.667).\nSpurious FDs in generated (not in ground truth): ['Customer_Name', 'Ord_id'] \u2192 Prod_id; ['Customer_Name', 'Ord_id'] \u2192 Ship_id.\nMissing FDs from ground truth: ['Customer_Name'] \u2192 Ord_id; ['Customer_Name'] \u2192 Ship_id; ['Customer_Name'] \u2192 Prod_id.\nDistribution Analysis (numerical columns with issues):\n  Column 'Ord_id': range overlap=0.400, JS similarity=0.695\n    Generated    \u2014 min: 1.0, max: 17.0, mean: 7.2479\n    Ground Truth \u2014 min: 1.0, max: 41.0, mean: 10.4713\n  Column 'Prod_id': range overlap=0.400, JS similarity=0.695\n    Generated    \u2014 min: 1.0, max: 17.0, mean: 7.2479\n    Ground Truth \u2014 min: 1.0, max: 41.0, mean: 10.4713\n  Column 'Ship_id': range overlap=0.400, JS similarity=0.695\n    Generated    \u2014 min: 1.0, max: 17.0, mean: 7.2479\n    Ground Truth \u2014 min: 1.0, max: 41.0, mean: 10.4713\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Customer_Name': Jaccard=0.000",
+        "generated_samples": "Schema: ['Customer_Name', 'Ord_id', 'Prod_id', 'Ship_id']\nNumber of Tuples: 4200\nExamples:\n Customer_Name  Ord_id  Prod_id  Ship_id\nNICOLE BRENNAN    5496        6     7682\n  SKYE NORLING      86       16     1656\n THERESA SWINT    2453       11     3364",
+        "code": "import pandas as pd\n\n# File paths for source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_46/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_46/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length5_46/training_2.csv\"\nsource3_path = \"autopipeline-benchmarks/github-pipelines/length5_46/training_3.csv\"\nsource4_path = \"autopipeline-benchmarks/github-pipelines/length5_46/training_4.csv\"\n\n# Load source tables with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(source0_path, index_col=0)  # Source5_46_0\ndf1 = pd.read_csv(source1_path, index_col=0)  # Source5_46_1\ndf2 = pd.read_csv(source2_path, index_col=0)  # Source5_46_2\ndf3 = pd.read_csv(source3_path, index_col=0)  # Source5_46_3\ndf4 = pd.read_csv(source4_path, index_col=0)  # Source5_46_4\n\n# --- Transformation Plan ---\n# Target schema: ['Customer_Name': string, 'Ord_id': integer, 'Prod_id': integer, 'Ship_id': integer]\n# Source4 contains the keys: Ord_id, Prod_id, Ship_id, Cust_id (foreign keys)\n# Source0 contains Cust_id and Customer_Name\n# Source1 contains Ship_id\n# Source2 contains Ord_id\n# Source3 contains Prod_id\n# The target table requires integer IDs for Ord_id, Prod_id, Ship_id, but source IDs are strings like \"Ord_1082\", \"Prod_8\", \"SHP_1495\"\n# We need to convert these IDs to integers by extracting the numeric part after the underscore.\n# Customer_Name comes from Source0 joined via Cust_id in Source4.\n# We join Source4 with Source0 on Cust_id to get Customer_Name.\n# The final output columns are:\n#   Customer_Name (string) from Source0\n#   Ord_id (int) from Source4 (converted)\n#   Prod_id (int) from Source4 (converted)\n#   Ship_id (int) from Source4 (converted)\n\n# Step 1: Join Source4 with Source0 on Cust_id to get Customer_Name\ndf4_0 = pd.merge(df4, df0[['Customer_Name', 'Cust_id']], on='Cust_id', how='left')\n\n# Step 2: Extract integer IDs from Ord_id, Prod_id, Ship_id in df4_0\ndef extract_int_id(s, prefix):\n    # s is like \"Ord_1082\", prefix like \"Ord_\"\n    # Extract the numeric part after prefix and convert to int\n    if pd.isna(s):\n        return None\n    if s.startswith(prefix):\n        return int(s[len(prefix):])\n    else:\n        # fallback: try to extract digits from string\n        import re\n        m = re.search(r'\\d+', s)\n        return int(m.group()) if m else None\n\ndf4_0['Ord_id'] = df4_0['Ord_id'].apply(lambda x: extract_int_id(x, 'Ord_'))\ndf4_0['Prod_id'] = df4_0['Prod_id'].apply(lambda x: extract_int_id(x, 'Prod_'))\ndf4_0['Ship_id'] = df4_0['Ship_id'].apply(lambda x: extract_int_id(x, 'SHP_'))\n\n# Step 3: Select only the columns needed for the target table\ntarget_df = df4_0[['Customer_Name', 'Ord_id', 'Prod_id', 'Ship_id']]\n\n# Step 4: Ensure data types match target schema\ntarget_df['Customer_Name'] = target_df['Customer_Name'].astype(str)\ntarget_df['Ord_id'] = target_df['Ord_id'].astype('Int64')  # nullable integer dtype\ntarget_df['Prod_id'] = target_df['Prod_id'].astype('Int64')\ntarget_df['Ship_id'] = target_df['Ship_id'].astype('Int64')\n\n# Step 5: Save the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length5_46/target_multisource_cot.csv\"\ntarget_df.to_csv(target_path, index=False)",
+        "generated_csv_head": "Customer_Name,Ord_id,Prod_id,Ship_id\nJOSEPH AIRDO,1082,8,1495\nJOSEPH AIRDO,1080,2,1493\nJOSEPH HOLT,3538,3,4899\nJOSEPH HOLT,3555,8,4923\nJOSEPH HOLT,3560,15,4930\nJOY BELL,292,16,394\nJOY BELL,140,9,187\nJOY BELL,140,12,188\nJOY BELL,59,6,79\nJOY BELL,59,15,78\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1289119720458984
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0022864,
+          "latency": 11.578211545944214,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_46/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_46/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_46/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_46/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_46/training_4.csv\", index_col=0)\n\n# Join Source5_46_4 with Source5_46_0 on Cust_id\ndf = pd.merge(source4, source0, on=\"Cust_id\", how=\"inner\")\n\n# Join with Source5_46_1 on Ship_id\ndf = pd.merge(df, source1, on=\"Ship_id\", how=\"inner\")\n\n# Join with Source5_46_2 on Ord_id\ndf = pd.merge(df, source2, on=\"Ord_id\", how=\"inner\")\n\n# Join with Source5_46_3 on Prod_id\ndf = pd.merge(df, source3, on=\"Prod_id\", how=\"inner\")\n\n# Group by Customer_Name (primary key) and aggregate Ord_id, Prod_id, Ship_id by min to ensure uniqueness and match target keys\nresult = df.groupby(\"Customer_Name\", as_index=False).agg({\n    \"Ord_id\": \"min\",\n    \"Prod_id\": \"min\",\n    \"Ship_id\": \"min\"\n})\n\n# Ensure types match target schema: Customer_Name (string), Ord_id, Prod_id, Ship_id (integer)\nresult[\"Ord_id\"] = result[\"Ord_id\"].astype(int)\nresult[\"Prod_id\"] = result[\"Prod_id\"].astype(int)\nresult[\"Ship_id\"] = result[\"Ship_id\"].astype(int)\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_46/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.023603439331054688
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 11927.876472473145,
+        "critique": 11764.871597290039
+      }
+    }
+  ]
+}

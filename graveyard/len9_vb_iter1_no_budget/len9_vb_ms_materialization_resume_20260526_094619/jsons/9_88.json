@@ -1,0 +1,29 @@
+{
+  "case": "9_88",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9765,
+        "cost": 0.0115076,
+        "latency": 26.011430740356445,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.953) / 2 = 0.977 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.906, range overlap=1.000.\nGround truth candidate keys: {admit, gre, gpa}.\nGenerated table candidate keys: {admit, gre, gpa}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'admit': range overlap=1.000, JS similarity=0.949\n    Generated    \u2014 min: 0.0, max: 1.0, mean: 0.4839\n    Ground Truth \u2014 min: 0.0, max: 1.0, mean: 0.544\n  Column 'gre': range overlap=1.000, JS similarity=0.835\n    Generated    \u2014 min: 340.0, max: 800.0, mean: 589.0323\n    Ground Truth \u2014 min: 340.0, max: 800.0, mean: 613.0225\n  Column 'gpa': range overlap=1.000, JS similarity=0.839\n    Generated    \u2014 min: 2.42, max: 4.0, mean: 3.3513\n    Ground Truth \u2014 min: 2.42, max: 4.0, mean: 3.4586",
+        "generated_samples": "Schema: ['admit', 'gre', 'gpa', 'prestige']\nNumber of Tuples: 279\nExamples:\n admit  gre  gpa  prestige\n     0  540 3.04         1\n     1  460 3.64         1\n     1  520 3.81         1",
+        "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the numerical index column\nsource_files_0_to_8 = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_8.csv\",\n]\n\n# Read and concatenate sources 0 to 8 (union)\ndfs_0_to_8 = [pd.read_csv(f, index_col=0) for f in source_files_0_to_8]\nunion_0_to_8 = pd.concat(dfs_0_to_8, ignore_index=True)\n\n# Read source 9\nsource_9_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_88/training_9.csv\"\ndf_9 = pd.read_csv(source_9_path, index_col=0)\n\n# Join source 9 with union of sources 0 to 8 on all columns ['admit', 'gre', 'gpa', 'prestige']\n# This is an inner join on all columns, so effectively intersection of rows\njoin_columns = ['admit', 'gre', 'gpa', 'prestige']\n# Perform inner join on all columns\ntarget_df = pd.merge(df_9, union_0_to_8, on=join_columns, how='inner')\n\n# The join adds suffixes if columns overlap, but since we join on all columns, no suffixes expected.\n# Drop any extra columns if present (like 'Unnamed: 0' from intermediate_step2)\n# Keep only target schema columns\ntarget_df = target_df[join_columns]\n\n# Ensure correct dtypes as per target schema\ntarget_df = target_df.astype({\n    'admit': 'int64',\n    'gre': 'int64',\n    'gpa': 'float64',\n    'prestige': 'int64'\n})\n\n# Write the final target table to the specified path without index\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_88/target_multisource.csv\", index=False)",
+        "generated_csv_head": "admit,gre,gpa,prestige\n0,740,3.54,1\n0,740,3.54,1\n0,740,3.54,1\n0,740,3.54,1\n0,740,3.54,1\n0,740,3.54,1\n0,740,3.54,1\n0,740,3.54,1\n0,740,3.54,1\n1,640,3.63,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.8050670623779297
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 26091.017246246338,
+        "critique": 0.0
+      }
+    }
+  ]
+}

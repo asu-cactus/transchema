@@ -1,0 +1,46 @@
+{
+  "case": "4_67",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5997,
+        "cost": 0.0019252000000000002,
+        "latency": 4.348552703857422,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.399) / 2 = 0.600 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.392, range overlap=0.522.\nGround truth candidate keys: {Batsman on strike}; {runs scored}; {overs}.\nGenerated table candidate keys: {overs}; {runs scored}.\nKeys present in ground truth but absent in generated: {Batsman on strike}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.800 (precision=1.000, recall=0.667).\nMissing FDs from ground truth: ['Batsman on strike'] \u2192 runs scored; ['Batsman on strike'] \u2192 extras; ['Batsman on strike'] \u2192 overs.\nDistribution Analysis (numerical columns with issues):\n  Column 'overs': range overlap=0.092, JS similarity=0.442\n    Generated    \u2014 min: 10.1, max: 19.6, mean: 14.8148\n    Ground Truth \u2014 min: 10.8, max: 105.7, mean: 48.6167\n  Column 'runs scored': range overlap=0.475, JS similarity=0.251\n    Generated    \u2014 min: 10.1, max: 19.6, mean: 14.8148\n    Ground Truth \u2014 min: 1.0, max: 21.0, mean: 8.6667\n  Column 'extras': range overlap=1.000, JS similarity=0.482\n    Generated    \u2014 min: 0.0, max: 2.0, mean: 0.0328\n    Ground Truth \u2014 min: 0.0, max: 2.0, mean: 0.8333\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Batsman on strike': Jaccard=0.227",
+        "generated_samples": "Schema: ['Batsman on strike', 'overs', 'runs scored', 'extras']\nNumber of Tuples: 61\nExamples:\nBatsman on strike  overs  runs scored  extras\n        RA Jadeja   13.5            1       0\n        RA Jadeja   11.6            0       0\n       SK Trivedi   17.2            0       0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_67/training_0.csv\"\n]\n\n# List to hold transformed DataFrames from each source\ntransformed_dfs = []\n\nfor file_path in source_files:\n    # Read source CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Select and rename columns to match target schema\n    # Target schema: ['Batsman on strike': string, 'overs': float, 'runs scored': integer, 'extras': integer]\n    # Source schema includes these columns: 'Batsman on strike', 'overs', 'runs scored', 'extras'\n    # We just need to ensure types and column order\n    \n    # Extract relevant columns\n    df_selected = df[['Batsman on strike', 'overs', 'runs scored', 'extras']].copy()\n    \n    # Convert data types to match target schema\n    df_selected['Batsman on strike'] = df_selected['Batsman on strike'].astype(str)\n    df_selected['overs'] = df_selected['overs'].astype(float)\n    df_selected['runs scored'] = df_selected['runs scored'].astype(int)\n    df_selected['extras'] = df_selected['extras'].astype(int)\n    \n    transformed_dfs.append(df_selected)\n\n# Since only one source table is given, no union needed, just use the transformed DataFrame\ntarget_df = pd.concat(transformed_dfs, ignore_index=True)\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_67/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Batsman on strike,overs,runs scored,extras\nM Kaif,10.1,0,0\nM Kaif,10.2,0,0\nM Kaif,10.3,0,0\nM Rawat,10.4,1,0\nRA Jadeja,10.5,0,0\nRA Jadeja,10.6,1,0\nRA Jadeja,11.1,6,0\nRA Jadeja,11.2,4,0\nRA Jadeja,11.3,1,0\nM Rawat,11.4,0,0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.20489501953125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7446,
+          "cost": 0.0013272000000000002,
+          "latency": 4.591951370239258,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.489) / 2 = 0.745 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.485, range overlap=0.669.\nGround truth candidate keys: {Batsman on strike}; {runs scored}; {overs}.\nGenerated table candidate keys: {Batsman on strike}; {runs scored}; {overs}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'overs': range overlap=0.237, JS similarity=0.426\n    Generated    \u2014 min: 30.6, max: 328.1, mean: 150.6167\n    Ground Truth \u2014 min: 10.8, max: 105.7, mean: 48.6167\n  Column 'runs scored': range overlap=0.769, JS similarity=0.395\n    Generated    \u2014 min: 0.0, max: 26.0, mean: 11.6667\n    Ground Truth \u2014 min: 1.0, max: 21.0, mean: 8.6667\n  Column 'extras': range overlap=1.000, JS similarity=0.634\n    Generated    \u2014 min: 0.0, max: 2.0, mean: 0.3333\n    Ground Truth \u2014 min: 0.0, max: 2.0, mean: 0.8333\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Batsman on strike': Jaccard=0.227",
+          "generated_samples": "Schema: ['Batsman on strike', 'overs', 'runs scored', 'extras']\nNumber of Tuples: 6\nExamples:\nBatsman on strike  overs  runs scored  extras\n       SK Trivedi  125.1            3       0\n          M Rawat   45.4            2       0\n           M Kaif   30.6            0       0",
+          "code": "import pandas as pd\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_67/training_0.csv\", index_col=0)\n\n# Group by 'Batsman on strike' and aggregate sums for overs, runs scored, extras\nresult = source0.groupby('Batsman on strike', as_index=False).agg({\n    'overs': 'sum',\n    'runs scored': 'sum',\n    'extras': 'sum'\n})\n\n# Write output with exact target schema column order\nresult = result[['Batsman on strike', 'overs', 'runs scored', 'extras']]\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_67/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.9047260284423828
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4351.064682006836,
+        "critique": 4655.5495262146
+      }
+    }
+  ]
+}

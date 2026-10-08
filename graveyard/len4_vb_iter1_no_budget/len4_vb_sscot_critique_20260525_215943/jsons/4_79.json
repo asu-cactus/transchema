@@ -1,0 +1,29 @@
+{
+  "case": "4_79",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.982,
+        "cost": 0.001726,
+        "latency": 6.896069288253784,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.964) / 2 = 0.982 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.948, range overlap=0.956.\nGround truth candidate keys: {hero, matches}.\nGenerated table candidate keys: {hero, matches}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'disadvantage': range overlap=1.000, JS similarity=0.921\n    Generated    \u2014 min: -6.0, max: 10.92, mean: 0.0515\n    Ground Truth \u2014 min: -6.0, max: 10.92, mean: 0.2953\n  Column 'winrate': range overlap=0.869, JS similarity=0.936\n    Generated    \u2014 min: 42.11, max: 61.7, mean: 51.3077\n    Ground Truth \u2014 min: 39.15, max: 61.7, mean: 51.0924",
+        "generated_samples": "Schema: ['hero', 'disadvantage', 'winrate', 'matches']\nNumber of Tuples: 531\nExamples:\n  hero  disadvantage  winrate  matches\n  Puck          0.95    54.70    94437\n Razor          0.09    52.90    43278\nTinker          0.32    56.79   107528",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_79/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_79/training_4.csv\"\n]\n\n# Load all source tables into a list of DataFrames\ndfs = []\nfor file in source_files:\n    df = pd.read_csv(file, index_col=0)\n    dfs.append(df)\n\n# All source tables have the exact same schema as the target:\n# ['hero', 'disadvantage', 'winrate', 'matches']\n# According to Hint 2 and Hint 4, we should UNION all source tables.\n\n# Concatenate all source DataFrames (union)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure correct dtypes according to target schema:\n# 'hero': string, 'disadvantage': float, 'winrate': float, 'matches': integer\ncombined_df['hero'] = combined_df['hero'].astype(str)\ncombined_df['disadvantage'] = combined_df['disadvantage'].astype(float)\ncombined_df['winrate'] = combined_df['winrate'].astype(float)\ncombined_df['matches'] = combined_df['matches'].astype(int)\n\n# The target table has 531 examples, which suggests duplicates or multiple entries per hero.\n# The prompt does not specify aggregation or deduplication, so we keep all rows as is.\n\n# Write the combined DataFrame to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_79/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "hero,disadvantage,winrate,matches\nPhantom Assassin,-0.28,47.5,131082\nLina,-0.34,49.68,95792\nWarlock,-0.39,44.3,48966\nJakiro,-0.4,44.46,103184\nPudge,-0.41,46.72,204037\nSkywrath Mage,-0.43,45.7,72868\nWitch Doctor,-0.44,46.28,110628\nTimbersaw,-0.47,50.22,37747\nBounty Hunter,-0.52,46.48,65078\nTidehunter,-0.52,45.33,52826\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.3480186462402344
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 6964.977025985718,
+        "critique": 0.0
+      }
+    }
+  ]
+}

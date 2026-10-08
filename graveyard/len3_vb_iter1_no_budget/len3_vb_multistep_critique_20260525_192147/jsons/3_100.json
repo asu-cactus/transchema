@@ -1,0 +1,29 @@
+{
+  "case": "3_100",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9884,
+        "cost": 0.0059372,
+        "latency": 9.742938995361328,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.977) / 2 = 0.988 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.964, range overlap=0.989.\nGround truth candidate keys: {Rank}.\nGenerated table candidate keys: {Rank}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Rank': range overlap=0.979, JS similarity=0.928\n    Generated    \u2014 min: 1.0, max: 191.0, mean: 92.8333\n    Ground Truth \u2014 min: 1.0, max: 187.0, mean: 85.2299",
+        "generated_samples": "Schema: ['Rank', '0']\nNumber of Tuples: 174\nExamples:\n Rank  0\n   50  1\n  175  1\n  182  1",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length3_100/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length3_100/training_1.csv\"\n\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation History: JOIN on [\"Country\", \"Country\"]\n# Join df_source0 and df_source1 on the \"Country\" column\ndf_joined = pd.merge(df_source0, df_source1, how=\"inner\", on=\"Country\")\n\n# Target schema: ['Rank': integer, '0': integer]\n# From the join, we only keep 'Rank' and a column named '0' with integer type.\n# The target examples show the '0' column has value 1 for all examples.\n# Since source1 does not have a column named '0', and target examples show '0' column is always 1,\n# we create a constant column '0' with value 1.\n\n# Select 'Rank' from df_source0 (already in df_joined) and create '0' column with value 1\ndf_target = df_joined[['Rank']].copy()\ndf_target['0'] = 1\n\n# Ensure the types are integer as per target schema\ndf_target['Rank'] = df_target['Rank'].astype(int)\ndf_target['0'] = df_target['0'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length3_100/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "Rank,0\n1,1\n2,1\n3,1\n4,1\n5,1\n6,1\n7,1\n8,1\n9,1\n10,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.0113716125488281
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 9811.030626296997,
+        "critique": 0.0
+      }
+    }
+  ]
+}

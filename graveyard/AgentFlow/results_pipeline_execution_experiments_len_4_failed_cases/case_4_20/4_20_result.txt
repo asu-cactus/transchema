@@ -1,0 +1,121 @@
+Case: 4_20
+Status: INCORRECT
+Timestamp: 2026-02-23T13:43:46.371846
+Duration: 113.69 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_20/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 1.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_20
+2. Target Schema: ['range_of_shot': string, 'is_goal': float, 'range_sum': integer, 'is_goal_count1': integer]
+3. Target Examples: There are 14556 available target examples:          range_of_shot  is_goal  range_sum  is_goal_count1
+8375   Less Than 8 ft.      NaN       2080            3576
+7637   Less Than 8 ft.      NaN       2080            3576
+359          16-24 ft.      NaN       1379            3392
+9580   Less Than 8 ft.      0.0       2080            3576
+14524  Back Court Shot      0.0          1              37
+...                ...      ...        ...             ...
+10981  Less Than 8 ft.      1.0       2080            3576
+10077  Less Than 8 ft.      1.0       2080            3576
+11197  Less Than 8 ft.      0.0       2080            3576
+11110  Less Than 8 ft.      NaN       2080            3576
+13161          24+ ft.      1.0        774            2211
+
+[1456 rows x 4 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_20_0
+	Source 0 Schema: ['match_event_id', 'location_x', 'location_y', 'remaining_min', 'power_of_shot', 'knockout_match', 'game_season', 'remaining_sec', 'distance_of_shot', 'is_goal', 'area_of_shot', 'shot_basics', 'range_of_shot', 'team_name', 'date_of_game', 'home/away', 'shot_id_number', 'lat/lng', 'type_of_shot', 'type_of_combined_shot', 'match_id', 'team_id', 'remaining_min.1', 'power_of_shot.1', 'knockout_match.1', 'remaining_sec.1', 'distance_of_shot.1']
+	Source 0 Examples: 	 Source 0 contains 15348 tuples, with examples as follows: 
+   match_event_id  location_x  location_y  remaining_min  power_of_shot  \
+0            10.0       167.0        72.0           10.0            1.0   
+1            12.0      -157.0         0.0           10.0            1.0   
+2            35.0      -101.0       135.0            7.0            1.0   
+
+   knockout_match game_season  remaining_sec  distance_of_shot  is_goal  \
+0             0.0     2000-01           27.0              38.0      NaN   
+1             0.0     2000-01           22.0              35.0      0.0   
+2             0.0     2000-01           45.0              36.0      1.0   
+
+           area_of_shot shot_basics range_of_shot          team_name  \
+0         Right Side(R)   Mid Range     16-24 ft.  Manchester United   
+1          Left Side(L)   Mid Range      8-16 ft.  Manchester United   
+2  Left Side Center(LC)   Mid Range     16-24 ft.  Manchester United   
+
+  date_of_game  home/away  shot_id_number                 lat/lng  \
+0   31-10-2000        1.0               1  45.539131, -122.651648   
+1   31-10-2000        1.0               2  45.539131, -122.651648   
+2   31-10-2000        NaN               3  45.539131, -122.651648   
+
+  type_of_shot type_of_combined_shot  match_id     team_id  remaining_min.1  \
+0    shot - 30                   NaN  20000012  1610612747            10.00   
+1    shot - 45                   NaN  20000012  1610612747            10.00   
+2    shot - 25                   NaN  20000012  1610612747            92.64   
+
+   power_of_shot.1  knockout_match.1  remaining_sec.1  distance_of_shot.1  
+0              1.0            50.608          54.2000                38.0  
+1              1.0            28.800          22.0000                35.0  
+2              1.0             0.000          63.7216                54.4  
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_20/test_0.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_20/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+def main():
+    # Step 1: UNION - Load source table Source4_20_0
+    source_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_20/test_0.csv"
+    df_source = pd.read_csv(source_path, index_col=0)
+
+    # Step 2: PREPROCESS
+    # Fill NaN in 'is_goal' with 0
+    df_source['is_goal'] = df_source['is_goal'].fillna(0)
+
+    # Fill NaN in 'distance_of_shot' with 0
+    df_source['distance_of_shot'] = df_source['distance_of_shot'].fillna(0)
+
+    # Ensure 'range_of_shot' is string type
+    df_source['range_of_shot'] = df_source['range_of_shot'].astype(str)
+
+    # Step 3: GROUP_BY/AGGREGATE
+    # We need to:
+    # - sum of 'is_goal' cast to float
+    # - count of rows where 'is_goal' == 1
+    # - sum of 'distance_of_shot' cast to int as 'range_sum'
+
+    # Define aggregation functions
+    def count_is_goal_1(x):
+        return (x == 1).sum()
+
+    grouped = df_source.groupby('range_of_shot').agg(
+        is_goal_sum=('is_goal', 'sum'),
+        is_goal_count1=('is_goal', count_is_goal_1),
+        range_sum_float=('distance_of_shot', 'sum')
+    ).reset_index()
+
+    # Cast aggregated columns to required types
+    grouped['is_goal'] = grouped['is_goal_sum'].astype(float)
+    grouped['range_sum'] = grouped['range_sum_float'].astype(int)
+    grouped['is_goal_count1'] = grouped['is_goal_count1'].astype(int)
+
+    # Select and reorder columns to match target schema
+    result = grouped[['range_of_shot', 'is_goal', 'range_sum', 'is_goal_count1']]
+
+    # Step 4: SAVE
+    output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_20/target_multisource_agentic.csv"
+    result.to_csv(output_path, index=False)
+
+if __name__ == "__main__":
+    main()
+```

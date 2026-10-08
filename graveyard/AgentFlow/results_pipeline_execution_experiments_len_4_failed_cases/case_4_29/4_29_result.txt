@@ -1,0 +1,201 @@
+Case: 4_29
+Status: INCORRECT
+Timestamp: 2026-02-23T14:50:00.827592
+Duration: 104.81 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_29/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 1.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_29
+2. Target Schema: ['ULCS_NO': integer, 'SCHOOL_YEAR': integer, 'INCIDENT_TYPE': integer, 'INCIDENT_COUNT': integer, 'SCHOOL_ID': integer]
+3. Target Examples: There are 247 available target examples:      ULCS_NO  SCHOOL_YEAR  INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+15      1300           59             59              59         59
+221     8210           37             37              37         37
+36      2130           17             17              17         17
+201     7430           41             41              41         41
+78      3820            6              6               6          6
+40      2210           56             56              56         56
+156     6210           41             41              41         41
+135     5520           40             40              40         40
+60      2590           54             54              54         54
+117     5300           53             53              53         53
+131     5480           41             41              41         41
+119     5330           60             60              60         60
+56      2520           52             52              52         52
+89      4300           59             59              59         59
+169     6390           44             44              44         44
+44      2310           19             19              19         19
+227     8300           45             45              45         45
+243     8540            1              1               1          1
+58      2540           52             52              52         52
+223     8240           42             42              42         42
+152     6070           17             17              17         17
+61      2620           58             58              58         58
+179     7010           46             46              46         46
+123     5390           59             59              59         59
+114     5230           58             58              58         58
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_29_0
+	Source 0 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 0 Examples: 	 Source 0 contains 3672 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR            INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     4020   2014-2015                 BULLYING               0        402
+1     4020   2014-2015  DRUGS & ALCOHOL OFFENSE              20        402
+2     4030   2014-2015        FIRE - INCENDIARY               0        403
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_29_1
+	Source 1 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 1 Examples: 	 Source 1 contains 2057 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     5031   2015-2016      BURGLARY               0         31
+1     5031   2015-2016    HARASSMENT               0         31
+2     5031   2015-2016       ROBBERY               0         31
+	Source 1 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_29_2
+	Source 2 Schema: ['ULCS_NO', 'SCHOOL_ID', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT']
+	Source 2 Examples: 	 Source 2 contains 1409 tuples, with examples as follows: 
+   ULCS_NO  SCHOOL_ID SCHOOL_YEAR              INCIDENT_TYPE  INCIDENT_COUNT
+0     1010        101   2016-2017                   Assaults              18
+1     1010        101   2016-2017         Disorderly Conduct              21
+2     1010        101   2016-2017  Drug and Alcohol Offenses               2
+	Source 2 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_29_3
+	Source 3 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 3 Examples: 	 Source 3 contains 3723 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     5260   2013-2014    HARASSMENT               1        526
+1     5340   2013-2014      ASSAULTS               5        534
+2     5350   2013-2014       THREATS               8        535
+	Source 3 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_3.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSVs
+source_files = [
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_0.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_1.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_2.csv",
+    "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/test_3.csv"
+]
+
+# Read all source dataframes with index_col=0
+df0 = pd.read_csv(source_files[0], index_col=0)
+df1 = pd.read_csv(source_files[1], index_col=0)
+df2 = pd.read_csv(source_files[2], index_col=0)
+df3 = pd.read_csv(source_files[3], index_col=0)
+
+# Standardize column order for df2 to match target schema:
+# Target schema order: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+# df2 columns: ['ULCS_NO', 'SCHOOL_ID', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT']
+df2 = df2[['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']]
+
+# Combine all INCIDENT_TYPE values from all sources to create a consistent mapping
+incident_type_values = pd.concat([
+    df0['INCIDENT_TYPE'],
+    df1['INCIDENT_TYPE'],
+    df2['INCIDENT_TYPE'],
+    df3['INCIDENT_TYPE']
+]).dropna().unique()
+
+# Normalize INCIDENT_TYPE strings: strip, upper case, replace multiple spaces with single space
+def normalize_incident_type(s):
+    if pd.isna(s):
+        return s
+    s = str(s).strip()
+    s = " ".join(s.split())  # replace multiple spaces with single space
+    s = s.upper()
+    return s
+
+incident_type_values_norm = [normalize_incident_type(v) for v in incident_type_values]
+
+# Create sorted unique list for consistent integer mapping
+unique_incident_types = sorted(set(incident_type_values_norm))
+
+# Create mapping dictionary: normalized INCIDENT_TYPE string -> integer code starting from 1
+incident_type_mapping = {v: i+1 for i, v in enumerate(unique_incident_types)}
+
+# Similarly, create mapping for SCHOOL_YEAR
+# SCHOOL_YEAR values appear as strings like '2014-2015', '59', '37', etc.
+# From target examples, SCHOOL_YEAR is integer, so we must map all unique SCHOOL_YEAR strings to integers consistently.
+
+school_year_values = pd.concat([
+    df0['SCHOOL_YEAR'],
+    df1['SCHOOL_YEAR'],
+    df2['SCHOOL_YEAR'],
+    df3['SCHOOL_YEAR']
+]).dropna().unique()
+
+# Normalize SCHOOL_YEAR strings: strip
+def normalize_school_year(s):
+    if pd.isna(s):
+        return s
+    s = str(s).strip()
+    return s
+
+school_year_values_norm = [normalize_school_year(v) for v in school_year_values]
+
+# Create sorted unique list for consistent integer mapping
+unique_school_years = sorted(set(school_year_values_norm))
+
+# Create mapping dictionary: normalized SCHOOL_YEAR string -> integer code starting from 1
+school_year_mapping = {v: i+1 for i, v in enumerate(unique_school_years)}
+
+# Function to apply mappings to a dataframe
+def apply_mappings(df):
+    # Normalize and map INCIDENT_TYPE
+    df['INCIDENT_TYPE'] = df['INCIDENT_TYPE'].apply(normalize_incident_type)
+    df['INCIDENT_TYPE'] = df['INCIDENT_TYPE'].map(incident_type_mapping)
+    # Normalize and map SCHOOL_YEAR
+    df['SCHOOL_YEAR'] = df['SCHOOL_YEAR'].apply(normalize_school_year)
+    df['SCHOOL_YEAR'] = df['SCHOOL_YEAR'].map(school_year_mapping)
+    return df
+
+# Apply mappings to all dataframes
+df0 = apply_mappings(df0)
+df1 = apply_mappings(df1)
+df2 = apply_mappings(df2)
+df3 = apply_mappings(df3)
+
+# After mapping, reorder columns to target schema order (just to be sure)
+target_columns = ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+df0 = df0[target_columns]
+df1 = df1[target_columns]
+df2 = df2[target_columns]
+df3 = df3[target_columns]
+
+# Concatenate all dataframes (UNION)
+df_all = pd.concat([df0, df1, df2, df3], ignore_index=True)
+
+# Group by ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'SCHOOL_ID'] and sum INCIDENT_COUNT
+df_grouped = df_all.groupby(['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'SCHOOL_ID'], as_index=False)['INCIDENT_COUNT'].sum()
+
+# Cast all columns to integer type
+df_grouped = df_grouped.astype({
+    'ULCS_NO': 'int64',
+    'SCHOOL_YEAR': 'int64',
+    'INCIDENT_TYPE': 'int64',
+    'INCIDENT_COUNT': 'int64',
+    'SCHOOL_ID': 'int64'
+})
+
+# Save to CSV
+output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_29/target_multisource_agentic.csv"
+df_grouped.to_csv(output_path, index=False)
+```

@@ -1,0 +1,130 @@
+Case: 1_61
+Status: CORRECT
+Timestamp: 2026-02-24T02:35:46.875975
+Duration: 31.94 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_61/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['provider_id', 'provider_name', 'provider_zip_code', 'average_covered_charges', 'average_total_payments', 'average_medicare_payments']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_61
+2. Target Schema: ['provider_id': integer, 'provider_name': string, 'provider_zip_code': integer, 'average_covered_charges': float, 'average_total_payments': float, 'average_medicare_payments': float]
+3. Target Examples: There are 3166 available target examples:       provider_id                                provider_name  \
+2994       500036              YAKIMA VALLEY MEMORIAL HOSPITAL   
+1385       220073                              MORTON HOSPITAL   
+468         50777     KAISER FOUNDATION HOSPITAL - SAN LEANDRO   
+2628       440218  SAINT THOMAS HOSPITAL FOR SPECIALTY SURGERY   
+1291       200008                               MERCY HOSPITAL   
+...           ...                                          ...   
+2276       370228                   BAILEY MEDICAL CENTER, LLC   
+1258       190151                    RICHARDSON MEDICAL CENTER   
+2835       450827                  KELL WEST REGIONAL HOSPITAL   
+2219       370029                       ALLIANCEHEALTH CLINTON   
+1926       330203                              CROUSE HOSPITAL   
+
+      provider_zip_code  average_covered_charges  average_total_payments  \
+2994              98902             28700.750000            10831.972432   
+1385               2780             10209.509189            10371.357297   
+468               94577             46358.360000             9208.640000   
+2628              37203             38810.330000            15923.830000   
+1291               4101             26570.127826             9471.891304   
+...                 ...                      ...                     ...   
+2276              74055             54584.455000            10373.005000   
+1258              71269              9894.875000             6408.895000   
+2835              76310             23057.126667            10055.370000   
+2219              73601             19866.615000             7558.080000   
+1926              13210             24732.145625            11998.101406   
+
+      average_medicare_payments  
+2994                9616.260541  
+1385                9187.572973  
+468                 8181.730000  
+2628               14772.500000  
+1291                8374.303478  
+...                         ...  
+2276                8648.320000  
+1258                5482.272500  
+2835                8694.303333  
+2219                6655.925000  
+1926               10058.706094  
+
+[317 rows x 6 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_61_0
+	Source 0 Schema: ['average_covered_charges', 'average_medicare_payments', 'average_total_payments', 'drg_definition', 'hospital_referral_region_hrr_description', 'provider_city', 'provider_id', 'provider_name', 'provider_state', 'provider_street_address', 'provider_zip_code', 'total_discharges']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   average_covered_charges  average_medicare_payments  average_total_payments  \
+0                196441.86                   46042.00                49120.64   
+1                 18365.02                    5502.89                 6930.75   
+2                 34880.98                    6551.78                 8870.75   
+
+                                      drg_definition  \
+0  226 - CARDIAC DEFIBRILLATOR IMPLANT W/O CARDIA...   
+1  190 - CHRONIC OBSTRUCTIVE PULMONARY DISEASE W MCC   
+2  287 - CIRCULATORY DISORDERS EXCEPT AMI, W CARD...   
+
+  hospital_referral_region_hrr_description  provider_city  provider_id  \
+0                             VA - Norfolk        NORFOLK       490007   
+1                          AL - Birmingham           BOAZ        10005   
+2                       TX - Wichita Falls  WICHITA FALLS       450010   
+
+                        provider_name provider_state  \
+0    SENTARA NORFOLK GENERAL HOSPITAL             VA   
+1       MARSHALL MEDICAL CENTER SOUTH             AL   
+2  UNITED REGIONAL HEALTH CARE SYSTEM             TX   
+
+      provider_street_address  provider_zip_code  total_discharges  
+0              600 GRESHAM DR              23507                14  
+1  2505 U S HIGHWAY 431 NORTH              35957               134  
+2            1600 11TH STREET              76301                40  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Read source CSV file with index_col=0 as instructed
+source_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/test_0.csv"
+df_source = pd.read_csv(source_path, index_col=0)
+
+# Group by provider_id, provider_name, provider_zip_code and aggregate averages of specified columns
+df_grouped = df_source.groupby(
+    ['provider_id', 'provider_name', 'provider_zip_code'],
+    as_index=False
+).agg({
+    'average_covered_charges': 'mean',
+    'average_total_payments': 'mean',
+    'average_medicare_payments': 'mean'
+})
+
+# Cast columns to the target schema types explicitly
+df_grouped = df_grouped.astype({
+    'provider_id': 'int64',
+    'provider_name': 'string',
+    'provider_zip_code': 'int64',
+    'average_covered_charges': 'float64',
+    'average_total_payments': 'float64',
+    'average_medicare_payments': 'float64'
+})
+
+# Reorder columns to match target schema exactly
+df_final = df_grouped[
+    ['provider_id', 'provider_name', 'provider_zip_code',
+     'average_covered_charges', 'average_total_payments', 'average_medicare_payments']
+]
+
+# Save the final dataframe to the specified CSV file path
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/target_multisource_agentic.csv"
+df_final.to_csv(output_path, index=False)
+```

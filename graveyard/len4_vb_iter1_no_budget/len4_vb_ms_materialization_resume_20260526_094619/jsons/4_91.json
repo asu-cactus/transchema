@@ -1,0 +1,29 @@
+{
+  "case": "4_91",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.005218,
+        "latency": 11.220975399017334,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {attributes}.\nGenerated table candidate keys: {attributes}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['attributes']\nNumber of Tuples: 22540\nExamples:\nattributes\n       NaN\n       NaN\n    normal",
+        "code": "import pandas as pd\n\n# File paths for source CSVs\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_91/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_91/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_91/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_91/training_3.csv\"\n]\n\n# Read all source files with index_col=0 to ignore the numerical index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Extract only the 'attributes' column from each dataframe\nattributes_dfs = [df[['attributes']] for df in dfs]\n\n# Concatenate (union) all attributes columns vertically\nunion_df = pd.concat(attributes_dfs, ignore_index=True)\n\n# The target schema is ['attributes'] and target examples show some non-null values.\n# The intermediate_step1.csv after union shows mostly NaN in attributes.\n# We keep the union as is, since the operation history is just UNION.\n\n# Save the final target dataframe to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_91/target_multisource.csv\"\nunion_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "attributes\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n\"\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9143352508544922
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 11294.826984405518,
+        "critique": 0.0
+      }
+    }
+  ]
+}

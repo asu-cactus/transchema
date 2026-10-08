@@ -1,0 +1,46 @@
+{
+  "case": "4_66",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8743,
+        "cost": 0.0017944000000000002,
+        "latency": 7.192816495895386,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.824 + 0.925) / 2 = 0.874 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Movie}; {Year, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Category, Movie}; {Year, Category, Nominee}; {Category, Nominee, Movie}.\nKeys present in ground truth but absent in generated: {Year, Movie}; {Year, Nominee}; {Movie, Nominee}.\nSpurious keys in generated not present in ground truth: {Year, Movie, Category}; {Nominee, Movie, Category}; {Nominee, Year, Category}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.824 (precision=0.875, recall=0.778).\nSpurious FDs in generated (not in ground truth): ['Category', 'Nominee', 'Year'] \u2192 Movie.\nMissing FDs from ground truth: ['Movie'] \u2192 Category; ['Nominee', 'Year'] \u2192 Category.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.766\n  Column 'Movie': Jaccard=0.859",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 362\nExamples:\n         Year                Category         Nominee                                                                   Movie Winner\n1927/28 (1st) Actress -- Leading Role    Janet Gaynor 7th Heaven {'Diane'}; Street Angel {'Angela'}; and Sunrise {'The Wife'}    YES\n  1990 (63rd)   Actor -- Leading Role    Jeremy Irons                                 Reversal of Fortune {'Claus Von Bulow'}    YES\n1927/28 (1st)               Directing Lewis Milestone                                                     Two Arabian Knights    YES",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_66/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_66/training_4.csv\"\n]\n\n# Load all source tables into a list of DataFrames\n# Use index_col=0 to ignore the numerical index column as per Hint 24\ndfs = [pd.read_csv(path, index_col=0) for path in source_files]\n\n# All source tables have the exact same schema as the target:\n# ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\n# So we can safely concatenate (union) all source tables vertically.\n\n# Concatenate all source DataFrames\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Ensure columns are exactly in the target schema order\ntarget_columns = ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\ncombined_df = combined_df[target_columns]\n\n# Check and fix data types to match target schema (all strings)\n# Convert all columns to string type explicitly\nfor col in target_columns:\n    combined_df[col] = combined_df[col].astype(str)\n\n# The target examples show that 'Winner' column values are \"YES\" or presumably \"NO\"\n# We keep them as is, no transformation needed.\n\n# Save the combined DataFrame to the target CSV path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length4_66/target_multisource_cot.csv\"\ncombined_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Year,Category,Nominee,Movie,Winner\n2010 (83rd),Actress -- Supporting Role,Melissa Leo,The Fighter {'Alice Ward'},YES\n2009 (82nd),Actress -- Supporting Role,Mo'Nique,Precious: Based on the Novel 'Push' by Sapphire {'Mary'},YES\n2008 (81st),Actress -- Supporting Role,Pen\u00e9lope Cruz,Vicky Cristina Barcelona {'Maria Elena'},YES\n2007 (80th),Actress -- Supporting Role,Tilda Swinton,Michael Clayton {'Karen Crowder'},YES\n2006 (79th),Actress -- Supporting Role,Jennifer Hudson,Dreamgirls {'Effie White'},YES\n2005 (78th),Actress -- Supporting Role,Rachel Weisz,The Constant Gardener {'Tessa Quayle'},YES\n2004 (77th),Actress -- Supporting Role,Cate Blanchett,The Aviator {'Katharine Hepburn'},YES\n2003 (76th),Actress -- Supporting Role,Ren\u00e9e Zellweger,Cold Mountain {'Ruby Thewes'},YES\n2002 (75th),Actress -- Supporting Role,Catherine Zeta-Jones,Chicago {'Velma Kelly'},YES\n2001 (74th),Actress -- Supporting Role,Jennifer Connelly,A Beautiful Mind {'Alicia Nash'},YES\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1701583862304688
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8743,
+          "cost": 0.0021432000000000005,
+          "latency": 7.10491418838501,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.824 + 0.925) / 2 = 0.874 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Movie}; {Year, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Category, Movie}; {Year, Category, Nominee}; {Category, Nominee, Movie}.\nKeys present in ground truth but absent in generated: {Year, Movie}; {Year, Nominee}; {Movie, Nominee}.\nSpurious keys in generated not present in ground truth: {Year, Movie, Category}; {Nominee, Movie, Category}; {Nominee, Year, Category}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.824 (precision=0.875, recall=0.778).\nSpurious FDs in generated (not in ground truth): ['Category', 'Nominee', 'Year'] \u2192 Movie.\nMissing FDs from ground truth: ['Movie'] \u2192 Category; ['Nominee', 'Year'] \u2192 Category.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.766\n  Column 'Movie': Jaccard=0.859",
+          "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 362\nExamples:\n         Year                Category          Nominee                                                                                                                 Movie Winner\n  2007 (80th) Actress -- Leading Role Marion Cotillard                                                                                         La Vie en Rose {'Edith Piaf'}    YES\n  1963 (36th)   Actor -- Leading Role   Sidney Poitier                                                                                   Lilies of the Field {'Homer Smith'}    YES\n1927/28 (1st)   Actor -- Leading Role    Emil Jannings The Last Command {'General Dolgorucki [Grand Duke Sergius Alexander]'}; and The Way of All Flesh {'August Schilling'}    YES",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_4.csv\", index_col=0)\n\n# Since all sources have the same schema, union all of them\ndf = pd.concat([source0, source1, source2, source3, source4], ignore_index=True)\n\n# Remove any duplicate rows to match the target unique tuples count (361)\ndf = df.drop_duplicates()\n\n# Output the final dataframe with exact target schema and column order\ndf = df[['Year', 'Category', 'Nominee', 'Movie', 'Winner']]\n\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.6884803771972656
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7254.303216934204,
+        "critique": 7226.74560546875
+      }
+    }
+  ]
+}

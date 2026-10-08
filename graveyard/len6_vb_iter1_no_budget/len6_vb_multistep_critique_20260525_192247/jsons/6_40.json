@@ -1,0 +1,46 @@
+{
+  "case": "6_40",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.01524,
+        "latency": 15.177831172943115,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = {\n    \"Source6_40_0\": \"autopipeline-benchmarks/github-pipelines/length6_40/training_0.csv\",\n    \"Source6_40_1\": \"autopipeline-benchmarks/github-pipelines/length6_40/training_1.csv\",\n    \"Source6_40_2\": \"autopipeline-benchmarks/github-pipelines/length6_40/training_2.csv\",\n    \"Source6_40_3\": \"autopipeline-benchmarks/github-pipelines/length6_40/training_3.csv\",\n    \"Source6_40_4\": \"autopipeline-benchmarks/github-pipelines/length6_40/training_4.csv\",\n    \"Source6_40_5\": \"autopipeline-benchmarks/github-pipelines/length6_40/training_5.csv\",\n    \"Source6_40_6\": \"autopipeline-benchmarks/github-pipelines/length6_40/training_6.csv\",\n}\n\n# Step 1: Load all source tables needed for UNION operation\n# UNION sources: ['Source6_40_0', 'Source6_40_1', 'Source6_40_3', 'Source6_40_4', 'Source6_40_5', 'Source6_40_6']\nunion_sources = ['Source6_40_0', 'Source6_40_1', 'Source6_40_3', 'Source6_40_4', 'Source6_40_5', 'Source6_40_6']\n\nunion_dfs = []\nfor src in union_sources:\n    df = pd.read_csv(source_files[src], index_col=0)\n    # Select only columns needed for target: ['state', 'vet_pop', 'vet_males', 'vet_females']\n    # Ensure columns exist and convert types accordingly\n    df_subset = df[['state', 'vet_pop', 'vet_males', 'vet_females']].copy()\n    # Convert vet_pop, vet_males, vet_females to float (some may be NaN)\n    df_subset['vet_pop'] = pd.to_numeric(df_subset['vet_pop'], errors='coerce')\n    df_subset['vet_males'] = pd.to_numeric(df_subset['vet_males'], errors='coerce')\n    df_subset['vet_females'] = pd.to_numeric(df_subset['vet_females'], errors='coerce')\n    union_dfs.append(df_subset)\n\n# Perform UNION (concatenate) of these dataframes\nunion_df = pd.concat(union_dfs, ignore_index=True)\n\n# Step 2: Load Source6_40_2 for JOIN operation\ndf_source2 = pd.read_csv(source_files[\"Source6_40_2\"], index_col=0)\n\n# The join keys are: union_df.state and df_source2['County/City']\n# We need to join union_df and df_source2 on union_df.state == df_source2['County/City']\n\n# Before join, ensure the join keys are strings and strip spaces\nunion_df['state'] = union_df['state'].astype(str).str.strip()\ndf_source2['County/City'] = df_source2['County/City'].astype(str).str.strip()\n\n# Perform the join (inner join to keep only matching keys)\njoined_df = pd.merge(union_df, df_source2, left_on='state', right_on='County/City', how='inner')\n\n# After join, the target schema is ['state', 'vet_pop', 'vet_males', 'vet_females']\n# So we keep only these columns from the joined dataframe\n# 'state' from union_df is the same as 'County/City' from source2, keep 'state' column\nfinal_df = joined_df[['state', 'vet_pop', 'vet_males', 'vet_females']].copy()\n\n# Ensure the data types match target schema:\nfinal_df['state'] = final_df['state'].astype(str)\nfinal_df['vet_pop'] = pd.to_numeric(final_df['vet_pop'], errors='coerce')\nfinal_df['vet_males'] = pd.to_numeric(final_df['vet_males'], errors='coerce')\nfinal_df['vet_females'] = pd.to_numeric(final_df['vet_females'], errors='coerce')\n\n# Write the final dataframe to the target path\nfinal_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/target_multisource.csv\", index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.048160552978515625
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.599,
+          "cost": 0.0039392,
+          "latency": 8.986051559448242,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.531) / 2 = 0.599 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.565, range overlap=0.186.\nGround truth candidate keys: {vet_pop}.\nGenerated table candidate keys: {state}; {vet_pop}.\nSpurious keys in generated not present in ground truth: {state}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {right, left}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['state'] \u2192 vet_pop; ['state'] \u2192 vet_males; ['state'] \u2192 vet_females.\nDistribution Analysis (numerical columns with issues):\n  Column 'vet_pop': range overlap=0.154, JS similarity=0.442\n    Generated    \u2014 min: 317036.0, max: 12237429.0, mean: 2693153.34\n    Ground Truth \u2014 min: 48498.0, max: 2193336.0, mean: 448858.89\n  Column 'vet_males': range overlap=0.176, JS similarity=0.637\n    Generated    \u2014 min: 0.0, max: 3968.0, mean: 550.16\n    Ground Truth \u2014 min: 7.0, max: 705.0, mean: 147.8925\n  Column 'vet_females': range overlap=0.227, JS similarity=0.616\n    Generated    \u2014 min: 0.0, max: 119.0, mean: 16.14\n    Ground Truth \u2014 min: 0.0, max: 27.0, mean: 4.2926",
+          "generated_samples": "Schema: ['state', 'vet_pop', 'vet_males', 'vet_females']\nNumber of Tuples: 50\nExamples:\n   state  vet_pop  vet_males  vet_females\n  Alaska   433427      170.0          9.0\nOklahoma  1957141        0.0          4.0\nNebraska   893831        0.0          0.0",
+          "code": "import pandas as pd\n\n# Read all source CSVs with index_col=0\nsrc0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/training_0.csv\", index_col=0)\nsrc1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/training_1.csv\", index_col=0)\nsrc2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/training_2.csv\", index_col=0)\nsrc3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/training_3.csv\", index_col=0)\nsrc4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/training_4.csv\", index_col=0)\nsrc5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/training_5.csv\", index_col=0)\nsrc6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/training_6.csv\", index_col=0)\n\n# Union the six sources with the same schema (all except src2)\nunion_df = pd.concat([src0, src1, src3, src4, src5, src6], ignore_index=True)\n\n# Group by 'state' and sum the numeric columns vet_pop, vet_males, vet_females\n# vet_males and vet_females contain NaNs, sum will ignore NaNs by default\nagg_df = union_df.groupby('state', as_index=False).agg({\n    'vet_pop': 'sum',\n    'vet_males': 'sum',\n    'vet_females': 'sum'\n})\n\n# Write output with exact target schema and column names\nagg_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_40/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.4220943450927734
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15241.395711898804,
+        "critique": 9087.043762207031
+      }
+    }
+  ]
+}

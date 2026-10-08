@@ -1,0 +1,128 @@
+Case: 1_31
+Status: CORRECT
+Timestamp: 2026-02-24T01:31:37.119549
+Duration: 30.67 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_31/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['State', 'Participation_x', 'Evidence-Based Reading and Writing', 'Math_x', 'Total', 'Participation_y', 'English', 'Math_y', 'Reading', 'Science', 'Composite']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_31
+2. Target Schema: ['State': string, 'Participation_x': string, 'Evidence-Based Reading and Writing': integer, 'Math_x': integer, 'Total': integer, 'Participation_y': string, 'English': float, 'Math_y': float, 'Reading': float, 'Science': float, 'Composite': float]
+3. Target Examples: There are 25 available target examples:        State Participation_x  Evidence-Based Reading and Writing  Math_x  \
+14   Indiana             63%                                 542     532   
+22  Michigan            100%                                 509     495   
+
+    Total Participation_y  English  Math_y  Reading  Science  Composite  
+14   1074             35%     22.0    22.4     23.2     22.3       22.6  
+22   1005             29%     24.1    23.7     24.5     23.8       24.1  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_31_0
+	Source 0 Schema: ['State', 'Participation', 'Evidence-Based Reading and Writing', 'Math', 'Total']
+	Source 0 Examples: 	 Source 0 contains 25 tuples, with examples as follows: 
+     State Participation  Evidence-Based Reading and Writing  Math  Total
+0  Alabama            5%                                 593   572   1165
+1   Alaska           38%                                 547   533   1080
+2  Arizona           30%                                 563   553   1116
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_31/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_31_1
+	Source 1 Schema: ['State', 'Participation', 'English', 'Math', 'Reading', 'Science', 'Composite']
+	Source 1 Examples: 	 Source 1 contains 52 tuples, with examples as follows: 
+      State Participation  English  Math  Reading  Science  Composite
+0  National           60%     20.3  20.7     21.4     21.0       21.0
+1   Alabama          100%     18.9  18.4     19.7     19.4       19.2
+2    Alaska           65%     18.7  19.8     20.4     19.9       19.8
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_31/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_31/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Step 1: Read source CSV files with index_col=0
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_31/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_31/test_1.csv"
+
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Step 2: Join Source1_31_0 and Source1_31_1 on 'State'
+df_merged = pd.merge(df0, df1, on='State', how='inner', suffixes=('_x', '_y'))
+
+# Step 3: Rename columns according to pipeline instructions
+# Rename Source1_31_0 columns: 'Participation' -> 'Participation_x', 'Math' -> 'Math_x'
+# Rename Source1_31_1 columns: 'Participation' -> 'Participation_y', 'Math' -> 'Math_y'
+# After merge, these columns are already suffixed, but Participation columns need renaming explicitly
+
+# Rename Participation columns
+df_merged.rename(columns={
+    'Participation_x': 'Participation_x',
+    'Participation_y': 'Participation_y',
+    'Math_x': 'Math_x',
+    'Math_y': 'Math_y'
+}, inplace=True)
+
+# Step 4: Cast columns to target schema types
+# Target Schema:
+# ['State': string,
+#  'Participation_x': string,
+#  'Evidence-Based Reading and Writing': integer,
+#  'Math_x': integer,
+#  'Total': integer,
+#  'Participation_y': string,
+#  'English': float,
+#  'Math_y': float,
+#  'Reading': float,
+#  'Science': float,
+#  'Composite': float]
+
+# Ensure all columns exist and cast accordingly
+
+# Strip whitespace from string columns if any
+df_merged['State'] = df_merged['State'].astype(str).str.strip()
+df_merged['Participation_x'] = df_merged['Participation_x'].astype(str).str.strip()
+df_merged['Participation_y'] = df_merged['Participation_y'].astype(str).str.strip()
+
+# Cast numeric columns
+df_merged['Evidence-Based Reading and Writing'] = pd.to_numeric(df_merged['Evidence-Based Reading and Writing'], errors='coerce').astype('Int64')
+df_merged['Math_x'] = pd.to_numeric(df_merged['Math_x'], errors='coerce').astype('Int64')
+df_merged['Total'] = pd.to_numeric(df_merged['Total'], errors='coerce').astype('Int64')
+
+df_merged['English'] = pd.to_numeric(df_merged['English'], errors='coerce').astype(float)
+df_merged['Math_y'] = pd.to_numeric(df_merged['Math_y'], errors='coerce').astype(float)
+df_merged['Reading'] = pd.to_numeric(df_merged['Reading'], errors='coerce').astype(float)
+df_merged['Science'] = pd.to_numeric(df_merged['Science'], errors='coerce').astype(float)
+df_merged['Composite'] = pd.to_numeric(df_merged['Composite'], errors='coerce').astype(float)
+
+# Step 5: Select and reorder columns to match target schema exactly
+target_columns = [
+    'State',
+    'Participation_x',
+    'Evidence-Based Reading and Writing',
+    'Math_x',
+    'Total',
+    'Participation_y',
+    'English',
+    'Math_y',
+    'Reading',
+    'Science',
+    'Composite'
+]
+
+df_final = df_merged[target_columns]
+
+# Step 6: Save the final dataframe to CSV
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_31/target_multisource_agentic.csv"
+df_final.to_csv(output_path, index=False)
+```

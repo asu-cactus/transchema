@@ -1,0 +1,94 @@
+Case: 1_61
+Status: CORRECT
+Timestamp: 2026-02-24T12:57:01.245540
+Duration: 49.46 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_61/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['provider_id', 'provider_name', 'provider_zip_code', 'average_covered_charges', 'average_total_payments', 'average_medicare_payments']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_61
+2. Target Schema: ['provider_id': integer, 'provider_name': string, 'provider_zip_code': integer, 'average_covered_charges': float, 'average_total_payments': float, 'average_medicare_payments': float]
+3. Target Examples: There are 3166 available target examples:       provider_id                              provider_name  \
+1454       230099         PROMEDICA MONROE REGIONAL HOSPITAL   
+2660       450064   TEXAS HEALTH ARLINGTON MEMORIAL HOSPITAL   
+1255       190144                      MINDEN MEDICAL CENTER   
+1216       190014              TECHE REGIONAL MEDICAL CENTER   
+2463       410005                OUR LADY OF FATIMA HOSPITAL   
+...           ...                                        ...   
+712        100307      ST VINCENT'S MEDICAL CENTER SOUTHSIDE   
+886        140093  PRESENCE UNITED SAMARITANS MEDICAL CENTER   
+2999       500049               WALLA WALLA GENERAL HOSPITAL   
+734        110024                           CANDLER HOSPITAL   
+2212       370019       GREAT PLAINS REGIONAL MEDICAL CENTER   
+
+      provider_zip_code  average_covered_charges  average_total_payments  \
+1454              48162             19972.283784             7478.816486   
+2660              76012             43261.239118             9342.040000   
+1255              71055             22065.926875             6379.037500   
+1216              70380             34078.789444            13536.133333   
+2463               2904             25025.406500             9332.193500   
+...                 ...                      ...                     ...   
+712               32216             35078.970250             7919.872250   
+886               61832             44357.620476             9237.319524   
+2999              99362             30238.576250             8648.563750   
+734               31412             36701.223077             9072.520513   
+2212              73644             27930.414286             7368.565714   
+
+      average_medicare_payments  
+1454                6499.267568  
+2660                7982.622059  
+1255                5230.753125  
+1216                6165.037222  
+2463                7904.461500  
+...                         ...  
+712                 6848.318250  
+886                 7963.264762  
+2999                7459.853750  
+734                 7923.044359  
+2212                5978.904286  
+
+[317 rows x 6 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_61_0
+	Source 0 Schema: ['average_covered_charges', 'average_medicare_payments', 'average_total_payments', 'drg_definition', 'hospital_referral_region_hrr_description', 'provider_city', 'provider_id', 'provider_name', 'provider_state', 'provider_street_address', 'provider_zip_code', 'total_discharges']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   average_covered_charges  average_medicare_payments  average_total_payments  \
+0                196441.86                   46042.00                49120.64   
+1                 18365.02                    5502.89                 6930.75   
+2                 34880.98                    6551.78                 8870.75   
+
+                                      drg_definition  \
+0  226 - CARDIAC DEFIBRILLATOR IMPLANT W/O CARDIA...   
+1  190 - CHRONIC OBSTRUCTIVE PULMONARY DISEASE W MCC   
+2  287 - CIRCULATORY DISORDERS EXCEPT AMI, W CARD...   
+
+  hospital_referral_region_hrr_description  provider_city  provider_id  \
+0                             VA - Norfolk        NORFOLK       490007   
+1                          AL - Birmingham           BOAZ        10005   
+2                       TX - Wichita Falls  WICHITA FALLS       450010   
+
+                        provider_name provider_state  \
+0    SENTARA NORFOLK GENERAL HOSPITAL             VA   
+1       MARSHALL MEDICAL CENTER SOUTH             AL   
+2  UNITED REGIONAL HEALTH CARE SYSTEM             TX   
+
+      provider_street_address  provider_zip_code  total_discharges  
+0              600 GRESHAM DR              23507                14  
+1  2505 U S HIGHWAY 431 NORTH              35957               134  
+2            1600 11TH STREET              76301                40  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_61/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

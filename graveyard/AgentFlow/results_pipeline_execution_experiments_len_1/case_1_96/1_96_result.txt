@@ -1,0 +1,264 @@
+Case: 1_96
+Status: INCORRECT
+Timestamp: 2026-02-24T04:45:51.079118
+Duration: 159.59 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_96/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_96
+2. Target Schema: ['Publisher': integer]
+3. Target Examples: There are 21 available target examples:     Publisher
+18          1
+0         166
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_96_0
+	Source 0 Schema: ['name', 'Gender', 'Eye color', 'Race', 'Hair color', 'Height', 'Publisher', 'Skin color', 'Alignment', 'Weight']
+	Source 0 Examples: 	 Source 0 contains 367 tuples, with examples as follows: 
+         name Gender Eye color           Race Hair color  Height  \
+0      A-Bomb   Male    yellow          Human    No Hair     203   
+1  Abe Sapien   Male      blue  Icthyo Sapien    No Hair     191   
+2    Abin Sur   Male      blue        Ungaran    No Hair     185   
+
+           Publisher Skin color Alignment  Weight  
+0      Marvel Comics          -      good   441.0  
+1  Dark Horse Comics       blue      good    65.0  
+2          DC Comics        red      good    90.0  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_96/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_96_1
+	Source 1 Schema: ['hero_names', 'Agility', 'Accelerated Healing', 'Lantern Power Ring', 'Dimensional Awareness', 'Cold Resistance', 'Durability', 'Stealth', 'Energy Absorption', 'Flight', 'Danger Sense', 'Underwater breathing', 'Marksmanship', 'Weapons Master', 'Power Augmentation', 'Animal Attributes', 'Longevity', 'Intelligence', 'Super Strength', 'Cryokinesis', 'Telepathy', 'Energy Armor', 'Energy Blasts', 'Duplication', 'Size Changing', 'Density Control', 'Stamina', 'Astral Travel', 'Audio Control', 'Dexterity', 'Omnitrix', 'Super Speed', 'Possession', 'Animal Oriented Powers', 'Weapon-based Powers', 'Electrokinesis', 'Darkforce Manipulation', 'Death Touch', 'Teleportation', 'Enhanced Senses', 'Telekinesis', 'Energy Beams', 'Magic', 'Hyperkinesis', 'Jump', 'Clairvoyance', 'Dimensional Travel', 'Power Sense', 'Shapeshifting', 'Peak Human Condition', 'Immortality', 'Camouflage', 'Element Control', 'Phasing', 'Astral Projection', 'Electrical Transport', 'Fire Control', 'Projection', 'Summoning', 'Enhanced Memory', 'Reflexes', 'Invulnerability', 'Energy Constructs', 'Force Fields', 'Self-Sustenance', 'Anti-Gravity', 'Empathy', 'Power Nullifier', 'Radiation Control', 'Psionic Powers', 'Elasticity', 'Substance Secretion', 'Elemental Transmogrification', 'Technopath/Cyberpath', 'Photographic Reflexes', 'Seismic Power', 'Animation', 'Precognition', 'Mind Control', 'Fire Resistance', 'Power Absorption', 'Enhanced Hearing', 'Nova Force', 'Insanity', 'Hypnokinesis', 'Animal Control', 'Natural Armor', 'Intangibility', 'Enhanced Sight', 'Molecular Manipulation', 'Heat Generation', 'Adaptation', 'Gliding', 'Power Suit', 'Mind Blast', 'Probability Manipulation', 'Gravity Control', 'Regeneration', 'Light Control', 'Echolocation', 'Levitation', 'Toxin and Disease Control', 'Banish', 'Energy Manipulation', 'Heat Resistance', 'Natural Weapons', 'Time Travel', 'Enhanced Smell', 'Illusions', 'Thirstokinesis', 'Hair Manipulation', 'Illumination', 'Omnipotent', 'Cloaking', 'Changing Armor', 'Power Cosmic', 'Biokinesis', 'Water Control', 'Radiation Immunity', 'Vision - Telescopic', 'Toxin and Disease Resistance', 'Spatial Awareness', 'Energy Resistance', 'Telepathy Resistance', 'Molecular Combustion', 'Omnilingualism', 'Portal Creation', 'Magnetism', 'Mind Control Resistance', 'Plant Control', 'Sonar', 'Sonic Scream', 'Time Manipulation', 'Enhanced Touch', 'Magic Resistance', 'Invisibility', 'Sub-Mariner', 'Radiation Absorption', 'Intuitive aptitude', 'Vision - Microscopic', 'Melting', 'Wind Control', 'Super Breath', 'Wallcrawling', 'Vision - Night', 'Vision - Infrared', 'Grim Reaping', 'Matter Absorption', 'The Force', 'Resurrection', 'Terrakinesis', 'Vision - Heat', 'Vitakinesis', 'Radar Sense', 'Qwardian Power Ring', 'Weather Control', 'Vision - X-Ray', 'Vision - Thermal', 'Web Creation', 'Reality Warping', 'Odin Force', 'Symbiote Costume', 'Speed Force', 'Phoenix Force', 'Molecular Dissipation', 'Vision - Cryo', 'Omnipresent', 'Omniscient']
+	Source 1 Examples: 	 Source 1 contains 667 tuples, with examples as follows: 
+   hero_names  Agility  Accelerated Healing  Lantern Power Ring  \
+0     3-D Man     True                False               False   
+1      A-Bomb    False                 True               False   
+2  Abe Sapien     True                 True               False   
+
+   Dimensional Awareness  Cold Resistance  Durability  Stealth  \
+0                  False            False       False    False   
+1                  False            False        True    False   
+2                  False             True        True    False   
+
+   Energy Absorption  Flight  Danger Sense  Underwater breathing  \
+0              False   False         False                 False   
+1              False   False         False                 False   
+2              False   False         False                  True   
+
+   Marksmanship  Weapons Master  Power Augmentation  Animal Attributes  \
+0         False           False               False              False   
+1         False           False               False              False   
+2          True            True               False              False   
+
+   Longevity  Intelligence  Super Strength  Cryokinesis  Telepathy  \
+0      False         False            True        False      False   
+1       True         False            True        False      False   
+2       True          True            True        False       True   
+
+   Energy Armor  Energy Blasts  Duplication  Size Changing  Density Control  \
+0         False          False        False          False            False   
+1         False          False        False          False            False   
+2         False          False        False          False            False   
+
+   Stamina  Astral Travel  Audio Control  Dexterity  Omnitrix  Super Speed  \
+0     True          False          False      False     False         True   
+1     True          False          False      False     False        False   
+2     True          False          False      False     False        False   
+
+   Possession  Animal Oriented Powers  Weapon-based Powers  Electrokinesis  \
+0       False                   False                False           False   
+1       False                   False                False           False   
+2       False                   False                False           False   
+
+   Darkforce Manipulation  Death Touch  Teleportation  Enhanced Senses  \
+0                   False        False          False            False   
+1                   False        False          False            False   
+2                   False        False          False            False   
+
+   Telekinesis  Energy Beams  Magic  Hyperkinesis   Jump  Clairvoyance  \
+0        False         False  False         False  False         False   
+1        False         False  False         False  False         False   
+2        False         False  False         False  False         False   
+
+   Dimensional Travel  Power Sense  Shapeshifting  Peak Human Condition  \
+0               False        False          False                 False   
+1               False        False          False                 False   
+2               False        False          False                 False   
+
+   Immortality  Camouflage  Element Control  Phasing  Astral Projection  \
+0        False       False            False    False              False   
+1        False        True            False    False              False   
+2         True       False            False    False              False   
+
+   Electrical Transport  Fire Control  Projection  Summoning  Enhanced Memory  \
+0                 False         False       False      False            False   
+1                 False         False       False      False            False   
+2                 False         False       False      False            False   
+
+   Reflexes  Invulnerability  Energy Constructs  Force Fields  \
+0     False            False              False         False   
+1     False            False              False         False   
+2      True            False              False         False   
+
+   Self-Sustenance  Anti-Gravity  Empathy  Power Nullifier  Radiation Control  \
+0            False         False    False            False              False   
+1             True         False    False            False              False   
+2            False         False    False            False              False   
+
+   Psionic Powers  Elasticity  Substance Secretion  \
+0           False       False                False   
+1           False       False                False   
+2           False       False                False   
+
+   Elemental Transmogrification  Technopath/Cyberpath  Photographic Reflexes  \
+0                         False                 False                  False   
+1                         False                 False                  False   
+2                         False                 False                  False   
+
+   Seismic Power  Animation  Precognition  Mind Control  Fire Resistance  \
+0          False      False         False         False            False   
+1          False      False         False         False            False   
+2          False      False         False         False            False   
+
+   Power Absorption  Enhanced Hearing  Nova Force  Insanity  Hypnokinesis  \
+0             False             False       False     False         False   
+1             False             False       False     False         False   
+2             False             False       False     False         False   
+
+   Animal Control  Natural Armor  Intangibility  Enhanced Sight  \
+0           False          False          False           False   
+1           False          False          False           False   
+2           False          False          False            True   
+
+   Molecular Manipulation  Heat Generation  Adaptation  Gliding  Power Suit  \
+0                   False            False       False    False       False   
+1                   False            False       False    False       False   
+2                   False            False       False    False       False   
+
+   Mind Blast  Probability Manipulation  Gravity Control  Regeneration  \
+0       False                     False            False         False   
+1       False                     False            False         False   
+2       False                     False            False         False   
+
+   Light Control  Echolocation  Levitation  Toxin and Disease Control  Banish  \
+0          False         False       False                      False   False   
+1          False         False       False                      False   False   
+2          False         False       False                      False   False   
+
+   Energy Manipulation  Heat Resistance  Natural Weapons  Time Travel  \
+0                False            False            False        False   
+1                False            False            False        False   
+2                False            False            False        False   
+
+   Enhanced Smell  Illusions  Thirstokinesis  Hair Manipulation  Illumination  \
+0           False      False           False              False         False   
+1           False      False           False              False         False   
+2           False      False           False              False         False   
+
+   Omnipotent  Cloaking  Changing Armor  Power Cosmic  Biokinesis  \
+0       False     False           False         False       False   
+1       False     False           False         False       False   
+2       False     False           False         False       False   
+
+   Water Control  Radiation Immunity  Vision - Telescopic  \
+0          False               False                False   
+1          False               False                False   
+2          False               False                False   
+
+   Toxin and Disease Resistance  Spatial Awareness  Energy Resistance  \
+0                         False              False              False   
+1                         False              False              False   
+2                         False              False              False   
+
+   Telepathy Resistance  Molecular Combustion  Omnilingualism  \
+0                 False                 False           False   
+1                 False                 False           False   
+2                 False                 False           False   
+
+   Portal Creation  Magnetism  Mind Control Resistance  Plant Control  Sonar  \
+0            False      False                    False          False  False   
+1            False      False                    False          False  False   
+2            False      False                    False          False  False   
+
+   Sonic Scream  Time Manipulation  Enhanced Touch  Magic Resistance  \
+0         False              False           False             False   
+1         False              False           False             False   
+2         False              False           False             False   
+
+   Invisibility  Sub-Mariner  Radiation Absorption  Intuitive aptitude  \
+0         False        False                 False               False   
+1         False        False                 False               False   
+2         False         True                 False               False   
+
+   Vision - Microscopic  Melting  Wind Control  Super Breath  Wallcrawling  \
+0                 False    False         False         False         False   
+1                 False    False         False         False         False   
+2                 False    False         False         False         False   
+
+   Vision - Night  Vision - Infrared  Grim Reaping  Matter Absorption  \
+0           False              False         False              False   
+1           False              False         False              False   
+2           False              False         False              False   
+
+   The Force  Resurrection  Terrakinesis  Vision - Heat  Vitakinesis  \
+0      False         False         False          False        False   
+1      False         False         False          False        False   
+2      False         False         False          False        False   
+
+   Radar Sense  Qwardian Power Ring  Weather Control  Vision - X-Ray  \
+0        False                False            False           False   
+1        False                False            False           False   
+2        False                False            False           False   
+
+   Vision - Thermal  Web Creation  Reality Warping  Odin Force  \
+0             False         False            False       False   
+1             False         False            False       False   
+2             False         False            False       False   
+
+   Symbiote Costume  Speed Force  Phoenix Force  Molecular Dissipation  \
+0             False        False          False                  False   
+1             False        False          False                  False   
+2             False        False          False                  False   
+
+   Vision - Cryo  Omnipresent  Omniscient  
+0          False        False       False  
+1          False        False       False  
+2          False        False       False  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_96/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_96/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_96/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_96/test_1.csv"
+target_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_96/target_multisource_agentic.csv"
+
+# Read source CSV files with index_col=0
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+
+# Inner join on df0.name = df1.hero_names
+joined_df = pd.merge(df0, df1, left_on='name', right_on='hero_names', how='inner')
+
+# Group by 'Publisher' to get distinct Publisher values
+# Since we want distinct Publisher integers, grouping by Publisher and taking first is enough
+distinct_publishers = joined_df.groupby('Publisher', as_index=False).size()
+
+# The groupby.size() returns a DataFrame with 'Publisher' and 'size' columns,
+# but we only want the 'Publisher' column as per target schema.
+# So select only 'Publisher' column:
+result_df = distinct_publishers[['Publisher']]
+
+# Ensure 'Publisher' column is integer type as per target schema
+result_df['Publisher'] = result_df['Publisher'].astype(int)
+
+# Save the final dataframe to CSV
+result_df.to_csv(target_path, index=False)
+```

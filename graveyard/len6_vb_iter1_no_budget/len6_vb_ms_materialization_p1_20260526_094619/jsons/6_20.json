@@ -1,0 +1,46 @@
+{
+  "case": "6_20",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4859,
+        "cost": 0.0047148,
+        "latency": 18.12789821624756,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.972) / 2 = 0.486 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.926, range overlap=0.999.\nGround truth candidate keys: {State Name, Year, Month}.\nGenerated table candidate keys: {State Name, Year, Month, AQI}.\nKeys present in ground truth but absent in generated: {Year, State Name, Month}.\nSpurious keys in generated not present in ground truth: {Year, State Name, Month, AQI}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['Month', 'State Name', 'Year'] \u2192 AQI.\nDistribution Analysis (numerical columns with issues):\n  Column 'Year': range overlap=1.000, JS similarity=0.891\n    Generated    \u2014 min: 2015.0, max: 2018.0, mean: 2016.5\n    Ground Truth \u2014 min: 2015.0, max: 2018.0, mean: 2016.2934\n  Column 'AQI': range overlap=0.998, JS similarity=0.918\n    Generated    \u2014 min: 0.0, max: 6403.0, mean: 38.4121\n    Ground Truth \u2014 min: 16.0, max: 6403.0, mean: 137.3106",
+        "generated_samples": "Schema: ['State Name', 'Year', 'Month', 'AQI']\nNumber of Tuples: 80000\nExamples:\n  State Name  Year  Month  AQI\n    Missouri  2015      2   69\nNorth Dakota  2018     10   16\n   Louisiana  2015     12   32",
+        "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_20/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_20/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_20/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length6_20/training_3.csv\", index_col=0)\n\n# All sources have the same schema: ['State Name', 'AQI', 'Year', 'Month']\n# The target schema is ['State Name': string, 'Year': int, 'Month': int, 'AQI': int]\n# The intermediate_step1.csv after union has schema ['State Name', 'Year', 'Month', 'AQI']\n# So we reorder columns accordingly and ensure types match target schema\n\n# Concatenate (union) all source dataframes\ndf = pd.concat([source0, source1, source2, source3], ignore_index=True)\n\n# Reorder columns to match target schema\ndf = df[['State Name', 'Year', 'Month', 'AQI']]\n\n# Ensure correct data types\ndf['State Name'] = df['State Name'].astype(str)\ndf['Year'] = df['Year'].astype(int)\ndf['Month'] = df['Month'].astype(int)\ndf['AQI'] = df['AQI'].astype(int)\n\n# Write the final dataframe to the target CSV file without the index\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_20/target_multisource.csv\", index=False)",
+        "generated_csv_head": "State Name,Year,Month,AQI\nRhode Island,2018,4,50\nOklahoma,2018,10,37\nPennsylvania,2018,1,29\nOklahoma,2018,8,41\nMontana,2018,3,26\nOklahoma,2018,4,29\nOklahoma,2018,10,34\nOhio,2018,12,51\nSouth Carolina,2018,12,34\nNebraska,2018,9,29\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.0842552185058594
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.9327,
+          "cost": 0.0016560000000000004,
+          "latency": 5.556289911270142,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.865) / 2 = 0.933 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.969, range overlap=0.672.\nGround truth candidate keys: {State Name, Year, Month}.\nGenerated table candidate keys: {State Name, Year, Month}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'AQI': range overlap=0.016, JS similarity=0.917\n    Generated    \u2014 min: 0.0, max: 118.0, mean: 10.6467\n    Ground Truth \u2014 min: 16.0, max: 6403.0, mean: 137.3106",
+          "generated_samples": "Schema: ['State Name', 'Year', 'Month', 'AQI']\nNumber of Tuples: 2219\nExamples:\n    State Name  Year  Month  AQI\n        Kansas  2016      1   20\nVirgin Islands  2016      8   33\n          Iowa  2016      8    0",
+          "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the first numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_20/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_20/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_20/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length6_20/training_3.csv\", index_col=0)\n\n# Union all source tables (concatenate)\ndf = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# Group by the leftmost columns of the target schema: State Name, Year, Month\n# Aggregate AQI by taking the minimum (to reduce duplicates and match target counts)\ndf = df.groupby(['State Name', 'Year', 'Month'], as_index=False).agg({'AQI': 'min'})\n\n# Write the final output with exact target schema and column order\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_20/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9796619415283203
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 18274.272918701172,
+        "critique": 6164.3571853637695
+      }
+    }
+  ]
+}

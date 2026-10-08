@@ -1,0 +1,46 @@
+{
+  "case": "5_86",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.7308,
+        "cost": 0.0215416,
+        "latency": 86.96870589256287,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.462) / 2 = 0.731 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.877, range overlap=0.046.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.046, JS similarity=0.877\n    Generated    \u2014 min: -15677.0, max: 13707.0, mean: 123.1982\n    Ground Truth \u2014 min: 891.0, max: 2253.0, mean: 1399.6667",
+        "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 333\nExamples:\n Profit\n    -41\n    -14\n    141",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_86/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_86/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_86/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_86/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_86/training_4.csv\", index_col=0)\n\n# Step 1: Join Source5_86_4 and Source5_86_2 on 'Ord_id'\n# Both 'Ord_id' columns are strings, so no dtype conversion needed\nstep1 = pd.merge(source4, source2, on='Ord_id', how='inner')\n\n# Step 2: Group by nothing, aggregate sum of Profit from Source5_86_2 (actually from step1)\n# But since step1 has many columns, we sum Profit grouped by nothing (total sum)\nprofit_sum = step1['Profit'].sum()\n\n# Step 3: Join Source5_86_0 and Source5_86_2 on Order_ID = Ship_id\n# Problem: Source0.Order_ID is int, Source2.Ship_id is string like 'SHP_1'\n# We must convert Source0.Order_ID to string with prefix 'SHP_' to match Source2.Ship_id\nsource0['Order_ID_str'] = 'SHP_' + source0['Order_ID'].astype(str)\nstep3 = pd.merge(source0, source2, left_on='Order_ID_str', right_on='Ship_id', how='inner')\n\n# Step 4: Join Source5_86_1 and Source5_86_2 on Cust_id\nstep4 = pd.merge(source1, source2, on='Cust_id', how='inner')\n\n# Now, from the operation history and intermediate results:\n# The final target table schema is ['Profit'] with 3 rows: 891, 1055, 2253 (ints)\n# The intermediate_step1 and intermediate_step4 have Profit columns but with wide ranges and negative values.\n# The intermediate_step3 is empty (join on Order_ID and Ship_id failed before fix).\n# The intermediate_step2 is sum of all profits (one row), not matching target.\n\n# The target examples have 3 rows with Profit values 891, 1055, 2253 (all positive integers).\n# The only intermediate tables with Profit column and multiple rows are step1 and step4 merges.\n# The join on Cust_id (step4) and join on Ord_id (step1) produce Profit columns but with negative values and wide range.\n# The join on Order_ID and Ship_id (step3) was empty before fix, now fixed.\n\n# Hypothesis:\n# The target Profit values correspond to sum of Profit grouped by Order_ID from step3 join (source0+source2).\n# Let's try to group step3 by Order_ID and sum Profit, then sort by Order_ID and take top 3 rows.\n\n# Group step3 by Order_ID and sum Profit\nprofit_by_order = step3.groupby('Order_ID')['Profit'].sum().reset_index()\n\n# The target examples have 3 rows with Profit values 891, 1055, 2253 but in order 0,2,1 index.\n# Let's sort profit_by_order by Profit ascending to check if values match\nprofit_by_order_sorted = profit_by_order.sort_values('Profit').reset_index(drop=True)\n\n# The target examples order is:\n# index 0: 891\n# index 2: 1055\n# index 1: 2253\n# So let's reorder profit_by_order_sorted to match target order by Profit values\n# But since we don't have exact mapping, just output profit_by_order sorted by Profit ascending\n\n# Finally, rename column to match target schema and convert Profit to int\nTarget5_86 = profit_by_order_sorted[['Profit']].copy()\nTarget5_86['Profit'] = Target5_86['Profit'].round().astype(int)\n\n# Save to CSV\nTarget5_86.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Profit\n-15677\n-12631\n-7961\n-6808\n-2538\n-1975\n-1891\n-1848\n-1641\n-1524\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.5786418914794922
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0023708,
+          "latency": 11.590861558914185,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Profit}.\nGenerated table candidate keys: {Profit}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Profit': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 745877.14, max: 745877.14, mean: 745877.14\n    Ground Truth \u2014 min: 891.0, max: 2253.0, mean: 1399.6667",
+          "generated_samples": "Schema: ['Profit']\nNumber of Tuples: 1\nExamples:\n   Profit\n745877.14",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/training_4.csv\", index_col=0)\n\n# Fix column name mismatches for joins:\n# source0 has 'Order_ID', source2 has 'Ord_id' and 'Order_ID' is not in source2, so join source0 and source2 on source0.Order_ID = source2.Order_ID?\n# Actually source2 has 'Ord_id' and 'Ship_id' but no 'Order_ID'.\n# source4 has 'Order_ID' and 'Ord_id', source2 has 'Ord_id'.\n# So join source4 and source2 on 'Ord_id'\n# source0 and source2 join on 'Ship_id' (source0.Ship_id == source2.Ship_id)\n# source1 and source2 join on 'Cust_id'\n# source3 and source2 join on 'Prod_id'\n\n# Join Source5_86_4 and Source5_86_2 on 'Ord_id'\ndf = pd.merge(source4, source2, on='Ord_id', how='inner')\n\n# Join Source5_86_0 and df on 'Ship_id' (source0.Ship_id == df.Ship_id)\ndf = pd.merge(source0, df, left_on='Ship_id', right_on='Ship_id', how='inner')\n\n# Join Source5_86_1 and df on 'Cust_id'\ndf = pd.merge(source1, df, on='Cust_id', how='inner')\n\n# Join Source5_86_3 and df on 'Prod_id'\ndf = pd.merge(source3, df, on='Prod_id', how='inner')\n\n# Aggregate sum of Profit (no group by since target schema has only one column and no keys)\nresult = pd.DataFrame()\nresult['Profit'] = [df['Profit'].sum()]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_86/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6787776947021484
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 87052.76083946228,
+        "critique": 11675.430536270142
+      }
+    }
+  ]
+}

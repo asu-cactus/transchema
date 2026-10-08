@@ -1,0 +1,46 @@
+{
+  "case": "1_86",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8267,
+        "cost": 0.002698,
+        "latency": 7.224243402481079,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.653) / 2 = 0.827 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.652, range overlap=0.009.\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'price_24': range overlap=0.009, JS similarity=0.652\n    Generated    \u2014 min: 25.0, max: 111060.0, mean: 11366.0972\n    Ground Truth \u2014 min: 2.0, max: 1004.0, mean: 123.0",
+        "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 72\nExamples:\n    neighbourhood  price_24\nla Trinitat Vella       163\n    el Bon Pastor       213\n      Sant Andreu      5067",
+        "code": "import pandas as pd\n\n# Load source data\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length1_86/training_0.csv\"\ndf_source0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform the transformation according to operation_history:\n# group_by = [Source1_86_0.neighbourhood]\n# aggregations = [sum(Source1_86_0.price)]\n\n# Group by 'neighbourhood' and sum 'price'\ndf_grouped = df_source0.groupby('neighbourhood', as_index=False)['price'].sum()\n\n# Rename columns to match target schema\ndf_grouped.rename(columns={'price': 'price_24'}, inplace=True)\n\n# Ensure 'price_24' is integer type as per target schema\ndf_grouped['price_24'] = df_grouped['price_24'].astype(int)\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource.csv\"\ndf_grouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "neighbourhood,price_24\nBar\u00f3 de Viver,25\nCan Bar\u00f3,1152\nCan Peguera,51\nCanyelles,181\nCiutat Meridiana,68\nDiagonal Mar i el Front Mar\u00edtim del Poblenou,30544\nHorta,1617\nHostafrancs,12167\nMontbau,374\nNavas,2329\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9524822235107422
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.8267,
+          "cost": 0.0018064,
+          "latency": 7.893368721008301,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.653) / 2 = 0.827 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.652, range overlap=0.009.\nGround truth candidate keys: {neighbourhood}.\nGenerated table candidate keys: {neighbourhood}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'price_24': range overlap=0.009, JS similarity=0.652\n    Generated    \u2014 min: 25.0, max: 111060.0, mean: 11366.0972\n    Ground Truth \u2014 min: 2.0, max: 1004.0, mean: 123.0",
+          "generated_samples": "Schema: ['neighbourhood', 'price_24']\nNumber of Tuples: 72\nExamples:\n           neighbourhood  price_24\n             Sant Andreu      5067\n            el Poble Sec     32487\nSant Mart\u00ed de Proven\u00e7als      1456",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_86/training_0.csv\", index_col=0)\n\n# Since only one source table is given, no union or join with other tables is possible.\n# The target schema is ['neighbourhood': string, 'price_24': integer]\n# We need to group by 'neighbourhood' and sum the 'price' column to get 'price_24'\n\n# Clean 'neighbourhood' column by stripping spaces to match target examples formatting\nsource0['neighbourhood'] = source0['neighbourhood'].str.strip()\n\n# Group by 'neighbourhood' and sum 'price'\nresult = source0.groupby('neighbourhood', as_index=False).agg({'price': 'sum'})\n\n# Rename 'price' to 'price_24' to match target schema\nresult = result.rename(columns={'price': 'price_24'})\n\n# Convert price_24 to integer type (sum of integers should be integer)\nresult['price_24'] = result['price_24'].astype(int)\n\n# Write the result to the target CSV file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_86/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.262664794921875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7228.336811065674,
+        "critique": 7992.4421310424805
+      }
+    }
+  ]
+}

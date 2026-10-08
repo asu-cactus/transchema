@@ -1,0 +1,46 @@
+{
+  "case": "2_43",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2276,
+        "cost": 0.005776000000000001,
+        "latency": 14.896933555603027,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.455) / 2 = 0.228 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.710, range overlap=0.176.\nGround truth candidate keys: {artist_name}; {danceability}; {instrumentalness}; {acousticness}; {energy}; {speechiness}.\nGenerated table candidate keys: {artist_name, speechiness, instrumentalness, danceability, energy, acousticness}.\nKeys present in ground truth but absent in generated: {instrumentalness}; {danceability}; {energy}; {acousticness}; {artist_name}; {speechiness}.\nSpurious keys in generated not present in ground truth: {danceability, energy, artist_name, speechiness, acousticness, instrumentalness}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['acousticness'] \u2192 instrumentalness; ['speechiness'] \u2192 instrumentalness; ['acousticness'] \u2192 danceability; ['speechiness'] \u2192 danceability; ['artist_name'] \u2192 instrumentalness (and 25 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'speechiness': range overlap=0.126, JS similarity=0.831\n    Generated    \u2014 min: 0.0, max: 0.985, mean: 0.0413\n    Ground Truth \u2014 min: 0.0492, max: 0.1728, mean: 0.0851\n  Column 'instrumentalness': range overlap=0.308, JS similarity=0.918\n    Generated    \u2014 min: 0.0, max: 0.94, mean: 0.0851\n    Ground Truth \u2014 min: 0.0, max: 0.2899, mean: 0.0415\n  Column 'danceability': range overlap=0.125, JS similarity=0.579\n    Generated    \u2014 min: 0.0, max: 0.957, mean: 0.625\n    Ground Truth \u2014 min: 0.5514, max: 0.6708, mean: 0.6171\n  Column 'energy': range overlap=0.176, JS similarity=0.594\n    Generated    \u2014 min: 0.0236, max: 0.996, mean: 0.7362\n    Ground Truth \u2014 min: 0.6769, max: 0.8478, mean: 0.7618\n  Column 'acousticness': range overlap=0.144, JS similarity=0.630\n    Generated    \u2014 min: 0.0, max: 0.995, mean: 0.1637\n    Ground Truth \u2014 min: 0.1096, max: 0.2531, mean: 0.1777\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'artist_name': Jaccard=0.516",
+        "generated_samples": "Schema: ['artist_name', 'speechiness', 'instrumentalness', 'danceability', 'energy', 'acousticness']\nNumber of Tuples: 5886\nExamples:\nartist_name  speechiness  instrumentalness  danceability  energy  acousticness\n        BTS       0.1490               0.0         0.680   0.927        0.1670\n        BTS       0.2360               0.0         0.461   0.760        0.0221\n Katy Perry       0.0943               0.0         0.617   0.887        0.0109",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_43/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_43/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Both sources have the same schema and contain all needed columns for the target.\n# We perform UNION (concatenation) of the two dataframes.\n\n# Select only the columns needed for the target, in the target order:\ntarget_columns = ['artist_name', 'speechiness', 'instrumentalness', 'danceability', 'energy', 'acousticness']\n\ndf0_sel = df0[target_columns]\ndf1_sel = df1[target_columns]\n\n# Concatenate the two dataframes (union)\ndf_union = pd.concat([df0_sel, df1_sel], ignore_index=True)\n\n# Ensure correct dtypes as per target schema:\n# artist_name: string\ndf_union['artist_name'] = df_union['artist_name'].astype(str)\n# speechiness, instrumentalness, danceability, energy, acousticness: float\nfloat_cols = ['speechiness', 'instrumentalness', 'danceability', 'energy', 'acousticness']\ndf_union[float_cols] = df_union[float_cols].astype(float)\n\n# Write the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_43/target_multisource.csv\"\ndf_union.to_csv(output_path, index=False)",
+        "generated_csv_head": "artist_name,speechiness,instrumentalness,danceability,energy,acousticness\nBTS,0.0338,0.0,0.637,0.799,0.394\nBTS,0.279,0.0,0.723,0.906,0.0907\nBTS,0.0626,0.0,0.347,0.578,0.445\nBTS,0.0541,0.0,0.599,0.774,0.0223\nBTS,0.0756,0.0,0.612,0.8440000000000001,0.142\nBTS,0.0897,0.0,0.7609999999999999,0.7609999999999999,0.246\nBTS,0.27,0.0,0.481,0.927,0.317\nBTS,0.092,0.00285,0.775,0.271,0.5539999999999999\nBTS,0.0372,0.0,0.557,0.7190000000000001,0.00267\nBTS,0.0422,0.0,0.57,0.422,0.3720000000000001\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.573251724243164
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.0,
+          "cost": 0.0022352,
+          "latency": 5.621204853057861,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_43/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_43/training_1.csv\", index_col=0)\n\n# Join on artist_name (primary key)\njoined = pd.merge(source0, source1, on=\"artist_name\", suffixes=('_0', '_1'))\n\n# Select and rename columns to match target schema by averaging the two sources' values\n# Columns to aggregate: speechiness, instrumentalness, danceability, energy, acousticness\n# artist_name is the key and grouping column\n\n# Prepare a DataFrame with artist_name and mean of each attribute from both sources\nagg_df = joined.groupby(\"artist_name\").agg({\n    'speechiness_0': 'mean',\n    'speechiness_1': 'mean',\n    'instrumentalness_0': 'mean',\n    'instrumentalness_1': 'mean',\n    'danceability_0': 'mean',\n    'danceability_1': 'mean',\n    'energy_0': 'mean',\n    'energy_1': 'mean',\n    'acousticness_0': 'mean',\n    'acousticness_1': 'mean'\n}).reset_index()\n\n# Compute mean of each pair of columns from the two sources\nagg_df['speechiness'] = agg_df[['speechiness_0', 'speechiness_1']].mean(axis=1)\nagg_df['instrumentalness'] = agg_df[['instrumentalness_0', 'instrumentalness_1']].mean(axis=1)\nagg_df['danceability'] = agg_df[['danceability_0', 'danceability_1']].mean(axis=1)\nagg_df['energy'] = agg_df[['energy_0', 'energy_1']].mean(axis=1)\nagg_df['acousticness'] = agg_df[['acousticness_0', 'acousticness_1']].mean(axis=1)\n\n# Select only the target columns in correct order\nresult = agg_df[['artist_name', 'speechiness', 'instrumentalness', 'danceability', 'energy', 'acousticness']]\n\n# Write to target CSV\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_43/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03361701965332031
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 14985.554695129395,
+        "critique": 5695.60170173645
+      }
+    }
+  ]
+}

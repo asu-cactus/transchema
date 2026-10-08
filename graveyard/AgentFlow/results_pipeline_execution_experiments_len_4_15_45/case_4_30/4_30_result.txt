@@ -1,0 +1,520 @@
+Case: 4_30
+Status: CORRECT
+Timestamp: 2026-02-25T12:23:46.204768
+Duration: 101.15 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_15_45/case_4_30/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['categories', 'commentCount', 'completed', 'copyright', 'cover', 'cover_timestamp', 'createDate', 'deleted', 'description', 'firstPartId', 'firstPublishedPart.createDate', 'firstPublishedPart.id', 'id', 'language.id', 'language.name', 'lastPublishedPart.createDate', 'lastPublishedPart.id', 'length', 'mature', 'modifyDate', 'numParts', 'parts', 'rating', 'readCount', 'tags', 'title', 'url', 'user.avatar', 'user.fullname', 'user.name', 'voteCount']
+  calculate_score: 2.9333333333333336
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_30
+2. Target Schema: ['categories': string, 'commentCount': integer, 'completed': boolean, 'copyright': integer, 'cover': string, 'cover_timestamp': string, 'createDate': string, 'deleted': boolean, 'description': string, 'firstPartId': integer, 'firstPublishedPart.createDate': string, 'firstPublishedPart.id': integer, 'id': integer, 'language.id': integer, 'language.name': string, 'lastPublishedPart.createDate': string, 'lastPublishedPart.id': integer, 'length': integer, 'mature': boolean, 'modifyDate': string, 'numParts': integer, 'parts': string, 'rating': integer, 'readCount': integer, 'tags': string, 'title': string, 'url': string, 'user.avatar': string, 'user.fullname': string, 'user.name': string, 'voteCount': integer]
+3. Target Examples: There are 6595 available target examples:      categories  commentCount  completed  copyright  \
+2277         19             2      False          0   
+4850          6             1      False          1   
+832     [19, 0]           277      False          0   
+547     [19, 0]             0       True          0   
+2152         19             0      False          1   
+...         ...           ...        ...        ...   
+3660         19             9       True          0   
+903     [19, 0]             0      False          1   
+3729         19            14       True          0   
+1545         19           241       True          0   
+5291         19           457       True          0   
+
+                                                  cover       cover_timestamp  \
+2277  https://a.wattpad.com/cover/27822342-256-k6958...  2014-12-04T20:24:42Z   
+4850  https://a.wattpad.com/cover/141576370-256-k775...  2018-03-11T20:44:00Z   
+832   https://a.wattpad.com/cover/31974853-256-k9615...  2015-08-31T02:06:06Z   
+547   https://a.wattpad.com/cover/125445012-256-k818...  2017-10-12T21:26:12Z   
+2152  https://a.wattpad.com/cover/113982172-256-k477...  2017-06-26T18:43:43Z   
+...                                                 ...                   ...   
+3660  https://a.wattpad.com/cover/27990651-256-k5617...  2015-01-07T00:29:05Z   
+903   https://a.wattpad.com/cover/118792852-256-k114...  2017-08-07T20:55:53Z   
+3729  https://a.wattpad.com/cover/37813724-256-k6743...  2015-04-22T10:45:04Z   
+1545  https://a.wattpad.com/cover/2861665-256-k56756...  2014-06-01T03:19:28Z   
+5291  https://a.wattpad.com/cover/44485699-256-k7904...  2015-08-05T23:01:35Z   
+
+                createDate  deleted  \
+2277  2014-12-04T20:06:03Z    False   
+4850  2018-03-11T20:43:59Z    False   
+832   2015-02-02T02:09:08Z    False   
+547   2017-10-12T16:49:33Z    False   
+2152  2017-06-26T18:43:41Z    False   
+...                    ...      ...   
+3660  2014-12-07T10:02:43Z    False   
+903   2017-08-07T20:11:17Z    False   
+3729  2015-04-20T07:00:35Z    False   
+1545  2012-11-08T05:07:32Z    False   
+5291  2015-07-11T23:07:17Z    False   
+
+                                            description  firstPartId  \
+2277  17 year old Tara has an abusive home life, and...     85794126   
+4850  onde Camila, apenas uma fã, deseja abraçar seu...    546406318   
+832                                                 NaN    100379896   
+547   Jennifer was in her forties and had never been...    481118482   
+2152  Tấn giang VIP, 2011. 7. 1 kết thúc\nTổng điểm ...    431637670   
+...                                                 ...          ...   
+3660  This is just a story I thought about. At 2 am....     86347877   
+903   it's a story about you having to go "anime kin...    452632618   
+3729  Danni was dead.\n\nShe died fighting Fishface,...    121901646   
+1545                                                NaN      8746724   
+5291                              A WOF name generator!    147272293   
+
+     firstPublishedPart.createDate  firstPublishedPart.id         id  \
+2277          2014-12-04T20:11:18Z               85794126   27822342   
+4850          2018-03-11T20:43:59Z              546406318  141576370   
+832           2015-02-02T02:34:48Z              100385041   31974853   
+547           2017-10-12T21:23:28Z              481118482  125445012   
+2152          2017-06-26T11:55:41Z              431637670  113982172   
+...                            ...                    ...        ...   
+3660          2014-12-07T10:04:08Z               86347877   27990651   
+903           2017-08-08T02:01:40Z              452632618  118792852   
+3729          2015-04-20T12:37:35Z              121901646   37813724   
+1545          2012-11-08T13:07:33Z                8746724    2861665   
+5291          2015-07-19T23:42:38Z              147272293   44485699   
+
+      language.id language.name lastPublishedPart.createDate  \
+2277            1       English         2014-12-04T20:11:18Z   
+4850            1       English         2018-03-13T23:45:53Z   
+832             1       English         2015-09-20T16:38:44Z   
+547             1       English         2017-10-12T21:23:28Z   
+2152            1       English         2017-06-26T11:55:41Z   
+...           ...           ...                          ...   
+3660            1       English         2014-12-07T10:04:08Z   
+903             1       English         2017-08-09T01:22:06Z   
+3729            1       English         2015-04-20T12:37:35Z   
+1545            1       English         2015-06-08T04:06:58Z   
+5291            1       English         2015-07-20T06:42:56Z   
+
+      lastPublishedPart.id   length  mature            modifyDate  numParts  \
+2277              85794126     1340   False  2015-06-22T18:52:52Z         1   
+4850             547265545     2137   False  2018-03-13T23:45:58Z         9   
+832              168903845    39867   False  2015-09-20T21:02:30Z        27   
+547              481118482     8614   False  2017-10-12T21:39:41Z         1   
+2152             431637670  1666162   False  2017-06-26T19:12:06Z         1   
+...                    ...      ...     ...                   ...       ...   
+3660              86347877     2766   False  2016-06-19T08:37:18Z         1   
+903              453196889     1036   False  2017-08-14T00:34:19Z         2   
+3729             121901646     3552   False  2015-06-06T02:18:18Z         1   
+1545             136538985   283828   False  2015-08-02T06:00:36Z        42   
+5291             147687431     4269   False  2015-08-05T23:01:35Z         9   
+
+                                                  parts  rating  readCount  \
+2277  [{'id': 85794126, 'title': 'Magcon Saved my Li...       0         67   
+4850  [{'id': 546406318, 'title': '1 - DM', 'url': '...       0         31   
+832   [{'id': 100379896, 'title': '1', 'url': 'https...       0      33238   
+547   [{'id': 481118482, 'title': 'Pregnent at 41 ',...       0          7   
+2152  [{'id': 431637670, 'title': '1', 'url': 'https...       1         23   
+...                                                 ...     ...        ...   
+3660  [{'id': 86347877, 'title': 'We Never Made it',...       0        442   
+903   [{'id': 452632618, 'title': 'About you ', 'url...       0         53   
+3729  [{'id': 121901646, 'title': 'I Wanna See You S...       1        520   
+1545  [{'id': 8746724, 'title': 'Chapter 1', 'url': ...       1     152441   
+5291  [{'id': 147272293, 'title': 'Wings Of fire nam...       0      10465   
+
+                                                   tags  \
+2277                                                 []   
+4850  ['bieber', 'cama', 'camila', 'fan', 'fanfic', ...   
+832                                                  []   
+547                                                  []   
+2152                                                 []   
+...                                                 ...   
+3660  ['corey', 'coreytaylor', 'slipknot', 'sour', '...   
+903   ['100days', 'anime', 'drama', 'optionalstory',...   
+3729  ['casey', 'caseyjones', 'donatello', 'donnie',...   
+1545                                                 []   
+5291                                                 []   
+
+                                     title  \
+2277                  Magcon Saved my Life   
+4850                          HUG HIM - JB   
+832      It's Been A While... (Markiplier)   
+547                         pregnent at 41   
+2152     Đạo mộ chi cổ mộ tạp ký - Hồng Ly   
+...                                    ...   
+3660                The Boy with the Voice   
+903                      100 Days In Anime   
+3729                 I Wanna See You Smile   
+1545  Forever and Always (Alex Constancio)   
+5291          Wings Of Fire Name Generator   
+
+                                                    url  \
+2277  https://www.wattpad.com/story/27822342-magcon-...   
+4850  https://www.wattpad.com/story/141576370-hug-hi...   
+832   https://www.wattpad.com/story/31974853-it%27s-...   
+547   https://www.wattpad.com/story/125445012-pregne...   
+2152  https://www.wattpad.com/story/113982172-%C4%91...   
+...                                                 ...   
+3660  https://www.wattpad.com/story/27990651-the-boy...   
+903   https://www.wattpad.com/story/118792852-100-da...   
+3729  https://www.wattpad.com/story/37813724-i-wanna...   
+1545  https://www.wattpad.com/story/2861665-forever-...   
+5291  https://www.wattpad.com/story/44485699-wings-o...   
+
+                                            user.avatar   user.fullname  \
+2277  https://a.wattpad.com/useravatar/Directioner4e...             NaN   
+4850  https://a.wattpad.com/useravatar/itsmyjournall...          isa ❄️   
+832   https://a.wattpad.com/useravatar/smol-alien.12...              :)   
+547   https://a.wattpad.com/useravatar/DanPierce6.12...      Dan Pierce   
+2152  https://a.wattpad.com/useravatar/tramngulacnha...   Tống Thanh Hi   
+...                                                 ...             ...   
+3660  https://a.wattpad.com/useravatar/Sp33dyArms.12...     korny kiddo   
+903   https://a.wattpad.com/useravatar/Linda123Ladyb...             NaN   
+3729  https://a.wattpad.com/useravatar/MeWannaPlushi...         Kaitlin   
+1545  https://a.wattpad.com/useravatar/Alteration_Di...  Poisoned Youth   
+5291  https://a.wattpad.com/useravatar/Wackyat.128.8...      ManO'Steel   
+
+                 user.name  voteCount  
+2277   Directioner4everKay          1  
+4850        itsmyjournalls          8  
+832             smol-alien       1232  
+547             DanPierce6          0  
+2152        tramngulacnhan          0  
+...                    ...        ...  
+3660            Sp33dyArms         19  
+903     Linda123Ladybug123          0  
+3729        MeWannaPlushie         28  
+1545  Alteration_Dimension       2005  
+5291               Wackyat        120  
+
+[660 rows x 31 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_30_0
+	Source 0 Schema: ['categories', 'commentCount', 'completed', 'copyright', 'cover', 'cover_timestamp', 'createDate', 'deleted', 'description', 'firstPartId', 'firstPublishedPart.createDate', 'firstPublishedPart.id', 'id', 'language.id', 'language.name', 'lastPublishedPart.createDate', 'lastPublishedPart.id', 'length', 'mature', 'modifyDate', 'numParts', 'parts', 'rating', 'readCount', 'tags', 'title', 'url', 'user.avatar', 'user.fullname', 'user.name', 'voteCount']
+	Source 0 Examples: 	 Source 0 contains 1461 tuples, with examples as follows: 
+   categories  commentCount  completed  copyright  \
+0          19          5221       True          1   
+1          19         20045       True          0   
+2          19          9867       True          0   
+
+                                               cover       cover_timestamp  \
+0  https://a.wattpad.com/cover/12050237-256-k9918...  2014-01-29T18:37:29Z   
+1  https://a.wattpad.com/cover/16618124-256-k6626...  2014-09-25T23:31:02Z   
+2  https://a.wattpad.com/cover/42937930-256-k9921...  2015-06-22T23:55:46Z   
+
+             createDate  deleted  \
+0  2014-01-29T16:24:42Z    False   
+1  2014-05-20T12:25:26Z    False   
+2  2015-06-22T23:55:09Z    False   
+
+                                         description  firstPartId  \
+0  Fina is a Enforcers Daughter, she's been harsh...     36978107   
+1                                                NaN     50914516   
+2                                         yessss!!!!    141082265   
+
+  firstPublishedPart.createDate  firstPublishedPart.id        id  language.id  \
+0          2014-01-29T18:38:34Z               36978107  12050237            1   
+1          2014-05-21T00:07:47Z               50914516  16618124            1   
+2          2015-06-23T02:59:41Z              141082265  42937930            1   
+
+  language.name lastPublishedPart.createDate  lastPublishedPart.id  length  \
+0       English         2014-01-31T02:16:12Z              37052197  407525   
+1       English         2014-10-15T00:28:42Z              76088428  175785   
+2       English         2015-06-23T10:06:02Z             141082390    2204   
+
+   mature            modifyDate  numParts  \
+0   False  2015-01-27T10:47:41Z        37   
+1   False  2015-06-15T00:20:39Z        38   
+2   False  2015-08-16T08:07:12Z        16   
+
+                                               parts  rating  readCount  \
+0  [{'id': 36978107, 'title': 'Prologue', 'url': ...       3    2701720   
+1  [{'id': 50914516, 'title': 'Escorting the Brut...       3    8564734   
+2  [{'id': 141082265, 'title': 'lol!', 'url': 'ht...       0    1362167   
+
+                                                tags                title  \
+0  ['alpha', 'curse', 'luna', 'magic', 'power', '...     Hadar #Watty2014   
+1                                                 []  Escorting the Brute   
+2     ['dumb', 'funny', 'listen', 'nothing', 'okay']   ❇awsome comebacks❇   
+
+                                                 url  \
+0  https://www.wattpad.com/story/12050237-hadar-w...   
+1  https://www.wattpad.com/story/16618124-escorti...   
+2  https://www.wattpad.com/story/42937930-%E2%9D%...   
+
+                                         user.avatar user.fullname  \
+0  https://a.wattpad.com/useravatar/RevyRogue.128...       Reviana   
+1  https://a.wattpad.com/useravatar/iwillluv1d4ev...            Q.   
+2  https://a.wattpad.com/useravatar/kittygirl_121...           NaN   
+
+          user.name  voteCount  
+0         RevyRogue     107375  
+1   iwillluv1d4ever     189571  
+2  kittygirl_121604      37697  
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_30/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_30_1
+	Source 1 Schema: ['categories', 'commentCount', 'completed', 'copyright', 'cover', 'cover_timestamp', 'createDate', 'deleted', 'description', 'firstPartId', 'firstPublishedPart.createDate', 'firstPublishedPart.id', 'id', 'language.id', 'language.name', 'lastPublishedPart.createDate', 'lastPublishedPart.id', 'length', 'mature', 'modifyDate', 'numParts', 'parts', 'rating', 'readCount', 'tags', 'title', 'url', 'user.avatar', 'user.fullname', 'user.name', 'voteCount']
+	Source 1 Examples: 	 Source 1 contains 1465 tuples, with examples as follows: 
+  categories  commentCount  completed  copyright  \
+0    [19, 0]          5184       True          1   
+1    [19, 0]           132      False          1   
+2    [19, 0]          9695       True          0   
+
+                                               cover       cover_timestamp  \
+0  https://a.wattpad.com/cover/12050237-256-k9918...  2014-01-29T18:37:29Z   
+1  https://a.wattpad.com/cover/73708370-256-k6857...  2016-05-31T16:08:51Z   
+2  https://a.wattpad.com/cover/42937930-256-k9921...  2015-06-22T23:55:46Z   
+
+             createDate  deleted  \
+0  2014-01-29T16:24:42Z    False   
+1  2016-05-31T15:17:16Z    False   
+2  2015-06-22T23:55:09Z    False   
+
+                                         description  firstPartId  \
+0  Fina is a Enforcers Daughter, she's been harsh...     36978107   
+1                    ⓠⓤⓞⓣⓔⓢ ⓣⓗⓐⓣ ⓦⓘⓛⓛ ⓜⓐⓚⓔ ⓨⓞⓤ ⓛⓐⓤⓖⓗ    264398992   
+2                                         yessss!!!!    141082265   
+
+  firstPublishedPart.createDate  firstPublishedPart.id        id  language.id  \
+0          2014-01-29T18:38:34Z               36978107  12050237            1   
+1          2016-05-31T16:04:01Z              264398992  73708370            1   
+2          2015-06-23T02:59:41Z              141082265  42937930            1   
+
+  language.name lastPublishedPart.createDate  lastPublishedPart.id  length  \
+0       English         2014-01-31T03:11:05Z              37087582  407525   
+1       English         2016-05-31T23:07:23Z             264413377    1131   
+2       English         2015-06-23T10:03:03Z             141082343    2204   
+
+   mature            modifyDate  numParts  \
+0   False  2015-01-27T10:47:41Z        37   
+1   False  2016-07-11T15:22:32Z        24   
+2   False  2015-08-16T08:07:12Z        16   
+
+                                               parts  rating  readCount  \
+0  [{'id': 36978107, 'title': 'Prologue', 'url': ...       3    2682656   
+1  [{'id': 264398992, 'title': '①. ', 'url': 'htt...       0      76278   
+2  [{'id': 141082265, 'title': 'lol!', 'url': 'ht...       0    1335249   
+
+                                                tags                 title  \
+0  ['alpha', 'curse', 'luna', 'magic', 'power', '...      Hadar #Watty2014   
+1                                                 []  Funny quotes  part 1   
+2     ['dumb', 'funny', 'listen', 'nothing', 'okay']    ❇awsome comebacks❇   
+
+                                                 url  \
+0  https://www.wattpad.com/story/12050237-hadar-w...   
+1  https://www.wattpad.com/story/73708370-funny-q...   
+2  https://www.wattpad.com/story/42937930-%E2%9D%...   
+
+                                         user.avatar user.fullname  \
+0  https://a.wattpad.com/useravatar/RevyRogue.128...       Reviana   
+1  https://a.wattpad.com/useravatar/Officialrenie...         Litty   
+2  https://a.wattpad.com/useravatar/kittygirl_121...           NaN   
+
+          user.name  voteCount  
+0         RevyRogue     106680  
+1     Officialrenie       1189  
+2  kittygirl_121604      37030  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_30/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_30_2
+	Source 2 Schema: ['categories', 'commentCount', 'completed', 'copyright', 'cover', 'cover_timestamp', 'createDate', 'deleted', 'description', 'firstPartId', 'firstPublishedPart.createDate', 'firstPublishedPart.id', 'id', 'language.id', 'language.name', 'lastPublishedPart.createDate', 'lastPublishedPart.id', 'length', 'mature', 'modifyDate', 'numParts', 'parts', 'rating', 'readCount', 'tags', 'title', 'url', 'user.avatar', 'user.fullname', 'user.name', 'voteCount']
+	Source 2 Examples: 	 Source 2 contains 747 tuples, with examples as follows: 
+   categories  commentCount  completed  copyright  \
+0           6            12      False          1   
+1          17             0      False          1   
+2          17             0      False          1   
+
+                                               cover       cover_timestamp  \
+0  https://a.wattpad.com/cover/129173744-256-k151...  2017-12-02T02:06:21Z   
+1  https://a.wattpad.com/cover/141691720-256-k874...  2018-03-13T00:15:43Z   
+2  https://a.wattpad.com/cover/141267339-256-k611...  2018-03-10T00:08:20Z   
+
+             createDate  deleted  \
+0  2017-11-18T19:52:12Z    False   
+1  2018-03-13T00:15:42Z    False   
+2  2018-03-09T00:26:38Z    False   
+
+                                         description  firstPartId  \
+0  [ coming soon ]\n\nIn which a regular 19 year ...    496588471   
+1                                           swallow!    546886656   
+2  I don't see many of these and I'm not sure if ...    545128060   
+
+  firstPublishedPart.createDate  firstPublishedPart.id         id  \
+0          2017-12-02T13:57:39Z              496588471  129173744   
+1          2018-03-13T23:54:09Z              546886656  141691720   
+2          2018-03-10T08:21:11Z              545128060  141267339   
+
+   language.id language.name lastPublishedPart.createDate  \
+0            1       English         2018-03-13T23:54:11Z   
+1            1       English         2018-03-13T23:54:11Z   
+2            1       English         2018-03-13T23:54:08Z   
+
+   lastPublishedPart.id  length  mature            modifyDate  numParts  \
+0             501298505    7590   False  2018-03-13T23:54:10Z         3   
+1             547267582    1676   False  2018-03-13T23:54:11Z         3   
+2             547236382   24132   False  2018-03-13T23:54:08Z         3   
+
+                                               parts  rating  readCount  \
+0  [{'id': 496588471, 'title': 'Mr Country Club |...       0         63   
+1  [{'id': 546886656, 'title': 'impudence!', 'url...       0          0   
+2  [{'id': 545128060, 'title': 'Oneshot 1: Rulers...       1         32   
+
+                                                tags  \
+0  ['collinskey', 'devankey', 'keybros', 'keypers...   
+1  ['aesthetic', 'blood', 'death', 'detective', '...   
+2             ['lesbian', 'oneshot', 'readerxcrush']   
+
+                                          title  \
+0  Mr Country Club | devan key [ coming soon ]    
+1                                    the offing   
+2                  Female Crush X Female Reader   
+
+                                                 url  \
+0  https://www.wattpad.com/story/129173744-mr-cou...   
+1  https://www.wattpad.com/story/141691720-the-of...   
+2  https://www.wattpad.com/story/141267339-female...   
+
+                                         user.avatar user.fullname  \
+0  https://a.wattpad.com/useravatar/voidtube.128....       chelsea   
+1  https://a.wattpad.com/useravatar/sunfully.128....             ♡   
+2  https://a.wattpad.com/useravatar/Dem0g0rgon.12...           NaN   
+
+    user.name  voteCount  
+0    voidtube          5  
+1    sunfully          0  
+2  Dem0g0rgon          4  
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_30/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_30_3
+	Source 3 Schema: ['categories', 'commentCount', 'completed', 'copyright', 'cover', 'cover_timestamp', 'createDate', 'deleted', 'description', 'firstPartId', 'firstPublishedPart.createDate', 'firstPublishedPart.id', 'id', 'language.id', 'language.name', 'lastPublishedPart.createDate', 'lastPublishedPart.id', 'length', 'mature', 'modifyDate', 'numParts', 'parts', 'rating', 'readCount', 'tags', 'title', 'url', 'user.avatar', 'user.fullname', 'user.name', 'voteCount']
+	Source 3 Examples: 	 Source 3 contains 1460 tuples, with examples as follows: 
+   categories  commentCount  completed  copyright  \
+0          19          5187       True          1   
+1          19         20018       True          0   
+2          19          9738       True          0   
+
+                                               cover       cover_timestamp  \
+0  https://a.wattpad.com/cover/12050237-256-k9918...  2014-01-29T18:37:29Z   
+1  https://a.wattpad.com/cover/16618124-256-k6626...  2014-09-25T23:31:02Z   
+2  https://a.wattpad.com/cover/42937930-256-k9921...  2015-06-22T23:55:46Z   
+
+             createDate  deleted  \
+0  2014-01-29T16:24:42Z    False   
+1  2014-05-20T12:25:26Z    False   
+2  2015-06-22T23:55:09Z    False   
+
+                                         description  firstPartId  \
+0  Fina is a Enforcers Daughter, she's been harsh...     36978107   
+1                                                NaN     50914516   
+2                                         yessss!!!!    141082265   
+
+  firstPublishedPart.createDate  firstPublishedPart.id        id  language.id  \
+0          2014-01-29T18:42:05Z               36978235  12050237            1   
+1          2014-05-21T07:07:47Z               50914516  16618124            1   
+2          2015-06-23T02:59:55Z              141082305  42937930            1   
+
+  language.name lastPublishedPart.createDate  lastPublishedPart.id  length  \
+0       English         2014-01-30T19:11:05Z              37087582  407525   
+1       English         2014-10-15T00:28:42Z              76088428  175785   
+2       English         2015-06-23T09:59:41Z             141082265    2204   
+
+   mature            modifyDate  numParts  \
+0   False  2015-01-27T10:47:41Z        37   
+1   False  2015-06-15T00:20:39Z        38   
+2   False  2015-08-16T08:07:12Z        16   
+
+                                               parts  rating  readCount  \
+0  [{'id': 36978107, 'title': 'Prologue', 'url': ...       3    2688905   
+1  [{'id': 50914516, 'title': 'Escorting the Brut...       3    8554166   
+2  [{'id': 141082265, 'title': 'lol!', 'url': 'ht...       0    1344254   
+
+                                                tags                title  \
+0  ['alpha', 'curse', 'luna', 'magic', 'power', '...     Hadar #Watty2014   
+1                                                 []  Escorting the Brute   
+2     ['dumb', 'funny', 'listen', 'nothing', 'okay']   ❇awsome comebacks❇   
+
+                                                 url  \
+0  https://www.wattpad.com/story/12050237-hadar-w...   
+1  https://www.wattpad.com/story/16618124-escorti...   
+2  https://www.wattpad.com/story/42937930-%E2%9D%...   
+
+                                         user.avatar user.fullname  \
+0  https://a.wattpad.com/useravatar/RevyRogue.128...       Reviana   
+1  https://a.wattpad.com/useravatar/iwillluv1d4ev...            Q.   
+2  https://a.wattpad.com/useravatar/kittygirl_121...           NaN   
+
+          user.name  voteCount  
+0         RevyRogue     106844  
+1   iwillluv1d4ever     189277  
+2  kittygirl_121604      37258  
+	Source 3 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_30/test_3.csv
+	Source 4:
+	Source 4 Name: Source4_30_4
+	Source 4 Schema: ['categories', 'commentCount', 'completed', 'copyright', 'cover', 'cover_timestamp', 'createDate', 'deleted', 'description', 'firstPartId', 'firstPublishedPart.createDate', 'firstPublishedPart.id', 'id', 'language.id', 'language.name', 'lastPublishedPart.createDate', 'lastPublishedPart.id', 'length', 'mature', 'modifyDate', 'numParts', 'parts', 'rating', 'readCount', 'tags', 'title', 'url', 'user.avatar', 'user.fullname', 'user.name', 'voteCount']
+	Source 4 Examples: 	 Source 4 contains 1462 tuples, with examples as follows: 
+   categories  commentCount  completed  copyright  \
+0          19          5187       True          1   
+1          19         20017       True          0   
+2          19          9715       True          0   
+
+                                               cover       cover_timestamp  \
+0  https://a.wattpad.com/cover/12050237-256-k9918...  2014-01-29T18:37:29Z   
+1  https://a.wattpad.com/cover/16618124-256-k6626...  2014-09-25T23:31:02Z   
+2  https://a.wattpad.com/cover/42937930-256-k9921...  2015-06-22T23:55:46Z   
+
+             createDate  deleted  \
+0  2014-01-29T16:24:42Z    False   
+1  2014-05-20T12:25:26Z    False   
+2  2015-06-22T23:55:09Z    False   
+
+                                         description  firstPartId  \
+0  Fina is a Enforcers Daughter, she's been harsh...     36978107   
+1                                                NaN     50914516   
+2                                         yessss!!!!    141082265   
+
+  firstPublishedPart.createDate  firstPublishedPart.id        id  language.id  \
+0          2014-01-29T18:42:05Z               36978235  12050237            1   
+1          2014-05-21T00:07:47Z               50914516  16618124            1   
+2          2015-06-23T02:59:41Z              141082265  42937930            1   
+
+  language.name lastPublishedPart.createDate  lastPublishedPart.id  length  \
+0       English         2014-01-30T19:11:05Z              37087582  407525   
+1       English         2014-10-15T00:28:42Z              76088428  175785   
+2       English         2015-06-23T03:06:30Z             141082405    2204   
+
+   mature            modifyDate  numParts  \
+0   False  2015-01-27T10:47:41Z        37   
+1   False  2015-06-15T00:20:39Z        38   
+2   False  2015-08-16T08:07:12Z        16   
+
+                                               parts  rating  readCount  \
+0  [{'id': 36978107, 'title': 'Prologue', 'url': ...       3    2686300   
+1  [{'id': 50914516, 'title': 'Escorting the Brut...       3    8551927   
+2  [{'id': 141082265, 'title': 'lol!', 'url': 'ht...       0    1339809   
+
+                                                tags                title  \
+0  ['alpha', 'curse', 'luna', 'magic', 'power', '...     Hadar #Watty2014   
+1                                                 []  Escorting the Brute   
+2     ['dumb', 'funny', 'listen', 'nothing', 'okay']   ❇awsome comebacks❇   
+
+                                                 url  \
+0  https://www.wattpad.com/story/12050237-hadar-w...   
+1  https://www.wattpad.com/story/16618124-escorti...   
+2  https://www.wattpad.com/story/42937930-%E2%9D%...   
+
+                                         user.avatar user.fullname  \
+0  https://a.wattpad.com/useravatar/RevyRogue.128...       Reviana   
+1  https://a.wattpad.com/useravatar/iwillluv1d4ev...            Q.   
+2  https://a.wattpad.com/useravatar/kittygirl_121...           NaN   
+
+          user.name  voteCount  
+0         RevyRogue     106794  
+1   iwillluv1d4ever     189261  
+2  kittygirl_121604      37159  
+	Source 4 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_30/test_4.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_30/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

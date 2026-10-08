@@ -1,0 +1,46 @@
+{
+  "case": "2_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0,
+        "cost": 0.009766,
+        "latency": 51.999919414520264,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_77/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_77/training_1.csv\"\n\n# Load Source 0\n# Schema: ['city', 'driver_count', 'type']\n# We only need 'city' and 'driver_count' columns for the target\ndf0 = pd.read_csv(source0_path, index_col=0, usecols=['city', 'driver_count', 'type'])\n\n# Load Source 1\n# Schema: ['city', 'date', 'fare', 'ride_id']\n# This source does not have driver_count, but has city and rides info\ndf1 = pd.read_csv(source1_path, index_col=0, usecols=['city'])\n\n# Transformation plan:\n# - Source0 already has city and driver_count, so we can use it directly.\n# - Source1 has city and rides (each row is a ride), so driver_count can be derived as count of rides per city.\n# - The target schema is ['city', 'driver_count'].\n# - We will aggregate Source1 by city counting rides (ride count = driver_count proxy).\n# - Then, join Source0 and Source1 aggregated on city to combine driver counts.\n# - Since driver_count in Source0 and ride counts in Source1 represent different things, \n#   but target examples show driver_count, we assume driver_count from Source0 is primary.\n# - To cover all cities, we take union of cities from both sources.\n# - For cities present in both, sum driver_count from Source0 and ride counts from Source1.\n# - For cities present only in one source, take the available count.\n# - Finally, ensure driver_count is integer and city is string.\n\n# Aggregate Source1 by city to get ride counts (as driver_count proxy)\ndf1_agg = df1.groupby('city').size().reset_index(name='driver_count')\n\n# Merge Source0 and aggregated Source1 on city with outer join to cover all cities\nmerged = pd.merge(df0[['city', 'driver_count']], df1_agg, on='city', how='outer', suffixes=('_src0', '_src1'))\n\n# Fill NaN with 0 for counts\nmerged['driver_count_src0'] = merged['driver_count_src0'].fillna(0).astype(int)\nmerged['driver_count_src1'] = merged['driver_count_src1'].fillna(0).astype(int)\n\n# Sum driver counts from both sources\nmerged['driver_count'] = merged['driver_count_src0'] + merged['driver_count_src1']\n\n# Select final columns and ensure types\nresult = merged[['city', 'driver_count']].copy()\nresult['city'] = result['city'].astype(str)\nresult['driver_count'] = result['driver_count'].astype(int)\n\n# Write the result to the target CSV file\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_77/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.038623809814453125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7057,
+          "cost": 0.0013892000000000002,
+          "latency": 3.3795862197875977,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.411) / 2 = 0.706 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.383, range overlap=0.310.\nGround truth candidate keys: {city}.\nGenerated table candidate keys: {city}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.310, JS similarity=0.383\n    Generated    \u2014 min: 7.0, max: 621.0, mean: 218.432\n    Ground Truth \u2014 min: 80.0, max: 1750.0, mean: 722.0303\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'city': Jaccard=0.477",
+          "generated_samples": "Schema: ['city', 'driver_count']\nNumber of Tuples: 125\nExamples:\n        city  driver_count\n    New Lynn           260\nCampbellport           390\n  West Oscar            99",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_77/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_77/training_1.csv\", index_col=0)\n\n# Join on 'city' column (inner join by default)\njoined = pd.merge(source0, source1, on=\"city\", how=\"inner\")\n\n# Group by 'city' and aggregate sum of 'driver_count'\n# Note: 'driver_count' only exists in source0, so sum aggregation is straightforward\nresult = joined.groupby(\"city\", as_index=False).agg({\"driver_count\": \"sum\"})\n\n# Write output with exact target schema and column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_77/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.2884140014648438
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 52072.31569290161,
+        "critique": 3434.6117973327637
+      }
+    }
+  ]
+}

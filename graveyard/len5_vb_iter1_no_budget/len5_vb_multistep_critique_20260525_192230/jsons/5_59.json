@@ -1,0 +1,46 @@
+{
+  "case": "5_59",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8518,
+        "cost": 0.0026384,
+        "latency": 13.149943828582764,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.704) / 2 = 0.852 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.780, range overlap=0.627.\nGround truth candidate keys: {Item Price, Total Purchase Value}; {Purchase Count, Total Purchase Value}.\nGenerated table candidate keys: {Item Price, Total Purchase Value}; {Purchase Count, Total Purchase Value}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Purchase Count': range overlap=0.667, JS similarity=0.741\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 2.9923\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Item Price': range overlap=0.667, JS similarity=0.741\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 2.9923\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Total Purchase Value': range overlap=0.548, JS similarity=0.858\n    Generated    \u2014 min: 1.0, max: 52.8, mean: 8.9328\n    Ground Truth \u2014 min: 1.0, max: 29.4, mean: 7.5752",
+        "generated_samples": "Schema: ['Price', 'Purchase Count', 'Item Price', 'Total Purchase Value']\nNumber of Tuples: 130\nExamples:\n Price  Purchase Count  Item Price  Total Purchase Value\n  4.43               2           4                  8.86\n  3.75               1           4                  3.75\n  1.75               5           2                  8.75",
+        "code": "import pandas as pd\n\n# Load the source table\nsource_path_0 = \"autopipeline-benchmarks/github-pipelines/length5_59/training_0.csv\"\ndf0 = pd.read_csv(source_path_0, index_col=0)\n\n# Perform the group by and aggregations as per operation history:\n# group_by = [Source5_59_0.Price]\n# aggregations = [count(Source5_59_0.Purchase ID), avg(Source5_59_0.Price), sum(Source5_59_0.Price)]\n\n# Group by 'Price' column\ngrouped = df0.groupby('Price').agg(\n    Purchase_Count=('Purchase ID', 'count'),\n    Item_Price=('Price', 'mean'),\n    Total_Purchase_Value=('Price', 'sum')\n).reset_index(drop=False)\n\n# Rename columns to match target schema exactly\n# Target schema: ['Purchase Count': integer, 'Item Price': integer, 'Total Purchase Value': float]\n# From the aggregation:\n# - Purchase_Count is count -> integer\n# - Item_Price is avg(price) -> float but target expects integer, so convert by rounding or int cast\n# - Total_Purchase_Value is sum(price) -> float\n\n# Convert 'Item Price' to integer by rounding\ngrouped['Item_Price'] = grouped['Item_Price'].round().astype(int)\n# Convert 'Purchase Count' to integer explicitly\ngrouped['Purchase_Count'] = grouped['Purchase_Count'].astype(int)\n# 'Total_Purchase_Value' remains float\n\n# Rename columns to target column names\nresult = grouped.rename(columns={\n    'Purchase_Count': 'Purchase Count',\n    'Item_Price': 'Item Price',\n    'Total_Purchase_Value': 'Total Purchase Value'\n})\n\n# Save the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length5_59/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "Price,Purchase Count,Item Price,Total Purchase Value\n1.0,1,1,1.0\n1.01,3,1,3.03\n1.02,9,1,9.18\n1.03,2,1,2.06\n1.06,1,1,1.06\n1.09,2,1,2.18\n1.1,4,1,4.4\n1.12,2,1,2.24\n1.14,4,1,4.56\n1.28,1,1,1.28\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 4.06193733215332
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.4327,
+          "cost": 0.00163,
+          "latency": 6.666059494018555,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.500 + 0.365) / 2 = 0.433 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.731, range overlap=0.000.\nGround truth candidate keys: {Item Price, Total Purchase Value}; {Purchase Count, Total Purchase Value}.\nGenerated table candidate keys: {Purchase Count}; {Item Price}; {Total Purchase Value}.\nKeys present in ground truth but absent in generated: {Total Purchase Value, Item Price}; {Purchase Count, Total Purchase Value}.\nSpurious keys in generated not present in ground truth: {Purchase Count}; {Item Price}; {Total Purchase Value}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.333, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['Item Price'] \u2192 Total Purchase Value; ['Total Purchase Value'] \u2192 Item Price; ['Total Purchase Value'] \u2192 Purchase Count; ['Purchase Count'] \u2192 Total Purchase Value.\nDistribution Analysis (numerical columns with issues):\n  Column 'Purchase Count': range overlap=0.000, JS similarity=0.692\n    Generated    \u2014 min: 3.0, max: 3.0, mean: 3.0\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Item Price': range overlap=0.000, JS similarity=0.692\n    Generated    \u2014 min: 3.0, max: 3.0, mean: 3.0\n    Ground Truth \u2014 min: 1.0, max: 7.0, mean: 2.3923\n  Column 'Total Purchase Value': range overlap=0.000, JS similarity=0.808\n    Generated    \u2014 min: 3.0, max: 3.0, mean: 3.0\n    Ground Truth \u2014 min: 1.0, max: 29.4, mean: 7.5752",
+          "generated_samples": "Schema: ['Purchase Count', 'Item Price', 'Total Purchase Value']\nNumber of Tuples: 1\nExamples:\n Purchase Count  Item Price  Total Purchase Value\n            390           3               1161.26",
+          "code": "import pandas as pd\n\n# Read source table\nsource = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_59/training_0.csv\", index_col=0)\n\n# Aggregations without group by\npurchase_count = source['Purchase ID'].count()\nitem_price = int(round(source['Price'].mean()))\ntotal_purchase_value = source['Price'].sum()\n\n# Create output DataFrame with one row\noutput = pd.DataFrame({\n    'Purchase Count': [purchase_count],\n    'Item Price': [item_price],\n    'Total Purchase Value': [total_purchase_value]\n})\n\n# Write output\noutput.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_59/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.8830299377441406
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 13155.07173538208,
+        "critique": 6712.273836135864
+      }
+    }
+  ]
+}

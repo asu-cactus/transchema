@@ -1,0 +1,29 @@
+{
+  "case": "6_24",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9908,
+        "cost": 0.003568,
+        "latency": 8.25878095626831,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.982) / 2 = 0.991 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.961, range overlap=1.000.\nGround truth candidate keys: {Team, SnapsPlayed}; {Name, SnapsPlayed}.\nGenerated table candidate keys: {Team, SnapsPlayed}; {Name, SnapsPlayed}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Name': Jaccard=0.945",
+        "generated_samples": "Schema: ['Name', 'Team', 'Position', 'SnapsPlayed']\nNumber of Tuples: 222\nExamples:\n          Name Team Position  SnapsPlayed\n   Mark Ingram   NO       RB          570\n     Jay Ajayi  PHI       RB          121\nDanny Woodhead  LAC       RB          598",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length6_24/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_24/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_24/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_24/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_24/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_24/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length6_24/training_6.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = []\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Ensure columns are exactly as target schema and types\n    df = df[['Name', 'Team', 'Position', 'SnapsPlayed']]\n    # Enforce types explicitly\n    df['Name'] = df['Name'].astype(str)\n    df['Team'] = df['Team'].astype(str)\n    df['Position'] = df['Position'].astype(str)\n    df['SnapsPlayed'] = df['SnapsPlayed'].astype(int)\n    dfs.append(df)\n\n# Operation: UNION all source tables in the given order\ntarget_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target path\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length6_24/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Name,Team,Position,SnapsPlayed\nMark Ingram,NO,RB,36\nIsaiah Crowell,NYJ,RB,158\nMelvin Gordon,LAC,RB,270\nSony Michel,NE,RB,134\nAustin Ekeler,LAC,RB,131\nKenneth Dixon,BAL,RB,22\nTodd Gurley,LAR,RB,349\nMatt Breida,SF,RB,163\nAdrian Peterson,WAS,RB,149\nPhillip Lindsay,DEN,RB,173\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2860298156738281
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 8362.29419708252,
+        "critique": 0.0
+      }
+    }
+  ]
+}

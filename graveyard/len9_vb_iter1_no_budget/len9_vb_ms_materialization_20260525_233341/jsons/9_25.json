@@ -1,0 +1,46 @@
+{
+  "case": "9_25",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.793,
+        "cost": 0.0231344,
+        "latency": 64.9418842792511,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.586) / 2 = 0.793 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {CANCEL_DT}.\nGenerated table candidate keys: {CANCEL_DT}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'CANCEL_DT': Jaccard=0.586",
+        "generated_samples": "Schema: ['CANCEL_DT']\nNumber of Tuples: 23946\nExamples:\nCANCEL_DT\n29-JUL-17\n29-JUN-17\n      NaN",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_25/training_9.csv\", index_col=0)\n\n# Step 1: UNION the four sources with the same schema (Source0, Source1, Source4, Source5)\n# They all have the CANCEL_DT column and the same schema.\nunion_0_1_4_5 = pd.concat([source0[['CANCEL_DT']], source1[['CANCEL_DT']], source4[['CANCEL_DT']], source5[['CANCEL_DT']]], ignore_index=True)\n\n# Step 2: Join union_0_1_4_5 with Source2 on ROW_WID via Source0 and Source1\n# But union_0_1_4_5 only has CANCEL_DT column, so we need to join before projection.\n# The operation history shows joins were done on Source0 and Source1 with Source2 on ROW_WID.\n# So we must join Source0 with Source2 on ROW_WID, then Source1 with Source2 on ROW_WID,\n# then union the CANCEL_DT columns from these joins and also from Source4 and Source5.\n\n# Join Source0 with Source2 on ROW_WID\njoin_0_2 = pd.merge(source0, source2, on='ROW_WID', how='inner')\n# Join Source1 with Source2 on ROW_WID\njoin_1_2 = pd.merge(source1, source2, on='ROW_WID', how='inner')\n\n# Join Source0 with Source3 on ROW_WID (operation 3)\njoin_0_3 = pd.merge(source0, source3, on='ROW_WID', how='inner')\n\n# From operation history, the final output is CANCEL_DT column only.\n# We will collect CANCEL_DT from all these joins and union them.\n\n# Extract CANCEL_DT from joins\ncancel_dt_0_2 = join_0_2[['CANCEL_DT']]\ncancel_dt_1_2 = join_1_2[['CANCEL_DT']]\ncancel_dt_0_3 = join_0_3[['CANCEL_DT']]\n\n# Also include CANCEL_DT from Source4 and Source5 (which were unioned initially)\ncancel_dt_4 = source4[['CANCEL_DT']]\ncancel_dt_5 = source5[['CANCEL_DT']]\n\n# Combine all CANCEL_DT columns from all sources and joins\n# To cover all intermediate results and all source tables usage\nall_cancel_dt = pd.concat([\n    cancel_dt_0_2,\n    cancel_dt_1_2,\n    cancel_dt_0_3,\n    cancel_dt_4,\n    cancel_dt_5\n], ignore_index=True)\n\n# The target schema is only CANCEL_DT as string, so ensure dtype is string\nall_cancel_dt['CANCEL_DT'] = all_cancel_dt['CANCEL_DT'].astype(str)\n\n# Replace 'nan' strings with actual NaN\nall_cancel_dt['CANCEL_DT'] = all_cancel_dt['CANCEL_DT'].replace({'nan': pd.NA})\n\n# Save the final target table\nall_cancel_dt.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/target_multisource.csv\", index=False)",
+        "generated_csv_head": "CANCEL_DT\n26-ABR-17\n12-MAR-15\n18-MAY-15\n05-ENE-15\n26-MAY-16\n24-DIC-16\n30-SEP-16\n26-OCT-14\n22-JUL-16\n05-MAR-16\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2881755828857422
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7734,
+          "cost": 0.0033152,
+          "latency": 15.996609687805176,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.547) / 2 = 0.773 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {CANCEL_DT}.\nGenerated table candidate keys: {CANCEL_DT}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'CANCEL_DT': Jaccard=0.547",
+          "generated_samples": "Schema: ['Unnamed: 0', 'CANCEL_DT']\nNumber of Tuples: 27699\nExamples:\n Unnamed: 0 CANCEL_DT\n      26720 29-AGO-17\n          4 18-MAY-15\n       9161 11-JUL-17",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_4.csv\", index_col=0)\nsource5 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_5.csv\", index_col=0)\nsource6 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_6.csv\", index_col=0)\nsource7 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_7.csv\", index_col=0)\nsource8 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_8.csv\", index_col=0)\nsource9 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/training_9.csv\", index_col=0)\n\n# UNION the four sources with the same schema\nunioned = pd.concat([source0, source1, source4, source5], ignore_index=True)\n\n# JOIN unioned with all aspect tables on ROW_WID\nunioned = unioned.merge(source2, on=\"ROW_WID\", how=\"left\")\nunioned = unioned.merge(source3, on=\"ROW_WID\", how=\"left\")\nunioned = unioned.merge(source6, on=\"ROW_WID\", how=\"left\")\nunioned = unioned.merge(source7, on=\"ROW_WID\", how=\"left\")\nunioned = unioned.merge(source8, on=\"ROW_WID\", how=\"left\")\nunioned = unioned.merge(source9, on=\"ROW_WID\", how=\"left\")\n\n# Final output: only CANCEL_DT column as per target schema\nresult = unioned[[\"CANCEL_DT\"]]\n\n# Write output CSV without index as default\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_25/target_multisource_critique_history.csv\")",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1699199676513672
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 65073.17090034485,
+        "critique": 16435.735940933228
+      }
+    }
+  ]
+}

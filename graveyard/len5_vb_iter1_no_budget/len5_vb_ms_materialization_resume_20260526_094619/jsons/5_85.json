@@ -1,0 +1,46 @@
+{
+  "case": "5_85",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.015941600000000004,
+        "latency": 79.77235198020935,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Sales}.\nGenerated table candidate keys: {Sales}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Sales': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 7314551.019, max: 7314551.019, mean: 7314551.019\n    Ground Truth \u2014 min: 90386.7355, max: 1696429.593, mean: 950131.2256",
+        "generated_samples": "Schema: ['Sales']\nNumber of Tuples: 1\nExamples:\n      Sales\n7314551.019",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_85/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_85/training_1.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_85/training_4.csv\", index_col=0)\n\n# Step 1: Join Source5_85_4 and Source5_85_1 on 'Ord_id'\ndf_4_1 = pd.merge(source4, source1, on='Ord_id', how='inner')\n\n# Step 2: Join the result with Source5_85_0 on 'Ship_id'\ndf_4_1_0 = pd.merge(df_4_1, source0, on='Ship_id', how='inner')\n\n# Step 3: Group by nothing and aggregate sum of Sales\n# This matches the operation history and produces the final Sales sum\ntotal_sales = df_4_1_0['Sales'].sum()\n\n# Create the target DataFrame with the same schema as target: ['Sales': float]\n# The target examples show multiple rows, but the operation history shows only aggregation without group by,\n# so we produce a single-row DataFrame with the total sales sum.\nTarget5_85 = pd.DataFrame({'Sales': [total_sales]})\n\n# Save the result to the specified path\nTarget5_85.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_85/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Sales\n7314551.018999999\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.64849853515625
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0021564,
+          "latency": 5.9007627964019775,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {Sales}.\nGenerated table candidate keys: {Sales}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Sales': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 7314551.019, max: 7314551.019, mean: 7314551.019\n    Ground Truth \u2014 min: 90386.7355, max: 1696429.593, mean: 950131.2256",
+          "generated_samples": "Schema: ['Sales']\nNumber of Tuples: 1\nExamples:\n      Sales\n7314551.019",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_85/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_85/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_85/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_85/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_85/training_4.csv\", index_col=0)\n\n# Join Source5_85_4 with Source5_85_1 on Ord_id\nresult = pd.merge(source4, source1, how='inner', left_on='Ord_id', right_on='Ord_id')\n\n# Join the result with Source5_85_0 on Ship_id\nresult = pd.merge(result, source0, how='inner', left_on='Ship_id', right_on='Ship_id')\n\n# Join the result with Source5_85_2 on Cust_id\nresult = pd.merge(result, source2, how='inner', left_on='Cust_id', right_on='Cust_id')\n\n# Join the result with Source5_85_3 on Prod_id\nresult = pd.merge(result, source3, how='inner', left_on='Prod_id', right_on='Prod_id')\n\n# Aggregate sum of Sales (no group by since target schema has only Sales column)\nfinal = pd.DataFrame()\nfinal['Sales'] = [result['Sales'].sum()]\n\n# Write output to the specified path\nfinal.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_85/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6196498870849609
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 79856.10795021057,
+        "critique": 5985.666751861572
+      }
+    }
+  ]
+}

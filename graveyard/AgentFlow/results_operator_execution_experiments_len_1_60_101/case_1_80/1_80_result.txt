@@ -1,0 +1,48 @@
+Case: 1_80
+Status: CORRECT
+Timestamp: 2026-02-24T13:43:29.369092
+Duration: 35.16 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_60_101/case_1_80/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['movieId', 'rating']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_80
+2. Target Schema: ['movieId': integer, 'rating': float]
+3. Target Examples: There are 6618 available target examples:       movieId    rating
+3138     4803  3.500000
+6452   118082  3.500000
+4225     7802  4.166667
+2027     2959  4.127358
+2495     3673  4.000000
+...       ...       ...
+6169    99912  2.500000
+3653     6116  4.500000
+2735     4017  3.900000
+4487     8961  3.846154
+176       222  3.916667
+
+[662 rows x 2 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_80_0
+	Source 0 Schema: ['userId', 'movieId', 'rating', 'timestamp']
+	Source 0 Examples: 	 Source 0 contains 50002 tuples, with examples as follows: 
+   userId  movieId  rating   timestamp
+0       1       31     2.5  1260759144
+1       1     1029     3.0  1260759179
+2       1     1061     3.0  1260759182
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_80/test_0.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_80/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

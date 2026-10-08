@@ -1,0 +1,46 @@
+{
+  "case": "2_8",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.2106,
+        "cost": 0.0089768,
+        "latency": 39.31401824951172,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.421) / 2 = 0.211 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.207, range overlap=0.057.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug, Mouse ID}; {Drug, Timepoint}.\nSpurious keys in generated not present in ground truth: {Mouse ID, Drug}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Mouse ID'] \u2192 Timepoint; ['Timepoint'] \u2192 Mouse ID.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.000, JS similarity=0.098\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6352\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.114, JS similarity=0.315\n    Generated    \u2014 min: 20.0, max: 45.0, mean: 31.6352\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+        "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 1217\nExamples:\n     Drug  Timepoint  Mouse ID\nInfubinol         35       581\n  Placebo         25       897\nCapomulin         40       897",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_8/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_8/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# The 'Mouse ID' in source0 is like 'n763', 'q787', etc. We need to extract the numeric part as integer.\n# This matches the target schema where 'Mouse ID' is integer.\ndf0['Mouse ID'] = df0['Mouse ID'].str.extract('(\\d+)').astype(int)\ndf1['Mouse ID'] = df1['Mouse ID'].str.extract('(\\d+)').astype(int)\n\n# Join on 'Mouse ID' and 'Timepoint' (Timepoint only exists in df0)\n# Since df1 has no Timepoint, join only on 'Mouse ID'\n# But operation history says join on Mouse ID and Timepoint (from df0)\n# So we do a merge on ['Mouse ID', 'Timepoint'] from df0 with ['Mouse ID'] from df1\n# This means we join df0 and df1 on 'Mouse ID' only, but keep 'Timepoint' from df0\n\n# To do this correctly, merge on 'Mouse ID' only, then keep 'Timepoint' from df0\n# But operation history says join on Mouse ID and Timepoint, but df1 has no Timepoint column\n# So join only on 'Mouse ID'\n\n# Actually, operation history says:\n# JOIN : [[\"Source2_8_0\", \"Source2_8_1\"], [\"Source2_8_0.Mouse ID\", \"Source2_8_1.Mouse ID\"], [\"Source2_8_0.Timepoint\", \"Source2_8_0.Timepoint\"]]\n# This means join on Mouse ID, and Timepoint from Source2_8_0 (no Timepoint in Source2_8_1)\n# So join on Mouse ID only, then keep Timepoint from df0\n\ndf_merged = pd.merge(df0, df1, on='Mouse ID', how='inner')\n\n# Select only the columns in target schema: ['Drug', 'Timepoint', 'Mouse ID']\n# Ensure 'Drug' is string, 'Timepoint' and 'Mouse ID' are integers\ndf_result = df_merged[['Drug', 'Timepoint', 'Mouse ID']].copy()\ndf_result['Drug'] = df_result['Drug'].astype(str)\ndf_result['Timepoint'] = df_result['Timepoint'].astype(int)\ndf_result['Mouse ID'] = df_result['Mouse ID'].astype(int)\n\n# Sort by Drug, then Timepoint, then Mouse ID for consistent output (optional)\ndf_result = df_result.sort_values(by=['Drug', 'Timepoint', 'Mouse ID']).reset_index(drop=True)\n\n# Write to target path without index\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_8/target_multisource.csv\"\ndf_result.to_csv(target_path, index=False)",
+        "generated_csv_head": "Drug,Timepoint,Mouse ID\nCapomulin,20,119\nCapomulin,20,185\nCapomulin,20,246\nCapomulin,20,246\nCapomulin,20,288\nCapomulin,20,316\nCapomulin,20,364\nCapomulin,20,401\nCapomulin,20,401\nCapomulin,20,509\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.5287399291992188
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.19,
+          "cost": 0.0022888,
+          "latency": 13.324281215667725,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.000 + 0.380) / 2 = 0.190 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.140, range overlap=0.000.\nGround truth candidate keys: {Drug, Timepoint}.\nGenerated table candidate keys: {Drug}.\nKeys present in ground truth but absent in generated: {Drug, Timepoint}.\nSpurious keys in generated not present in ground truth: {Drug}.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nSpurious FDs in generated (not in ground truth): ['Timepoint'] \u2192 Mouse ID; ['Mouse ID'] \u2192 Timepoint; ['Drug'] \u2192 Timepoint; ['Drug'] \u2192 Mouse ID.\nMissing FDs from ground truth: ['Drug', 'Timepoint'] \u2192 Mouse ID.\nDistribution Analysis (numerical columns with issues):\n  Column 'Timepoint': range overlap=0.000, JS similarity=0.140\n    Generated    \u2014 min: 20.0, max: 20.0, mean: 20.0\n    Ground Truth \u2014 min: 0.0, max: 20.0, mean: 8.8889\n  Column 'Mouse ID': range overlap=0.000, JS similarity=0.140\n    Generated    \u2014 min: 20.0, max: 20.0, mean: 20.0\n    Ground Truth \u2014 min: 1.0, max: 25.0, mean: 21.0222",
+          "generated_samples": "Schema: ['Drug', 'Timepoint', 'Mouse ID']\nNumber of Tuples: 10\nExamples:\n     Drug  Timepoint  Mouse ID\nZoniferol         20       511\n Ketapril         20       264\n Naftisol         20       264",
+          "code": "import pandas as pd\nimport re\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_8/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_8/training_1.csv\", index_col=0)\n\n# Convert 'Mouse ID' in source0 and source1 to integer by extracting digits\ndef mouse_id_to_int(s):\n    # Extract digits from string, e.g. 'n763' -> 763\n    m = re.search(r'\\d+', s)\n    return int(m.group()) if m else None\n\nsource0['Mouse ID'] = source0['Mouse ID'].map(mouse_id_to_int)\nsource1['Mouse ID'] = source1['Mouse ID'].map(mouse_id_to_int)\n\n# Join on 'Mouse ID' only\njoined = pd.merge(source0, source1, on='Mouse ID', how='inner')\n\n# Select columns as per target schema: ['Drug', 'Timepoint', 'Mouse ID']\nresult = joined[['Drug', 'Timepoint', 'Mouse ID']]\n\n# Group by 'Drug' only (primary key), take first for other columns to reduce duplicates\nresult = result.groupby('Drug', as_index=False).agg({'Timepoint': 'first', 'Mouse ID': 'first'})\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_8/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8211135864257812
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 39383.43381881714,
+        "critique": 13380.271196365356
+      }
+    }
+  ]
+}

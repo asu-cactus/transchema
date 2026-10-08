@@ -1,0 +1,29 @@
+{
+  "case": "9_5",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0062324,
+        "latency": 18.376221418380737,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 1.000) / 2 = 1.000 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=1.000.\nGround truth candidate keys: {code}; {name}.\nGenerated table candidate keys: {code}; {name}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['code', 'name']\nNumber of Tuples: 1374\nExamples:\n code                                         name\n    8                            Human development\n    4     Financial and private sector development\n   11 Environment and natural resources management",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_5/training_10.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Concatenate all source DataFrames (UNION)\nTarget9_5 = pd.concat(dfs, ignore_index=True)\n\n# Ensure the schema and types match the target schema\nTarget9_5 = Target9_5.astype({'code': 'int64', 'name': 'string'})\n\n# Write the final target table to the specified path\nTarget9_5.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_5/target_multisource.csv\", index=False)",
+        "generated_csv_head": "code,name\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n11,Environment and natural resources management\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.058816909790039
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 18452.98194885254,
+        "critique": 0.0
+      }
+    }
+  ]
+}

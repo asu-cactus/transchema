@@ -1,0 +1,46 @@
+{
+  "case": "2_67",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5459,
+        "cost": 0.005286,
+        "latency": 48.37975263595581,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.262 + 0.830) / 2 = 0.546 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.979, range overlap=1.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}; {timestamp}.\nSpurious keys in generated not present in ground truth: {timestamp}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.262 (precision=0.333, recall=0.216).\nSpurious FDs in generated (not in ground truth): ['source', 'test'] \u2192 price; ['test'] \u2192 price; ['timestamp'] \u2192 user_id; ['city', 'operative_system', 'test'] \u2192 device; ['city', 'operative_system', 'source'] \u2192 device (and 11 more).\nMissing FDs from ground truth: ['city', 'test', 'timestamp'] \u2192 device; ['city', 'operative_system', 'timestamp'] \u2192 price; ['city', 'test', 'timestamp'] \u2192 operative_system; ['city', 'device', 'timestamp'] \u2192 test; ['city', 'source', 'timestamp'] \u2192 device (and 24 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'user_id': range overlap=0.999, JS similarity=0.944\n    Generated    \u2014 min: 589.0, max: 999493.0, mean: 483476.9023\n    Ground Truth \u2014 min: 14.0, max: 999992.0, mean: 497136.3231\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'timestamp': Jaccard=0.000\n  Column 'city': Jaccard=0.508",
+        "generated_samples": "Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']\nNumber of Tuples: 1228\nExamples:\n user_id           timestamp          source device operative_system  test  price  converted        city\n   90713 2015-03-22 16:47:36    ads_facebook mobile            other     0     39          0   Henderson\n  881541 2015-05-23 22:60:12 friend_referral mobile            other     0     39          0   Rock Hill\n  936854 2015-04-18 10:45:43    ads_facebook mobile              iOS     1     59          0 San Antonio",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_67/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_67/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Join on 'user_id' as per operation history\ndf_joined = pd.merge(df0, df1[['user_id', 'city']], on='user_id', how='inner')\n\n# Ensure columns are in the target schema order and types\n# Target schema: ['user_id': int, 'timestamp': str, 'source': str, 'device': str, 'operative_system': str,\n#                 'test': int, 'price': int, 'converted': int, 'city': str]\n\n# Convert types explicitly to match target schema\ndf_joined['user_id'] = df_joined['user_id'].astype(int)\ndf_joined['timestamp'] = df_joined['timestamp'].astype(str)\ndf_joined['source'] = df_joined['source'].astype(str)\ndf_joined['device'] = df_joined['device'].astype(str)\ndf_joined['operative_system'] = df_joined['operative_system'].astype(str)\ndf_joined['test'] = df_joined['test'].astype(int)\ndf_joined['price'] = df_joined['price'].astype(int)\ndf_joined['converted'] = df_joined['converted'].astype(int)\ndf_joined['city'] = df_joined['city'].astype(str)\n\n# Reorder columns to match target schema\ntarget_columns = ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']\ndf_target = df_joined[target_columns]\n\n# Write the final target table to the specified path without the index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_67/target_multisource.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "user_id,timestamp,source,device,operative_system,test,price,converted,city\n915987,2015-04-20 15:52:28,seo-google,mobile,android,0,39,0,Minneapolis\n138456,2015-04-05 09:36:46,direct_traffic,mobile,iOS,1,59,0,Fountain Valley\n315017,2015-03-13 10:26:42,ads-bing,mobile,android,0,39,0,Irvington\n206185,2015-03-22 11:53:26,ads-google,mobile,android,0,39,0,Lancaster\n880912,2015-03-27 13:48:39,ads-bing,web,windows,0,39,0,Charlotte\n792071,2015-03-27 01:59:54,seo_facebook,web,windows,0,39,0,Nashville\n927563,2015-04-10 01:49:41,ads-google,mobile,iOS,1,59,0,Farmington Hills\n587101,2015-03-29 16:45:05,ads-google,web,windows,0,39,0,Fairfield\n732485,2015-05-24 09:29:16,ads-google,mobile,android,0,39,0,Greenville\n548439,2015-04-10 10:33:32,ads-google,web,windows,0,39,0,Metairie\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.6793479919433594
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6673,
+          "cost": 0.0015520000000000002,
+          "latency": 4.345702886581421,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.492 + 0.843) / 2 = 0.667 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.996, range overlap=1.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.492 (precision=0.625, recall=0.405).\nSpurious FDs in generated (not in ground truth): ['source', 'timestamp'] \u2192 converted; ['device', 'test', 'timestamp'] \u2192 converted; ['device', 'timestamp'] \u2192 converted; ['operative_system', 'timestamp'] \u2192 converted; ['source', 'test', 'timestamp'] \u2192 converted (and 4 more).\nMissing FDs from ground truth: ['city', 'test', 'timestamp'] \u2192 device; ['city', 'operative_system', 'timestamp'] \u2192 price; ['city', 'test', 'timestamp'] \u2192 operative_system; ['city', 'device', 'timestamp'] \u2192 test; ['city', 'source', 'timestamp'] \u2192 device (and 17 more).\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'timestamp': Jaccard=0.086\n  Column 'city': Jaccard=0.508",
+          "generated_samples": "Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']\nNumber of Tuples: 20000\nExamples:\n user_id           timestamp          source device operative_system  test  price  converted city\n  642525 2015-04-28 12:37:51      ads-google mobile            other     1     59          0  NaN\n  291735 2015-04-18 11:20:32 friend_referral mobile          android     0     39          0  NaN\n   98265 2015-05-25 11:29:24       ads_other    web          windows     0     39          0  NaN",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_67/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_67/training_1.csv\", index_col=0)\n\n# Perform an outer join on 'user_id' to keep all rows from source0 and enrich with city info from source1\n# The failed pipeline used inner join which caused too few rows (1228 vs 126352)\n# Outer join will keep all source0 rows and add city where available\njoined = pd.merge(source0, source1[['user_id', 'city']], on='user_id', how='left')\n\n# Write the final output with exact target schema and column order\njoined = joined[['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted', 'city']]\n\njoined.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_67/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.053499221801758
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 48582.6632976532,
+        "critique": 24253.966331481934
+      }
+    }
+  ]
+}

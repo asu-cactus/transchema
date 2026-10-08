@@ -1,0 +1,29 @@
+{
+  "case": "4_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9952,
+        "cost": 0.0016224000000000002,
+        "latency": 5.6289472579956055,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.990) / 2 = 0.995 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.981, range overlap=1.000.\nGround truth candidate keys: {occluded}.\nGenerated table candidate keys: {occluded}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['occluded']\nNumber of Tuples: 22540\nExamples:\n occluded\n        1\n        1\n        1",
+        "code": "import pandas as pd\n\n# Define source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length4_90/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/length4_90/training_3.csv\"\n]\n\n# List to hold the 'occluded' column from each source\noccluded_columns = []\n\n# Load each source file, extract the 'occluded' column, and append to the list\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    # Extract only the 'occluded' column as integer type\n    occluded_series = df['occluded'].astype(int)\n    occluded_columns.append(occluded_series)\n\n# Concatenate all occluded columns vertically (union)\ntarget_df = pd.concat(occluded_columns, ignore_index=True).to_frame(name='occluded')\n\n# Save the resulting DataFrame to the target CSV file\ntarget_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_90/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "occluded\n0\n0\n0\n0\n1\n1\n1\n1\n1\n1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9453296661376953
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 5691.958665847778,
+        "critique": 0.0
+      }
+    }
+  ]
+}

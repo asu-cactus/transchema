@@ -1,0 +1,21 @@
+MCTS Tree Visualization — case 4_91
+============================================================
+
+[ROOT]  visits=  1  q=1.000  best=1.000
+    ├── UNION                      visits=  1  q=1.000  best=1.000  · best path
+    │       UNION : [Source4_91_0, Source4_91_1, Source4_91_2, Source4_91_3]
+    ├── JOIN                       visits=  0  q=0.000  best=0.000
+    │       JOIN : [[Source4_91_0, Source4_91_1]] columns=[[Source4_91_0.TrackID, Source4_91_1.TrackID]]
+    ├── GROUP_BY                   visits=  0  q=0.000  best=0.000
+    │       GROUP_BY : [Source4_91_0.attributes]
+    ├── GROUP_BY                   visits=  1  q=0.000  best=0.000
+    │       GROUP_BY : [attributes]
+    └── GROUP_BY                   visits=  0  q=0.000  best=0.000
+            GROUP_BY : [Source4_91_0.label, Source4_91_0.video, Source4_91_1.label, Source4_91_1.video, Source4_91_2.video, Sourc...
+
+Legend
+  visits  number of simulations that passed through this node
+  q       average reward (total_reward / visits)
+  best    highest single reward seen from any simulation through this node
+  ·       on the path to the best result
+  ★       the node whose simulation produced the best overall result

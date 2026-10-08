@@ -1,0 +1,240 @@
+{
+  "case": "1_77",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.0,
+        "cost": 0.0026596,
+        "latency": 13.366502523422241,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (0.000 + 0.000 + 0.000) / 3 = 0.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {fac_type, capacity}.\nKeys present in ground truth but absent in generated: {fac_type}; {capacity}.\nSpurious keys in generated not present in ground truth: {capacity, fac_type}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {right, left}.\nFunctional dependency F1: 0.000 (precision=0.000, recall=0.000).\nMissing FDs from ground truth: ['fac_type'] \u2192 capacity; ['capacity'] \u2192 fac_type.\nDistribution Analysis (numerical columns with issues):\n  Column 'capacity': range overlap=0.000, JS similarity=0.000\n    Generated    \u2014 min: 0.0, max: 214.0, mean: 56.9472\n    Ground Truth \u2014 min: 7136.0, max: 11201.0, mean: 9168.5",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 322\nExamples:\nfac_type  capacity\n     RCF        44\n     RCF        13\n      NF        32",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold processed DataFrames\ndfs = []\n\nfor file_path in source_files:\n    # Read CSV with index_col=0 to ignore the numerical index column\n    df = pd.read_csv(file_path, index_col=0)\n    \n    # Select only the columns needed for the target schema\n    # Target schema: ['fac_type': string, 'capacity': integer]\n    # Source schema includes 'fac_type' and 'capacity' among others\n    \n    # Handle missing or non-finite values in 'capacity' before conversion\n    # Replace NaN or infinite with 0 (or could drop, but 0 is safer here)\n    df['capacity'] = pd.to_numeric(df['capacity'], errors='coerce').fillna(0)\n    \n    # Convert capacity to integer type safely\n    df['capacity'] = df['capacity'].astype(int)\n    \n    # Extract only the needed columns\n    df_target = df[['fac_type', 'capacity']].copy()\n    \n    dfs.append(df_target)\n\n# Since only one source table, no union needed, but code supports multiple sources\n# Concatenate all source tables vertically (union)\nresult_df = pd.concat(dfs, ignore_index=True)\n\n# Write the result to the target path\nresult_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,96\nNF,159\nNF,128\nNF,98\nNF,91\nNF,127\nNF,84\nNF,83\nNF,99\nNF,83\n"
+      },
+      "critiques": [
+        {
+          "type": "fd",
+          "is_correct": true,
+          "score": 1.0,
+          "cost": 0.0027716,
+          "latency": 11.175059080123901,
+          "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+          "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+          "code": "import pandas as pd\n\n# Load source data with index_col=0 as per hint\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\", index_col=0)\n\n# The target schema is ['fac_type': string, 'capacity': integer]\n# The key is 'fac_type', and capacity is aggregated.\n\n# Group by 'fac_type' and sum 'capacity'\nresult = source1.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Ensure capacity is integer type (target expects integer)\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_critique_history.csv\", index=False)"
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0014348000000000002,
+        "latency": 4.254701614379883,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Paths of all source files\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join needed.\n# Target schema: ['fac_type': string, 'capacity': integer]\n# We need to group by 'fac_type' and sum 'capacity' to get total capacity per fac_type.\n\n# Concatenate all source dataframes (if multiple, here only one)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Group by 'fac_type' and sum 'capacity'\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 3,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0015780000000000002,
+        "latency": 4.009095191955566,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 4,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0017596000000000003,
+        "latency": 4.683281421661377,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 5,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0019412000000000001,
+        "latency": 7.325571537017822,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 6,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0021228,
+        "latency": 3.3048181533813477,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 7,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0023044000000000003,
+        "latency": 4.148132085800171,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 8,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.002486,
+        "latency": 3.298099994659424,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 9,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0026676,
+        "latency": 4.018191814422607,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 10,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0028492,
+        "latency": 4.732132434844971,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 11,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0030308,
+        "latency": 3.784480333328247,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 12,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0032124000000000002,
+        "latency": 3.6113078594207764,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 13,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0033940000000000003,
+        "latency": 4.182440757751465,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 14,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0035756000000000004,
+        "latency": 4.887612581253052,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 15,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0037572,
+        "latency": 3.5938045978546143,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n      NF     11201\n     RCF      7136",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    },
+    {
+      "iteration": 16,
+      "ms": {
+        "is_correct": true,
+        "score": 1.0,
+        "cost": 0.0039388,
+        "latency": 3.3048155307769775,
+        "nl_score": "Overall: the generated table appears to be a near-perfect match.\nCombined score = (fd_f1 + range_overlap + js_similarity) / 3 = (1.000 + 1.000 + 1.000) / 3 = 1.000 (1.0 is perfect).\nGround truth candidate keys: {capacity}; {fac_type}.\nGenerated table candidate keys: {capacity}; {fac_type}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll numerical columns show complete value range overlap and matching distributions.",
+        "generated_samples": "Schema: ['fac_type', 'capacity']\nNumber of Tuples: 2\nExamples:\nfac_type  capacity\n     RCF      7136\n      NF     11201",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/length1_77/test_0.csv\"\n]\n\n# List to hold dataframes from all sources\ndfs = []\n\n# Load each source file with index_col=0 to ignore the first numerical index column\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Concatenate all source dataframes (only one here, but scalable)\nall_data = pd.concat(dfs, ignore_index=True)\n\n# Target schema: ['fac_type': string, 'capacity': integer]\n# Group by 'fac_type' and sum 'capacity' to get total capacity per fac_type\nresult = all_data.groupby('fac_type', as_index=False)['capacity'].sum()\n\n# Convert capacity to integer type as per target schema\nresult['capacity'] = result['capacity'].astype(int)\n\n# Write the result to the target path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_77/target_multisource_cot.csv\", index=False)",
+        "generated_csv_head": "fac_type,capacity\nNF,11201\nRCF,7136\n"
+      },
+      "critiques": []
+    }
+  ]
+}

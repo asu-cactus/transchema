@@ -1,0 +1,46 @@
+{
+  "case": "2_24",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8946,
+        "cost": 0.007218800000000001,
+        "latency": 22.347829341888428,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.789) / 2 = 0.895 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.837, range overlap=0.702.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'size': range overlap=0.404, JS similarity=0.750\n    Generated    \u2014 min: 1.0, max: 113.0, mean: 14.5033\n    Ground Truth \u2014 min: 1.0, max: 278.0, mean: 31.6863\n  Column 'mean': range overlap=1.000, JS similarity=0.924\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2009\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.828",
+        "generated_samples": "Schema: ['title', 'size', 'mean']\nNumber of Tuples: 1379\nExamples:\n                              title  size     mean\n                Palookaville (1996)     3 2.333333\nAdventures of Pinocchio, The (1996)     9 3.666667\n              Believers, The (1987)     3 2.333333",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_24/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_24/training_1.csv\", index_col=0)\n\n# Join Source0 and Source1 on movie_id\njoined = pd.merge(source0, source1, on=\"movie_id\", how=\"inner\")\n\n# Group by title and aggregate: count of ratings as size, average of ratings as mean\nagg = joined.groupby(\"title\", as_index=False).agg(\n    size=pd.NamedAgg(column=\"rating\", aggfunc=\"count\"),\n    mean=pd.NamedAgg(column=\"rating\", aggfunc=\"mean\")\n)\n\n# Ensure correct dtypes as per target schema\nagg[\"title\"] = agg[\"title\"].astype(str)\nagg[\"size\"] = agg[\"size\"].astype(int)\nagg[\"mean\"] = agg[\"mean\"].astype(float)\n\n# Write the result to the target path without the index column\nagg.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_24/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title,size,mean\n'Til There Was You (1997),2,2.5\n1-900 (1994),1,1.0\n101 Dalmatians (1996),25,2.76\n12 Angry Men (1957),21,4.523809523809524\n187 (1997),11,2.909090909090909\n2 Days in the Valley (1996),18,3.388888888888889\n\"20,000 Leagues Under the Sea (1954)\",21,3.571428571428572\n2001: A Space Odyssey (1968),50,3.72\n\"39 Steps, The (1935)\",7,4.0\n8 1/2 (1963),9,3.6666666666666665\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1348724365234375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8946,
+          "cost": 0.0015092,
+          "latency": 5.153738498687744,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.789) / 2 = 0.895 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.837, range overlap=0.702.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'size': range overlap=0.404, JS similarity=0.750\n    Generated    \u2014 min: 1.0, max: 113.0, mean: 14.5033\n    Ground Truth \u2014 min: 1.0, max: 278.0, mean: 31.6863\n  Column 'mean': range overlap=1.000, JS similarity=0.924\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.2009\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.0945\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.828",
+          "generated_samples": "Schema: ['title', 'size', 'mean']\nNumber of Tuples: 1379\nExamples:\n                               title  size     mean\n                 Phantom, The (1996)    18 2.555556\nStephen King's The Langoliers (1995)     7 2.571429\n                         Bean (1997)    24 2.750000",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_24/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_24/training_1.csv\", index_col=0)\n\n# Join Source2_24_0 and Source2_24_1 on movie_id\njoined = pd.merge(source0, source1, how='inner', left_on='movie_id', right_on='movie_id')\n\n# Group by title (string, leftmost column in target schema)\n# Aggregate count of rating as size and average of rating as mean\nresult = joined.groupby('title', as_index=False).agg(\n    size=('rating', 'count'),\n    mean=('rating', 'mean')\n)\n\n# Ensure column order and names exactly as target schema\nresult = result[['title', 'size', 'mean']]\n\n# Write output to the specified file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_24/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.6095638275146484
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 22453.662633895874,
+        "critique": 5323.557376861572
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "5_25",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5887,
+        "cost": 0.005986400000000001,
+        "latency": 18.382770538330078,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.320) / 2 = 0.589 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.375, range overlap=0.265.\nGround truth candidate keys: {longitude}.\nGenerated table candidate keys: {longitude}; {missing_count}; {state}; {latitude}.\nSpurious keys in generated not present in ground truth: {latitude}; {state}; {missing_count}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.857 (precision=0.750, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['state'] \u2192 longitude; ['latitude'] \u2192 longitude; ['missing_count'] \u2192 longitude.\nDistribution Analysis (numerical columns with issues):\n  Column 'missing_count': range overlap=0.020, JS similarity=0.167\n    Generated    \u2014 min: 1.0, max: 50.0, mean: 25.5\n    Ground Truth \u2014 min: 4.0, max: 5.0, mean: 4.5\n  Column 'state': range overlap=0.020, JS similarity=0.167\n    Generated    \u2014 min: 1.0, max: 50.0, mean: 25.5\n    Ground Truth \u2014 min: 4.0, max: 5.0, mean: 4.5\n  Column 'latitude': range overlap=0.020, JS similarity=0.167\n    Generated    \u2014 min: 1.0, max: 50.0, mean: 25.5\n    Ground Truth \u2014 min: 4.0, max: 5.0, mean: 4.5",
+        "generated_samples": "Schema: ['longitude', 'missing_count', 'state', 'latitude']\nNumber of Tuples: 200\nExamples:\n longitude  missing_count  state  latitude\n -111.8535              0     44        40\n -107.2085              0     50        43\n  -80.9066              0     40        34",
+        "code": "import pandas as pd\n\n# File paths for the source CSV files\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_25/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_25/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_25/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_25/training_4.csv\"\n]\n\n# Read all source files into dataframes with index_col=0 to ignore the index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# UNION operation: concatenate all dataframes vertically\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# According to the intermediate_step1 schema and examples:\n# intermediate_step1 columns: ['longitude', 'missing_count', 'state', 'latitude']\n# But source files have schema: ['missing_count', 'state', 'latitude', 'longitude']\n# So reorder columns to match intermediate_step1 schema\ndf_union = df_union[['longitude', 'missing_count', 'state', 'latitude']]\n\n# The target schema is:\n# ['longitude': float, 'missing_count': integer, 'state': integer, 'latitude': integer]\n# The 'state' column in source is string (state names), but target expects integer.\n# From intermediate_step1 examples, 'state' is integer (e.g., 5,4,5)\n# So we need to convert 'state' string to integer codes.\n\n# Map state names to integer codes based on their appearance order in the unioned data\n# We assign integer codes starting from 1\nstate_codes = {state: code for code, state in enumerate(sorted(df_union['state'].unique()), start=1)}\ndf_union['state'] = df_union['state'].map(state_codes).astype(int)\n\n# Convert latitude to integer by rounding (as target latitude is integer)\ndf_union['latitude'] = df_union['latitude'].round().astype(int)\n\n# Convert missing_count to integer (already integer but ensure type)\ndf_union['missing_count'] = df_union['missing_count'].astype(int)\n\n# longitude is float, keep as is\ndf_union['longitude'] = df_union['longitude'].astype(float)\n\n# The target examples show missing_count, state, latitude values mostly 4 or 5,\n# but source missing_count is mostly 0. The target examples have missing_count 4 or 5.\n# To match target distribution, we can filter rows where missing_count is 4 or 5,\n# but source missing_count is 0 in all examples.\n# Since no source rows have missing_count 4 or 5, we cannot filter by that.\n# Instead, we keep all rows as is.\n\n# Save the final dataframe to the target CSV file\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_25/target_multisource.csv\"\ndf_union.to_csv(output_path, index=False)",
+        "generated_csv_head": "longitude,missing_count,state,latitude\n-86.8073,0,1,33\n-152.2683,0,2,61\n-111.3877,0,3,34\n-92.3809,0,4,35\n-119.7462,0,5,36\n-105.3272,0,6,39\n-72.7622,0,7,42\n-75.5148,0,8,39\n-81.717,0,9,28\n-83.6487,0,10,33\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.605987548828125
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0028056,
+          "latency": 11.201815128326416,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\ns0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_25/training_0.csv\", index_col=0)\ns1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_25/training_1.csv\", index_col=0)\ns2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_25/training_2.csv\", index_col=0)\ns3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_25/training_3.csv\", index_col=0)\ns4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_25/training_4.csv\", index_col=0)\n\n# Rename 'state' and 'latitude' columns in s1, s2, s3, s4 to avoid collision after join\n# Because target schema has 'state' and 'latitude' as integers, presumably aggregated or renamed from sources\n# But since all sources have same schema, and target has same columns but integer types, we join on longitude and aggregate\n\n# Join all sources on 'longitude' (primary key)\ndf = s0.merge(s1, on='longitude', suffixes=('_0', '_1'))\ndf = df.merge(s2, on='longitude', suffixes=('', '_2'))\ndf = df.merge(s3, on='longitude', suffixes=('', '_3'))\ndf = df.merge(s4, on='longitude', suffixes=('', '_4'))\n\n# After join, columns are:\n# missing_count_0, state_0, latitude_0, longitude,\n# missing_count_1, state_1, latitude_1,\n# missing_count, state, latitude (from s2),\n# missing_count_3, state_3, latitude_3,\n# missing_count_4, state_4, latitude_4\n\n# Aggregate columns by taking max (or any aggregation consistent with target examples)\n# Group by longitude (primary key)\nagg_df = df.groupby('longitude').agg({\n    'missing_count_0': 'max',\n    'missing_count_1': 'max',\n    'missing_count': 'max',  # from s2\n    'missing_count_3': 'max',\n    'missing_count_4': 'max',\n    'state_0': 'max',\n    'state_1': 'max',\n    'state': 'max',\n    'state_3': 'max',\n    'state_4': 'max',\n    'latitude_0': 'max',\n    'latitude_1': 'max',\n    'latitude': 'max',\n    'latitude_3': 'max',\n    'latitude_4': 'max'\n}).reset_index()\n\n# Now combine aggregated columns by summing or max to get single missing_count, state, latitude columns\n# Since target examples show integer values like 5, 4, etc., max is reasonable to pick\n\nagg_df['missing_count'] = agg_df[[\n    'missing_count_0', 'missing_count_1', 'missing_count', 'missing_count_3', 'missing_count_4'\n]].max(axis=1).astype(int)\n\nagg_df['state'] = agg_df[[\n    'state_0', 'state_1', 'state', 'state_3', 'state_4'\n]].max(axis=1).astype(int)\n\nagg_df['latitude'] = agg_df[[\n    'latitude_0', 'latitude_1', 'latitude', 'latitude_3', 'latitude_4'\n]].max(axis=1).astype(int)\n\n# Select final columns in target schema order: ['longitude', 'missing_count', 'state', 'latitude']\nfinal_df = agg_df[['longitude', 'missing_count', 'state', 'latitude']]\n\n# Write output\nfinal_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_25/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.02193450927734375
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 18451.1775970459,
+        "critique": 11248.21138381958
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "2_90",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.8436,
+        "cost": 0.0015976000000000002,
+        "latency": 4.6212756633758545,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.687) / 2 = 0.844 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.798, range overlap=0.966.\nGround truth candidate keys: {day, metric}.\nGenerated table candidate keys: {day, metric}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'value': range overlap=0.966, JS similarity=0.798\n    Generated    \u2014 min: 1.0, max: 30.0, mean: 13.0714\n    Ground Truth \u2014 min: 2.0, max: 30.0, mean: 12.2857\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'day': Jaccard=0.180",
+        "generated_samples": "Schema: ['day', 'metric', 'value']\nNumber of Tuples: 14\nExamples:\n     day         metric  value\nvendredi          pluie    3.0\ndimanche      pollution   15.0\ndimanche ensoleillement    1.0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/length2_90/training_0.csv\"\n]\n\n# List to hold loaded source DataFrames\nsource_dfs = []\n\n# Load each source CSV file with index_col=0 to ignore the numerical index column\nfor file_path in source_files:\n    df = pd.read_csv(file_path, index_col=0)\n    source_dfs.append(df)\n\n# Since all source tables have the exact same schema as the target table,\n# we can union (concatenate) them directly.\n# Here, we have only one source table, so the union is just that table.\ntarget_df = pd.concat(source_dfs, ignore_index=True)\n\n# Ensure the target schema and types:\n# Target schema: ['day': string, 'metric': string, 'value': float]\ntarget_df = target_df.astype({\n    'day': 'string',\n    'metric': 'string',\n    'value': 'float'\n})\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_90/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "day,metric,value\njeudi,pluie,4.0\njeudi,pollution,30.0\nvendredi,temperature,25.0\nvendredi,ensoleillement,3.0\nvendredi,pluie,3.0\nvendredi,pollution,20.0\nsamedi,temperature,24.0\nsamedi,ensoleillement,2.0\nsamedi,pluie,2.0\nsamedi,pollution,30.0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6260147094726562
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0018576000000000003,
+          "latency": 8.418682098388672,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_90/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_90/training_1.csv\", index_col=0)\n\n# Since only Source2_90_0 is given in the prompt, but the operation requires two sources,\n# we assume the second source file is training_1.csv in the same folder (common pattern).\n# If not available, the pipeline cannot join two tables.\n\n# Join on 'day' column (primary key)\njoined = pd.merge(source0, source1, on='day', how='outer', suffixes=('_0', '_1'))\n\n# The target schema is ['day', 'metric', 'value'] with 'value' aggregated by day.\n# The source tables have the same schema, so union is needed, but since only one source is given,\n# we union the two sources first, then group by day and metric.\n\n# Union the two sources (stack rows)\nunioned = pd.concat([source0, source1], ignore_index=True)\n\n# Group by 'day' and 'metric' (leftmost string columns, unique keys)\n# Aggregate 'value' by sum (to combine values for same day and metric)\ngrouped = unioned.groupby(['day', 'metric'], as_index=False).agg({'value': 'sum'})\n\n# Write output\ngrouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_90/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.03266334533691406
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 4623.614072799683,
+        "critique": 8427.452564239502
+      }
+    }
+  ]
+}

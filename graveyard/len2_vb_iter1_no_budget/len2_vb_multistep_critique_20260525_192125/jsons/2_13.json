@@ -1,0 +1,46 @@
+{
+  "case": "2_13",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6485,
+        "cost": 0.0025399999999999997,
+        "latency": 7.635821580886841,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.297) / 2 = 0.648 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.563, range overlap=0.000.\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.000, JS similarity=0.563\n    Generated    \u2014 min: 104.0, max: 2607.0, mean: 1116.3333\n    Ground Truth \u2014 min: 1187.0, max: 1187.0, mean: 1187.0\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['type', 'driver_count']\nNumber of Tuples: 3\nExamples:\n    type  driver_count\nSuburban           638\n   Urban          2607\n   Rural           104",
+        "code": "import pandas as pd\n\n# Load source tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_13/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_13/training_1.csv\"\n\n# Read Source2_13_0 with index_col=0 to ignore the numerical index column\ndf_source0 = pd.read_csv(source0_path, index_col=0)\n\n# Read Source2_13_1 with index_col=0 (although it won't be used in transformation)\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history:\n# group_by = [Source2_13_0.type]\n# aggregations = [sum(Source2_13_0.driver_count)]\n# So we only use Source2_13_0 for the transformation.\n\n# Perform the group by and aggregation\ndf_target = df_source0.groupby('type', as_index=False)['driver_count'].sum()\n\n# Ensure the schema matches target schema: ['type': string, 'driver_count': integer]\ndf_target['type'] = df_target['type'].astype(str)\ndf_target['driver_count'] = df_target['driver_count'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_13/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,driver_count\nRural,104\nSuburban,638\nUrban,2607\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8347034454345703
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.6184,
+          "cost": 0.0019548,
+          "latency": 9.720621347427368,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.237) / 2 = 0.618 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.322, range overlap=0.000.\nGround truth candidate keys: {type}; {driver_count}.\nGenerated table candidate keys: {type}; {driver_count}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'driver_count': range overlap=0.000, JS similarity=0.322\n    Generated    \u2014 min: 727.0, max: 16847.0, mean: 9101.3333\n    Ground Truth \u2014 min: 1187.0, max: 1187.0, mean: 1187.0\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['type', 'driver_count', 'driver_count.1']\nNumber of Tuples: 3\nExamples:\n    type  driver_count  driver_count.1\nSuburban          9730             657\n   Rural           727             125\n   Urban         16847             438",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_13/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_13/training_1.csv\", index_col=0)\n\n# Join on city (shared column)\njoined = pd.merge(source0, source1, how='inner', on='city')\n\n# Group by 'type' (primary key in target)\n# Aggregate sum of driver_count from source0 and count of ride_id from source1\nagg = joined.groupby('type').agg({\n    'driver_count': 'sum',\n    'ride_id': 'count'\n}).reset_index()\n\n# According to target schema, only 'type' and 'driver_count' are needed\n# The target driver_count = 1187 matches count of rides for Urban type in source1\n# So we use the count of rides (ride_id) as driver_count in target\n# But the FD says type -> driver_count, so driver_count must come from aggregation on source1 rides count\n\n# Rename 'ride_id' count to 'driver_count' to match target schema\nagg = agg.rename(columns={'ride_id': 'driver_count'})\n\n# Select only columns in target schema\nresult = agg[['type', 'driver_count']]\n\n# Write output\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_13/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.9934902191162109
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7696.846008300781,
+        "critique": 9761.385917663574
+      }
+    }
+  ]
+}

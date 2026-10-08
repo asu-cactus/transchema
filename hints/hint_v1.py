@@ -81,7 +81,6 @@ def get_column_table_mapping(
             mappings += f"{col} is available in {', '.join(sources)}\n"
         else:
             mappings += f"{col} column_name is not available in any source directly\n"
-    # print(mappings)
     return mappings
 
 
@@ -157,14 +156,12 @@ def get_join_hints(
     hints = ""
     features = []
     tables = load_tables(directory, source_data_name_list, len_idx_target_idx)
-    # print(tables)
 
     # dictionary that stores each attribute's successful features
     # i.e if attribute col1<->col2 satisfies the feature x it should have key="col1,col2" : value=[(feature_name,feature_value)]
     # at the end sort the dictionary based on length of values satisfied.
     feat_dict = {}
 
-    # print("Generating join hints...")
 
     for table_name1, table_name2 in combinations(tables.keys(), 2):
         table1 = tables[table_name1]
@@ -177,7 +174,6 @@ def get_join_hints(
         for col1 in columns1:
             for col2 in columns2:
                 if table1[col1].dtype == table2[col2].dtype:
-                    # print(col1,col2)
                     hint = " - "
                     pos1 = columns1.get_loc(col1)
                     pos2 = columns2.get_loc(col2)
@@ -200,7 +196,6 @@ def get_join_hints(
                         fq["priority"] = 1
                     else:
                         fq["priority"] = 0
-                    # print(fq)
                     if len(fq) > 3:
 
                         feat_dict[f"{table_name1}.{col1} <-> {table_name2}.{col2}"] = (
@@ -257,7 +252,6 @@ def get_join_hints(
 
         # process column based features
 
-        # print(feat_dict)
 
         if hint_source == "v1_kv":
             cnt = 0
@@ -267,6 +261,8 @@ def get_join_hints(
                 reverse=True,
             ):
                 cnt += 1
+                if cnt > 10:
+                    break
                 hint = f' - {k.replace(" <-> ", " POTENTIAL JOIN ")} ' + " { "
 
                 # todo create two functions, one for key-value pair and one for the text representation.
@@ -276,8 +272,6 @@ def get_join_hints(
                     k.split(" <-> ")[1].split(".")[0],
                     k.split(" <-> ")[1].split(".")[1],
                 )
-                # print(t1,c1,t2,c2)
-                # print(feat_dict[k])
                 for ky, v in feat_dict[k].items():
                     if ky == "dvr":
                         if "1" in v.keys():
@@ -289,35 +283,27 @@ def get_join_hints(
                             hint += f"Leftness of {t1}.{c1} : {round(v['1'],2)} , "
                         if "2" in v.keys():
                             hint += f"Leftness of {t2}.{c2} : {round(v['2'],2)} , "
-                        # hint += f"Leftness of {t1}.{c1} : {round(v["1"],2)}, Leftness of {t2}.{c2} : {round(v["2"],2)}"
                     elif ky == "s":
                         if "1" in v.keys():
                             hint += f"Sortedness of {t1}.{c1} : {round(v['1'],2)}"
                         if "2" in v.keys():
                             hint += f"Sortedness of {t2}.{c2} : {round(v['2'],2)}"
-                        # hint += f"Sortedness of {t1}.{c1} : {round(v["1"],2)}, Sortedness of {t2}.{c2} : {round(v["2"],2)}"
                     else:
                         hint += f"{ky} : {round(v,2)}"
                     hint += " , "
 
                 hint = hint[:-3] + " }"
-                # print(hint)
                 hints += hint + "\n"
-                # if cnt > 10:
-                #     break
 
         # add the hint string
         # print(feat_dict)
 
-    # print(hints)
     return [hints]
 
-    # return dict(sorted(feat_dict.items(), key=lambda item: (item[1].get('priority', 0) == 0, len(item[1])), reverse=True))
 
 
 def get_truncated_join_feature(f, join_flag, jht):
     feature_list = {}
-    # print(join_flag, jht)
     if join_flag:
         if f[0] >= jht[0] or f[1] >= jht[0]:
             feature_list["dvr"] = {}
@@ -436,7 +422,6 @@ def get_aggregation_function_hint(directory, column_name):
     )
     target_file = os.path.join(directory, f"length{dataset_id}", "target.csv")
 
-    # print(source_file, target_file)
 
     # Check file existence
     if not os.path.exists(source_file) or not os.path.exists(target_file):
@@ -455,7 +440,6 @@ def get_aggregation_function_hint(directory, column_name):
     source_dtype = source_df[col].dtype if col in source_df.columns else None
     target_dtype = target_df[col].dtype
 
-    # print(source_dtype, target_dtype)
 
     if pd.api.types.is_float_dtype(target_dtype):
         if pd.api.types.is_integer_dtype(source_dtype):
@@ -529,7 +513,6 @@ def get_groupby_aggregate_hints(
             feature = generate_features_for_column(
                 col, col_name, pos, total_columns, label_encoder
             )
-            # print(feature)
 
             # group by
             fq = get_truncated_aggreggation_features(
@@ -555,7 +538,6 @@ def get_groupby_aggregate_hints(
                     hints += hint
 
     if aggregate_flag:
-        # print(feat_dict_gb,"\n\n", feat_dict_aggregate)
         hints = ""
 
         # === GROUP BY HINTS ===
@@ -569,7 +551,6 @@ def get_groupby_aggregate_hints(
                 if len(feat_dict_gb[k]) > 0:
 
                     hint = get_group_by_hint(k, gb_seen, feat_dict_gb[k])
-                    # print( k, feat_dict_gb[k], hint)
                     if hint:
                         hints += " - " + hint + "\n"
 
@@ -588,24 +569,22 @@ def get_groupby_aggregate_hints(
                     if hint:
                         hints += " - " + hint + "\n"
 
-        # return [hints]
 
         if hint_source == "v1_kv":
-            # print(feat_dict_gb, feat_dict_aggregate)
             hints += "Group By Candidates : \n"
             cnt = 0
             for k in sorted(
                 feat_dict_gb, key=lambda k: len(feat_dict_gb[k]), reverse=True
             ):
                 cnt += 1
+                if cnt > 10:
+                    break
                 if len(feat_dict_gb[k]) > 0:
                     hint = f" - {k}  " + " { "
                     for ky, v in feat_dict_gb[k].items():
                         hint += f"{ky} : {v} , "
                     hint = hint[:-3] + " }\n"
                     hints += hint
-                    # if cnt > 10:
-                    #     break
 
             hints += "Aggregation Candidates : \n"
             cnt = 0
@@ -615,17 +594,15 @@ def get_groupby_aggregate_hints(
                 reverse=True,
             ):
                 cnt += 1
+                if cnt > 10:
+                    break
                 if len(feat_dict_aggregate[k]) > 0:
                     hint = f" - {k} : " + " { "
                     for ky, v in feat_dict_aggregate[k].items():
                         hint += f"{ky} : {v} , "
                     hint = hint[:-3] + " }"
                     hints += hint
-                    # if cnt > 10:
-                    #     break
-    # print(hints)
     return [hints]
-    # return dict(sorted(feat_dict_gb.items(), key=lambda item: len(item[1]), reverse=True)),dict(sorted(feat_dict_aggregate.items(), key=lambda item: len(item[1]), reverse=True))
 
 
 def get_truncated_aggreggation_features(f, flag, aht, group_by_flag):
@@ -666,7 +643,6 @@ def get_truncated_aggreggation_features(f, flag, aht, group_by_flag):
                 feature_list["Value Range"] = round(f[5], 2)
             if f[2] in [0, 1]:
                 feature_list["datatype"] = "Numerical"
-    # print(feature_list)
     return feature_list
 
 

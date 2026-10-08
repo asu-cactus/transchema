@@ -1,0 +1,29 @@
+{
+  "case": "1_53",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9314,
+        "cost": 0.0044568,
+        "latency": 13.798927783966064,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.863) / 2 = 0.931 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.778, range overlap=0.879.\nGround truth candidate keys: {wine_servings}; {continent}; {beer_servings}; {spirit_servings}; {total_litres_of_pure_alcohol}.\nGenerated table candidate keys: {wine_servings}; {continent}; {beer_servings}; {spirit_servings}; {total_litres_of_pure_alcohol}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'beer_servings': range overlap=0.917, JS similarity=1.000\n    Generated    \u2014 min: 41.3333, max: 191.5714, mean: 113.8017\n    Ground Truth \u2014 min: 31.9, max: 195.7083, mean: 109.7233\n  Column 'spirit_servings': range overlap=0.831, JS similarity=0.647\n    Generated    \u2014 min: 17.0741, max: 122.0, mean: 73.3065\n    Ground Truth \u2014 min: 15.5769, max: 141.7917, mean: 85.0094\n  Column 'wine_servings': range overlap=0.920, JS similarity=0.802\n    Generated    \u2014 min: 7.6667, max: 137.9524, mean: 49.609\n    Ground Truth \u2014 min: 10.75, max: 145.9583, mean: 61.5944\n  Column 'total_litres_of_pure_alcohol': range overlap=0.849, JS similarity=0.662\n    Generated    \u2014 min: 2.3125, max: 8.2238, mean: 4.663\n    Ground Truth \u2014 min: 2.0, max: 8.9625, mean: 4.9266",
+        "generated_samples": "Schema: ['continent', 'beer_servings', 'spirit_servings', 'wine_servings', 'total_litres_of_pure_alcohol']\nNumber of Tuples: 5\nExamples:\ncontinent  beer_servings  spirit_servings  wine_servings  total_litres_of_pure_alcohol\n       OC      89.666667             45.0      23.500000                       2.90000\n       EU     191.571429            122.0     137.952381                       8.22381\n       SA     190.400000            118.0      65.000000                       6.66000",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_53/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by 'continent' and compute the average of the specified columns\ngrouped = df.groupby('continent', as_index=False).agg({\n    'beer_servings': 'mean',\n    'spirit_servings': 'mean',\n    'wine_servings': 'mean',\n    'total_litres_of_pure_alcohol': 'mean'\n})\n\n# Ensure the columns have the correct types as per target schema\ngrouped['continent'] = grouped['continent'].astype(str)\ngrouped['beer_servings'] = grouped['beer_servings'].astype(float)\ngrouped['spirit_servings'] = grouped['spirit_servings'].astype(float)\ngrouped['wine_servings'] = grouped['wine_servings'].astype(float)\ngrouped['total_litres_of_pure_alcohol'] = grouped['total_litres_of_pure_alcohol'].astype(float)\n\n# Assign to target table name\nTarget1_53 = grouped\n\n# Write the result to the specified path without the index\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_53/target_multisource.csv\"\nTarget1_53.to_csv(output_path, index=False)",
+        "generated_csv_head": "continent,beer_servings,spirit_servings,wine_servings,total_litres_of_pure_alcohol\nAF,56.03703703703704,17.074074074074073,13.925925925925926,3.218518518518519\nAS,41.333333333333336,64.45833333333333,7.666666666666667,2.3125\nEU,191.57142857142856,122.0,137.95238095238096,8.223809523809523\nOC,89.66666666666667,45.0,23.5,2.9000000000000004\nSA,190.4,118.0,65.0,6.659999999999999\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.619577407836914
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 13811.79690361023,
+        "critique": 0.0
+      }
+    }
+  ]
+}

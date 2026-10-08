@@ -1,0 +1,29 @@
+{
+  "case": "9_80",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9975,
+        "cost": 0.006714,
+        "latency": 20.421026468276978,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.995) / 2 = 0.998 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.990, range overlap=1.000.\nGround truth candidate keys: {admit, gre, gpa}.\nGenerated table candidate keys: {admit, gre, gpa}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['admit', 'gre', 'gpa', 'prestige']\nNumber of Tuples: 580\nExamples:\n admit  gre  gpa  prestige\n     0  480 2.55         1\n     0  700 4.00         1\n     1  580 3.58         1",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_80/training_9.csv\"\n]\n\n# Read all source tables into a list of DataFrames\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Union all source tables by concatenation\ndf_union = pd.concat(dfs, ignore_index=True)\n\n# Ensure the schema and types match the target schema exactly\ndf_union = df_union.astype({\n    'admit': 'int64',\n    'gre': 'int64',\n    'gpa': 'float64',\n    'prestige': 'int64'\n})\n\n# Write the final target table to the specified path\ndf_union.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_80/target_multisource.csv\", index=False)",
+        "generated_csv_head": "admit,gre,gpa,prestige\n1,800,4.0,1\n1,560,2.98,1\n0,440,3.22,1\n1,760,4.0,1\n1,700,4.0,1\n1,540,3.81,1\n1,800,3.66,1\n1,620,3.61,1\n0,520,3.29,1\n0,360,3.14,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.079559326171875
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 20495.193243026733,
+        "critique": 0.0
+      }
+    }
+  ]
+}

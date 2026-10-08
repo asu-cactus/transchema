@@ -1,0 +1,30 @@
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_61/training_0.csv", index_col=0)
+
+joined = pd.merge(df0, df0, on="provider_id")
+
+grouped = joined.groupby(
+    ["provider_id", "provider_name_x", "provider_zip_code_x"], as_index=False
+).agg({
+    "average_covered_charges_x": "mean",
+    "average_total_payments_x": "mean",
+    "average_medicare_payments_x": "mean"
+})
+
+result = grouped.rename(columns={
+    "provider_name_x": "provider_name",
+    "provider_zip_code_x": "provider_zip_code",
+    "average_covered_charges_x": "average_covered_charges",
+    "average_total_payments_x": "average_total_payments",
+    "average_medicare_payments_x": "average_medicare_payments"
+})
+
+result["provider_id"] = result["provider_id"].astype(int)
+result["provider_zip_code"] = result["provider_zip_code"].astype(int)
+result["provider_name"] = result["provider_name"].astype(str)
+result["average_covered_charges"] = result["average_covered_charges"].astype(float)
+result["average_total_payments"] = result["average_total_payments"].astype(float)
+result["average_medicare_payments"] = result["average_medicare_payments"].astype(float)
+
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_61/target_multisource_mcts.csv", index=False)

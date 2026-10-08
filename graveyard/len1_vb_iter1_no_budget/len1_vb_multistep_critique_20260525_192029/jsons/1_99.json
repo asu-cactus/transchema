@@ -1,0 +1,46 @@
+{
+  "case": "1_99",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.808,
+        "cost": 0.0020868,
+        "latency": 21.99899697303772,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.732 + 0.884) / 2 = 0.808 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.994, range overlap=1.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.732 (precision=0.625, recall=0.882).\nSpurious FDs in generated (not in ground truth): ['device', 'test', 'timestamp'] \u2192 converted; ['operative_system', 'source', 'timestamp'] \u2192 price; ['operative_system', 'timestamp'] \u2192 converted; ['device', 'source', 'timestamp'] \u2192 test; ['device', 'source', 'timestamp'] \u2192 operative_system (and 4 more).\nMissing FDs from ground truth: ['converted', 'operative_system', 'timestamp'] \u2192 device; ['source', 'test', 'timestamp'] \u2192 converted.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'timestamp': Jaccard=0.086",
+        "generated_samples": "Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']\nNumber of Tuples: 20000\nExamples:\n user_id           timestamp         source device operative_system  test  price  converted\n  799921 2015-03-27 14:42:31   seo_facebook    web          windows     0     39          0\n  664826 2015-05-21 12:38:29 direct_traffic    web          windows     0     39          0\n  521590 2015-04-26 09:21:12     ads-google mobile          android     0     39          0",
+        "code": "import pandas as pd\n\ndef main():\n    # Source file paths\n    source_files = [\n        \"autopipeline-benchmarks/github-pipelines/length1_99/training_0.csv\"\n    ]\n\n    # Target schema columns and types:\n    # ['user_id': int, 'timestamp': str, 'source': str, 'device': str, 'operative_system': str, 'test': int, 'price': int, 'converted': int]\n\n    # Read all source files into a list of DataFrames\n    dfs = []\n    for file in source_files:\n        # index_col=0 to ignore the first numerical index column as per Hint 24\n        df = pd.read_csv(file, index_col=0)\n        dfs.append(df)\n\n    # Since all source tables have exactly the same schema as the target,\n    # we can concatenate (union) them directly.\n    combined_df = pd.concat(dfs, ignore_index=True)\n\n    # Ensure columns are in the target schema order\n    target_columns = ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']\n    combined_df = combined_df[target_columns]\n\n    # Enforce data types according to target schema\n    combined_df['user_id'] = combined_df['user_id'].astype(int)\n    combined_df['timestamp'] = combined_df['timestamp'].astype(str)\n    combined_df['source'] = combined_df['source'].astype(str)\n    combined_df['device'] = combined_df['device'].astype(str)\n    combined_df['operative_system'] = combined_df['operative_system'].astype(str)\n    combined_df['test'] = combined_df['test'].astype(int)\n    combined_df['price'] = combined_df['price'].astype(int)\n    combined_df['converted'] = combined_df['converted'].astype(int)\n\n    # Write the combined DataFrame to the target CSV file\n    combined_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_99/target_multisource.csv\", index=False)\n\nif __name__ == \"__main__\":\n    main()",
+        "generated_csv_head": "user_id,timestamp,source,device,operative_system,test,price,converted\n798367,2015-05-20 15:06:03,ads-yahoo,web,mac,1,59,0\n497447,2015-03-17 17:37:41,ads-google,mobile,iOS,1,59,0\n263612,2015-04-25 16:52:23,direct_traffic,mobile,iOS,0,39,0\n808534,2015-03-20 10:18:06,ads-google,web,windows,1,59,1\n424802,2015-05-15 17:26:22,ads-yahoo,web,mac,0,39,0\n254694,2015-04-17 15:45:05,direct_traffic,web,windows,0,39,0\n850688,2015-05-17 12:57:20,ads-google,mobile,iOS,1,59,0\n425469,2015-04-12 10:54:32,ads_other,web,windows,0,39,0\n293968,2015-04-30 08:38:31,ads_facebook,mobile,other,0,39,0\n520898,2015-03-06 19:35:45,ads_facebook,mobile,android,1,59,0\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9507408142089844
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.808,
+          "cost": 0.001254,
+          "latency": 2.9119536876678467,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.732 + 0.884) / 2 = 0.808 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.994, range overlap=1.000.\nGround truth candidate keys: {user_id}.\nGenerated table candidate keys: {user_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.732 (precision=0.625, recall=0.882).\nSpurious FDs in generated (not in ground truth): ['device', 'test', 'timestamp'] \u2192 converted; ['operative_system', 'source', 'timestamp'] \u2192 price; ['operative_system', 'timestamp'] \u2192 converted; ['device', 'source', 'timestamp'] \u2192 test; ['device', 'source', 'timestamp'] \u2192 operative_system (and 4 more).\nMissing FDs from ground truth: ['converted', 'operative_system', 'timestamp'] \u2192 device; ['source', 'test', 'timestamp'] \u2192 converted.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'timestamp': Jaccard=0.086",
+          "generated_samples": "Schema: ['user_id', 'timestamp', 'source', 'device', 'operative_system', 'test', 'price', 'converted']\nNumber of Tuples: 20000\nExamples:\n user_id           timestamp         source device operative_system  test  price  converted\n  971541 2015-05-01 18:41:36 direct_traffic    web          windows     0     39          0\n  662894 2015-03-30 10:18:15 direct_traffic    web          windows     1     59          0\n  554260 2015-03-06 12:51:36     ads-google    web          windows     0     39          0",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_99/training_0.csv\", index_col=0)\n\n# Since there is only one source table, and the target schema matches the source schema,\n# the correct operation is to UNION (which is just the source itself here).\n\n# Write the output to the target file path\ndf0.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_99/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.0177364349365234
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 22012.19940185547,
+        "critique": 19011.02375984192
+      }
+    }
+  ]
+}

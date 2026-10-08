@@ -1,0 +1,90 @@
+Case: 1_8
+Status: CORRECT
+Timestamp: 2026-02-24T04:12:09.567508
+Duration: 31.10 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_1/case_1_8/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['index_track', 'track_id', 'dummy']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_8
+2. Target Schema: ['index_track': integer, 'track_id': integer, 'dummy': integer]
+3. Target Examples: There are 16014 available target examples:        index_track  track_id  dummy
+10192        31574   3230653      1
+15832        49367    917119      1
+9314         28898   2699473      1
+2195          6848   1855073      1
+10489        32442    873559      1
+...            ...       ...    ...
+2721          8423   2121530      1
+13932        43454   3523548      1
+14891        46275   1432884      1
+666           2138      7073      1
+10218        31665   1920121      1
+
+[1601 rows x 3 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_8_0
+	Source 0 Schema: ['track_id', 'dummy']
+	Source 0 Examples: 	 Source 0 contains 32195 tuples, with examples as follows: 
+   track_id  dummy
+0   1316175      1
+1   3885714      1
+2   3091270      1
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_8_1
+	Source 1 Schema: ['index_track', 'track_id']
+	Source 1 Examples: 	 Source 1 contains 49999 tuples, with examples as follows: 
+   index_track  track_id
+0            0   1048594
+1            1   2359314
+2            2   1835030
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Load source data
+source0_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/test_0.csv"
+source1_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/test_1.csv"
+
+source0 = pd.read_csv(source0_path, index_col=0)
+source1 = pd.read_csv(source1_path, index_col=0)
+
+# Join Source1_8_1 and Source1_8_0 on 'track_id'
+# Select columns: Source1_8_1.index_track, Source1_8_1.track_id, Source1_8_0.dummy
+joined = pd.merge(
+    source1,
+    source0,
+    on='track_id',
+    how='inner',
+    validate='many_to_one'  # assuming track_id in source0 is unique or one-to-one
+)
+
+# Ensure the target schema and column order: ['index_track', 'track_id', 'dummy']
+target = joined[['index_track', 'track_id', 'dummy']]
+
+# Convert columns to correct types
+target = target.astype({
+    'index_track': 'int64',
+    'track_id': 'int64',
+    'dummy': 'int64'
+})
+
+# Save to CSV
+output_path = "/home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_8/target_multisource_agentic.csv"
+target.to_csv(output_path, index=False)
+```

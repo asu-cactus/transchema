@@ -1,0 +1,50 @@
+Case: 4_68
+Status: INCORRECT
+Timestamp: 2026-02-25T11:43:04.982443
+Duration: 97.96 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_68/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.8333333333333334
+  matched_columns: ['Bailey High School-Cabrera High School-Figueroa High School', 'District-Charter-District', '1714-1858-2949', '80-83-81', '77-83-76']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_68
+2. Target Schema: ['school_name': string, 'a': string, 'b': integer, 'c': integer, 'd': float, 'e': float]
+3. Target Examples: There are 8 available target examples:          school_name         a     b        c          d          e
+5  Huang High School  District  2917  1910635  76.629414  81.182722
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_68_0
+	Source 0 Schema: ['School ID', 'school_name', 'type', 'size', 'budget']
+	Source 0 Examples: 	 Source 0 contains 15 tuples, with examples as follows: 
+   School ID           school_name      type  size   budget
+0          0     Huang High School  District  2917  1910635
+1          1  Figueroa High School  District  2949  1884411
+2          2   Shelton High School   Charter  1761  1056600
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_68/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_68_1
+	Source 1 Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']
+	Source 1 Examples: 	 Source 1 contains 19585 tuples, with examples as follows: 
+   Student ID     student_name gender grade        school_name  reading_score  \
+0           0     Paul Bradley      M   9th  Huang High School             66   
+1           1     Victor Smith      M  12th  Huang High School             94   
+2           2  Kevin Rodriguez      M  12th  Huang High School             90   
+
+   math_score  
+0          79  
+1          61  
+2          60  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_68/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_68/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

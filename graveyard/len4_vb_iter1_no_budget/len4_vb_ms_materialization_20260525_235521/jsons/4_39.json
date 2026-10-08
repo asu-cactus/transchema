@@ -1,0 +1,46 @@
+{
+  "case": "4_39",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5666,
+        "cost": 0.004408400000000001,
+        "latency": 16.0849187374115,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.333) / 2 = 0.567 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {label}.\nGenerated table candidate keys: {x}; {label}; {y}.\nSpurious keys in generated not present in ground truth: {x}; {y}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.800 (precision=0.667, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['y'] \u2192 label; ['x'] \u2192 label.\nAll columns show good value overlap and matching distributions.",
+        "generated_samples": "Schema: ['label', 'x', 'y']\nNumber of Tuples: 70\nExamples:\n label  x  y\n     b  3  2\npurple  4  3\n     g  1  3",
+        "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_39/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_39/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_39/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_39/training_3.csv\", index_col=0)\n\n# All source tables have the same schema ['x', 'y', 'label']\n# UNION all source tables\ndf_union = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# Convert 'x' and 'y' to integers by rounding (target examples show integer values)\ndf_union['x'] = df_union['x'].round().astype(int)\ndf_union['y'] = df_union['y'].round().astype(int)\n\n# Ensure 'label' is string type\ndf_union['label'] = df_union['label'].astype(str)\n\n# Reorder columns to match target schema ['label', 'x', 'y']\ndf_target = df_union[['label', 'x', 'y']]\n\n# Write the result to the target path\ndf_target.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/target_multisource.csv\", index=False)",
+        "generated_csv_head": "label,x,y\ng,2,3\ng,2,3\ng,1,4\ng,2,3\ng,1,3\ng,1,4\ng,2,4\ng,1,4\ng,1,4\ng,1,4\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.071929931640625
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6567,
+          "cost": 0.0019512000000000002,
+          "latency": 9.620808362960815,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.513) / 2 = 0.657 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.442, range overlap=0.098.\nGround truth candidate keys: {label}.\nGenerated table candidate keys: {x}; {label}; {y}.\nSpurious keys in generated not present in ground truth: {x}; {y}.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.800 (precision=0.667, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['y'] \u2192 label; ['x'] \u2192 label.\nDistribution Analysis (numerical columns with issues):\n  Column 'x': range overlap=0.098, JS similarity=0.442\n    Generated    \u2014 min: 14.0, max: 71.0, mean: 45.5\n    Ground Truth \u2014 min: 10.0, max: 20.0, mean: 17.5\n  Column 'y': range overlap=0.098, JS similarity=0.442\n    Generated    \u2014 min: 14.0, max: 71.0, mean: 45.5\n    Ground Truth \u2014 min: 10.0, max: 20.0, mean: 17.5",
+          "generated_samples": "Schema: ['label', 'x', 'y']\nNumber of Tuples: 4\nExamples:\nlabel  x  y\n    b 71 31\n    r 14 15\n    g 28 70",
+          "code": "import pandas as pd\n\n# Read source CSV files with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_0.csv\", index_col=0)\ndf1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_1.csv\", index_col=0)\ndf2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_2.csv\", index_col=0)\ndf3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/training_3.csv\", index_col=0)\n\n# UNION all source tables\ndf_union = pd.concat([df0, df1, df2, df3], ignore_index=True)\n\n# GROUP BY 'label' and sum 'x' and 'y'\ndf_grouped = df_union.groupby('label', as_index=False).agg({'x': 'sum', 'y': 'sum'})\n\n# Convert 'x' and 'y' to integers as per target schema\ndf_grouped['x'] = df_grouped['x'].astype(int)\ndf_grouped['y'] = df_grouped['y'].astype(int)\n\n# Reorder columns to match target schema: ['label', 'x', 'y']\ndf_final = df_grouped[['label', 'x', 'y']]\n\n# Write output CSV without index\ndf_final.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_39/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8525848388671875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 16157.344579696655,
+        "critique": 9675.37546157837
+      }
+    }
+  ]
+}

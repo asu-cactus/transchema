@@ -5,7 +5,6 @@ from sklearn.preprocessing import LabelEncoder
 from valentine import valentine_match
 from valentine.algorithms import Cupid
 from model.aggregation.pwr import load_trained_model, predict_columns
-import os
 from model.join.pwr import predict_join_columns
 from quality.quality import (
     analyze_functional_dependencies_1,
@@ -289,7 +288,6 @@ if __name__ == "__main__":
     key_candidates = predict_columns(tables, key_model, label_encoder)
     all_key_candidates.extend(key_candidates)
 
-    # print(candidate_matching_columns,'\n\n',all_key_candidates)
 
     # Generate transformation hints
     source_dfs = [tables[table] for table in tables if table != target_table_name]
@@ -302,4 +300,3 @@ if __name__ == "__main__":
         candidate_key_columns=key_candidates,
         type="join",
     )
-    # print(hints)

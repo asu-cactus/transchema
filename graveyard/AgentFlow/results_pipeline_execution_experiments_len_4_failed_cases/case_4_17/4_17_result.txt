@@ -1,0 +1,120 @@
+Case: 4_17
+Status: INCORRECT
+Timestamp: 2026-02-23T13:22:33.381355
+Duration: 180.17 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_17/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_17
+2. Target Schema: ['COD_INTERV': string, 'estado_cli': string, 'des_ofici': integer, 'cod_cbc': integer, 'des_cbc': integer, 'cod_zona': integer, 'des_zona': integer, 'COD_TERRIT': integer, 'des_territ': integer]
+3. Target Examples: There are 9 available target examples:   COD_INTERV estado_cli  des_ofici  cod_cbc  des_cbc  cod_zona  des_zona  \
+8        USU          A          1        1        1         1         1   
+
+   COD_TERRIT  des_territ  
+8           1           1  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_17_0
+	Source 0 Schema: ['COD_PERSONA', 'COD_AREANEGO', 'COD_EDAD', 'COD_OFICIPAL', 'COD_SEGLOBAL', 'estado_cli']
+	Source 0 Examples: 	 Source 0 contains 100000 tuples, with examples as follows: 
+   COD_PERSONA  COD_AREANEGO  COD_EDAD  COD_OFICIPAL  COD_SEGLOBAL estado_cli
+0          364            13        52          9275          24.0          A
+1          672            13        40          6130          24.0          R
+2          728          6057        68          8248          23.0          I
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_17_1
+	Source 1 Schema: ['COD_IDCONTRA', 'COD_PERSONA', 'FAP_CONTR', 'IMP_CAPDIS', 'IMP_CAPINI', 'IMP_CAPPEN']
+	Source 1 Examples: 	 Source 1 contains 20240 tuples, with examples as follows: 
+  COD_IDCONTRA  COD_PERSONA  FAP_CONTR  IMP_CAPDIS  IMP_CAPINI  IMP_CAPPEN
+0     24873185         8644  31JUL1999    35361.97    35361.97    15891.81
+1    366059069         9066  21DEC2016   341936.70   341936.70   339935.22
+2    250661304         9507  30JAN2015    15000.00    15000.00     2125.34
+	Source 1 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_17_2
+	Source 2 Schema: ['COD_PERSONA', 'XTI_ESTADO', 'QNU_ORDTIT', 'COD_INTERV', 'COD_IDCONTRA']
+	Source 2 Examples: 	 Source 2 contains 240615 tuples, with examples as follows: 
+   COD_PERSONA XTI_ESTADO  QNU_ORDTIT COD_INTERV COD_IDCONTRA
+0          364          A           1        TIT      7667157
+1          364          A           1        TIT     44521392
+2          364          A           1        TIT     44521393
+	Source 2 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_17_3
+	Source 3 Schema: ['COD_OFICI', 'COD_NIVELOFIC', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ', 'cod_areanego', 'des_areanego']
+	Source 3 Examples: 	 Source 3 contains 9605 tuples, with examples as follows: 
+   COD_OFICI  COD_NIVELOFIC                          des_ofici  cod_cbc  \
+0          1             70    BANCO BILBAO VIZCAYA ARGENTARIA      NaN   
+1       2004             40  AGREGADO FICT. CARTERA DE TITULOS      NaN   
+2       2221             40                        FRANCIA (R)      NaN   
+
+  des_cbc  cod_zona des_zona  COD_TERRIT des_territ  cod_areanego des_areanego  
+0     NaN       NaN      NaN           0        NaN           NaN          NaN  
+1     NaN       NaN      NaN           0        NaN           NaN          NaN  
+2     NaN       NaN      NaN           0        NaN           NaN          NaN  
+	Source 3 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_3.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# Load source tables with index_col=0 to ignore the numerical index column
+source4_17_0 = pd.read_csv('/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_0.csv', index_col=0)
+source4_17_1 = pd.read_csv('/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_1.csv', index_col=0)
+source4_17_2 = pd.read_csv('/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_2.csv', index_col=0)
+source4_17_3 = pd.read_csv('/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/test_3.csv', index_col=0)
+
+# Step 1: INNER JOIN Source4_17_2 and Source4_17_1 on COD_IDCONTRA
+join_1 = pd.merge(source4_17_2, source4_17_1, on='COD_IDCONTRA', how='inner')
+
+# Step 2: INNER JOIN result with Source4_17_0 on COD_PERSONA
+join_2 = pd.merge(join_1, source4_17_0, on='COD_PERSONA', how='inner')
+
+# Step 3: LEFT JOIN result with Source4_17_3 on Source4_17_0.COD_OFICIPAL = Source4_17_3.COD_OFICI
+join_3 = pd.merge(join_2, source4_17_3, left_on='COD_OFICIPAL', right_on='COD_OFICI', how='left')
+
+# Step 4: SELECT and CAST columns to target schema types
+# Target schema columns:
+# ['COD_INTERV': string, 'estado_cli': string, 'des_ofici': integer, 'cod_cbc': integer,
+#  'des_cbc': integer, 'cod_zona': integer, 'des_zona': integer, 'COD_TERRIT': integer, 'des_territ': integer]
+
+selected = join_3[['COD_INTERV', 'estado_cli', 'des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ']].copy()
+
+# Handle missing values before casting to int to avoid errors
+# For integer columns, fill NaNs with 0 (or another appropriate default)
+int_columns = ['des_ofici', 'cod_cbc', 'des_cbc', 'cod_zona', 'des_zona', 'COD_TERRIT', 'des_territ']
+selected[int_columns] = selected[int_columns].fillna(0)
+
+# Cast columns to correct types
+selected['COD_INTERV'] = selected['COD_INTERV'].astype(str)
+selected['estado_cli'] = selected['estado_cli'].astype(str)
+for col in int_columns:
+    # Convert to integer after filling NaNs
+    selected[col] = selected[col].astype(int)
+
+# Step 5: HANDLE NULLS before aggregation
+# For string columns, fill NaNs with empty string
+selected['COD_INTERV'] = selected['COD_INTERV'].fillna('')
+selected['estado_cli'] = selected['estado_cli'].fillna('')
+
+# Step 6: AGGREGATE by COD_INTERV and estado_cli with FIRST on descriptive columns to remove duplicates
+aggregated = selected.groupby(['COD_INTERV', 'estado_cli'], as_index=False).agg({
+    'des_ofici': 'first',
+    'cod_cbc': 'first',
+    'des_cbc': 'first',
+    'cod_zona': 'first',
+    'des_zona': 'first',
+    'COD_TERRIT': 'first',
+    'des_territ': 'first'
+})
+
+# Step 7: SAVE CSV to specified path
+aggregated.to_csv('/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_17/target_multisource_agentic.csv', index=False)
+```

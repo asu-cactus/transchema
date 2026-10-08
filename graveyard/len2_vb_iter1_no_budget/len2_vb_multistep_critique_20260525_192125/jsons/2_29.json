@@ -1,0 +1,46 @@
+{
+  "case": "2_29",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.617,
+        "cost": 0.0027076,
+        "latency": 9.814289331436157,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.857 + 0.377) / 2 = 0.617 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.514, range overlap=0.015.\nGround truth candidate keys: {movie title}.\nGenerated table candidate keys: {movie title, rating}; {movie title, movie_id}; {movie title, movie id}; {movie title, user_id}.\nKeys present in ground truth but absent in generated: {movie title}.\nSpurious keys in generated not present in ground truth: {user_id, movie title}; {movie_id, movie title}; {movie id, movie title}; {movie title, rating}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.857 (precision=1.000, recall=0.750).\nMissing FDs from ground truth: ['movie title'] \u2192 movie_id; ['movie title'] \u2192 movie id; ['movie title'] \u2192 user_id; ['movie title'] \u2192 rating.\nDistribution Analysis (numerical columns with issues):\n  Column 'movie id': range overlap=0.015, JS similarity=0.514\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.5276\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\n  Column 'user_id': range overlap=0.015, JS similarity=0.514\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.5276\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\n  Column 'movie_id': range overlap=0.015, JS similarity=0.514\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.5276\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\n  Column 'rating': range overlap=0.015, JS similarity=0.514\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.5276\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'movie title': Jaccard=0.828",
+        "generated_samples": "Schema: ['movie title', 'movie id', 'user_id', 'movie_id', 'rating']\nNumber of Tuples: 20000\nExamples:\n                     movie title  movie id  user_id  movie_id  rating\nSix Degrees of Separation (1993)      1101      751      1101       1\n          River Wild, The (1994)       281      533       281       4\n             Men in Black (1997)       257       43       257       4",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_29/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_29/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# According to operation_history: JOIN : [[\"Source2_29_0\", \"Source2_29_1\"], [\"movie id\", \"movie_id\"]]\n# Join df0 and df1 on df0[\"movie id\"] == df1[\"movie_id\"]\n\n# Perform inner join to keep only matching movie ids\njoined_df = pd.merge(df0, df1, left_on=\"movie id\", right_on=\"movie_id\", how=\"inner\")\n\n# Target schema: ['movie title': string, 'movie id': integer, 'user_id': integer, 'movie_id': integer, 'rating': integer]\n# The joined_df columns after merge: ['movie id', 'movie title', 'user_id', 'movie_id', 'rating']\n\n# Ensure correct column order and types\nresult_df = joined_df[['movie title', 'movie id', 'user_id', 'movie_id', 'rating']].copy()\n\n# Enforce data types as per target schema\nresult_df['movie title'] = result_df['movie title'].astype(str)\nresult_df['movie id'] = result_df['movie id'].astype(int)\nresult_df['user_id'] = result_df['user_id'].astype(int)\nresult_df['movie_id'] = result_df['movie_id'].astype(int)\nresult_df['rating'] = result_df['rating'].astype(int)\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_29/target_multisource.csv\"\nresult_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "movie title,movie id,user_id,movie_id,rating\nToy Story (1995),1,664,1,4\nToy Story (1995),1,751,1,3\nToy Story (1995),1,549,1,5\nToy Story (1995),1,661,1,5\nToy Story (1995),1,721,1,5\nToy Story (1995),1,764,1,4\nToy Story (1995),1,497,1,4\nToy Story (1995),1,665,1,4\nToy Story (1995),1,703,1,4\nToy Story (1995),1,698,1,4\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4240741729736328
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7256,
+          "cost": 0.0015500000000000002,
+          "latency": 5.147863149642944,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.451) / 2 = 0.726 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.419, range overlap=0.295.\nGround truth candidate keys: {movie title}.\nGenerated table candidate keys: {movie title}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'movie id': range overlap=0.295, JS similarity=0.419\n    Generated    \u2014 min: 1.0, max: 936.0, mean: 267.1067\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\n  Column 'user_id': range overlap=0.295, JS similarity=0.419\n    Generated    \u2014 min: 1.0, max: 936.0, mean: 267.1067\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\n  Column 'movie_id': range overlap=0.295, JS similarity=0.419\n    Generated    \u2014 min: 1.0, max: 936.0, mean: 267.1067\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\n  Column 'rating': range overlap=0.295, JS similarity=0.419\n    Generated    \u2014 min: 1.0, max: 936.0, mean: 267.1067\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.6857\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'movie title': Jaccard=0.828",
+          "generated_samples": "Schema: ['movie title', 'movie id', 'user_id', 'movie_id', 'rating']\nNumber of Tuples: 1397\nExamples:\n           movie title  movie id  user_id  movie_id  rating\n      Bad Taste (1987)       854      409       854       1\nIn Love and War (1996)      1152      361      1152       2\n      Dark City (1998)       691      179       691       3",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_29/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_29/training_1.csv\", index_col=0)\n\n# Join Source2_29_0 and Source2_29_1 on movie id = movie_id\njoined = pd.merge(source0, source1, left_on=\"movie id\", right_on=\"movie_id\", how=\"inner\")\n\n# Group by 'movie title' (the primary key) and aggregate other columns with MIN to ensure uniqueness and match target keys\nresult = joined.groupby(\"movie title\", as_index=False).agg({\n    \"movie id\": \"min\",\n    \"user_id\": \"min\",\n    \"movie_id\": \"min\",\n    \"rating\": \"min\"\n})\n\n# Write the final output with exact target schema and column order\nresult = result[[\"movie title\", \"movie id\", \"user_id\", \"movie_id\", \"rating\"]]\n\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_29/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.234292984008789
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9876.644134521484,
+        "critique": 5306.185722351074
+      }
+    }
+  ]
+}

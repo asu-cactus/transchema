@@ -1,0 +1,46 @@
+{
+  "case": "2_87",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5,
+        "cost": 0.0016544,
+        "latency": 5.681532144546509,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Name}.\nGenerated table candidate keys: {Name}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Name': Jaccard=0.000",
+        "generated_samples": "Schema: ['Name']\nNumber of Tuples: 446\nExamples:\n                     Name\nRice, Master. George Hugh\n    Gilinski, Mr. Eliezer\n       Nankoff, Mr. Minko",
+        "code": "import pandas as pd\n\n# Source file paths\nsource_paths = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length2_87/training_0.csv\"\n]\n\n# Load all source tables\n# According to the prompt, there is only one source table: Source2_87_0\n# It has the column 'Name' which matches the target schema ['Name']\ndfs = []\nfor path in source_paths:\n    df = pd.read_csv(path, index_col=0)\n    dfs.append(df)\n\n# Since there is only one source table, no union or join is needed.\n# Extract the 'Name' column to match the target schema\ntarget_df = dfs[0][['Name']].copy()\n\n# The target examples show some NaN values in 'Name', so keep them as is.\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length2_87/target_multisource.csv\"\ntarget_df.to_csv(output_path, index=False)",
+        "generated_csv_head": "Name\n\"Dodge, Master. Washington\"\n\"Mellinger, Miss. Madeleine Violet\"\n\"Seward, Mr. Frederic Kimber\"\n\"Baclini, Miss. Marie Catherine\"\n\"Peuchen, Major. Arthur Godfrey\"\n\"West, Mr. Edwy Arthur\"\n\"Hagland, Mr. Ingvald Olai Olsen\"\n\"Foreman, Mr. Benjamin Laventall\"\n\"Goldenberg, Mr. Samuel L\"\n\"Peduzzi, Mr. Joseph\"\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.9770393371582031
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5,
+          "cost": 0.0012884,
+          "latency": 3.345693349838257,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.000) / 2 = 0.500 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Name}.\nGenerated table candidate keys: {Name}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Name': Jaccard=0.000",
+          "generated_samples": "Schema: ['Name']\nNumber of Tuples: 446\nExamples:\n                      Name\nLarsson, Mr. August Viktor\n         Davis, Miss. Mary\n         Lester, Mr. James",
+          "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 as instructed\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_87/training_0.csv\", index_col=0)\n\n# Since only one source table exists, UNION is trivial (just use the table as is)\n# The target schema is ['Name'], so select only the 'Name' column\nresult = source0[['Name']]\n\n# GroupBy on 'Name' to remove duplicates if any (target has no keys, but grouping on Name to match target row count)\n# No aggregation needed, just drop duplicates by grouping on 'Name'\nresult = result.drop_duplicates(subset=['Name'])\n\n# Write the result to the target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_87/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.6031990051269531
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 5690.276861190796,
+        "critique": 3377.8011798858643
+      }
+    }
+  ]
+}

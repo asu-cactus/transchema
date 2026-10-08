@@ -1,0 +1,46 @@
+{
+  "case": "2_58",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.5592,
+        "cost": 0.0038348,
+        "latency": 8.953972339630127,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.118) / 2 = 0.559 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.107, range overlap=0.000.\nGround truth candidate keys: {driver_count}; {ride_id}; {type}; {fare}.\nGenerated table candidate keys: {driver_count}; {ride_id}; {type}; {fare}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.000, JS similarity=0.322\n    Generated    \u2014 min: 4255.09, max: 20335.69, mean: 11919.36\n    Ground Truth \u2014 min: 28911.04, max: 28911.04, mean: 28911.04\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['type', 'fare', 'ride_id', 'driver_count']\nNumber of Tuples: 3\nExamples:\n    type     fare       ride_id  driver_count\nSuburban 20335.69 9976923455740          9730\n   Urban 11167.30 9992146021449         16847\n   Rural  4255.09 9985496304508           727",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_58/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_58/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN on \"city\"\n# Join Source2_58_0 and Source2_58_1 on the \"city\" column\ndf_joined = pd.merge(df0, df1, on=\"city\", how=\"inner\")\n\n# Operation 2: group_by on Source2_58_1.type\n# Aggregations:\n# sum(Source2_58_0.fare) -> sum of 'fare' from df0\n# max(Source2_58_0.ride_id) -> max of 'ride_id' from df0\n# sum(Source2_58_1.driver_count) -> sum of 'driver_count' from df1\n\n# Group by 'type' column from Source2_58_1 (which is now in df_joined)\ngrouped = df_joined.groupby('type').agg({\n    'fare': 'sum',\n    'ride_id': 'max',\n    'driver_count': 'sum'\n}).reset_index()\n\n# Ensure the target schema and types:\n# ['type': string, 'fare': float, 'ride_id': integer, 'driver_count': integer]\n\ngrouped['type'] = grouped['type'].astype(str)\ngrouped['fare'] = grouped['fare'].astype(float)\ngrouped['ride_id'] = grouped['ride_id'].astype('int64')\ngrouped['driver_count'] = grouped['driver_count'].astype('int64')\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_58/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,fare,ride_id,driver_count\nRural,4255.09,9985496304508,727\nSuburban,20335.69,9976923455740,9730\nUrban,11167.3,9992146021449,16847\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.6702880859375
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5592,
+          "cost": 0.0019068000000000002,
+          "latency": 7.637568950653076,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.118) / 2 = 0.559 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.107, range overlap=0.000.\nGround truth candidate keys: {driver_count}; {ride_id}; {type}; {fare}.\nGenerated table candidate keys: {driver_count}; {ride_id}; {type}; {fare}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'fare': range overlap=0.000, JS similarity=0.322\n    Generated    \u2014 min: 4255.09, max: 20335.69, mean: 11919.36\n    Ground Truth \u2014 min: 28911.04, max: 28911.04, mean: 28911.04\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['type', 'fare', 'ride_id', 'driver_count']\nNumber of Tuples: 3\nExamples:\n    type     fare       ride_id  driver_count\nSuburban 20335.69 9976923455740          9730\n   Rural  4255.09 9985496304508           727\n   Urban 11167.30 9992146021449         16847",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_58/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_58/training_1.csv\", index_col=0)\n\n# Join on city column (inner join)\njoined = pd.merge(source0, source1, how='inner', on='city')\n\n# Group by 'type' (leftmost non-float unique key in target)\n# Aggregations:\n# - sum of fare (float)\n# - max of ride_id (integer)\n# - sum of driver_count (integer)\nagg = joined.groupby('type').agg({\n    'fare': 'sum',\n    'ride_id': 'max',\n    'driver_count': 'sum'\n}).reset_index()\n\n# Write output with exact target schema column order\nagg = agg[['type', 'fare', 'ride_id', 'driver_count']]\n\nagg.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_58/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.8270015716552734
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 9025.257587432861,
+        "critique": 7712.8777503967285
+      }
+    }
+  ]
+}

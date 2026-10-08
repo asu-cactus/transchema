@@ -1,0 +1,22 @@
+import pandas as pd
+
+paths = [
+    "autopipeline-benchmarks/github-pipelines/length5_93/training_0.csv",
+    "autopipeline-benchmarks/github-pipelines/length5_93/training_1.csv",
+    "autopipeline-benchmarks/github-pipelines/length5_93/training_2.csv",
+    "autopipeline-benchmarks/github-pipelines/length5_93/training_3.csv",
+    "autopipeline-benchmarks/github-pipelines/length5_93/training_4.csv"
+]
+
+dfs = [pd.read_csv(p, index_col=0) for p in paths]
+df = pd.concat(dfs, ignore_index=True)
+
+df['Year'] = df['Year'].str.extract(r'(\d{4})').astype(int)
+df['Nominee'] = df['Nominee'].astype(str)
+df['Movie'] = df['Movie'].astype(str)
+df['Winner'] = df['Winner'].apply(lambda x: 1 if str(x).strip().upper() == 'YES' else 0)
+df['Category'] = df['Category'].astype(str)
+
+df = df[['Category', 'Year', 'Nominee', 'Movie', 'Winner']]
+
+df.to_csv("autopipeline-benchmarks/github-pipelines/length5_93/target_multisource_mcts.csv", index=False)

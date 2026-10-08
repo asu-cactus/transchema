@@ -106,7 +106,6 @@ def attr2str(attrs, attrsep="" if upcsplit else ";"):
     attrs = list(attrs)
     if shouldsort:
         attrs.sort()
-    #return string.join(attrs, attrsep)
     return attrsep.join(attrs)
 
 

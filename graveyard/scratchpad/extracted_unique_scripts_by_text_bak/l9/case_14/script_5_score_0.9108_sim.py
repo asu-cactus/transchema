@@ -1,0 +1,25 @@
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_0.csv", index_col=0)
+df1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_1.csv", index_col=0)
+df2 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_2.csv", index_col=0)
+df3 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_3.csv", index_col=0)
+df4 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_4.csv", index_col=0)
+df5 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_5.csv", index_col=0)
+df6 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_6.csv", index_col=0)
+df7 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_7.csv", index_col=0)
+df8 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_8.csv", index_col=0)
+df9 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length9_14/training_9.csv", index_col=0)
+
+df = df0.rename(columns={"SalePrice": "SalePrice_x"})
+df = df.merge(df1.rename(columns={"SalePrice": "SalePrice_y"}), on="Id", how="inner")
+df = df.merge(df2.rename(columns={"SalePrice": "SalePrice_x_3"}), on="Id", how="inner")
+df = df.merge(df3.rename(columns={"SalePrice": "SalePrice_y_4"}), on="Id", how="inner")
+df = df.merge(df4.rename(columns={"SalePrice": "SalePrice_x_5"}), on="Id", how="inner")
+df = df.merge(df5.rename(columns={"SalePrice": "SalePrice_y_6"}), on="Id", how="inner")
+df = df.merge(df6.rename(columns={"SalePrice": "SalePrice_x_7"}), on="Id", how="inner")
+df = df.merge(df7.rename(columns={"SalePrice": "SalePrice_y_8"}), on="Id", how="inner")
+df = df.merge(df8.rename(columns={"SalePrice": "SalePrice_x_9"}), on="Id", how="inner")
+df = df.merge(df9.rename(columns={"SalePrice": "SalePrice_y_10"}), on="Id", how="inner")
+
+df.to_csv("autopipeline-benchmarks/github-pipelines/length9_14/target_multisource_mcts.csv", index=False)

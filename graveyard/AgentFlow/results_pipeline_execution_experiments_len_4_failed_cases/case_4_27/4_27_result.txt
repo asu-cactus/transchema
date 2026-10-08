@@ -1,0 +1,254 @@
+Case: 4_27
+Status: INCORRECT
+Timestamp: 2026-02-23T14:45:49.474613
+Duration: 154.03 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_failed_cases/case_4_27/logs
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_27
+2. Target Schema: ['SCHOOL_YEAR': string, 'ULCS_NO': integer, 'INCIDENT_TYPE': integer, 'INCIDENT_COUNT': integer, 'SCHOOL_ID': integer]
+3. Target Examples: There are 4 available target examples: Empty DataFrame
+Columns: [SCHOOL_YEAR, ULCS_NO, INCIDENT_TYPE, INCIDENT_COUNT, SCHOOL_ID]
+Index: []
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_27_0
+	Source 0 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 0 Examples: 	 Source 0 contains 3723 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     5260   2013-2014    HARASSMENT               1        526
+1     5340   2013-2014      ASSAULTS               5        534
+2     5350   2013-2014       THREATS               8        535
+	Source 0 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_27_1
+	Source 1 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 1 Examples: 	 Source 1 contains 3672 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR            INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     4020   2014-2015                 BULLYING               0        402
+1     4020   2014-2015  DRUGS & ALCOHOL OFFENSE              20        402
+2     4030   2014-2015        FIRE - INCENDIARY               0        403
+	Source 1 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_27_2
+	Source 2 Schema: ['ULCS_NO', 'SCHOOL_ID', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT']
+	Source 2 Examples: 	 Source 2 contains 1409 tuples, with examples as follows: 
+   ULCS_NO  SCHOOL_ID SCHOOL_YEAR              INCIDENT_TYPE  INCIDENT_COUNT
+0     1010        101   2016-2017                   Assaults              18
+1     1010        101   2016-2017         Disorderly Conduct              21
+2     1010        101   2016-2017  Drug and Alcohol Offenses               2
+	Source 2 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_2.csv
+	Source 3:
+	Source 3 Name: Source4_27_3
+	Source 3 Schema: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+	Source 3 Examples: 	 Source 3 contains 2057 tuples, with examples as follows: 
+   ULCS_NO SCHOOL_YEAR INCIDENT_TYPE  INCIDENT_COUNT  SCHOOL_ID
+0     5031   2015-2016      BURGLARY               0         31
+1     5031   2015-2016    HARASSMENT               0         31
+2     5031   2015-2016       ROBBERY               0         31
+	Source 3 File Location: /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_3.csv
+
+5. Save the Generated CSV File at : /home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+```Python
+import pandas as pd
+
+# File paths for source CSVs
+source0_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_0.csv"
+source1_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_1.csv"
+source2_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_2.csv"
+source3_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/test_3.csv"
+
+# Output CSV path
+output_path = "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/autopipeline-benchmarks/github-pipelines/length4_27/target_multisource_agentic.csv"
+
+# Target schema columns and types
+target_columns = ['SCHOOL_YEAR', 'ULCS_NO', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+# Data types: SCHOOL_YEAR as string, others as integers
+target_dtypes = {
+    'SCHOOL_YEAR': str,
+    'ULCS_NO': 'Int64',        # Use pandas nullable integer dtype to allow missing values if any
+    'INCIDENT_TYPE': str,
+    'INCIDENT_COUNT': 'Int64',
+    'SCHOOL_ID': 'Int64'
+}
+
+# Read sources with index_col=0 as instructed
+df0 = pd.read_csv(source0_path, index_col=0)
+df1 = pd.read_csv(source1_path, index_col=0)
+df2 = pd.read_csv(source2_path, index_col=0)
+df3 = pd.read_csv(source3_path, index_col=0)
+
+# Step 1-4: Reorder columns of all sources to target schema order
+# Source schemas:
+# df0, df1, df3: ['ULCS_NO', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+# df2: ['ULCS_NO', 'SCHOOL_ID', 'SCHOOL_YEAR', 'INCIDENT_TYPE', 'INCIDENT_COUNT']
+
+# For df0, df1, df3 reorder columns to ['SCHOOL_YEAR', 'ULCS_NO', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']
+df0 = df0[['SCHOOL_YEAR', 'ULCS_NO', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']]
+df1 = df1[['SCHOOL_YEAR', 'ULCS_NO', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']]
+df3 = df3[['SCHOOL_YEAR', 'ULCS_NO', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']]
+
+# For df2 reorder columns similarly
+df2 = df2[['SCHOOL_YEAR', 'ULCS_NO', 'INCIDENT_TYPE', 'INCIDENT_COUNT', 'SCHOOL_ID']]
+
+# Step 5: Ensure data types align with target schema before union
+def enforce_dtypes(df):
+    # Convert SCHOOL_YEAR to string
+    df['SCHOOL_YEAR'] = df['SCHOOL_YEAR'].astype(str)
+    # Convert ULCS_NO, INCIDENT_COUNT, SCHOOL_ID to integers (nullable Int64)
+    # INCIDENT_TYPE is string
+    df['ULCS_NO'] = pd.to_numeric(df['ULCS_NO'], errors='coerce').astype('Int64')
+    df['INCIDENT_COUNT'] = pd.to_numeric(df['INCIDENT_COUNT'], errors='coerce').astype('Int64')
+    df['SCHOOL_ID'] = pd.to_numeric(df['SCHOOL_ID'], errors='coerce').astype('Int64')
+    df['INCIDENT_TYPE'] = df['INCIDENT_TYPE'].astype(str)
+    return df
+
+df0 = enforce_dtypes(df0)
+df1 = enforce_dtypes(df1)
+df2 = enforce_dtypes(df2)
+df3 = enforce_dtypes(df3)
+
+# Step 6: Union all sources
+df_all = pd.concat([df0, df1, df2, df3], ignore_index=True)
+
+# Step 7: Normalize 'INCIDENT_TYPE' values
+# Define a normalization mapping dictionary to standardize incident type names
+# Mapping keys are lowercase stripped strings for matching
+incident_type_map = {
+    # Common synonyms and variants mapped to a standard form
+    'harassment': 'HARASSMENT',
+    'assaults': 'ASSAULTS',
+    'assault': 'ASSAULTS',
+    'threats': 'THREATS',
+    'threat': 'THREATS',
+    'bullying': 'BULLYING',
+    'drug & alcohol offense': 'DRUGS & ALCOHOL OFFENSE',
+    'drugs & alcohol offense': 'DRUGS & ALCOHOL OFFENSE',
+    'drug and alcohol offenses': 'DRUGS & ALCOHOL OFFENSE',
+    'drug and alcohol offense': 'DRUGS & ALCOHOL OFFENSE',
+    'drug & alcohol offenses': 'DRUGS & ALCOHOL OFFENSE',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'FIRE - INCENDIARY',
+    'fire - incendairy': 'F

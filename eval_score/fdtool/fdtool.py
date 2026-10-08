@@ -4,37 +4,24 @@
 
 # Output: A set F of functional dependences over r(U)
 
-# F = Null_Set
 
-# E = Null_Set
 
-# C_1 = U
 
-# k = 1
 
 #
 
-# C_k = CalculatePartition(C_k, r(U))
 
-# C_k = InitialClosure(C_k)
 
 # while Cardinality(C_k) > 0:
 
 # {
 
-#   k += 1
 
-#   C_k = Apriori_Gen(C_km1)
 
-#   C_k = CalculatePartition(C_k, r(U))
 
-#   C_k = InitialClosure(C_k)
 
-#   F = F *Union* ObtainFDs(C_km1)
 
-#   E = E *Union* ObtainEquivalences(C_km1, F)
 
-#   C_k = Prune(C_km1, C_k, E)
 
 # }
 
@@ -50,7 +37,7 @@ from .modules import *
 
 from string import ascii_letters, ascii_uppercase
 
-from .config import MAX_K_LEVEL
+from .config import MAX_K_LEVEL, MAX_TIME
 
 
 def main(df):
@@ -63,7 +50,6 @@ def main(df):
 
     # Print line
 
-    # print("Functional Dependencies: "); sys.stdout.flush();
 
     # Define header; Initialize k;
     
@@ -73,11 +59,6 @@ def main(df):
     U_NF = [
         col for col in list(df.head(0)) if (not str(df[col].dtype).startswith("float")) and len(df[col].drop_duplicates()) < len(df[col])
     ]
-    # keys = []
-    # # for col in df.columns:
-    # #     if len(df[col].drop_duplicates()) == len(df[col]):
-    # #         keys.append([col])
-    #print("non float columns", U_NF, len(U_NF), len(df))
     try:
 
         # Create dictionary to convert column names into alphabetical characters
@@ -156,8 +137,8 @@ def main(df):
 
             # Run GetFDs to get closure and set of functional dependencies
             KEYs = None
-            Closure, F, Cardinality = GetFDs.f(C_km1, df, Closure, U, Cardinality, KEYs)
-            
+            Closure, F, Cardinality = GetFDs.f(C_km1, df, Closure, U, Cardinality, KEYs, start_time=start_time, max_time=MAX_TIME)
+
 
             # Print out FDs
             for FunctionalDependency in F:
@@ -183,7 +164,11 @@ def main(df):
 
             if k is not None and MAX_K_LEVEL == k:
                 break
-            
+
+            # Break while loop if elapsed time exceeds MAX_TIME
+            if time.time() - start_time > MAX_TIME:
+                break
+
             C_k = Apriori_Gen.oneUp(C_km1, U_NF)
 
             # Run Obtain Equivalences to get set of attribute equivalences
@@ -209,7 +194,6 @@ def main(df):
 
     # Print equivalences
 
-    # print("\n" + "Equivalences: "); sys.stdout.flush();
 
     # Iterate through equivalences returned
 
@@ -217,15 +201,12 @@ def main(df):
 
     # Create string for functional dependency
 
-    # String = "{" + ", ".join(Equivalence[0]) + "} <-> {" + ", ".join(Equivalence[1]) + "}"
 
     # Print equivalence string
 
-    # print(String); sys.stdout.flush();
 
     # Print out keys
 
-    # print("\n" + "Keys: "); sys.stdout.flush();
 
     # Get string of column names sorted to alphabetical characters
 
@@ -241,7 +222,6 @@ def main(df):
 
     #     # Print keys
 
-    #     print(str(key)); sys.stdout.flush();
 
     # Create string to give user info of script
     """
@@ -255,9 +235,6 @@ def main(df):
     """
     # Print elapsed time
 
-    # print(checkInfoString); sys.stdout.flush();
-    # print(type(keyList[0]))
-    # print("KEYS: ", KEYs, keyList)
     return FDs, E_Set, keyList
 
 
@@ -271,4 +248,3 @@ def test_main():
     main(movies)
 
 
-# test_main()

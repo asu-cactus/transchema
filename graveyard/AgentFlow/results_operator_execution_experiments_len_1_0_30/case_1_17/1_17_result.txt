@@ -1,0 +1,75 @@
+Case: 1_17
+Status: CORRECT
+Timestamp: 2026-02-24T13:11:17.862383
+Duration: 69.81 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_0_30/case_1_17/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['School ID', 'school_name', 'type', 'size', 'budget', 'Student ID', 'student_name', 'gender', 'grade', 'reading_score', 'math_score']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_17
+2. Target Schema: ['School ID': integer, 'school_name': string, 'type': string, 'size': integer, 'budget': integer, 'Student ID': integer, 'student_name': string, 'gender': string, 'grade': string, 'reading_score': integer, 'math_score': integer]
+3. Target Examples: There are 19585 available target examples:        School ID            school_name      type  size   budget  Student ID  \
+2138           0      Huang High School  District  2917  1910635        2138   
+11887          3  Hernandez High School  District  4635  3022020       11887   
+9549           3  Hernandez High School  District  4635  3022020        9549   
+11673          3  Hernandez High School  District  4635  3022020       11673   
+16421          6    Cabrera High School   Charter  1858  1081356       16421   
+...          ...                    ...       ...   ...      ...         ...   
+19155          7     Bailey High School  District  4976  3124928       19155   
+12055          3  Hernandez High School  District  4635  3022020       12055   
+13197          4    Griffin High School   Charter  1468   917500       13197   
+15005          5     Wilson High School   Charter  2283  1319574       15005   
+6882           2    Shelton High School   Charter  1761  1056600        6882   
+
+              student_name gender grade  reading_score  math_score  
+2138       Amanda Valencia      F   9th             82          79  
+11887         Yvonne Blake      F  10th             86          84  
+9549        Olivia Stewart      F  12th             67          64  
+11673       Holly Williams      F  11th             98          64  
+16421          David Smith      M  10th             76          96  
+...                    ...    ...   ...            ...         ...  
+19155          David Kirby      M   9th             87          61  
+12055         Jason Morgan      M   9th             81          93  
+13197  Christopher Mendoza      M  11th             77          85  
+15005       Caitlin Conner      F  10th             87          72  
+6882           David Jones      M   9th             97          80  
+
+[1958 rows x 11 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_17_0
+	Source 0 Schema: ['School ID', 'school_name', 'type', 'size', 'budget']
+	Source 0 Examples: 	 Source 0 contains 15 tuples, with examples as follows: 
+   School ID           school_name      type  size   budget
+0          0     Huang High School  District  2917  1910635
+1          1  Figueroa High School  District  2949  1884411
+2          2   Shelton High School   Charter  1761  1056600
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_17/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_17_1
+	Source 1 Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']
+	Source 1 Examples: 	 Source 1 contains 19585 tuples, with examples as follows: 
+   Student ID     student_name gender grade        school_name  reading_score  \
+0           0     Paul Bradley      M   9th  Huang High School             66   
+1           1     Victor Smith      M  12th  Huang High School             94   
+2           2  Kevin Rodriguez      M  12th  Huang High School             90   
+
+   math_score  
+0          79  
+1          61  
+2          60  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_17/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_17/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

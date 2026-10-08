@@ -1,0 +1,29 @@
+{
+  "case": "1_98",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9747,
+        "cost": 0.0093344,
+        "latency": 77.76600623130798,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.949) / 2 = 0.975 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.948, range overlap=0.951.\nGround truth candidate keys: {0_y}; {0_x}.\nGenerated table candidate keys: {0_y}; {0_x}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column '0_x': range overlap=0.901, JS similarity=0.896\n    Generated    \u2014 min: -5.6438, max: 7.5809, mean: 0.9646\n    Ground Truth \u2014 min: -4.8071, max: 8.0997, mean: 1.0802",
+        "generated_samples": "Schema: ['right_index', '0_x', '0_y']\nNumber of Tuples: 500\nExamples:\n right_index      0_x       0_y\n         306 3.371556  1.179887\n         141 0.167449 -1.094700\n         274 0.750901  2.814116",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_98/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length1_98/training_1.csv\"\n\n# Load Source 0\n# Schema: ['right_index', '0']\n# We ignore the CSV index column (index_col=0)\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Load Source 1\n# Schema: ['0']\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Transformation plan:\n# Target schema: ['0_x': float, '0_y': float]\n# Source0 has columns ['right_index', '0']\n# Source1 has column ['0']\n# Target examples have 500 rows, Source0 has 1000 rows, Source1 has 500 rows.\n# The only shared column between source0 and source1 is '0' (but source0 also has 'right_index').\n# The target columns '0_x' and '0_y' suggest a join of source0 and source1 on some key.\n# Source0 has 'right_index' which looks like an index or key.\n# Source1 has no explicit key column, but has 500 rows, matching target row count.\n# Hypothesis: Join source0 and source1 on source0.right_index == source1.index (row number).\n# This will produce 500 rows (matching source1 rows and target rows).\n# Then rename source0.'0' to '0_x' and source1.'0' to '0_y'.\n\n# Reset index of source1 to get the row number as a column for join\ndf1 = df1.reset_index(drop=True)\n\n# Join source0 and source1 on source0.right_index == df1 row index\n# First, ensure source0.right_index is integer type for join\ndf0['right_index'] = df0['right_index'].astype(int)\n\n# Filter source0 to only rows where right_index < len(df1) to avoid join mismatches\ndf0_filtered = df0[df0['right_index'] < len(df1)].copy()\n\n# Set right_index as index for join convenience\ndf0_filtered = df0_filtered.set_index('right_index')\n\n# Join on index (right_index) with df1 index\njoined = df0_filtered.join(df1, how='inner', lsuffix='_x', rsuffix='_y')\n\n# After join, rename columns:\n# source0 '0' -> '0_x'\n# source1 '0' -> '0_y'\njoined = joined.rename(columns={'0_x': '0_x', '0_y': '0_y'})\n\n# The joined dataframe columns are ['0_x', '0_y']\n# Select only these two columns to match target schema\nresult = joined[['0_x', '0_y']]\n\n# Convert columns to float explicitly to match target schema\nresult['0_x'] = result['0_x'].astype(float)\nresult['0_y'] = result['0_y'].astype(float)\n\n# Save the result to the target path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_98/target_multisource_cot.csv\"\nresult.to_csv(output_path)\n\n# Print confirmation\nprint(f\"Transformation complete. Output saved to {output_path}\")",
+        "generated_csv_head": "right_index,0_x,0_y\n0,-0.3978113835805185,2.4987809283052016\n1,0.1220424338227182,0.0133425261497927\n2,-0.0533155676662677,2.534671693499352\n3,0.4244605508801097,0.5811081366035176\n4,0.6409487972193374,2.018172584896102\n5,0.2755420052625594,2.515579022386913\n6,-0.2716260191235253,2.8916114660838748\n7,1.10010973135639,-2.998452312590473\n8,0.0899515799375942,-0.531943661720521\n9,-1.5518657645058709,5.52570392194699\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.9028186798095703
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 77848.07324409485,
+        "critique": 0.0
+      }
+    }
+  ]
+}

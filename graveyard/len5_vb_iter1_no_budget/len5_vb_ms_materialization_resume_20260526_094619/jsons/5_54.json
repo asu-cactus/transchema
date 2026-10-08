@@ -1,0 +1,46 @@
+{
+  "case": "5_54",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4418,
+        "cost": 0.0052975999999999995,
+        "latency": 18.365788221359253,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.500 + 0.384) / 2 = 0.442 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.635, range overlap=0.286.\nGround truth candidate keys: {date_diff}; {date_diff-max, date_diff-std}; {msno}; {date_diff-max, date_diff-median}.\nGenerated table candidate keys: {msno}.\nKeys present in ground truth but absent in generated: {date_diff-max, date_diff-std}; {date_diff}; {date_diff-max, date_diff-median}.\nGround truth column equivalence classes: {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.500 (precision=0.500, recall=0.500).\nSpurious FDs in generated (not in ground truth): ['date_diff-std'] \u2192 date_diff-max; ['date_diff-max', 'date_diff-min'] \u2192 date_diff-median; ['date_diff-median'] \u2192 date_diff-max; ['date_diff-max', 'date_diff-min'] \u2192 date_diff-std; ['date_diff-max'] \u2192 date_diff-median (and 3 more).\nMissing FDs from ground truth: ['date_diff-median'] \u2192 date_diff-min; ['date_diff'] \u2192 msno; ['date_diff'] \u2192 date_diff-max; ['date_diff-max', 'date_diff-median'] \u2192 date_diff; ['date_diff'] \u2192 date_diff-std (and 3 more).\nDistribution Analysis (numerical columns with issues):\n  Column 'date_diff': range overlap=0.152, JS similarity=0.874\n    Generated    \u2014 min: 1.0, max: 40.0, mean: 2.3438\n    Ground Truth \u2014 min: 1.0196, max: 6.9495, mean: 2.3623\n  Column 'date_diff-min': range overlap=0.128, JS similarity=0.872\n    Generated    \u2014 min: 1.0, max: 40.0, mean: 1.5938\n    Ground Truth \u2014 min: 1.0, max: 6.0, mean: 1.0588\n  Column 'date_diff-max': range overlap=0.570, JS similarity=0.885\n    Generated    \u2014 min: 1.0, max: 219.0, mean: 30.1354\n    Ground Truth \u2014 min: 2.0, max: 382.0, mean: 36.2824\n  Column 'date_diff-median': range overlap=0.290, JS similarity=0.271\n    Generated    \u2014 min: 1.0, max: 219.0, mean: 30.1354\n    Ground Truth \u2014 min: 1.0, max: 752.0, mean: 292.8471\n  Column 'date_diff-std': range overlap=0.290, JS similarity=0.271\n    Generated    \u2014 min: 1.0, max: 219.0, mean: 30.1354\n    Ground Truth \u2014 min: 1.0, max: 752.0, mean: 292.8471\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'msno': Jaccard=0.000",
+        "generated_samples": "Schema: ['msno', 'date_diff', 'date_diff-min', 'date_diff-max', 'date_diff-median', 'date_diff-std']\nNumber of Tuples: 96\nExamples:\n                                        msno  date_diff  date_diff-min  date_diff-max  date_diff-median  date_diff-std\n++ywLqSa3Ts36aYwZ2FUpf8ruOCf4f/OgVfiiZ0Qnt4=   2.034247              1             17                 1              2\n++mnT+fA+ilPMzHgEhsyS91vWjM7iRy7//aq/eVTm6s=   2.233645              1            171                 1             12\n++pkrwG4GIuYh2HavRGMrv92sqrEoroFkdyMrVlRhTw=   2.021739              1             12                 1              2",
+        "code": "import pandas as pd\nimport numpy as np\n\n# Read the intermediate aggregated data from intermediate_step1.csv\nintermediate_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length5_54/intermediate_step1.csv\"\ndf = pd.read_csv(intermediate_path)\n\n# According to the target schema:\n# ['msno': string, 'date_diff': float, 'date_diff-min': integer, 'date_diff-max': integer, 'date_diff-median': integer, 'date_diff-std': integer]\n\n# The intermediate table columns are:\n# ['msno', 'date_diff', 'date_diff-min', 'date_diff-max', 'date_diff-median', 'date_diff-std']\n\n# We need to ensure the types match the target schema exactly:\n# msno: string (already string)\n# date_diff: float (already float)\n# date_diff-min: integer\n# date_diff-max: integer\n# date_diff-median: integer\n# date_diff-std: integer\n\n# Convert the relevant columns to integer by rounding or flooring as appropriate.\n# Since median and std are statistical aggregates, rounding is reasonable.\n\ndf['date_diff-min'] = df['date_diff-min'].astype(int)\ndf['date_diff-max'] = df['date_diff-max'].astype(int)\ndf['date_diff-median'] = df['date_diff-median'].round().astype(int)\ndf['date_diff-std'] = df['date_diff-std'].round().astype(int)\n\n# Reorder columns to match target schema exactly\ndf = df[['msno', 'date_diff', 'date_diff-min', 'date_diff-max', 'date_diff-median', 'date_diff-std']]\n\n# Write the final target table to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_54/target_multisource.csv\"\ndf.to_csv(output_path, index=False)",
+        "generated_csv_head": "msno,date_diff,date_diff-min,date_diff-max,date_diff-median,date_diff-std\n++WvEkIYGvAJU+pc94qsO6uQOBzkcCdVX0BsBo0qOU0=,1.3950617283950617,1,8,1,1\n++WzwUilDTwylIR3EtdSaXH3iWnmVuWNyq3iiIgCSsM=,11.692307692307692,3,30,9,9\n++XKXYly5nP1VAHkIY54gLEceN1Cgws3dKreSAY1KrM=,1.7072463768115942,1,33,1,3\n++XqYJpQ5yPZYUhDJCS4REf2X9ip0y0cDQmE7neOSkQ=,1.6355140186915889,1,6,1,1\n++Xqq1LcF5dltTfVk8kDh7+DZp1dyzMBuU4tNtCT1p8=,2.010050251256281,1,29,1,3\n++XryZQSzQL1Pn1aAPnoIJeFe6Z2DST999y5pOOdG4E=,20.07692307692308,1,93,6,27\n++Y2Q8yzkh/D5RcA3LVIcdUrulOEI2Zwd/JOXXHAMAY=,2.449438202247191,1,12,1,2\n++YDBBjTp/R1xOg/hh1nwY0RpvprsqkOKNQQOexXc70=,1.0,1,1,1,0\n++aTQuzrlR6QCrMNRtQWIGc/oM7oDNYk7uAzgMoAcms=,3.3529411764705883,1,105,1,11\n++am6f+rLDE3gjQM7pKLVAthwCgaI46WHbTNuKtgpbI=,6.923076923076923,1,82,4,11\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.734018325805664
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0022492,
+          "latency": 9.625610113143921,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\nimport numpy as np\n\n# Read source table\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_54/training_0.csv\", index_col=0)\n\n# Since only one source table is given, no join with other tables is possible.\n# The original failed pipeline did aggregation on Source5_54_0 grouped by msno.\n# The target schema requires:\n# ['msno': string, 'date_diff': float, 'date_diff-min': integer, 'date_diff-max': integer, 'date_diff-median': integer, 'date_diff-std': integer]\n# The failed pipeline had 96 rows, target has 85 rows, so we need to ensure grouping by msno and aggregate properly.\n\n# Group by msno and aggregate date_diff columns\nagg_df = source0.groupby('msno').agg(\n    date_diff_min = ('date_diff', 'min'),\n    date_diff_max = ('date_diff', 'max'),\n    date_diff_median = ('date_diff', 'median'),\n    date_diff_std = ('date_diff', 'std'),\n    date_diff_avg = ('date_diff', 'mean')\n).reset_index()\n\n# Rename columns to match target schema exactly\nagg_df.rename(columns={\n    'date_diff_min': 'date_diff-min',\n    'date_diff_max': 'date_diff-max',\n    'date_diff_median': 'date_diff-median',\n    'date_diff_std': 'date_diff-std',\n    'date_diff_avg': 'date_diff'\n}, inplace=True)\n\n# Convert aggregated columns to integer where required (min, max, median, std)\n# The target schema says date_diff-min, max, median, std are integers\n# std can be float, but target examples show integer, so convert by rounding\nagg_df['date_diff-min'] = agg_df['date_diff-min'].astype(int)\nagg_df['date_diff-max'] = agg_df['date_diff-max'].astype(int)\nagg_df['date_diff-median'] = agg_df['date_diff-median'].astype(int)\nagg_df['date_diff-std'] = agg_df['date_diff-std'].round().astype(int)\n\n# Output to target file\nagg_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_54/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.022649765014648438
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 18374.55677986145,
+        "critique": 9667.108535766602
+      }
+    }
+  ]
+}

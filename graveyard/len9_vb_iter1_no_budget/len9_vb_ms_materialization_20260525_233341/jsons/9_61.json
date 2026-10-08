@@ -1,0 +1,29 @@
+{
+  "case": "9_61",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9668,
+        "cost": 0.0061752000000000005,
+        "latency": 20.11950945854187,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.934) / 2 = 0.967 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=1.000, range overlap=1.000.\nGround truth candidate keys: {start}.\nGenerated table candidate keys: {start}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'start': Jaccard=0.867",
+        "generated_samples": "Schema: ['start', 'betterliving']\nNumber of Tuples: 161\nExamples:\n     start  betterliving\n2017-02-17             1\n2016-04-18             1\n2018-01-15             1",
+        "code": "import pandas as pd\n\n# File paths for the source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_61/training_9.csv\",\n]\n\n# Read all source tables with index_col=0 to ignore the first index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Union all source tables by concatenation\nTarget9_61 = pd.concat(dfs, ignore_index=True)\n\n# Ensure the schema and types match the target schema\nTarget9_61 = Target9_61.astype({'start': str, 'betterliving': int})\n\n# Write the final target table to the specified path\nTarget9_61.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_61/target_multisource.csv\", index=False)",
+        "generated_csv_head": "start,betterliving\n2018-04-30,1\n2018-05-01,1\n2018-05-02,1\n2018-05-03,1\n2018-05-04,1\n2018-05-05,1\n2018-05-06,1\n2018-05-07,1\n2018-05-08,1\n2018-05-09,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.214742660522461
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 20230.782747268677,
+        "critique": 0.0
+      }
+    }
+  ]
+}

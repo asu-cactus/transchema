@@ -1,0 +1,46 @@
+{
+  "case": "3_31",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7832,
+        "cost": 0.0092332,
+        "latency": 38.42320537567139,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.900) / 2 = 0.783 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.894, range overlap=1.000.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['F'] \u2192 M; ['M'] \u2192 F.\nDistribution Analysis (numerical columns with issues):\n  Column 'F': range overlap=1.000, JS similarity=0.927\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.294\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.3588\n  Column 'M': range overlap=1.000, JS similarity=0.862\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.294\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.2727\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.805",
+        "generated_samples": "Schema: ['title', 'F', 'M']\nNumber of Tuples: 2689\nExamples:\n               title        F        M\n Delicatessen (1991)      NaN 4.111111\n   Jesus' Son (1999)      NaN 1.000000\nSpace Cowboys (2000) 3.166667 3.000000",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_31/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_31/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_31/training_2.csv\", index_col=0)\n\n# Join Source3_31_2 and Source3_31_0 on movie_id to get movie title with ratings and user_id\nmerged = pd.merge(source2, source0[['movie_id', 'title']], on='movie_id', how='inner')\n\n# Join merged with Source3_31_1 on user_id to get gender info\nmerged = pd.merge(merged, source1[['user_id', 'gender']], on='user_id', how='inner')\n\n# Compute average rating grouped by title and gender\n# Pivot the table to get separate columns for F and M average ratings\navg_ratings = merged.groupby(['title', 'gender'])['rating'].mean().unstack()\n\n# Rename columns to match target schema\navg_ratings = avg_ratings.rename(columns={'F': 'F', 'M': 'M'})\n\n# Reset index to have 'title' as a column\navg_ratings = avg_ratings.reset_index()\n\n# Ensure columns are in the order: ['title', 'F', 'M']\navg_ratings = avg_ratings[['title', 'F', 'M']]\n\n# Convert ratings to float (they should already be float, but ensure)\navg_ratings['F'] = avg_ratings['F'].astype(float)\navg_ratings['M'] = avg_ratings['M'].astype(float)\n\n# Save the result to the target path\navg_ratings.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_31/target_multisource.csv\", index=False)",
+        "generated_csv_head": "title,F,M\n\"$1,000,000 Duck (1971)\",3.0,\n'Night Mother (1986),3.5,\n'Til There Was You (1997),2.0,\n\"'burbs, The (1989)\",2.0,2.0\n...And Justice for All (1979),4.0,3.75\n10 Things I Hate About You (1999),4.166666666666667,3.0\n101 Dalmatians (1961),4.0,3.75\n101 Dalmatians (1996),4.5,3.0\n12 Angry Men (1957),4.333333333333333,4.466666666666667\n\"13th Warrior, The (1999)\",2.333333333333333,3.111111111111111\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.0210742950439453
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.7832,
+          "cost": 0.001826,
+          "latency": 8.614139318466187,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.667 + 0.900) / 2 = 0.783 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.894, range overlap=1.000.\nGround truth candidate keys: {title}.\nGenerated table candidate keys: {title}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: none.\nGenerated table equivalence classes: {left, right}.\nSpurious equivalence classes in generated: {left, right}.\nFunctional dependency F1: 0.667 (precision=0.500, recall=1.000).\nSpurious FDs in generated (not in ground truth): ['F'] \u2192 M; ['M'] \u2192 F.\nDistribution Analysis (numerical columns with issues):\n  Column 'F': range overlap=1.000, JS similarity=0.927\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.294\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.3588\n  Column 'M': range overlap=1.000, JS similarity=0.862\n    Generated    \u2014 min: 1.0, max: 5.0, mean: 3.294\n    Ground Truth \u2014 min: 1.0, max: 5.0, mean: 3.2727\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'title': Jaccard=0.805",
+          "generated_samples": "Schema: ['title', 'F', 'M']\nNumber of Tuples: 2689\nExamples:\n                           title    F        M\n Clear and Present Danger (1994) 3.75 3.666667\nWhat Planet Are You From? (2000) 4.00 2.666667\n                     Toys (1992) 3.00 2.333333",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_31/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_31/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_31/training_2.csv\", index_col=0)\n\n# Join Source3_31_2 and Source3_31_1 on user_id\njoined_user = pd.merge(source2, source1, on=\"user_id\", how=\"inner\")\n\n# Join the above result with Source3_31_0 on movie_id\njoined_all = pd.merge(joined_user, source0, on=\"movie_id\", how=\"inner\")\n\n# Compute average rating grouped by title and gender\n# Pivot the table to get separate columns for F and M average ratings\navg_ratings = (\n    joined_all.groupby([\"title\", \"gender\"])[\"rating\"]\n    .mean()\n    .reset_index()\n    .pivot(index=\"title\", columns=\"gender\", values=\"rating\")\n    .rename(columns={\"F\": \"F\", \"M\": \"M\"})\n)\n\n# The pivot may have missing values for some genders, keep them as NaN\n# Reset index to have title as a column\nresult = avg_ratings.reset_index()\n\n# Write the final output with exact column names as target schema\nresult.to_csv(\n    \"autopipeline-benchmarks/github-pipelines/length3_31/target_multisource_critique_history.csv\",\n    index=False,\n)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 2.306222915649414
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 38554.66079711914,
+        "critique": 9345.92604637146
+      }
+    }
+  ]
+}

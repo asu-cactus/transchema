@@ -1,0 +1,46 @@
+{
+  "case": "2_84",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6184,
+        "cost": 0.0035156000000000002,
+        "latency": 7.402521371841431,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.237) / 2 = 0.618 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.322, range overlap=0.000.\nGround truth candidate keys: {type}; {ride_id}.\nGenerated table candidate keys: {type}; {ride_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'ride_id': range overlap=0.000, JS similarity=0.322\n    Generated    \u2014 min: 321833677.0, max: 28294640252.0, mean: 18488402348.0\n    Ground Truth \u2014 min: 1187.0, max: 1187.0, mean: 1187.0\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+        "generated_samples": "Schema: ['type', 'ride_id']\nNumber of Tuples: 3\nExamples:\n    type     ride_id\nSuburban   321833677\n   Urban 28294640252\n   Rural 26848733115",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_84/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_84/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN Source2_84_0 and Source2_84_1 on \"city\"\njoined_df = pd.merge(df0, df1, on=\"city\", how=\"inner\")\n\n# Operation 2: group_by Source2_84_0.type, aggregations = min(Source2_84_1.ride_id)\n# Group by 'type' column from df0 (which is now in joined_df), aggregate min of ride_id from df1\nresult = joined_df.groupby('type', as_index=False).agg({'ride_id': 'min'})\n\n# Ensure the column types match the target schema: 'type' as string, 'ride_id' as integer\nresult['type'] = result['type'].astype(str)\nresult['ride_id'] = result['ride_id'].astype(int)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length2_84/target_multisource.csv\"\nresult.to_csv(target_path, index=False)",
+        "generated_csv_head": "type,ride_id\nRural,26848733115\nSuburban,321833677\nUrban,28294640252\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.1322498321533203
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.5781,
+          "cost": 0.0014004,
+          "latency": 4.33591103553772,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.156) / 2 = 0.578 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.000, range overlap=0.000.\nGround truth candidate keys: {type}; {ride_id}.\nGenerated table candidate keys: {type}; {ride_id}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'type': Jaccard=0.312",
+          "generated_samples": "Schema: ['type', 'ride_id']\nNumber of Tuples: 3\nExamples:\n    type  ride_id\nSuburban      625\n   Rural      125\n   Urban      438",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_84/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_84/training_1.csv\", index_col=0)\n\n# Join on city column (inner join)\njoined = pd.merge(source0, source1, how='inner', on='city')\n\n# Group by 'type' and count the number of ride_id per type\nresult = joined.groupby('type', as_index=False).agg({'ride_id': 'count'})\n\n# Rename columns to match target schema exactly\nresult.columns = ['type', 'ride_id']\n\n# Write output to the target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_84/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.7212162017822266
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 7477.68235206604,
+        "critique": 4369.184970855713
+      }
+    }
+  ]
+}

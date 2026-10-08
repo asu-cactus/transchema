@@ -13,9 +13,6 @@ def get_next_operator_prompt_with_intermediate_materialization(
     no_thinking: bool,
 ):
 
-    #assert len(all_intermediate_results) == len(
-     #   operation_history
-    #), f"len(all_intermediate_results)={len(all_intermediate_results)}, len(operation_history)={len(operation_history)}"
     if fd_hints.strip() == "":
         fd_hints = ""
     else:

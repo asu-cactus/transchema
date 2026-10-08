@@ -1,0 +1,46 @@
+{
+  "case": "2_96",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.7561,
+        "cost": 0.0044284,
+        "latency": 12.164187669754028,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.512) / 2 = 0.756 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.004, range overlap=0.045.\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'row_count': range overlap=0.045, JS similarity=0.004\n    Generated    \u2014 min: 1.0, max: 12.0, mean: 4.4211\n    Ground Truth \u2014 min: 10.0, max: 45.0, mean: 21.9018",
+        "generated_samples": "Schema: ['fname', 'row_count']\nNumber of Tuples: 4521\nExamples:\n   fname  row_count\n 58_1A_9          7\n 11_4B_9          6\n22_6D_13          1",
+        "code": "import pandas as pd\n\n# Load Source Tables\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length2_96/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length2_96/training_1.csv\"\n\n# Read source0, ignoring the first column as index\nsource0 = pd.read_csv(source0_path, index_col=0)\n# Read source1, ignoring the first column as index\nsource1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: Group by Source2_96_0.fname and count occurrences as row_count\ngrouped = source0.groupby('fname', as_index=False).agg(row_count=('fname', 'count'))\n\n# Operation 2: Join grouped result with Source2_96_1 on fname and day columns\n# Prepare join keys\njoin_keys = ['fname', 'day']\n\n# Since grouped only has 'fname' and 'row_count', we need to bring 'day' from source0 to grouped\n# But grouped lost 'day' because of aggregation, so we need to get unique (fname, day) pairs from source0\n# and join with grouped on fname to get (fname, day, row_count)\n\n# Extract unique (fname, day) pairs from source0\nfname_day = source0[['fname', 'day']].drop_duplicates()\n\n# Merge grouped with fname_day to get (fname, day, row_count)\ngrouped_with_day = pd.merge(fname_day, grouped, on='fname', how='left')\n\n# Now join grouped_with_day with source1 on ['fname', 'day']\njoined = pd.merge(grouped_with_day, source1, on=join_keys, how='inner')\n\n# Final target table only needs ['fname', 'row_count'] as per target schema\ntarget = joined[['fname', 'row_count']]\n\n# Remove duplicates if any (not specified but safe)\ntarget = target.drop_duplicates().reset_index(drop=True)\n\n# Ensure correct dtypes\ntarget['fname'] = target['fname'].astype(str)\ntarget['row_count'] = target['row_count'].astype(int)\n\n# Write to target CSV\ntarget.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_96/target_multisource.csv\", index=False)",
+        "generated_csv_head": "fname,row_count\n51_5B_9,8\n05_4B_7,4\n35_4D_5,7\n22_6B_15,6\n37_3C_13,4\n27_4B_5,4\n24_2B_15,10\n09_6C_17,9\n40_6D_11,2\n52_1C_11,7\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4567375183105469
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.7592,
+          "cost": 0.0019944000000000003,
+          "latency": 8.99752163887024,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.518) / 2 = 0.759 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.006, range overlap=0.068.\nGround truth candidate keys: {fname}.\nGenerated table candidate keys: {fname}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'row_count': range overlap=0.068, JS similarity=0.006\n    Generated    \u2014 min: 1.0, max: 13.0, mean: 5.3786\n    Ground Truth \u2014 min: 10.0, max: 45.0, mean: 21.9018",
+          "generated_samples": "Schema: ['fname', 'row_count']\nNumber of Tuples: 4567\nExamples:\n   fname  row_count\n70_3B_17          8\n 43_1A_5          5\n 20_6B_9          6",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the first index column if present\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_96/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length2_96/training_1.csv\", index_col=0)\n\n# Select only columns needed for union and final output\n# Source0 has 'fname' column, source1 has 'fname' column\n# For source1, 'fname' is already present, no renaming needed\n# For source0, 'fname' is present\n\n# To union, columns must match exactly, so select only 'fname' from both\ndf0 = source0[['fname']]\ndf1 = source1[['fname']]\n\n# Concatenate the two dataframes (union)\nunion_df = pd.concat([df0, df1], ignore_index=True)\n\n# Group by 'fname' and count rows per fname\nresult = union_df.groupby('fname', as_index=False).agg(row_count=('fname', 'count'))\n\n# Write output with exact column names\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length2_96/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.89263916015625
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12258.768558502197,
+        "critique": 9325.334548950195
+      }
+    }
+  ]
+}

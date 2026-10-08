@@ -1,0 +1,46 @@
+{
+  "case": "1_46",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4339,
+        "cost": 0.0020888,
+        "latency": 6.637217283248901,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.444 + 0.423) / 2 = 0.434 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.074, range overlap=0.197.\nGround truth candidate keys: {Date}; {Power Use}; {Water Use}.\nGenerated table candidate keys: {Date, Water Use}; {Water Use, Power Use}.\nKeys present in ground truth but absent in generated: {Water Use}; {Date}; {Power Use}.\nSpurious keys in generated not present in ground truth: {Water Use, Power Use}; {Date, Water Use}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.444 (precision=0.667, recall=0.333).\nSpurious FDs in generated (not in ground truth): ['Date', 'Water Use'] \u2192 Power Use.\nMissing FDs from ground truth: ['Power Use'] \u2192 Water Use; ['Water Use'] \u2192 Power Use; ['Date'] \u2192 Water Use; ['Water Use'] \u2192 Date.\nDistribution Analysis (numerical columns with issues):\n  Column 'Water Use': range overlap=0.393, JS similarity=0.147\n    Generated    \u2014 min: 0.0, max: 3760.0, mean: 470.1415\n    Ground Truth \u2014 min: 684.24, max: 7822.59, mean: 3831.2464",
+        "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 6960\nExamples:\n    Date  Water Use  Power Use\nAug_2007      30.46        349\nJul_2005      42.08        252\nSep_2007       5.00          0",
+        "code": "import pandas as pd\n\n# Source file paths\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length1_46/training_0.csv\"\n\n# Load Source 0 data\n# index_col=0 to ignore the numerical index column as per Hint 24\ndf0 = pd.read_csv(source0_path, index_col=0)\n\n# Inspect columns of Source 0:\n# ['Text Date', 'Value Date', 'Zip Code', 'Water Use', 'Power Use']\n\n# Target schema: ['Date': string, 'Water Use': float, 'Power Use': integer]\n# Target examples show Date format like \"Sep_2009\", \"May_2009\", \"Apr_2010\"\n# Source 0 has 'Text Date' like \"Jul_2007\", \"Jan_2009\", \"Dec_2011\" which matches target Date format.\n# So we will use 'Text Date' as 'Date' in target.\n\n# Water Use and Power Use columns exist in source with correct names.\n# Data types:\n# - Water Use: float in target, source looks float (e.g. 52.00, 17.49)\n# - Power Use: integer in target, source looks integer (e.g. 1141, 1102)\n\n# Transformation plan:\n# 1. Select relevant columns from source0: 'Text Date', 'Water Use', 'Power Use'\n# 2. Rename 'Text Date' to 'Date'\n# 3. Convert 'Water Use' to float (should already be float, but enforce)\n# 4. Convert 'Power Use' to int (enforce integer type)\n# 5. Since only one source table is given, no union or join needed.\n# 6. Save the transformed dataframe to the target path.\n\n# Apply transformations\ndf_target = df0[['Text Date', 'Water Use', 'Power Use']].copy()\ndf_target.rename(columns={'Text Date': 'Date'}, inplace=True)\ndf_target['Water Use'] = df_target['Water Use'].astype(float)\ndf_target['Power Use'] = df_target['Power Use'].astype(int)\n\n# Save to target CSV\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length1_46/target_multisource.csv\"\ndf_target.to_csv(target_path, index=False)",
+        "generated_csv_head": "Date,Water Use,Power Use\nJul_2007,52.0,1141\nJan_2009,17.49,1102\nDec_2011,10.62,0\nFeb_2010,12.78,604\nJan_2011,31.48,531\nMay_2009,44.47,277\nJul_2006,38.28,958\nOct_2008,27.97,413\nApr_2007,34.85,479\nJan_2013,10.91,541\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2481212615966797
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9542,
+          "cost": 0.0013828000000000002,
+          "latency": 3.4537625312805176,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.908) / 2 = 0.954 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.813, range overlap=0.912.\nGround truth candidate keys: {Date}; {Power Use}; {Water Use}.\nGenerated table candidate keys: {Date}; {Power Use}; {Water Use}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'Water Use': range overlap=0.934, JS similarity=0.848\n    Generated    \u2014 min: 628.65, max: 8267.71, mean: 3754.795\n    Ground Truth \u2014 min: 684.24, max: 7822.59, mean: 3831.2464\n  Column 'Power Use': range overlap=0.891, JS similarity=0.778\n    Generated    \u2014 min: 23540.0, max: 46824.0, mean: 34085.2604\n    Ground Truth \u2014 min: 22071.0, max: 45586.0, mean: 33667.8333",
+          "generated_samples": "Schema: ['Date', 'Water Use', 'Power Use']\nNumber of Tuples: 96\nExamples:\n    Date  Water Use  Power Use\nNov_2005    5396.31      33675\nOct_2009    7068.42      32121\nMar_2009    2481.60      33406",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_46/training_0.csv\", index_col=0)\n\n# Rename columns to match target schema exactly\n# Source column 'Text Date' corresponds to target 'Date'\n# Also, strip any trailing whitespace/newlines in 'Text Date' if present\nsource0['Date'] = source0['Text Date'].str.strip()\n\n# Select only needed columns and rename them to target schema\ndf = source0[['Date', 'Water Use', 'Power Use']]\n\n# Group by 'Date' and aggregate sums of 'Water Use' and 'Power Use'\nresult = df.groupby('Date', as_index=False).agg({'Water Use': 'sum', 'Power Use': 'sum'})\n\n# Write output to the target file path\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_46/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1739730834960938
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 6641.454219818115,
+        "critique": 3520.9872722625732
+      }
+    }
+  ]
+}

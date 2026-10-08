@@ -1,0 +1,46 @@
+{
+  "case": "4_73",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6583,
+        "cost": 0.0041084,
+        "latency": 10.43346095085144,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.960 + 0.356) / 2 = 0.658 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.274, range overlap=0.388.\nGround truth candidate keys: {City}; {Number of Rides}; {Average Fare ($)}.\nGenerated table candidate keys: {City}; {Number of Rides}; {Average Fare ($)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.960 (precision=1.000, recall=0.923).\nMissing FDs from ground truth: ['Number of Drivers'] \u2192 City Type.\nDistribution Analysis (numerical columns with issues):\n  Column 'Average Fare ($)': range overlap=0.331, JS similarity=0.524\n    Generated    \u2014 min: 8.0367, max: 49.62, mean: 28.3296\n    Ground Truth \u2014 min: 15.9262, max: 29.6853, mean: 24.2234\n  Column 'Number of Drivers': range overlap=0.833, JS similarity=0.298\n    Generated    \u2014 min: 1.0, max: 64.0, mean: 9.76\n    Ground Truth \u2014 min: 4.0, max: 73.0, mean: 39.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'City': Jaccard=0.477\n  Column 'City Type': Jaccard=0.312",
+        "generated_samples": "Schema: ['City', 'City Type', 'Average Fare ($)', 'Number of Rides', 'Number of Drivers']\nNumber of Tuples: 125\nExamples:\n                City City Type  Average Fare ($)  Number of Rides  Number of Drivers\nSouth Elizabethmouth     Rural          28.69800              5.0                 15\n     Lake Stevenbury     Urban          30.29400              5.0                315\n           Lisaville     Urban          38.76875              8.0                528",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the first numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length4_73/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length4_73/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Operation 1: JOIN on city column between Source4_73_0 and Source4_73_1\ndf_joined = pd.merge(df0, df1, on=\"city\", how=\"inner\")\n\n# Operation 2: group_by on Source4_73_0.city and Source4_73_1.type\n# Aggregations:\n#   avg(Source4_73_0.fare) -> 'Average Fare ($)'\n#   count(Source4_73_0.ride_id) -> 'Number of Rides'\n#   sum(Source4_73_1.driver_count) -> 'Number of Drivers'\n\ngrouped = df_joined.groupby(['city', 'type'], as_index=False).agg({\n    'fare': 'mean',\n    'ride_id': 'count',\n    'driver_count': 'sum'\n})\n\n# Rename columns to match target schema\ngrouped.rename(columns={\n    'city': 'City',\n    'fare': 'Average Fare ($)',\n    'ride_id': 'Number of Rides',\n    'driver_count': 'Number of Drivers',\n    'type': 'City Type'\n}, inplace=True)\n\n# Ensure correct dtypes as per target schema\ngrouped['City'] = grouped['City'].astype(str)\ngrouped['Average Fare ($)'] = grouped['Average Fare ($)'].astype(float)\ngrouped['Number of Rides'] = grouped['Number of Rides'].astype(float)\ngrouped['Number of Drivers'] = grouped['Number of Drivers'].astype(int)\ngrouped['City Type'] = grouped['City Type'].astype(str)\n\n# Write the result to the target path\ntarget_path = \"autopipeline-benchmarks/github-pipelines/length4_73/target_multisource.csv\"\ngrouped.to_csv(target_path, index=False)",
+        "generated_csv_head": "City,City Type,Average Fare ($),Number of Rides,Number of Drivers\nAlvarezhaven,Urban,20.256666666666668,9.0,189\nAlyssaberg,Urban,14.5225,4.0,268\nAnitamouth,Suburban,37.31555555555556,9.0,144\nAntoniomouth,Urban,29.45375,8.0,168\nAprilchester,Urban,22.68,8.0,392\nArnoldview,Urban,23.611666666666665,6.0,246\nCampbellport,Suburban,33.711333333333336,15.0,390\nCarrollbury,Suburban,36.606,10.0,40\nCarrollfort,Urban,23.385,6.0,330\nClarkstad,Suburban,31.051666666666662,12.0,252\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.6660690307617188
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.6856,
+          "cost": 0.0016984,
+          "latency": 5.446759223937988,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.960 + 0.411) / 2 = 0.686 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.415, range overlap=0.430.\nGround truth candidate keys: {City}; {Number of Rides}; {Average Fare ($)}.\nGenerated table candidate keys: {City}; {Number of Rides}; {Average Fare ($)}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.960 (precision=1.000, recall=0.923).\nMissing FDs from ground truth: ['Number of Drivers'] \u2192 City Type.\nDistribution Analysis (numerical columns with issues):\n  Column 'Average Fare ($)': range overlap=0.331, JS similarity=0.524\n    Generated    \u2014 min: 8.0367, max: 49.62, mean: 28.3296\n    Ground Truth \u2014 min: 15.9262, max: 29.6853, mean: 24.2234\n  Column 'Number of Drivers': range overlap=0.958, JS similarity=0.720\n    Generated    \u2014 min: 1.0, max: 73.0, mean: 26.768\n    Ground Truth \u2014 min: 4.0, max: 73.0, mean: 39.5\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'City': Jaccard=0.477\n  Column 'City Type': Jaccard=0.312",
+          "generated_samples": "Schema: ['City', 'Average Fare ($)', 'Number of Rides', 'Number of Drivers', 'City Type']\nNumber of Tuples: 125\nExamples:\n            City  Average Fare ($)  Number of Rides  Number of Drivers City Type\n      Anitamouth         37.315556                9                 16  Suburban\n       Jacobfort         26.415000                6                 52     Urban\nWest Brittanyton         27.400000                9                  9     Urban",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_73/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_73/training_1.csv\", index_col=0)\n\n# Join on city (inner join to keep only matching cities)\njoined = pd.merge(source0, source1, how='inner', left_on='city', right_on='city')\n\n# Group by city (the primary key)\n# Aggregations:\n# - Average Fare ($): average of fare\n# - Number of Rides: count of ride_id\n# - Number of Drivers: max of driver_count (since driver_count is per city, max or sum should be same; sum would be wrong if multiple rows per city in source1)\n# - City Type: take first non-null type (all same per city)\nagg = joined.groupby('city').agg({\n    'fare': 'mean',\n    'ride_id': 'count',\n    'driver_count': 'max',\n    'type': 'first'\n}).reset_index()\n\n# Rename columns to match target schema exactly\nagg.columns = ['City', 'Average Fare ($)', 'Number of Rides', 'Number of Drivers', 'City Type']\n\n# Write output\nagg.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_73/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.3408660888671875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 10495.754957199097,
+        "critique": 5523.813486099243
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "case": "9_6",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.9739,
+        "cost": 0.0084968,
+        "latency": 21.936157941818237,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.948) / 2 = 0.974 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.854, range overlap=1.000.\nGround truth candidate keys: {country, cpi}.\nGenerated table candidate keys: {country, cpi}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'cpi': range overlap=1.000, JS similarity=0.854\n    Generated    \u2014 min: 2.3, max: 10.0, mean: 6.0225\n    Ground Truth \u2014 min: 2.3, max: 10.0, mean: 5.9522",
+        "generated_samples": "Schema: ['country', 'cpi']\nNumber of Tuples: 288\nExamples:\n  country      cpi\nLithuania 4.751965\nLuxemburg 8.610000\n    Malta 5.600000",
+        "code": "import pandas as pd\n\n# File paths for all source tables\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_4.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_5.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_6.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_7.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_8.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_9.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_10.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_11.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_12.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_13.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_14.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_15.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length9_6/training_16.csv\",\n]\n\n# Read all source tables into a list of DataFrames\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# Concatenate all DataFrames (UNION)\ncombined_df = pd.concat(dfs, ignore_index=True)\n\n# Remove duplicates to match target uniqueness on (country, cpi)\ncombined_df = combined_df.drop_duplicates(subset=['country', 'cpi'])\n\n# Ensure correct dtypes as per target schema\ncombined_df['country'] = combined_df['country'].astype(str)\ncombined_df['cpi'] = combined_df['cpi'].astype(float)\n\n# Save the final target table\ncombined_df.to_csv(\"autopipeline-benchmarks/github-pipelines/length9_6/target_multisource.csv\", index=False)",
+        "generated_csv_head": "country,cpi\nNew Zealand,9.43\nDenmark,9.33\nSweden,9.08\nFinland,9.05\nCanada,8.96\nNorway,8.87\nSingapore,8.8\nSwitzerland,8.76\nNetherlands,8.71\nAustralia,8.6\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.4197826385498047
+        }
+      },
+      "critiques": [],
+      "execution_timing_ms": {
+        "multi_step": 22062.66689300537,
+        "critique": 0.0
+      }
+    }
+  ]
+}

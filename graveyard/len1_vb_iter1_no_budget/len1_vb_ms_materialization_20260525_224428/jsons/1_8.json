@@ -1,0 +1,46 @@
+{
+  "case": "1_8",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8214,
+        "cost": 0.0038888000000000004,
+        "latency": 12.563461542129517,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.643) / 2 = 0.821 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.631, range overlap=0.655.\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'index_track': range overlap=0.000, JS similarity=0.107\n    Generated    \u2014 min: 132262.0, max: 4975442.0, mean: 2012971.228\n    Ground Truth \u2014 min: 1.0, max: 49998.0, mean: 24869.5757\n  Column 'track_id': range overlap=0.965, JS similarity=0.785\n    Generated    \u2014 min: 132262.0, max: 4975442.0, mean: 2012971.228\n    Ground Truth \u2014 min: 252.0, max: 5018274.0, mean: 1946593.8413",
+        "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 4027\nExamples:\n index_track  track_id  dummy\n       67380   3319155      1\n       70979   2016679      1\n       81972   2304207      1",
+        "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the CSV file's first column which is an index\nsource0_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_8/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length1_8/training_1.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\n\n# Perform the join on 'track_id' as specified\ndf_joined = pd.merge(df1, df0, on=\"track_id\", how=\"inner\")\n\n# Ensure the columns are in the target schema order: ['index_track', 'track_id', 'dummy']\ndf_result = df_joined[['index_track', 'track_id', 'dummy']]\n\n# Cast columns to integer as per target schema\ndf_result['index_track'] = df_result['index_track'].astype(int)\ndf_result['track_id'] = df_result['track_id'].astype(int)\ndf_result['dummy'] = df_result['dummy'].astype(int)\n\n# Write the result to the target path without the index column\noutput_path = \"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource.csv\"\ndf_result.to_csv(output_path, index=False)",
+        "generated_csv_head": "index_track,track_id,dummy\n84747,1787558,1\n73799,1498351,1\n82909,471520,1\n64471,2263665,1\n87106,2842726,1\n79607,463767,1\n62506,2784120,1\n67416,2532797,1\n70595,443166,1\n73012,3331386,1\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2154579162597656
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.8214,
+          "cost": 0.0013988,
+          "latency": 5.586162567138672,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.643) / 2 = 0.821 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.631, range overlap=0.655.\nGround truth candidate keys: {index_track}; {track_id}.\nGenerated table candidate keys: {index_track}; {track_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'index_track': range overlap=0.000, JS similarity=0.107\n    Generated    \u2014 min: 132262.0, max: 4975442.0, mean: 2012971.228\n    Ground Truth \u2014 min: 1.0, max: 49998.0, mean: 24869.5757\n  Column 'track_id': range overlap=0.965, JS similarity=0.785\n    Generated    \u2014 min: 132262.0, max: 4975442.0, mean: 2012971.228\n    Ground Truth \u2014 min: 252.0, max: 5018274.0, mean: 1946593.8413",
+          "generated_samples": "Schema: ['index_track', 'track_id', 'dummy']\nNumber of Tuples: 4027\nExamples:\n index_track  track_id  dummy\n       71130   2016956      1\n       75676   2289454      1\n       68160   1748134      1",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 as per hint 21\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_8/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length1_8/training_1.csv\", index_col=0)\n\n# Join on track_id\njoined = pd.merge(source1, source0, on=\"track_id\", how=\"inner\")\n\n# Group by index_track (primary key), aggregate dummy by max (dummy is always 1 in examples)\nresult = joined.groupby(\"index_track\", as_index=False).agg({\"track_id\": \"first\", \"dummy\": \"max\"})\n\n# Write output with exact target schema and column order\nresult = result[[\"index_track\", \"track_id\", \"dummy\"]]\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length1_8/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.043081283569336
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 12685.189485549927,
+        "critique": 5901.612997055054
+      }
+    }
+  ]
+}

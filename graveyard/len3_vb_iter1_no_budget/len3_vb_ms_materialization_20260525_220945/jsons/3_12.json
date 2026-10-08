@@ -1,0 +1,46 @@
+{
+  "case": "3_12",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0,
+        "cost": 0.0081572,
+        "latency": 32.54101896286011,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+        "generated_samples": "",
+        "code": "import pandas as pd\n\n# Read the source CSV file with index_col=0 to ignore the numerical index column\nsource_path = \"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_12/training_0.csv\"\ndf = pd.read_csv(source_path, index_col=0)\n\n# Group by 'SN', aggregate sum of 'Price' and count of 'SN'\ngrouped = df.groupby('SN', as_index=False).agg({'Price': 'sum', 'SN': 'count'})\n\n# Rename the count aggregation column from 'SN' to 'count'\ngrouped = grouped.rename(columns={'SN': 'count'})\n\n# Ensure correct dtypes as per target schema\ngrouped['SN'] = grouped['SN'].astype(str)\ngrouped['Price'] = grouped['Price'].astype(float)\ngrouped['count'] = grouped['count'].astype(int)\n\n# Assign to target table name\nTarget3_12 = grouped[['SN', 'Price', 'count']]\n\n# Write the result to the specified path without the index\nTarget3_12.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/target_multisource.csv\", index=False)",
+        "generated_csv_head": "",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.030040740966796875
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0.5568,
+          "cost": 0.0015208,
+          "latency": 6.884011268615723,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.500 + 0.614) / 2 = 0.557 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.952, range overlap=0.888.\nGround truth candidate keys: {SN}.\nGenerated table candidate keys: {SN, count}; {Price, count}.\nKeys present in ground truth but absent in generated: {SN}.\nSpurious keys in generated not present in ground truth: {SN, count}; {count, Price}.\nFunctional dependency F1: 0.500 (precision=0.500, recall=0.500).\nSpurious FDs in generated (not in ground truth): ['Price'] \u2192 SN.\nMissing FDs from ground truth: ['SN'] \u2192 count.\nDistribution Analysis (numerical columns with issues):\n  Column 'Price': range overlap=0.777, JS similarity=0.917\n    Generated    \u2014 min: 1.0, max: 10.52, mean: 3.4873\n    Ground Truth \u2014 min: 1.0, max: 13.25, mean: 3.6925\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'SN': Jaccard=0.000",
+          "generated_samples": "Schema: ['Price', 'count']\nNumber of Tuples: 333\nExamples:\n Price  count\n  4.07      1\n  3.14      1\n  1.29      1",
+          "code": "import pandas as pd\n\n# Read source table with index_col=0 to ignore the numerical index column\ndf0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/training_0.csv\", index_col=0)\n\n# Strip whitespace from SN column to match target formatting\ndf0['SN'] = df0['SN'].str.strip()\n\n# Group by SN, aggregate sum of Price and count of SN\nresult = df0.groupby('SN', as_index=False).agg({'Price': 'sum', 'SN': 'count'})\n\n# Rename count column to 'count'\nresult = result.rename(columns={'SN': 'count'})\n\n# Write output to target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_12/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.196146011352539
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 32548.559427261353,
+        "critique": 6932.733535766602
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "case": "3_93",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.89,
+        "cost": 0.0076112,
+        "latency": 19.45873212814331,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.780) / 2 = 0.890 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.843, range overlap=0.717.\nGround truth candidate keys: {movie_id}.\nGenerated table candidate keys: {movie_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'movie_id': range overlap=0.985, JS similarity=0.929\n    Generated    \u2014 min: 1.0, max: 1682.0, mean: 741.859\n    Ground Truth \u2014 min: 1.0, max: 1657.0, mean: 800.8025\n  Column '0': range overlap=0.449, JS similarity=0.757\n    Generated    \u2014 min: 1.0, max: 125.0, mean: 14.3164\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.4465",
+        "generated_samples": "Schema: ['movie_id', '0']\nNumber of Tuples: 1397\nExamples:\n movie_id  0\n      240 30\n      475 57\n      937  6",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_93/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/intermediate_space/length3_93/training_2.csv\", index_col=0)\n\n# Join Source3_93_1 and Source3_93_2 on 'movie_id'\njoined = pd.merge(source1, source2, on=\"movie_id\", how=\"inner\")\n\n# Group by movie_id and count user_id occurrences (count of ratings per movie)\nagg = joined.groupby(\"movie_id\", as_index=False).agg({\"user_id\": \"count\"})\n\n# Rename columns to match target schema ['movie_id', '0']\nagg.rename(columns={\"user_id\": \"0\"}, inplace=True)\n\n# Ensure column types match target schema: movie_id int, 0 int\nagg[\"movie_id\"] = agg[\"movie_id\"].astype(int)\nagg[\"0\"] = agg[\"0\"].astype(int)\n\n# Save the result to the target path\nagg.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_93/target_multisource.csv\", index=False)",
+        "generated_csv_head": "movie_id,0\n1,96\n2,24\n3,16\n4,33\n5,13\n6,6\n7,83\n8,40\n9,68\n10,16\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 0.8091926574707031
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.89,
+          "cost": 0.0015656,
+          "latency": 3.6808102130889893,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.780) / 2 = 0.890 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.843, range overlap=0.717.\nGround truth candidate keys: {movie_id}.\nGenerated table candidate keys: {movie_id}.\nKey structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nDistribution Analysis (numerical columns with issues):\n  Column 'movie_id': range overlap=0.985, JS similarity=0.929\n    Generated    \u2014 min: 1.0, max: 1682.0, mean: 741.859\n    Ground Truth \u2014 min: 1.0, max: 1657.0, mean: 800.8025\n  Column '0': range overlap=0.449, JS similarity=0.757\n    Generated    \u2014 min: 1.0, max: 125.0, mean: 14.3164\n    Ground Truth \u2014 min: 1.0, max: 277.0, mean: 31.4465",
+          "generated_samples": "Schema: ['movie_id', '0']\nNumber of Tuples: 1397\nExamples:\n movie_id  0\n      354 13\n     1258  3\n       15 64",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_93/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_93/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length3_93/training_2.csv\", index_col=0)\n\n# Join Source3_93_1 and Source3_93_2 on movie_id (inner join)\njoined = pd.merge(source1, source2, on=\"movie_id\", how=\"inner\")\n\n# Group by movie_id and count user_id occurrences\nresult = joined.groupby(\"movie_id\", as_index=False).agg({\"user_id\": \"count\"})\n\n# Rename the aggregation column to '0' as per target schema\nresult.rename(columns={\"user_id\": \"0\"}, inplace=True)\n\n# Write the result to the target file\nresult.to_csv(\"autopipeline-benchmarks/github-pipelines/length3_93/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.8401870727539062
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 19532.485008239746,
+        "critique": 3765.8965587615967
+      }
+    }
+  ]
+}

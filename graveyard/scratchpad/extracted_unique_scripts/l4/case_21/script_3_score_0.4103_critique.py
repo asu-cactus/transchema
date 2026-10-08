@@ -1,0 +1,17 @@
+import pandas as pd
+
+df0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length4_21/training_0.csv", index_col=0)
+
+df0['is_goal'] = pd.to_numeric(df0['is_goal'], errors='coerce')
+
+grouped = df0.groupby('game_season', as_index=False).agg(
+    is_goal=('is_goal', 'mean'),
+    season_sum=('shot_id_number', 'count'),
+    is_goal_count1=('is_goal', 'count')
+)
+
+grouped['season_sum'] = grouped['season_sum'].astype(int)
+grouped['is_goal_count1'] = grouped['is_goal_count1'].astype(int)
+grouped['game_season'] = grouped['game_season'].astype(str)
+
+grouped.to_csv("autopipeline-benchmarks/github-pipelines/length4_21/target_multisource_mcts.csv", index=False)

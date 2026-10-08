@@ -1,0 +1,46 @@
+{
+  "case": "5_14",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.4652,
+        "cost": 0.007700800000000001,
+        "latency": 147.70324182510376,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.800 + 0.130) / 2 = 0.465 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.160, range overlap=0.188.\nGround truth candidate keys: {Ship_id}.\nGenerated table candidate keys: {Ship_id, Cust_id}; {Ship_id, Ord_id}; {Ship_id, Prod_id}.\nKeys present in ground truth but absent in generated: {Ship_id}.\nSpurious keys in generated not present in ground truth: {Ship_id, Cust_id}; {Ship_id, Ord_id}; {Prod_id, Ship_id}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.800 (precision=1.000, recall=0.667).\nMissing FDs from ground truth: ['Ship_id'] \u2192 Prod_id; ['Ship_id'] \u2192 Cust_id; ['Ship_id'] \u2192 Ord_id.\nDistribution Analysis (numerical columns with issues):\n  Column 'Ord_id': range overlap=0.188, JS similarity=0.160\n    Generated    \u2014 min: 1.0, max: 17.0, mean: 7.2479\n    Ground Truth \u2014 min: 1.0, max: 4.0, mean: 1.0904\n  Column 'Prod_id': range overlap=0.188, JS similarity=0.160\n    Generated    \u2014 min: 1.0, max: 17.0, mean: 7.2479\n    Ground Truth \u2014 min: 1.0, max: 4.0, mean: 1.0904\n  Column 'Cust_id': range overlap=0.188, JS similarity=0.160\n    Generated    \u2014 min: 1.0, max: 17.0, mean: 7.2479\n    Ground Truth \u2014 min: 1.0, max: 4.0, mean: 1.0904\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Ship_id': Jaccard=0.000",
+        "generated_samples": "Schema: ['Ship_id', 'Ord_id', 'Prod_id', 'Cust_id']\nNumber of Tuples: 4200\nExamples:\n Ship_id  Ord_id  Prod_id  Cust_id\n SHP_973     710        4      244\nSHP_4822    3483        6     1236\nSHP_4825    3484        1     1253",
+        "code": "import pandas as pd\n\n# Load source tables with index_col=0 to ignore the numerical index column\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_14/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_14/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length5_14/training_2.csv\"\nsource4_path = \"autopipeline-benchmarks/github-pipelines/length5_14/training_4.csv\"\n\ndf0 = pd.read_csv(source0_path, index_col=0)\ndf1 = pd.read_csv(source1_path, index_col=0)\ndf2 = pd.read_csv(source2_path, index_col=0)\ndf4 = pd.read_csv(source4_path, index_col=0)\n\n# Operation History:\n# 1) JOIN : [[\"Source5_14_2\", \"Source5_14_1\"], [\"Ship_id\", \"Ship_id\"]]\ndf_2_1 = pd.merge(df2, df1, how='inner', on='Ship_id')\n\n# 2) JOIN : [[\"Source5_14_0\", \"Source5_14_2\"], [\"Cust_id\", \"Cust_id\"]]\n# Note: The join is between Source5_14_0 and Source5_14_2, but we already have df_2_1 which is df2 joined with df1.\n# The operation history says join Source5_14_0 with Source5_14_2 on Cust_id.\n# We must join df0 with df2 first, then join the result with df1 or join df0 with df_2_1 on Cust_id.\n# The order in operation history is strict, so we join df0 with df2 first, then join the result with df1.\ndf_0_2 = pd.merge(df0, df2, how='inner', on='Cust_id')\n\n# But operation history says join Source5_14_2 and Source5_14_1 first, then join Source5_14_0 and Source5_14_2.\n# So we must join df_2_1 with df0 on Cust_id.\ndf_0_2_1 = pd.merge(df0, df_2_1, how='inner', on='Cust_id')\n\n# 3) JOIN : [[\"Source5_14_4\", \"Source5_14_2\"], [\"Ord_id\", \"Ord_id\"]]\n# Similarly, join Source5_14_4 with Source5_14_2 on Ord_id.\n# We already have df_2_1 (df2 joined with df1), and df_0_2_1 (df0 joined with df_2_1).\n# The operation history says join Source5_14_4 with Source5_14_2 on Ord_id.\n# We must join df4 with df2 first, then join with the previous result.\ndf_4_2 = pd.merge(df4, df2, how='inner', on='Ord_id')\n\n# Now join df_0_2_1 with df4 on Ord_id to incorporate Source5_14_4 data.\n# But df_0_2_1 already contains df2, so join df_0_2_1 with df4 on Ord_id.\nfinal_join = pd.merge(df_0_2_1, df4, how='inner', on='Ord_id')\n\n# After these joins, select and convert columns to match target schema:\n# Target Schema: ['Ship_id': string, 'Ord_id': integer, 'Prod_id': integer, 'Cust_id': integer]\n# Source columns:\n# Ship_id: string, keep as is\n# Ord_id: currently strings like \"Ord_1082\" -> extract integer part\n# Prod_id: currently strings like \"Prod_8\" -> extract integer part\n# Cust_id: currently strings like \"Cust_417\" -> extract integer part\n\ndef extract_int_id(s, prefix):\n    # Remove prefix and convert to int\n    return s.str.replace(prefix, '', regex=False).astype(int)\n\nresult = pd.DataFrame()\nresult['Ship_id'] = final_join['Ship_id']\n\nresult['Ord_id'] = extract_int_id(final_join['Ord_id'], 'Ord_')\nresult['Prod_id'] = extract_int_id(final_join['Prod_id'], 'Prod_')\nresult['Cust_id'] = extract_int_id(final_join['Cust_id'], 'Cust_')\n\n# Write the result to the specified path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_14/target_multisource.csv\"\nresult.to_csv(output_path, index=False)",
+        "generated_csv_head": "Ship_id,Ord_id,Prod_id,Cust_id\nSHP_1,1,1,1\nSHP_8,6,1,6\nSHP_10,8,7,8\nSHP_10,8,6,8\nSHP_14,11,5,8\nSHP_17,13,11,12\nSHP_16,13,10,12\nSHP_2477,13,2,599\nSHP_17,13,12,823\nSHP_33,25,15,20\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 3.2854080200195312
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.0022756,
+          "latency": 9.476370573043823,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source files with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_14/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_14/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_14/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_14/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_14/training_4.csv\", index_col=0)\n\n# Join Source5_14_2 and Source5_14_1 on Ship_id\ndf = pd.merge(source2, source1, how='inner', on='Ship_id')\n\n# Join the result with Source5_14_0 on Cust_id\ndf = pd.merge(df, source0, how='inner', on='Cust_id')\n\n# Join the result with Source5_14_4 on Ord_id\ndf = pd.merge(df, source4, how='inner', on='Ord_id')\n\n# Group by Ship_id (primary key) and aggregate Ord_id, Prod_id, Cust_id by min to ensure uniqueness and integer type\ndf_grouped = df.groupby('Ship_id', as_index=False).agg({\n    'Ord_id': 'min',\n    'Prod_id': 'min',\n    'Cust_id': 'min'\n})\n\n# Ensure columns are exactly as target schema and types\ndf_grouped = df_grouped[['Ship_id', 'Ord_id', 'Prod_id', 'Cust_id']]\n\n# Convert Ord_id, Prod_id, Cust_id to integer type if they are not already\ndf_grouped['Ord_id'] = df_grouped['Ord_id'].astype(int)\ndf_grouped['Prod_id'] = df_grouped['Prod_id'].astype(int)\ndf_grouped['Cust_id'] = df_grouped['Cust_id'].astype(int)\n\n# Write to target file\ndf_grouped.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_14/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.02574920654296875
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 147766.22915267944,
+        "critique": 10577.873945236206
+      }
+    }
+  ]
+}

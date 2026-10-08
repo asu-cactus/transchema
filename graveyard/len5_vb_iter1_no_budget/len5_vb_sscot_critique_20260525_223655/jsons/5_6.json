@@ -1,0 +1,46 @@
+{
+  "case": "5_6",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": false,
+        "score": 0.6022,
+        "cost": 0.004522,
+        "latency": 24.206637859344482,
+        "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.750 + 0.455) / 2 = 0.602 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard). Numeric averages: JS similarity=0.636, range overlap=0.000.\nGround truth candidate keys: {state}.\nGenerated table candidate keys: {draw_sales}; {pop}; {year}; {full_state}.\nKeys present in ground truth but absent in generated: {state}.\nSpurious keys in generated not present in ground truth: {pop}; {draw_sales}; {year}; {full_state}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}; {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: none.\nEquivalence classes from ground truth missing in generated: {left, right}.\nFunctional dependency F1: 0.750 (precision=0.750, recall=0.750).\nSpurious FDs in generated (not in ground truth): ['draw_sales'] \u2192 state; ['year'] \u2192 state; ['full_state'] \u2192 state; ['pop'] \u2192 state.\nMissing FDs from ground truth: ['state'] \u2192 full_state; ['state'] \u2192 year; ['state'] \u2192 pop; ['state'] \u2192 draw_sales.\nDistribution Analysis (numerical columns with issues):\n  Column 'year': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261\n  Column 'draw_sales': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261\n  Column 'full_state': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261\n  Column 'pop': range overlap=0.000, JS similarity=0.636\n    Generated    \u2014 min: 1143631.0, max: 681472522.0, mean: 73379923.0532\n    Ground Truth \u2014 min: 5.0, max: 8.0, mean: 7.8261",
+        "generated_samples": "Schema: ['state', 'year', 'draw_sales', 'full_state', 'pop']\nNumber of Tuples: 357\nExamples:\nstate  year  draw_sales  full_state     pop\n   OR  2013    57702941           0 3965938\n   SD  2016     1373505           0  865224\n   TN  2012   127593078           0 6452208",
+        "code": "import pandas as pd\n\n# File paths for source data\nsource0_path = \"autopipeline-benchmarks/github-pipelines/length5_6/training_0.csv\"\nsource1_path = \"autopipeline-benchmarks/github-pipelines/length5_6/training_1.csv\"\nsource2_path = \"autopipeline-benchmarks/github-pipelines/length5_6/training_2.csv\"\n\n# Step 1: Load Source 0 and Source 2 (same schema: ['state', 'date', 'draw_sales'])\n# We will concatenate these two tables vertically (union) because they share the same schema.\ndf_source0 = pd.read_csv(source0_path, index_col=0)\ndf_source2 = pd.read_csv(source2_path, index_col=0)\n\n# Concatenate source0 and source2\ndf_draw_sales = pd.concat([df_source0, df_source2], ignore_index=True)\n\n# Convert 'draw_sales' to numeric, coerce errors to NaN, then fill NaN with 0 (safe for aggregation)\ndf_draw_sales['draw_sales'] = pd.to_numeric(df_draw_sales['draw_sales'], errors='coerce').fillna(0)\n\n# Extract 'year' from 'date' column (format YYYY-MM-DD)\ndf_draw_sales['year'] = pd.to_datetime(df_draw_sales['date'], errors='coerce').dt.year\n\n# Drop rows where 'state' or 'year' is missing (cannot join without these)\ndf_draw_sales = df_draw_sales.dropna(subset=['state', 'year'])\n\n# Convert 'year' and 'draw_sales' to integer type safely\ndf_draw_sales['year'] = df_draw_sales['year'].astype(int)\ndf_draw_sales['draw_sales'] = df_draw_sales['draw_sales'].astype(int)\n\n# Aggregate draw_sales by state and year (sum), because multiple dates per state-year\ndf_draw_sales_agg = df_draw_sales.groupby(['state', 'year'], as_index=False)['draw_sales'].sum()\n\n# Step 2: Load Source 1 (schema: ['full_state', 'state', 'pop', 'year'])\ndf_source1 = pd.read_csv(source1_path, index_col=0)\n\n# Clean and convert types in source1\ndf_source1['pop'] = pd.to_numeric(df_source1['pop'], errors='coerce').fillna(0).astype(int)\ndf_source1['year'] = pd.to_numeric(df_source1['year'], errors='coerce').fillna(0).astype(int)\ndf_source1['full_state'] = pd.to_numeric(df_source1['full_state'], errors='coerce').fillna(0).astype(int)\ndf_source1['state'] = df_source1['state'].astype(str)\n\n# Drop rows with missing 'state' or 'year' to ensure join integrity\ndf_source1 = df_source1.dropna(subset=['state', 'year'])\n\n# Step 3: Join aggregated draw_sales (from source0+2) with source1 on ['state', 'year']\ndf_merged = pd.merge(df_draw_sales_agg, df_source1, on=['state', 'year'], how='inner')\n\n# Step 4: Select and reorder columns to match target schema:\n# Target schema: ['state': string, 'year': integer, 'draw_sales': integer, 'full_state': integer, 'pop': integer]\ndf_target = df_merged[['state', 'year', 'draw_sales', 'full_state', 'pop']]\n\n# Step 5: Ensure correct dtypes for target columns\ndf_target['state'] = df_target['state'].astype(str)\ndf_target['year'] = df_target['year'].astype(int)\ndf_target['draw_sales'] = df_target['draw_sales'].astype(int)\ndf_target['full_state'] = df_target['full_state'].astype(int)\ndf_target['pop'] = df_target['pop'].astype(int)\n\n# Step 6: Write the result to the specified output path\noutput_path = \"autopipeline-benchmarks/github-pipelines/length5_6/target_multisource_cot.csv\"\ndf_target.to_csv(output_path, index=False)",
+        "generated_csv_head": "state,year,draw_sales,full_state,pop\nAR,2011,31401830,0,2928191\nAR,2012,43032992,0,2940424\nAR,2013,46161467,0,2952658\nAR,2014,19255937,0,2964891\nAR,2015,5487171,0,2977124\nAR,2016,5866016,0,2989358\nAR,2017,5027237,0,3001591\nAR,2018,15647668,0,3013825\nAZ,2011,108579981,0,6489724\nAZ,2012,147542105,0,6587141\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 1.2617111206054688
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": false,
+          "score": 0,
+          "cost": 0.001964,
+          "latency": 7.048940896987915,
+          "nl_score": "Overall: the generated table has significant structural differences from ground truth.\nCombined score = fd_f1 = 0.000 = 0.000 (1.0 is perfect).\nGround truth candidate keys: none detected.\nGenerated table candidate keys: none detected.\nFunctional dependency F1: 0.000 (precision=nan, recall=nan).\nNo column data found \u2014 distribution comparison not applicable.",
+          "generated_samples": "",
+          "code": "import pandas as pd\n\n# Read source tables with index_col=0 to ignore the first numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/training_2.csv\", index_col=0)\n\n# UNION Source5_6_0 and Source5_6_2 (both have same schema: ['state', 'date', 'draw_sales'])\nunioned_draw_sales = pd.concat([source0, source2], ignore_index=True)\n\n# Extract year from 'date' column (string format 'YYYY-MM-DD')\nunioned_draw_sales['year'] = unioned_draw_sales['date'].str[:4].astype(int)\n\n# Join unioned_draw_sales with Source5_6_1 on 'state'\njoined = pd.merge(unioned_draw_sales, source1, on='state', how='inner')\n\n# Aggregate:\n# Group by 'state' and 'year' (leftmost non-float unique columns in target)\n# sum(draw_sales) to aggregate sales over duplicates\n# max(full_state) and max(pop) to pick the single value (since FD says state->full_state,pop,year,draw_sales)\nagg = joined.groupby(['state', 'year'], as_index=False).agg({\n    'draw_sales': 'sum',\n    'full_state': 'max',\n    'pop': 'max'\n})\n\n# Ensure column types match target schema\nagg['draw_sales'] = agg['draw_sales'].astype(int)\nagg['full_state'] = agg['full_state'].astype(int)\nagg['pop'] = agg['pop'].astype(int)\nagg['year'] = agg['year'].astype(int)\nagg['state'] = agg['state'].astype(str)\n\n# Reorder columns to match target schema exactly\nagg = agg[['state', 'year', 'draw_sales', 'full_state', 'pop']]\n\n# Write output\nagg.to_csv(\"autopipeline-benchmarks/github-pipelines/length5_6/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 0.0324249267578125
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 24268.990755081177,
+        "critique": 7287.269830703735
+      }
+    }
+  ]
+}

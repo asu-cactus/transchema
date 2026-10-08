@@ -1,0 +1,9 @@
+import pandas as pd
+
+source0 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_8/training_0.csv", index_col=0)
+source1 = pd.read_csv("autopipeline-benchmarks/github-pipelines/length1_8/training_1.csv", index_col=0)
+
+joined = pd.merge(source1, source0, on="track_id", how="inner")
+
+result = joined[["index_track", "track_id", "dummy"]]
+result.to_csv("autopipeline-benchmarks/github-pipelines/length1_8/target_multisource_mcts.csv", index=False)

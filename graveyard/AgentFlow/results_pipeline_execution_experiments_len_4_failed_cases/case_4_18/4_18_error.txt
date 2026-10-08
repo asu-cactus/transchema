@@ -1,0 +1,20 @@
+Case: 4_18
+Timestamp: 2026-02-23T13:27:39.215744
+Error: expected string or bytes-like object, got 'dict'
+
+Traceback:
+Traceback (most recent call last):
+  File "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/data_transformation_start.py", line 219, in <module>
+    output = solver.solve(query)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/agentflow/agentflow/solver.py", line 980, in solve
+    extract_result = self.verifier.extract_conclusion(stop_verification)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/asurite.ad.asu.edu/jrtandel/Documents/transchema/AgentFlow/agentflow/agentflow/models/verifier.py", line 453, in extract_conclusion
+    matches = list(re.finditer(pattern, response, re.IGNORECASE | re.DOTALL))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 224, in finditer
+    return _compile(pattern, flags).finditer(string)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: expected string or bytes-like object, got 'dict'
+

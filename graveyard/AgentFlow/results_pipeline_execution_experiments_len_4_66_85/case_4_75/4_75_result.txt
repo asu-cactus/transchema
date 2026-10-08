@@ -1,0 +1,51 @@
+Case: 4_75
+Status: INCORRECT
+Timestamp: 2026-02-25T12:13:47.262681
+Duration: 41.24 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_66_85/case_4_75/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.6666666666666666
+  matched_columns: ['type', 'b']
+  calculate_score: 0.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_75
+2. Target Schema: ['type': string, 'a': float, 'b': float]
+3. Target Examples: There are 2 available target examples: Empty DataFrame
+Columns: [type, a, b]
+Index: []
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_75_0
+	Source 0 Schema: ['School ID', 'school_name', 'type', 'size', 'budget']
+	Source 0 Examples: 	 Source 0 contains 15 tuples, with examples as follows: 
+   School ID           school_name      type  size   budget
+0          0     Huang High School  District  2917  1910635
+1          1  Figueroa High School  District  2949  1884411
+2          2   Shelton High School   Charter  1761  1056600
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_75/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_75_1
+	Source 1 Schema: ['Student ID', 'student_name', 'gender', 'grade', 'school_name', 'reading_score', 'math_score']
+	Source 1 Examples: 	 Source 1 contains 19585 tuples, with examples as follows: 
+   Student ID     student_name gender grade        school_name  reading_score  \
+0           0     Paul Bradley      M   9th  Huang High School             66   
+1           1     Victor Smith      M  12th  Huang High School             94   
+2           2  Kevin Rodriguez      M  12th  Huang High School             90   
+
+   math_score  
+0          79  
+1          61  
+2          60  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_75/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_75/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

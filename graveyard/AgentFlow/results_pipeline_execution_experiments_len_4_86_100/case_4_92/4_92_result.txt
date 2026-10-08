@@ -1,0 +1,92 @@
+Case: 4_92
+Status: INCORRECT
+Timestamp: 2026-02-25T11:54:42.557678
+Duration: 324.38 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_pipeline_execution_experiments_len_4_86_100/case_4_92/logs
+
+Verification:
+  is_correct: False
+  average_similarity: 0.0
+  matched_columns: []
+  calculate_score: 2.6666666666666665
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target4_92
+2. Target Schema: ['title': string, 'user_id': integer, 'movie_id_x': integer, 'rating': integer, 'timestamp': integer, 'gender': integer, 'age': integer, 'occupation': integer, 'zip': integer, 'genres_x': integer, 'movie_id_y': integer, 'genres_y': string]
+3. Target Examples: There are 1044 available target examples:                                 title  user_id  movie_id_x  rating  timestamp  \
+800                    Rob Roy (1995)        6           6       6          6   
+629               Mrs. Miniver (1942)        1           1       1          1   
+743            Porky's Revenge (1985)        3           3       3          3   
+416       Hands on a Hard Body (1996)        1           1       1          1   
+307              Event Horizon (1997)        4           4       4          4   
+..                                ...      ...         ...     ...        ...   
+837  Secret of Roan Inish, The (1994)        1           1       1          1   
+607                Mighty, The (1998)        2           2       2          2   
+205                Cliffhanger (1993)        6           6       6          6   
+770      Raise the Red Lantern (1991)        3           3       3          3   
+639       Mutiny on the Bounty (1935)        3           3       3          3   
+
+     gender  age  occupation  zip  genres_x  movie_id_y  \
+800       6    6           6    6         6         151   
+629       1    1           1    1         1        1936   
+743       3    3           3    3         3        3690   
+416       1    1           1    1         1        2330   
+307       4    4           4    4         4        1590   
+..      ...  ...         ...  ...       ...         ...   
+837       1    1           1    1         1         314   
+607       2    2           2    2         2        2310   
+205       6    6           6    6         6         434   
+770       3    3           3    3         3        1280   
+639       3    3           3    3         3        1931   
+
+                           genres_y  
+800               Drama|Romance|War  
+629                       Drama|War  
+743                          Comedy  
+416                     Documentary  
+307  Action|Mystery|Sci-Fi|Thriller  
+..                              ...  
+837                           Drama  
+607                           Drama  
+205          Action|Adventure|Crime  
+770                           Drama  
+639                       Adventure  
+
+[104 rows x 12 columns]
+4. Source Information: 	Source 0:
+	Source 0 Name: Source4_92_0
+	Source 0 Schema: ['user_id', 'gender', 'age', 'occupation', 'zip']
+	Source 0 Examples: 	 Source 0 contains 2000 tuples, with examples as follows: 
+   user_id gender  age  occupation         zip
+0     4354      M   35          14       78611
+1     2313      F   50           6  48103-4711
+2     5333      F   25           7       02332
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_92/test_0.csv
+	Source 1:
+	Source 1 Name: Source4_92_1
+	Source 1 Schema: ['user_id', 'movie_id', 'rating', 'timestamp']
+	Source 1 Examples: 	 Source 1 contains 20000 tuples, with examples as follows: 
+   user_id  movie_id  rating  timestamp
+0     4107       296       5  965963229
+1     4354      2344       2  965193700
+2     4948      1209       2  962643528
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_92/test_1.csv
+	Source 2:
+	Source 2 Name: Source4_92_2
+	Source 2 Schema: ['movie_id', 'title', 'genres']
+	Source 2 Examples: 	 Source 2 contains 2000 tuples, with examples as follows: 
+   movie_id                                      title          genres
+0      2380  Police Academy 3: Back in Training (1986)          Comedy
+1       832                              Ransom (1996)  Drama|Thriller
+2      2759                                Dick (1999)          Comedy
+	Source 2 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_92/test_2.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length4_92/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

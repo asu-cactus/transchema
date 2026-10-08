@@ -1,0 +1,224 @@
+Case: 1_30
+Status: CORRECT
+Timestamp: 2026-02-24T12:56:08.490470
+Duration: 46.92 seconds
+LLM Engine: gpt-4.1-mini
+Logs Directory: /home/local/ASUAD/jrtandel/transchema/AgentFlow/results_operator_execution_experiments_len_1_30_60/case_1_30/logs
+
+Verification:
+  is_correct: True
+  average_similarity: 1.0
+  matched_columns: ['movieId', 'title', 'genres', 'userId', 'tag', 'timestamp']
+  calculate_score: 3.0
+
+================================================================================
+QUERY:
+================================================================================
+1. Target Table Name: Target1_30
+2. Target Schema: ['movieId': integer, 'title': string, 'genres': string, 'userId': integer, 'tag': string, 'timestamp': integer]
+3. Target Examples: There are 567 available target examples:      movieId                                              title  \
+35       260          Star Wars: Episode IV - A New Hope (1977)   
+273     2361                              Pink Flamingos (1972)   
+477     5618  Spirited Away (Sen to Chihiro no kamikakushi) ...   
+228     1732                           Big Lebowski, The (1998)   
+562     7161                        Cheaper by the Dozen (2003)   
+504     6218                        Bend It Like Beckham (2002)   
+13       104                               Happy Gilmore (1996)   
+235     1732                           Big Lebowski, The (1998)   
+307     2927                             Brief Encounter (1946)   
+527     6539  Pirates of the Caribbean: The Curse of the Bla...   
+266     2182                              Wrong Man, The (1956)   
+6         47                        Seven (a.k.a. Se7en) (1995)   
+150     1131                            Jean de Florette (1986)   
+292     2571                                 Matrix, The (1999)   
+27       232        Eat Drink Man Woman (Yin shi nan nu) (1994)   
+83       350                                 Client, The (1994)   
+443     4973  Amelie (Fabuleux destin d'Amélie Poulain, Le) ...   
+43       260          Star Wars: Episode IV - A New Hope (1977)   
+49       260          Star Wars: Episode IV - A New Hope (1977)   
+268     2273                                   Rush Hour (1998)   
+302     2730                                Barry Lyndon (1975)   
+96       599                             Wild Bunch, The (1969)   
+420     4322                               Eight Men Out (1988)   
+301     2700        South Park: Bigger, Longer and Uncut (1999)   
+552     6985  Passion of Joan of Arc, The (Passion de Jeanne...   
+12        50                         Usual Suspects, The (1995)   
+159     1199                                      Brazil (1985)   
+259     2082                           Mighty Ducks, The (1992)   
+375     3751                                 Chicken Run (2000)   
+342     3275                        Boondock Saints, The (2000)   
+153     1176  Double Life of Veronique, The (Double Vie de V...   
+62       293  Léon: The Professional (a.k.a. The Professiona...   
+111      924                       2001: A Space Odyssey (1968)   
+91       541                                Blade Runner (1982)   
+277     2396                         Shakespeare in Love (1998)   
+291     2571                                 Matrix, The (1999)   
+386     3893                                 Nurse Betty (2000)   
+392     3949                         Requiem for a Dream (2000)   
+413     4223                          Enemy at the Gates (2001)   
+549     6953                                    21 Grams (2003)   
+378     3793                                       X-Men (2000)   
+519     6539  Pirates of the Caribbean: The Curse of the Bla...   
+276     2396                         Shakespeare in Love (1998)   
+225     1729                                Jackie Brown (1997)   
+372     3707                9 1/2 Weeks (Nine 1/2 Weeks) (1986)   
+279     2424                             You've Got Mail (1998)   
+563     7161                        Cheaper by the Dozen (2003)   
+550     6981                           Ordet (Word, The) (1955)   
+400     4016                   Emperor's New Groove, The (2000)   
+325     3030                                     Yojimbo (1961)   
+389     3948                            Meet the Parents (2000)   
+195     1265                               Groundhog Day (1993)   
+558     7153  Lord of the Rings: The Return of the King, The...   
+496     5984              Story of O, The (Histoire d'O) (1975)   
+460     5219                               Resident Evil (2002)   
+61       293  Léon: The Professional (a.k.a. The Professiona...   
+179     1256                                   Duck Soup (1933)   
+
+                                          genres  userId  \
+35                       Action|Adventure|Sci-Fi     138   
+273                                       Comedy     481   
+477                  Adventure|Animation|Fantasy     277   
+228                                 Comedy|Crime     212   
+562                              Children|Comedy     364   
+504                         Comedy|Drama|Romance     531   
+13                                        Comedy     297   
+235                                 Comedy|Crime     364   
+307                                Drama|Romance     547   
+527              Action|Adventure|Comedy|Fantasy     431   
+266                     Drama|Film-Noir|Thriller     547   
+6                               Mystery|Thriller     364   
+150                                Drama|Mystery      94   
+292                       Action|Sci-Fi|Thriller     431   
+27                          Comedy|Drama|Romance     364   
+83                        Drama|Mystery|Thriller     431   
+443                               Comedy|Romance     364   
+43                       Action|Adventure|Sci-Fi     314   
+49                       Action|Adventure|Sci-Fi     481   
+268                 Action|Comedy|Crime|Thriller     313   
+302                            Drama|Romance|War     547   
+96                             Adventure|Western     547   
+420                                        Drama     520   
+301                     Animation|Comedy|Musical     431   
+552                                        Drama     255   
+12                        Crime|Mystery|Thriller     364   
+159                               Fantasy|Sci-Fi     346   
+259                              Children|Comedy     187   
+375                    Animation|Children|Comedy     431   
+342                  Action|Crime|Drama|Thriller     212   
+153                        Drama|Fantasy|Romance     364   
+62                   Action|Crime|Drama|Thriller     364   
+111                       Adventure|Drama|Sci-Fi     346   
+91                        Action|Sci-Fi|Thriller     547   
+277                         Comedy|Drama|Romance     431   
+291                       Action|Sci-Fi|Thriller     346   
+386          Comedy|Crime|Drama|Romance|Thriller     431   
+392                                        Drama     501   
+413                                    Drama|War     313   
+549         Crime|Drama|Mystery|Romance|Thriller     431   
+378                      Action|Adventure|Sci-Fi     313   
+519              Action|Adventure|Comedy|Fantasy     364   
+276                         Comedy|Drama|Romance     431   
+225                         Crime|Drama|Thriller     423   
+372                                Drama|Romance     546   
+279                               Comedy|Romance     364   
+563                              Children|Comedy     364   
+550                                        Drama     547   
+400  Adventure|Animation|Children|Comedy|Fantasy     431   
+325                             Action|Adventure     423   
+389                                       Comedy     364   
+195                       Comedy|Fantasy|Romance     364   
+558               Action|Adventure|Drama|Fantasy     346   
+496                                Drama|Romance     546   
+460                Action|Horror|Sci-Fi|Thriller     212   
+61                   Action|Crime|Drama|Thriller     364   
+179                           Comedy|Musical|War     423   
+
+                                         tag   timestamp  
+35                           Science Fiction  1440379018  
+273                                cult film  1437105893  
+477                                  fantasy  1463916289  
+228                                satirical  1253929376  
+562                                   family  1444535334  
+504                                 football  1243509668  
+13                              adam sandler  1318706504  
+235                            Steve Buscemi  1444535164  
+307                                 holes40s  1412348319  
+527  I loved it! Seen it five times already!  1140454336  
+266                                      tcm  1412347392  
+6                                      greed  1444534998  
+150                                  tragedy  1291781538  
+292                               philosophy  1140454933  
+27                             relationships  1444531173  
+83                                 overrated  1140455303  
+443                       notable soundtrack  1444528857  
+43                           space adventure  1437338130  
+49                              George Lucas  1437000955  
+268                                Ei muista  1146477049  
+302                                   getdvd  1350531508  
+96                                  holes60s  1388820371  
+420                                 baseball  1146596187  
+301                                stupidity  1140454856  
+552                             breathtaking  1237060605  
+12                                  thriller  1444534932  
+159                                 dystopia  1159734421  
+259                           Emilio Estevez  1233517175  
+375                               mel gibson  1140454892  
+342                              vigilantism  1218405594  
+153                             intellectual  1444528955  
+62                                  thriller  1444534887  
+111                                     slow  1159734220  
+91                                       afi  1182393913  
+277                           joseph fiennes  1165548675  
+291                          virtual reality  1159734636  
+386                                  renee z  1140455496  
+392                               psychology  1292956425  
+413                                Ei muista  1146476274  
+549                         Benicio Del Toro  1165548439  
+378                             Katso Sanna!  1146476954  
+519                                   comedy  1444529977  
+276                           Gwenth Paltrow  1165548675  
+225                              dark comedy  1354033685  
+372                         Nudity (Topless)  1301284182  
+279                             happy ending  1444530524  
+563                                    funny  1444535340  
+550                               sightsound  1343973754  
+400                                     okay  1140454522  
+325                              atmospheric  1354033596  
+389                                  awkward  1444529225  
+195                    character development  1444530216  
+558                                   boring  1159734608  
+496                                   Fetish  1301785980  
+460                    video game adaptation  1253930587  
+61                                   hit men  1444534872  
+179                            Marx Brothers  1354033718  
+4. Source Information: 	Source 0:
+	Source 0 Name: Source1_30_0
+	Source 0 Schema: ['userId', 'movieId', 'tag', 'timestamp']
+	Source 0 Examples: 	 Source 0 contains 1296 tuples, with examples as follows: 
+   userId  movieId                      tag   timestamp
+0      15      339  sandra 'boring' bullock  1138537770
+1      15     1955                  dentist  1193435061
+2      15     7478                 Cambodia  1170560997
+	Source 0 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_30/test_0.csv
+	Source 1:
+	Source 1 Name: Source1_30_1
+	Source 1 Schema: ['movieId', 'title', 'genres']
+	Source 1 Examples: 	 Source 1 contains 4871 tuples, with examples as follows: 
+   movieId                    title  \
+0        1         Toy Story (1995)   
+1        2           Jumanji (1995)   
+2        3  Grumpier Old Men (1995)   
+
+                                        genres  
+0  Adventure|Animation|Children|Comedy|Fantasy  
+1                   Adventure|Children|Fantasy  
+2                               Comedy|Romance  
+	Source 1 File Location: /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_30/test_1.csv
+
+5. Save the Generated CSV File at : /home/local/ASUAD/jrtandel/transchema/autopipeline-benchmarks/github-pipelines/length1_30/target_multisource_agentic.csv
+
+================================================================================
+OUTPUT:
+================================================================================
+No output

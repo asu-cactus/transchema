@@ -1,0 +1,46 @@
+{
+  "case": "4_66",
+  "iterations": [
+    {
+      "iteration": 1,
+      "ms": {
+        "is_correct": true,
+        "score": 0.8514,
+        "cost": 0.0056064,
+        "latency": 15.454060316085815,
+        "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (0.778 + 0.925) / 2 = 0.851 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Movie}; {Year, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Category, Movie}; {Category, Nominee, Movie}; {Year, Category, Nominee}.\nKeys present in ground truth but absent in generated: {Year, Nominee}; {Movie, Year}; {Movie, Nominee}.\nSpurious keys in generated not present in ground truth: {Year, Nominee, Category}; {Movie, Year, Category}; {Movie, Nominee, Category}.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency F1: 0.778 (precision=0.875, recall=0.700).\nSpurious FDs in generated (not in ground truth): ['Category', 'Movie', 'Nominee'] \u2192 Year.\nMissing FDs from ground truth: ['Movie'] \u2192 Category; ['Nominee', 'Year'] \u2192 Category; ['Movie', 'Year'] \u2192 Category.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.766\n  Column 'Movie': Jaccard=0.859",
+        "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 362\nExamples:\n         Year                 Category         Nominee                                            Movie Winner\n1929/30 (3rd)    Actor -- Leading Role   George Arliss                   Disraeli {'Benjamin Disraeli'}    YES\n  1991 (64th)    Actor -- Leading Role Anthony Hopkins The Silence of the Lambs {'Dr. Hannibal Lecter'}    YES\n  1942 (15th) Actor -- Supporting Role      Van Heflin                   Johnny Eager {'Jeff Hartnett'}    YES",
+        "code": "import pandas as pd\n\n# File paths for source CSVs\nsource_files = [\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_66/training_0.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_66/training_1.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_66/training_2.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_66/training_3.csv\",\n    \"autopipeline-benchmarks/github-pipelines/intermediate_space/length4_66/training_4.csv\"\n]\n\n# Read all source tables with index_col=0 to ignore the first index column\ndfs = [pd.read_csv(f, index_col=0) for f in source_files]\n\n# All source tables have the same schema and match the target schema exactly,\n# so we perform a UNION (concatenation) of all source tables.\nTarget4_66 = pd.concat(dfs, ignore_index=True)\n\n# Ensure the column order and types match the target schema exactly\nTarget4_66 = Target4_66[['Year', 'Category', 'Nominee', 'Movie', 'Winner']]\n\n# Convert all columns to string type as per target schema\nfor col in Target4_66.columns:\n    Target4_66[col] = Target4_66[col].astype(str)\n\n# Write the final target table to the specified path without the index\nTarget4_66.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/target_multisource.csv\", index=False)",
+        "generated_csv_head": "Year,Category,Nominee,Movie,Winner\n2010 (83rd),Actress -- Supporting Role,Melissa Leo,The Fighter {'Alice Ward'},YES\n2009 (82nd),Actress -- Supporting Role,Mo'Nique,Precious: Based on the Novel 'Push' by Sapphire {'Mary'},YES\n2008 (81st),Actress -- Supporting Role,Pen\u00e9lope Cruz,Vicky Cristina Barcelona {'Maria Elena'},YES\n2007 (80th),Actress -- Supporting Role,Tilda Swinton,Michael Clayton {'Karen Crowder'},YES\n2006 (79th),Actress -- Supporting Role,Jennifer Hudson,Dreamgirls {'Effie White'},YES\n2005 (78th),Actress -- Supporting Role,Rachel Weisz,The Constant Gardener {'Tessa Quayle'},YES\n2004 (77th),Actress -- Supporting Role,Cate Blanchett,The Aviator {'Katharine Hepburn'},YES\n2003 (76th),Actress -- Supporting Role,Ren\u00e9e Zellweger,Cold Mountain {'Ruby Thewes'},YES\n2002 (75th),Actress -- Supporting Role,Catherine Zeta-Jones,Chicago {'Velma Kelly'},YES\n2001 (74th),Actress -- Supporting Role,Jennifer Connelly,A Beautiful Mind {'Alicia Nash'},YES\n",
+        "score_calculation_time_ms": {
+          "csv_load_ms": 0,
+          "relative_score_ms": 0,
+          "fuzzy_match_ms": 0,
+          "total_ms": 2.8586387634277344
+        }
+      },
+      "critiques": [
+        {
+          "type": "mcts_style",
+          "is_correct": true,
+          "score": 0.9625,
+          "cost": 0.0022396,
+          "latency": 8.916249752044678,
+          "nl_score": "Overall: the generated table is a partial match with notable discrepancies.\nCombined score = (fd_f1 + avg_column_score) / 2 = (1.000 + 0.925) / 2 = 0.963 (1.0 is perfect).\navg_column_score = mean of per-column scores (numeric: 0.5*(JS similarity + range overlap); categorical: Jaccard).\nGround truth candidate keys: {Year, Movie}; {Year, Nominee}; {Nominee, Movie}.\nGenerated table candidate keys: {Year, Movie}; {Year, Nominee}; {Nominee, Movie}.\nKey structure matches ground truth exactly.\nGround truth column equivalence classes: {left, right}; {left, right}; {left, right}.\nGenerated table equivalence classes: {left, right}; {left, right}; {left, right}.\nEquivalence class structure matches ground truth exactly.\nFunctional dependency structure matches ground truth exactly.\nCategorical Column Match Analysis (low Jaccard similarity):\n  Column 'Nominee': Jaccard=0.766\n  Column 'Movie': Jaccard=0.859",
+          "generated_samples": "Schema: ['Year', 'Category', 'Nominee', 'Movie', 'Winner']\nNumber of Tuples: 361\nExamples:\n       Year                 Category           Nominee                           Movie Winner\n1952 (25th)                Directing     The Quiet Man                       John Ford    YES\n1981 (54th)  Actress -- Leading Role Katharine Hepburn On Golden Pond {'Ethel Thayer'}    YES\n1961 (34th) Actor -- Supporting Role   George Chakiris    West Side Story {'Bernardo'}    YES",
+          "code": "import pandas as pd\n\n# Read all source CSV files with index_col=0 to ignore the numerical index column\nsource0 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_0.csv\", index_col=0)\nsource1 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_1.csv\", index_col=0)\nsource2 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_2.csv\", index_col=0)\nsource3 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_3.csv\", index_col=0)\nsource4 = pd.read_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/training_4.csv\", index_col=0)\n\n# Since all sources have the same schema and the target schema is the same,\n# the correct operation is to UNION all source tables (concatenate rows).\n# The failed pipeline already did this, but the problem is that the target key constraints\n# require unique tuples by ['Nominee', 'Movie'].\n# So we need to drop duplicates based on these keys to match the target.\n\n# Concatenate all sources\ndf = pd.concat([source0, source1, source2, source3, source4], ignore_index=True)\n\n# Drop duplicates based on the primary key ['Nominee', 'Movie']\ndf = df.drop_duplicates(subset=['Nominee', 'Movie'])\n\n# Keep columns exactly as target schema\ndf = df[['Year', 'Category', 'Nominee', 'Movie', 'Winner']]\n\n# Write the final output\ndf.to_csv(\"autopipeline-benchmarks/github-pipelines/length4_66/target_multisource_critique_history.csv\", index=False)",
+          "score_calculation_time_ms": {
+            "csv_load_ms": 0,
+            "relative_score_ms": 0,
+            "fuzzy_match_ms": 0,
+            "total_ms": 1.1928081512451172
+          }
+        }
+      ],
+      "execution_timing_ms": {
+        "multi_step": 15563.83490562439,
+        "critique": 9049.114227294922
+      }
+    }
+  ]
+}
