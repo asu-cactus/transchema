@@ -135,6 +135,12 @@ def get_mcts_expand_prompt(
     else:
         explored_block = ""
 
+    # Layout (prompt-caching friendly): everything that is identical across calls comes first
+    # (instructions, rules, hints, output format), then the data that is fixed for the case
+    # (target name/schema, source information), and only then the per-call state (allowed
+    # operations, operation history, the per-call target sample, explored candidates, RAG
+    # examples). A provider's prompt cache matches an identical prefix only, so per-call
+    # content placed early invalidates everything after it.
     prompt = f"""You are generating a data-pipeline to transform multiple source tables to the target table and you need to answer "what operation should be performed next?". Take this decision based on "Operation History", the schema of the source, target tables, and examples in the target table.
 
 Your task: propose up to {k} ALTERNATIVE candidates for the SINGLE NEXT operation step, ranked from most to least promising.
@@ -147,14 +153,9 @@ the Operation History), never the output of another candidate.
 For EVERY candidate you must specify BOTH the operator type AND its full configuration — no
 separate configuration step will be performed.
 
-Allowed Operations: {allowed_operation_list}
-Operation History (completed so far): {operation_history}
-
-1. Target Table Name:   {target_data_name}
-2. Target Schema:       {target_data_schema}
-3. Target Examples:     {target_samples}
-4. Source Information:  {source_information}
-{fd_hints}
+The task data comes at the end of this prompt, after the rules below: first the TASK DATA
+(target and source tables), then the CURRENT STATE (Allowed Operations, Operation History,
+target examples, and any already-explored candidates or retrieved examples).
 
 ══════════════════════════════════════════════════════
 CONFIGURATION RULES — one section per operator type
@@ -191,12 +192,11 @@ COLUMN_TRANSFORM — define the target columns as row-wise expressions over exis
 SELECTION GUIDANCE (apply these rules when ranking candidates)
 ══════════════════════════════════════════════════════
 {selection_hints}
-{operator_data_hints}
 - Always propose at least one structural operator for the next step; do NOT signal
   that the pipeline is complete here — termination is decided later, not in expansion.
 - Do NOT repeat an operation+configuration already present in the operation history.
 
-{explored_block}{rag_hints_section}══════════════════════════════════════════════════════
+══════════════════════════════════════════════════════
 OUTPUT FORMAT  (follow exactly)
 ══════════════════════════════════════════════════════
 List up to {k} candidates ranked most-to-least promising using the markers below.
@@ -241,7 +241,22 @@ Note: all four candidates above operate on the SAME original source tables.
 Candidate 2 does NOT depend on candidate 1 having been applied first.
 When GROUP_BY is chosen, the aggregation functions are selected in the next expansion step.
 
-Now provide your ranked candidates:"""
+══════════════════════════════════════════════════════
+TASK DATA
+══════════════════════════════════════════════════════
+Target Table Name:   {target_data_name}
+Target Schema:       {target_data_schema}
+Source Information:  {source_information}
+{fd_hints}{operator_data_hints}
+
+══════════════════════════════════════════════════════
+CURRENT STATE
+══════════════════════════════════════════════════════
+Allowed Operations: {allowed_operation_list}
+Operation History (completed so far): {operation_history}
+Target Examples:     {target_samples}
+
+{explored_block}{rag_hints_section}Now provide your ranked candidates:"""
 
     return [prompt]
 
@@ -336,37 +351,38 @@ def get_mcts_expand_aggregate_prompt(
     else:
         agg_explored_block = ""
 
-    prompt = f"""You are building a data-pipeline. The GROUP BY step has already been chosen:
+    # The column-coverage rule depends on the chosen GROUP BY, so it lives with the per-call state.
+    coverage_block = f"Requirements for this GROUP BY:\n{coverage_line}\n" if coverage_line else ""
 
-  {groupby_step}
+    # Same cache-friendly layout as get_mcts_expand_prompt: identical-across-calls text first,
+    # then the case's target/source data, then the per-call state (chosen GROUP BY, history,
+    # per-call target sample, aggregation evidence, coverage rule, explored, RAG).
+    prompt = f"""You are building a data-pipeline. A GROUP BY step has already been chosen; it is shown under
+CURRENT STATE at the end of this prompt.
 
 Your task: propose up to {k} ALTERNATIVE AGGREGATE candidates to apply immediately after
-the GROUP BY above, ranked from most to least promising.
+that GROUP BY, ranked from most to least promising.
 
 CRITICAL: Each candidate is an INDEPENDENT ALTERNATIVE for the same aggregation step.
 They are NOT sequential — candidate 2 does NOT build on candidate 1.
 Each proposes a DIFFERENT set of aggregation functions on the grouped table.
 
-Operation History (completed so far, ending with the GROUP BY): {operation_history}
+The task data comes at the end of this prompt, after the guidance below: first the TASK DATA
+(target and source tables), then the CURRENT STATE (the chosen GROUP BY, Operation History,
+target examples, and the requirements and evidence for this GROUP BY).
 
-1. Target Table Name:   {target_data_name}
-2. Target Schema:       {target_data_schema}
-3. Target Examples:     {target_samples}
-4. Source Information:  {source_information}
-{fd_hints}
-
-{agg_evidence}══════════════════════════════════════════════════════
+══════════════════════════════════════════════════════
 AGGREGATION GUIDANCE
 ══════════════════════════════════════════════════════
 {agg_hints}
-{coverage_line}- Use ONLY columns that exist in the source tables (or the result of prior steps).
+- Use ONLY columns that exist in the source tables (or the result of prior steps).
 - Common aggregation functions: COUNT, SUM, AVG, MIN, MAX, COUNT DISTINCT.
-- Columns already used in the GROUP BY step above must NOT appear as aggregation targets.
+- Columns already used in the chosen GROUP BY step must NOT appear as aggregation targets.
 - Do NOT repeat an aggregation configuration already present in the operation history.
 - There is no limit on how many aggregations a candidate may contain — include as
   many as the coverage rule requires, not the number shown in the examples.
 
-{agg_explored_block}{rag_hints_section}══════════════════════════════════════════════════════
+══════════════════════════════════════════════════════
 OUTPUT FORMAT  (follow exactly)
 ══════════════════════════════════════════════════════
 List up to {k} candidates ranked most-to-least promising.
@@ -407,6 +423,21 @@ OPERATOR: AGGREGATE
 AGGREGATIONS: [MIN(test_0.tier) AS tier, COUNT DISTINCT(test_0.id) AS id, AVG(test_0.revenue) AS revenue]
 $END$
 
-Now provide your ranked candidates:"""
+══════════════════════════════════════════════════════
+TASK DATA
+══════════════════════════════════════════════════════
+Target Table Name:   {target_data_name}
+Target Schema:       {target_data_schema}
+Source Information:  {source_information}
+{fd_hints}
+
+══════════════════════════════════════════════════════
+CURRENT STATE
+══════════════════════════════════════════════════════
+Chosen GROUP BY step: {groupby_step}
+Operation History (completed so far, ending with the GROUP BY): {operation_history}
+Target Examples:     {target_samples}
+
+{agg_evidence}{coverage_block}{agg_explored_block}{rag_hints_section}Now provide your ranked candidates:"""
 
     return [prompt]

@@ -31,6 +31,7 @@
 #     MODELS="dmx-gpt-oss-120b"                          (default: ONE model; several would run one after another)
 #     LENGTHS="1 2 3 4 5 6 9"                            (default; ids without a folder are skipped)
 #     MAX_JOBS=20                CASE_TIMEOUT=600     SAME_LEAF_STOPPING=5     MIN_FREE_GB=15
+#     MCTS_ITERATIONS=40         MCTS iteration budget per case
 #     CASE_TIMEOUT_BY_LENGTH="2=480 3=480 6=480 9=480"   per-length case timeout in seconds (others use CASE_TIMEOUT)
 #     RUN_TAG=<tag>              default gh_leafstop5_<launch timestamp>. Re-launch with the SAME
 #                                RUN_TAG to RESUME: cases that already have a results_summary.csv
@@ -106,7 +107,7 @@ fi
 
 if [ -n "${DRY_RUN:-}" ]; then
     static_hints_label="on"; [ -n "$NO_STATIC_HINTS" ] && static_hints_label="off"
-    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  reward=${REWARD:-det_score_value}  rag=${RAG-curated_pipeline}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}  static_hints=$static_hints_label  score_weights=${SCORE_WEIGHTS:-length_default}"
+    echo "RUN_TAG=$RUN_TAG  MODELS=$MODELS  MAX_JOBS=$MAX_JOBS  mcts_iterations=${MCTS_ITERATIONS:-40}  same_leaf_stopping=$SAME_LEAF_STOPPING  timeout=${CASE_TIMEOUT}s  reward=${REWARD:-det_score_value}  rag=${RAG-curated_pipeline}  curated_retrieval_mode=${CURATED_RETRIEVAL_MODE:-prefix_feature}  drop_score_components=${DROP_SCORE_COMPONENTS:-none}  static_hints=$static_hints_label  score_weights=${SCORE_WEIGHTS:-length_default}"
     echo "total cases per model: ${#CASES[@]}"
     for L in $LENGTHS; do
         n=0; for u in "${CASES[@]}"; do [ "${u%%:*}" = "$L" ] && n=$((n+1)); done
@@ -231,7 +232,7 @@ run_case() {
         --token_limit        12000 \
         --source_length      3 \
         --target_length      3 \
-        --mcts_iterations    40 \
+        --mcts_iterations    "${MCTS_ITERATIONS:-40}" \
         --early_stopping     0 \
         --same_leaf_stopping "$SAME_LEAF_STOPPING" \
         --case_timeout       "$case_timeout" \
@@ -295,7 +296,7 @@ for MODEL in $MODELS; do
     check_disk || { log "ABORT" "disk check failed before $MODEL -- stopping the whole run"; exit 1; }
     mkdir -p "logs_langraph/github_${RUN_TAG}_${MODEL}"
     static_hints_label="on"; [ -n "$NO_STATIC_HINTS" ] && static_hints_label="off"
-    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, case_timeout=${CASE_TIMEOUT}s, reward=${REWARD:-det_score_value}, rag=${RAG:-none}, drop_score_components=${DROP_SCORE_COMPONENTS:-none}, static_hints=$static_hints_label, score_weights=${SCORE_WEIGHTS:-length_default} ====="
+    log "ALL" "===== $MODEL: ${#CASES[@]} cases, MAX_JOBS=${MAX_JOBS}, mcts_iterations=${MCTS_ITERATIONS:-40}, case_timeout=${CASE_TIMEOUT}s, reward=${REWARD:-det_score_value}, rag=${RAG:-none}, drop_score_components=${DROP_SCORE_COMPONENTS:-none}, static_hints=$static_hints_label, score_weights=${SCORE_WEIGHTS:-length_default} ====="
     m_start=$(date +%s)
     for u in "${CASES[@]}"; do enqueue "$MODEL" "${u%%:*}" "${u##*:}"; done
     wait

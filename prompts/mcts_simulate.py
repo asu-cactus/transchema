@@ -121,17 +121,18 @@ about what additional steps are required to produce the correct target schema, i
     _dt_override = smartbuilding_override_for(directory, static_hints)
     rag_hints_section = (rag_hints.rstrip() + "\n\n") if rag_hints else ""
 
+    # Layout (prompt-caching friendly): text identical across calls first (instructions,
+    # output format, code-generation hints), then the case's target/source data, then the
+    # per-call state (partial plan, per-call target sample, save path, RAG examples, errors).
+    # A provider's prompt cache matches an identical prefix only.
     prompt = f"""You are generating executable Python code at runtime. Please generate a Python script to convert multiple source tables to the format of the target table. The code should be immediately executable in a correct way, which means it should NOT contain any placeholder for brevity. For example, even if there exist hundreds of source tables, these data need to be loaded completely one by one or in a programmable way.
 
-{history_section}
-1. Target Table Name:              {target_data_name}
-2. Target Schema:                  {target_data_schema}
-3. Target Examples:                {target_samples}
-4. Source Information (with paths): {source_information_with_location}
-5. Save the result to:             {csv_save_path}
+The task data comes at the end of this prompt, after the instructions and hints below: first
+the TASK DATA (target and source tables), then the CURRENT STATE (the partial operation plan,
+target examples, where to save the result, and any retrieved examples or previous errors).
 
 Before writing code, THINK STEP BY STEP about the complete transformation plan:
-  a) What does the partial plan above imply for the first operation(s)?
+  a) What does the partial operation plan (under CURRENT STATE) imply for the first operation(s)?
   b) After those operations, what intermediate schema is produced?
   c) What further operations are needed to reach the target schema?
   d) Are there any data-type fixes, string conversions, or column renames required?
@@ -146,7 +147,7 @@ $PLAN$
 NO_MORE_OPERATION
 $END_PLAN$
 
-Each operation line must use the same format as the operation history above.
+Each operation line must use the same format as the partial operation plan under CURRENT STATE.
 Examples of valid operation lines:
   UNION : [test_0, test_1]
   JOIN : [[union_result, test_2]] columns=[[union_result.id, test_2.id]]
@@ -173,14 +174,28 @@ Keep the code brief: no inline comments, no docstrings, no explanatory print sta
 
 Please quote the Python script between one single "```Python" and "```".
 
-{rag_hints_section}══════════════════════════════════════════════════════
+══════════════════════════════════════════════════════
 Hints for Python code generation
 ══════════════════════════════════════════════════════
 {script_hints}
 {_dt_override}
+
+══════════════════════════════════════════════════════
+TASK DATA
+══════════════════════════════════════════════════════
+Target Table Name:               {target_data_name}
+Target Schema:                   {target_data_schema}
+Source Information (with paths): {source_information_with_location}
 {data_specific_hints}
 
-Errors in previous attempts: {error_string}
+══════════════════════════════════════════════════════
+CURRENT STATE
+══════════════════════════════════════════════════════
+{history_section}
+Target Examples:                 {target_samples}
+Save the result to:              {csv_save_path}
+
+{rag_hints_section}Errors in previous attempts: {error_string}
 """
 
     return [prompt]

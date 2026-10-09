@@ -217,7 +217,7 @@ run_case() {
         --token_limit        12000 \
         --source_length      3 \
         --target_length      3 \
-        --mcts_iterations    40 \
+        --mcts_iterations    "${MCTS_ITERATIONS:-40}" \
         --early_stopping     0 \
         --same_leaf_stopping "$SAME_LEAF_STOPPING" \
         --case_timeout       "$CASE_TIMEOUT" \

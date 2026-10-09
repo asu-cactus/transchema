@@ -17,6 +17,7 @@
 #     MODEL=azure-gpt-5.1          Azure relay on localhost:8001 (azure_relay.py + tunnel); no OpenAI key needed
 #     CASES_OVERRIDE="1_0 1_1 ... 1_10"   run only these L_id cases (both phases; phase 2 still only retries the unsolved ones)
 #     LENGTHS="1 2 3 4 5 6 9"      MAX_JOBS=20      RUN_TAG=<tag>      DRY_RUN=1 (print the plan, no LLM calls)
+#     MCTS_ITERATIONS=40           MCTS iteration budget per case (forwarded to run_github_mcts_dmx.sh)
 #     ONLY_LIST_FAILED=1           print the cases phase 1 (RUN_TAG) did not solve, then exit
 #     SKIP_GUARD_PHASE1=1          also skip the "another MCTS run is active" check for phase 1 (phase 2 always skips it: the
 #                                  phase-1 launcher's own leftover child processes can still be alive when it hands over)

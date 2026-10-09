@@ -9,36 +9,13 @@ Instructions:
 --For String operators: give a description.
 --All source tables MUST be used.
 
-The current pipeline produced incorrect results. Analyze the issue using the information below, then produce a corrected Python script.
-
-Source Data Information: $SRC_INFO$
-
-Target Data Information:
-Schema: $SCHEMA$
-Number of Tuples: $NUM_TUPLES$
-Examples: $EXAMPLES$
-
-Functional Dependencies (FDs) (important ones ranked on top):
-$FD_HINT$
-
-The failed pipeline used the following operations:
-$OPERATIONS$
-
-After these operations, the resulting table (that does not match target data) has:
-Schema: $RES_SCHEMA$
-Number of Tuples: $NUM_RES_TUPLES$
-Examples: $RES_EXAMPLES$
-
-Current Python script:
-```python
-$CURRENT_SCRIPT$
-```
+The current pipeline produced incorrect results. The data is given at the end of this prompt, after the instructions below: first the TASK DATA (source and target tables), then the FAILED PIPELINE (its operations, the table it produced, and its Python script). Analyze the issue, then produce a corrected Python script.
 
 $STATIC_HINTS$
 
-Now produce the corrected pipeline. First, state the corrected sequence of operations in the EXACT SAME FORMAT as shown in the input operations above, then output the corrected Python script. The script must:
+To produce the corrected pipeline: first state the corrected sequence of operations in the EXACT SAME FORMAT as the failed pipeline's operations, then output the corrected Python script. The script must:
 - Read ONLY the CSV file paths given in Source Data Information.
-- Write its final output to: $CSV_SAVE_PATH$
+- Write its final output to the Output Path given under TASK DATA.
 - Keep column names exactly as in the target schema (no added prefixes/suffixes).
 - NOT use assignment operation for any column.
 
@@ -71,3 +48,36 @@ Then output the corrected Python script in a code block:
 ```python
 <corrected code here>
 ```
+
+══════════════════════════════════════════════════════
+TASK DATA
+══════════════════════════════════════════════════════
+Source Data Information: $SRC_INFO$
+
+Target Data Information:
+Schema: $SCHEMA$
+Number of Tuples: $NUM_TUPLES$
+Examples: $EXAMPLES$
+
+Functional Dependencies (FDs) (important ones ranked on top):
+$FD_HINT$
+
+Output Path: $CSV_SAVE_PATH$
+
+══════════════════════════════════════════════════════
+FAILED PIPELINE
+══════════════════════════════════════════════════════
+The failed pipeline used the following operations:
+$OPERATIONS$
+
+After these operations, the resulting table (that does not match target data) has:
+Schema: $RES_SCHEMA$
+Number of Tuples: $NUM_RES_TUPLES$
+Examples: $RES_EXAMPLES$
+
+Current Python script:
+```python
+$CURRENT_SCRIPT$
+```
+$RAG_HINTS$
+Now produce the corrected pipeline, following the instructions above.

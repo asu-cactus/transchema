@@ -2961,8 +2961,9 @@ def _build_critique_prompt(state: MCTSGraphState, script: str, rag_hints: str = 
     else:
         prompt = prompt.replace("$STATIC_HINTS$", "")
 
-    if rag_hints:
-        prompt += f"\n{rag_hints.rstrip()}\n"
+    # RAG examples vary per call, so the template places them in its per-call tail
+    # ($RAG_HINTS$), ahead of the closing instruction, rather than appending them.
+    prompt = prompt.replace("$RAG_HINTS$", f"\n{rag_hints.rstrip()}\n" if rag_hints else "")
 
     return prompt
 
